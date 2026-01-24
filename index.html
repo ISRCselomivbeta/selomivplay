@@ -3,327 +3,1563 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MIV Music Pro | Fintech Musical</title>
+    <title>SELO MIV | Fintech Musical</title>
+
+    <!-- Bootstrap 5.3.0 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <!-- YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
+
     <style>
-        :root { --neon-green: #00ff88; --miv-blue: #0072ff; --bg-dark: #07090c; --bg-card: #111418; --border: #1e2329; }
-        body { font-family: 'Outfit', sans-serif; background-color: var(--bg-dark); color: #ffffff; margin: 0; padding-bottom: 110px; overflow-x: hidden; }
-        
-        /* Telas de Acesso */
-        #auth-screen { position: fixed; inset: 0; z-index: 3000; background: var(--bg-dark); display: flex; align-items: center; justify-content: center; p: 20px; }
-        .glass-card { background: var(--bg-card); border: 1px solid var(--border); padding: 30px; border-radius: 25px; width: 100%; max-width: 400px; }
+        :root {
+            --neon-green: #00ff88;
+            --miv-blue: #0072ff;
+            --bg-dark: #07090c;
+            --bg-card: #111418;
+            --border: #1e2329;
+            --text-light: #f8f9fa;
+            --text-muted: #6c757d;
+        }
 
-        /* Sidebar e Layout */
-        .sidebar { height: 100%; width: 0; position: fixed; z-index: 2000; top: 0; left: 0; background-color: #000; overflow-x: hidden; transition: 0.5s; padding-top: 60px; border-right: 1px solid var(--border); }
-        .sidebar a { padding: 15px 32px; text-decoration: none; font-size: 1.2rem; color: #818181; display: block; transition: 0.3s; }
-        .sidebar .closebtn { position: absolute; top: 10px; right: 25px; font-size: 36px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-        .miv-header { background: linear-gradient(180deg, rgba(0,255,136,0.1) 0%, var(--bg-dark) 100%); padding: 20px; border-bottom: 1px solid var(--border); }
-        .miv-player { position: fixed; bottom: 75px; left: 0; width: 100%; background: rgba(17, 20, 24, 0.98); backdrop-filter: blur(20px); border-top: 1px solid var(--border); padding: 12px; z-index: 1500; }
-        .video-container { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 15px; overflow: hidden; display: none; margin-bottom: 20px; }
-        .expanded .video-container { display: block; }
-        .miv-player.expanded { height: 100vh; bottom: 0; padding-top: 40px; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
 
-        .progress-container { height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer; margin: 10px 0; }
-        .progress-bar { height: 100%; background: var(--neon-green); width: 0%; border-radius: 10px; }
-        
-        .music-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 15px; padding: 12px; transition: 0.3s; }
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: #000; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid var(--border); z-index: 1600; }
-        .nav-item { color: #888; border: none; background: none; font-size: 0.75rem; }
-        .nav-item.active { color: var(--neon-green); }
-        .section-page { display: none; }
-        .section-page.active { display: block; }
-        .btn-miv { background: var(--neon-green); color: #000; font-weight: 700; border: none; border-radius: 8px; padding: 8px 16px; }
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 4rem;
+            height: 4rem;
+            border: 0.25rem solid rgba(0, 255, 136, 0.3);
+            border-top-color: var(--neon-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .auth-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #0c0e12 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 9998;
+            overflow-y: auto;
+        }
+
+        .auth-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .auth-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .logo-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .logo-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 50%;
+            margin-bottom: 1.5rem;
+            border: 2px solid var(--neon-green);
+        }
+
+        .logo-icon i {
+            font-size: 2.5rem;
+            color: var(--neon-green);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-control-custom {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            color: var(--text-light);
+            padding: 0.875rem 1rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control-custom:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--neon-green);
+            color: var(--text-light);
+            box-shadow: 0 0 0 0.25rem rgba(0, 255, 136, 0.25);
+        }
+
+        .form-control-custom::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn-miv {
+            background: linear-gradient(135deg, var(--neon-green) 0%, #00cc6a 100%);
+            border: none;
+            border-radius: 0.75rem;
+            color: #000;
+            font-weight: 700;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .btn-miv:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .btn-miv:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-link {
+            color: var(--neon-green);
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.3s ease;
+        }
+
+        .auth-link:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+
+        .main-app {
+            display: none;
+            min-height: 100vh;
+            padding-bottom: 5rem;
+        }
+
+        .app-header {
+            background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, rgba(7, 9, 12, 0.8) 100%);
+            backdrop-filter: blur(10px);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .saldo-display h6 {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .saldo-display h4 {
+            color: var(--neon-green);
+            font-weight: 700;
+            margin-bottom: 0;
+        }
+
+        .user-badge {
+            background: var(--neon-green);
+            color: #000;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 300px;
+            height: 100vh;
+            background: #000;
+            border-right: 1px solid var(--border);
+            z-index: 1100;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-close {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+        }
+
+        .nav-item {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--neon-green);
+        }
+
+        .nav-link i {
+            font-size: 1.25rem;
+        }
+
+        .section {
+            display: none;
+            padding: 1.5rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            color: var(--text-light);
+            font-weight: 700;
+            margin-bottom: 0;
+        }
+
+        .music-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .music-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .music-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--neon-green);
+            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.1);
+        }
+
+        .music-cover {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+
+        .music-info {
+            padding: 1rem;
+        }
+
+        .music-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--text-light);
+        }
+
+        .music-artist {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .music-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .music-price {
+            color: var(--neon-green);
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+
+        .music-percent {
+            background: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .player-bar {
+            position: fixed;
+            bottom: 5rem;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            padding: 1rem;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            display: none;
+        }
+
+        .player-bar.expanded {
+            bottom: 0;
+            height: 100vh;
+            background: rgba(17, 20, 24, 0.98);
+            backdrop-filter: blur(20px);
+        }
+
+        .player-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 1rem;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .player-bar.expanded .video-container {
+            display: block;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .player-album-art {
+            width: 60px;
+            height: 60px;
+            border-radius: 0.75rem;
+            object-fit: cover;
+        }
+
+        .player-text {
+            flex: 1;
+        }
+
+        .player-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .player-artist {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .player-price {
+            color: var(--neon-green);
+            font-weight: 700;
+        }
+
+        .progress-container {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin: 1rem 0;
+            cursor: pointer;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--neon-green);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .player-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 0.5rem;
+        }
+
+        .control-btn:hover {
+            color: var(--neon-green);
+            transform: scale(1.1);
+        }
+
+        .play-btn {
+            font-size: 2.5rem;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #000;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 0.75rem 0;
+            z-index: 1001;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            flex: 1;
+        }
+
+        .nav-btn:hover,
+        .nav-btn.active {
+            color: var(--neon-green);
+        }
+
+        .nav-btn i {
+            font-size: 1.25rem;
+        }
+
+        .nav-btn span {
+            font-size: 0.75rem;
+        }
+
+        .portfolio-summary {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 123, 255, 0.1) 100%);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .portfolio-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--neon-green);
+            margin: 0.5rem 0;
+        }
+
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .ledger-table th {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .ledger-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .ledger-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .artist-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            color: var(--neon-green);
+            margin-bottom: 1rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-light);
+            margin: 0.5rem 0;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            color: var(--text-light);
+            font-weight: 700;
+            margin-bottom: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1300;
+            max-width: 350px;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-color: var(--neon-green);
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .toast.error {
+            border-color: #ff3232;
+            background: rgba(255, 50, 50, 0.1);
+        }
+
+        .toast-icon {
+            font-size: 1.25rem;
+        }
+
+        .toast.success .toast-icon {
+            color: var(--neon-green);
+        }
+
+        .toast.error .toast-icon {
+            color: #ff3232;
+        }
+
+        .toast-message {
+            flex: 1;
+            color: var(--text-light);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .auth-card {
+                padding: 1.5rem;
+            }
+
+            .music-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .artist-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .section {
+                padding: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h4 class="text-success mb-2">Conectando ao SELO MIV</h4>
+            <p class="text-muted" id="loadingMessage">Inicializando sistema...</p>
+        </div>
+    </div>
 
-    <div id="auth-screen">
-        <div class="glass-card">
-            <div class="text-center mb-4">
-                <div class="d-inline-block p-3 rounded-4 bg-success mb-3" style="--bs-bg-opacity: .2;">
-                    <i class="bi bi-shield-lock text-success fs-1"></i>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Authentication Screen -->
+    <div id="authScreen" class="auth-screen">
+        <div class="auth-card">
+            <div class="logo-header">
+                <div class="logo-icon">
+                    <i class="bi bi-shield-lock"></i>
                 </div>
-                <h3 class="fw-bold">MIV LEDGER</h3>
-                <p class="text-secondary small">Autenticação de Segurança Obrigatória</p>
+                <h2 class="text-white mb-2">SELO MIV</h2>
+                <p class="text-muted">Plataforma de Investimento em Música</p>
             </div>
-            
-            <div id="auth-forms">
-                <div id="login-fields">
-                    <input type="email" id="email" class="form-control bg-dark text-white border-secondary mb-3 p-3" placeholder="Seu E-mail">
-                    <input type="password" id="pass" class="form-control bg-dark text-white border-secondary mb-3 p-3" placeholder="Sua Senha">
-                    <button class="btn btn-miv w-100 p-3 mb-3" onclick="handleLogin()">ENTRAR NO SISTEMA</button>
-                    <p class="text-center small text-secondary">Novo aqui? <a href="#" class="text-success" onclick="toggleReg(true)">Criar Conta MIV</a></p>
+
+            <!-- Login Form -->
+            <div id="loginForm">
+                <div id="loginMessage" class="alert d-none"></div>
+
+                <div class="form-group">
+                    <input type="email" id="loginEmail" class="form-control-custom" placeholder="E-mail" required>
                 </div>
 
-                <div id="reg-fields" style="display: none;">
-                    <input type="text" id="reg-nome" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Nome Completo">
-                    <input type="email" id="reg-email" class="form-control bg-dark text-white border-secondary mb-2" placeholder="E-mail">
-                    <input type="password" id="reg-pass" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Senha">
-                    <select id="reg-tipo" class="form-select bg-dark text-white border-secondary mb-2" onchange="checkArtist()">
-                        <option value="ouvinte">Perfil: Ouvinte</option>
-                        <option value="artista">Perfil: Artista</option>
-                    </select>
-                    <input type="url" id="reg-link" class="form-control bg-dark text-info border-info mb-3" style="display:none;" placeholder="Link do seu último trabalho (Obrigatório)">
-                    
-                    <button class="btn btn-miv w-100 p-3 mb-3" onclick="handleRegister()">SOLICITAR ACESSO</button>
-                    <p class="text-center small text-secondary">Já tem conta? <a href="#" class="text-success" onclick="toggleReg(false)">Fazer Login</a></p>
+                <div class="form-group">
+                    <input type="password" id="loginPassword" class="form-control-custom" placeholder="Senha" required>
                 </div>
+
+                <button class="btn-miv mb-3" onclick="handleLogin()">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Entrar
+                </button>
+
+                <p class="text-center text-muted">
+                    Novo por aqui?
+                    <a href="javascript:void(0)" class="auth-link" onclick="showRegisterForm()">
+                        Criar conta
+                    </a>
+                </p>
+
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Use: admin@miv.com / admin123
+                    </small>
+                </div>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" style="display: none;">
+                <div id="registerMessage" class="alert d-none"></div>
+
+                <div class="form-group">
+                    <input type="text" id="registerName" class="form-control-custom" placeholder="Nome completo" required>
+                </div>
+
+                <div class="form-group">
+                    <input type="email" id="registerEmail" class="form-control-custom" placeholder="E-mail" required>
+                </div>
+
+                <div class="form-group">
+                    <input type="password" id="registerPassword" class="form-control-custom" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                    <select id="registerType" class="form-control-custom" onchange="toggleArtistField()">
+                        <option value="">Selecione seu perfil...</option>
+                        <option value="ouvinte">🎧 Ouvinte/Investidor</option>
+                        <option value="artista">🎤 Artista</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="artistLinkField" style="display: none;">
+                    <input type="url" id="registerLink" class="form-control-custom" placeholder="Link do seu trabalho (YouTube, Spotify, etc.)">
+                    <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
+                </div>
+
+                <button class="btn-miv mb-3" onclick="handleRegister()">
+                    <i class="bi bi-person-plus"></i>
+                    Solicitar Cadastro
+                </button>
+
+                <p class="text-center text-muted">
+                    Já tem conta?
+                    <a href="javascript:void(0)" class="auth-link" onclick="showLoginForm()">
+                        Fazer login
+                    </a>
+                </p>
             </div>
         </div>
     </div>
 
-    <div id="main-app" style="display: none;">
-        <div id="mySidebar" class="sidebar">
-            <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-            <h4 class="text-white px-4 mb-4 font-black italic">MIV PRO</h4>
-            <a href="#" onclick="changePage('explorar')"><i class="bi bi-house me-2"></i> Início</a>
-            <a href="#" onclick="changePage('carteira')"><i class="bi bi-graph-up me-2"></i> Investimentos</a>
-            <a href="#" onclick="changePage('extrato')"><i class="bi bi-receipt me-2"></i> Extrato Ledger</a>
-            <hr class="border-secondary">
-            <a href="https://link.mercadopago.com.br/selomiv" target="_blank" class="text-success"><i class="bi bi-plus-circle me-2"></i> Adicionar Saldo</a>
-            <a href="#" onclick="location.reload()" class="text-danger"><i class="bi bi-box-arrow-right me-2"></i> Sair</a>
+    <!-- Main Application -->
+    <div id="mainApp" class="main-app">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h4 class="text-white mb-0">🎵 MIV PRO</h4>
+                <button class="sidebar-close" onclick="toggleSidebar()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#" class="nav-link active" onclick="changeSection('marketplace')">
+                        <i class="bi bi-house"></i>
+                        <span>Marketplace</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" onclick="changeSection('portfolio')">
+                        <i class="bi bi-briefcase"></i>
+                        <span>Portfólio</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" onclick="changeSection('ledger')">
+                        <i class="bi bi-receipt"></i>
+                        <span>Extrato</span>
+                    </a>
+                </li>
+                <li class="nav-item" id="artistNavItem" style="display: none;">
+                    <a href="#" class="nav-link" onclick="changeSection('artist')">
+                        <i class="bi bi-mic"></i>
+                        <span>Painel Artista</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="https://link.mercadopago.com.br/selomiv" target="_blank" class="nav-link">
+                        <i class="bi bi-plus-circle text-success"></i>
+                        <span class="text-success">Adicionar Saldo</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link text-danger" onclick="logout()">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Sair</span>
+                    </a>
+                </li>
+            </ul>
         </div>
 
-        <header class="miv-header d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <button class="btn text-white fs-3 me-2" onclick="openNav()"><i class="bi bi-list"></i></button>
-                <div>
-                    <small class="text-secondary uppercase fw-bold" style="font-size: 0.6rem;">CRÉDITO INTERNO</small>
-                    <h4 class="fw-bold mb-0 text-success" id="saldo-display">R$ 0,00</h4>
+        <!-- Main Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="d-flex align-items-center">
+                    <button class="btn text-white me-3" onclick="toggleSidebar()">
+                        <i class="bi bi-list fs-3"></i>
+                    </button>
+                    <div class="saldo-display">
+                        <h6>CRÉDITO DISPONÍVEL</h6>
+                        <h4 id="currentBalance">R$ 0,00</h4>
+                    </div>
                 </div>
-            </div>
-            <div class="text-end">
-                <span id="badge-tipo" class="badge rounded-pill bg-secondary text-uppercase" style="font-size: 0.5rem;">Ouvinte</span>
+                <div class="user-badge" id="userBadge">Ouvinte</div>
             </div>
         </header>
 
-        <div class="container mt-4">
-            <section id="explorar" class="section-page active">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold mb-0 italic">MARKETPLACE</h5>
-                    <span class="text-secondary small">Regra: 0% Taxa Compra</span>
+        <!-- Main Content -->
+        <main>
+            <!-- Marketplace Section -->
+            <section id="marketplaceSection" class="section active">
+                <div class="section-header">
+                    <h2 class="section-title">🎵 Marketplace</h2>
+                    <div>
+                        <small class="text-muted">Taxa 0% em compras</small>
+                    </div>
                 </div>
-                <div id="lista-musicas" class="row g-3"></div>
+                <div id="marketplaceContent" class="music-grid">
+                    <!-- Music cards will be loaded here -->
+                </div>
             </section>
 
-            <section id="carteira" class="section-page">
-                <div class="card bg-dark border-secondary p-4 text-center mb-4">
-                    <h6 class="text-secondary">PATRIMÔNIO CUSTODIADO</h6>
-                    <h2 id="valor-ativos" class="text-success">R$ 0,00</h2>
+            <!-- Portfolio Section -->
+            <section id="portfolioSection" class="section">
+                <div class="portfolio-summary">
+                    <h6 class="text-muted">VALOR TOTAL DA CARTEIRA</h6>
+                    <div class="portfolio-value" id="portfolioValue">R$ 0,00</div>
+                    <small class="text-muted">Atualizado em tempo real</small>
                 </div>
-                <div id="meus-ativos"></div>
+
+                <div class="section-header">
+                    <h2 class="section-title">📊 Meus Ativos</h2>
+                    <span class="badge bg-secondary" id="assetsCount">0 ativos</span>
+                </div>
+
+                <div id="portfolioContent">
+                    <!-- Portfolio assets will be loaded here -->
+                </div>
             </section>
 
-            <section id="extrato" class="section-page">
-                <h5 class="fw-bold mb-4 italic text-uppercase">Log de Auditoria</h5>
+            <!-- Ledger Section -->
+            <section id="ledgerSection" class="section">
+                <div class="section-header">
+                    <h2 class="section-title">📋 Histórico de Transações</h2>
+                    <button class="btn btn-sm btn-outline-success" onclick="loadLedger()">
+                        <i class="bi bi-arrow-clockwise"></i> Atualizar
+                    </button>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table table-dark table-hover small">
-                        <thead><tr class="text-secondary"><th>DATA</th><th>EVENTO</th><th class="text-end">VALOR</th></tr></thead>
-                        <tbody id="ledger-list"></tbody>
+                    <table class="ledger-table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th class="text-end">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ledgerContent">
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">
+                                    <i class="bi bi-receipt fs-4 d-block mb-2"></i>
+                                    Nenhuma transação encontrada
+                                </td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
             </section>
-        </div>
 
-        <div id="player-bar" class="miv-player" style="display: none;">
-            <div class="container">
-                <div class="video-container" id="video-box"><div id="yt-placeholder"></div></div>
-                <div class="row align-items-center" onclick="handlePlayerClick(event)">
-                    <div class="col-8 d-flex align-items-center" style="cursor: pointer;">
-                        <img src="" id="track-img" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover;">
-                        <div class="ms-3 overflow-hidden">
-                            <div class="fw-bold text-truncate" id="track-title" style="font-size: 0.9rem;">---</div>
-                            <div class="text-success small fw-bold" id="track-price">Cota: R$ 0,00</div>
+            <!-- Artist Panel Section -->
+            <section id="artistSection" class="section">
+                <div class="section-header">
+                    <h2 class="section-title">🎤 Painel Artista</h2>
+                    <button class="btn-miv btn-sm" onclick="openAddMusicModal()">
+                        <i class="bi bi-plus-circle"></i> Nova Música
+                    </button>
+                </div>
+
+                <div class="artist-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="bi bi-music-note-beamed"></i>
                         </div>
+                        <div class="stat-value" id="artistMusicCount">0</div>
+                        <div class="stat-label">Músicas Cadastradas</div>
                     </div>
-                    <div class="col-4 text-end">
-                        <button class="btn-miv btn-sm" id="btn-invest-player">INVESTIR</button>
-                        <i class="bi bi-chevron-up ms-2 text-secondary" id="expand-icon"></i>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="bi bi-cash-coin"></i>
+                        </div>
+                        <div class="stat-value" id="artistRoyalties">R$ 0,00</div>
+                        <div class="stat-label">Royalties Acumulados</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="bi bi-bar-chart"></i>
+                        </div>
+                        <div class="stat-value" id="artistSharesSold">0</div>
+                        <div class="stat-label">Ações Vendidas</div>
                     </div>
                 </div>
-                <div class="progress-container" onclick="seekTrack(event)"><div class="progress-bar" id="p-bar"></div></div>
-                <div class="d-flex justify-content-center gap-4 mt-2">
-                    <i class="bi bi-skip-start-fill h2" onclick="playNext(-1)"></i>
-                    <i class="bi bi-play-circle-fill h1" id="btn-play-pause" onclick="togglePlay()"></i>
-                    <i class="bi bi-skip-end-fill h2" onclick="playNext(1)"></i>
+
+                <h5 class="mb-3">Minhas Músicas</h5>
+                <div id="artistMusicContent" class="music-grid">
+                    <!-- Artist's music will be loaded here -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Music Player (Spotify-like) -->
+        <div id="playerBar" class="player-bar">
+            <div class="player-content">
+                <div class="video-container" id="videoContainer">
+                    <div id="youtubePlayer"></div>
+                </div>
+
+                <div class="player-info" onclick="togglePlayerExpansion()">
+                    <img id="playerAlbumArt" src="https://via.placeholder.com/60x60/111418/00ff88?text=MIV" class="player-album-art" alt="Album Art">
+                    <div class="player-text">
+                        <div class="player-title" id="playerTitle">Título da Música</div>
+                        <div class="player-artist" id="playerArtist">Artista</div>
+                        <div class="player-price" id="playerPrice">R$ 0,00 por ação</div>
+                    </div>
+                    <button class="btn-miv btn-sm" onclick="event.stopPropagation(); openInvestModal(state.currentTrackIndex)">
+                        <i class="bi bi-currency-dollar"></i> Investir
+                    </button>
+                </div>
+
+                <div class="progress-container" onclick="seekMusic(event)">
+                    <div class="progress-bar" id="musicProgress"></div>
+                </div>
+
+                <div class="player-time d-flex justify-content-between mt-1 small">
+                    <span id="currentTime">0:00</span>
+                    <span id="durationTime">0:00</span>
+                </div>
+
+                <div class="player-controls mt-2 d-flex justify-content-center gap-3">
+                    <button class="control-btn" onclick="toggleShuffle()">
+                        <i class="bi bi-shuffle" id="shuffleIcon"></i>
+                    </button>
+                    <button class="control-btn" onclick="playPrevious()">
+                        <i class="bi bi-skip-start-fill"></i>
+                    </button>
+                    <button class="control-btn play-btn fs-1" id="playButton" onclick="togglePlay()">
+                        <i class="bi bi-play-circle-fill"></i>
+                    </button>
+                    <button class="control-btn" onclick="playNext()">
+                        <i class="bi bi-skip-end-fill"></i>
+                    </button>
+                    <button class="control-btn" onclick="toggleRepeat()">
+                        <i class="bi bi-repeat" id="repeatIcon"></i>
+                    </button>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="100" class="ms-3" oninput="setVolume(this.value)" style="width: 120px;">
+                </div>
+
+                <div id="queueContainer" class="mt-3" style="display:none; max-height: 40vh; overflow-y: auto;">
+                    <h6 class="text-center mb-2">Fila de reprodução</h6>
+                    <ul id="queueList" class="list-group list-group-flush"></ul>
                 </div>
             </div>
         </div>
 
+        <!-- Bottom Navigation -->
         <nav class="bottom-nav">
-            <button class="nav-item active" onclick="changePage('explorar', this)"><i class="bi bi-search d-block fs-4"></i>Market</button>
-            <button class="nav-item" onclick="changePage('carteira', this)"><i class="bi bi-briefcase d-block fs-4"></i>Carteira</button>
-            <button class="nav-item" onclick="changePage('extrato', this)"><i class="bi bi-receipt d-block fs-4"></i>Extrato</button>
+            <button class="nav-btn active" onclick="changeSection('marketplace', this)">
+                <i class="bi bi-house"></i>
+                <span>Market</span>
+            </button>
+            <button class="nav-btn" onclick="changeSection('portfolio', this)">
+                <i class="bi bi-briefcase"></i>
+                <span>Carteira</span>
+            </button>
+            <button class="nav-btn" onclick="changeSection('ledger', this)">
+                <i class="bi bi-receipt"></i>
+                <span>Extrato</span>
+            </button>
         </nav>
     </div>
 
+    <!-- Invest Modal -->
+    <div id="investModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-currency-dollar me-2"></i>
+                    Investir em Música
+                </h5>
+                <button class="modal-close" onclick="closeModal('investModal')">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h6 id="investTrackTitle" class="mb-2">Título da Música</h6>
+                <p class="text-muted mb-4" id="investTrackArtist">Artista</p>
+
+                <div class="form-group">
+                    <label class="text-muted mb-2 d-block">Quantidade de Ações</label>
+                    <input type="number" id="investQuantity" class="form-control-custom" value="1" min="1" step="1" oninput="updateInvestmentTotal()">
+                </div>
+
+                <div class="d-flex justify-content-between mb-3">
+                    <span class="text-muted">Valor por ação:</span>
+                    <span class="text-success fw-bold" id="investUnitPrice">R$ 0,00</span>
+                </div>
+
+                <div class="d-flex justify-content-between mb-4">
+                    <span class="text-muted">Valor total:</span>
+                    <span class="text-success fw-bold fs-4" id="investTotalPrice">R$ 0,00</span>
+                </div>
+
+                <div class="alert alert-info bg-dark border-info mb-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Cada ação representa 0.01% de participação nos royalties
+                </div>
+
+                <div class="alert alert-warning bg-dark border-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Saldo disponível: <span id="investAvailableBalance" class="fw-bold">R$ 0,00</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('investModal')">Cancelar</button>
+                <button class="btn-miv" id="confirmInvestBtn" onclick="confirmInvestment()">
+                    Confirmar Investimento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Music Modal (com Duração opcional) -->
+    <div id="addMusicModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-music-note-beamed me-2"></i>
+                    Cadastrar Nova Música
+                </h5>
+                <button class="modal-close" onclick="closeModal('addMusicModal')">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="text-muted mb-2 d-block">Título da Música *</label>
+                    <input type="text" id="musicTitle" class="form-control-custom" placeholder="Digite o título da música" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="text-muted mb-2 d-block">Gênero Musical *</label>
+                    <select id="musicGenre" class="form-control-custom" required>
+                        <option value="">Selecione um gênero</option>
+                        <option value="POP">🎵 POP</option>
+                        <option value="HIPHOP_RAP">🎤 HIP HOP / RAP</option>
+                        <option value="ROCK">🤘 ROCK</option>
+                        <option value="ELETRONICA">⚡ ELETRÔNICA</option>
+                        <option value="MPB">🎸 MPB</option>
+                        <option value="SERTANEJO">🎶 SERTANEJO</option>
+                        <option value="FUNK">💃 FUNK</option>
+                        <option value="OUTRO">🎼 OUTRO</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="text-muted mb-2 d-block">Link do YouTube *</label>
+                    <input type="url" id="musicYoutube" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
+                </div>
+
+                <div class="form-group">
+                    <label class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
+                    <input type="url" id="musicCover" class="form-control-custom" placeholder="https://exemplo.com/capa.jpg">
+                </div>
+
+                <div class="form-group">
+                    <label class="text-muted mb-2 d-block">Valor por Ação *</label>
+                    <input type="number" id="musicPrice" class="form-control-custom" value="10.00" min="1" step="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="text-muted mb-2 d-block">Percentual Disponível *</label>
+                    <div class="input-group">
+                        <input type="number" id="musicPercent" class="form-control-custom" value="20" min="1" max="100" required>
+                        <span class="input-group-text bg-dark text-white border-secondary">%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addMusicModal')">Cancelar</button>
+                <button class="btn-miv" onclick="registerMusic()">
+                    <i class="bi bi-save me-2"></i>
+                    Cadastrar Música
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
     <script>
-        // CONFIGURAÇÕES BACKEND (Troque pelo seu Link de Deploy)
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyTDfv9m7yRwJauGdPnvtbpMq9KTq9lmf8XWVKe9NT4OoaHTBPY2eamuHMfo1OJxSE-/exec";
-        const YT_PLAYLIST_ID = 'PLvteL0_9cu8oE_N4Qfz5JJucTTkY2czcN';
-        const YT_API_KEY = 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
+        // ========== CONFIGURAÇÃO ==========
+        const CONFIG = {
+            API_URL: 'https://script.google.com/macros/s/AKfycbxiQYgqr7fBru6fIPFIat_ke99aMdGZt13OhNo4gYwU3TQ4JwGea-geTS7-KeV1zyA4/exec'  // Substitua pelo seu URL de deployment se necessário
+        };
 
-        let player, playlist = [], currentIndex = 0, currentUser = null;
-        let valorizou30s = false;
+        // ========== ESTADO GLOBAL ==========
+        const state = {
+            currentUser: null,
+            currentToken: null,
+            userBalance: 0,
+            portfolioValue: 0,
+            playlist: [],
+            currentTrackIndex: -1,
+            youtubePlayer: null,
+            isPlaying: false,
+            isPlayerExpanded: false,
+            currentInvestTrack: null,
+            shuffle: false,
+            repeat: false,
+            volume: 100,
+            progressInterval: null
+        };
 
-        // REGRA 5: LOGIN
-        async function handleLogin() {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('pass').value;
-            if(!email || !pass) return alert("Preencha os campos!");
-
-            try {
-                const res = await fetch(`${SCRIPT_URL}?acao=login&email=${email}&pass=${pass}`);
-                const user = await res.json();
-                if(user.success) {
-                    currentUser = user.data;
-                    startApp();
-                } else { alert("Acesso Negado. Verifique os dados."); }
-            } catch(e) { alert("Erro de conexão com o Ledger."); }
+        // ========== FUNÇÕES DE UTILIDADE ==========
+        function showLoading(message = 'Carregando...') {
+            document.getElementById('loadingScreen').style.display = 'flex';
+            document.getElementById('loadingMessage').textContent = message;
         }
 
-        // REGRA 6: CADASTRO COM LINK DE TRABALHO
-        async function handleRegister() {
-            const data = {
-                acao: 'registrar_usuario',
-                nome: document.getElementById('reg-nome').value,
-                email: document.getElementById('reg-email').value,
-                pass: document.getElementById('reg-pass').value,
-                tipo: document.getElementById('reg-tipo').value,
-                workLink: document.getElementById('reg-link').value
-            };
-            
-            await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) });
-            alert("Solicitação enviada! Auditores MIV entrarão em contato.");
-            toggleReg(false);
+        function hideLoading() {
+            document.getElementById('loadingScreen').style.display = 'none';
         }
 
-        function startApp() {
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('main-app').style.display = 'block';
-            document.getElementById('badge-tipo').innerText = currentUser.Tipo;
-            syncLedger();
-            loadYT();
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <i class="bi ${type === 'success' ? 'bi-check-circle' : 'bi-exclamation-circle'} toast-icon"></i>
+                <div class="toast-message">${message}</div>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => container.removeChild(toast), 300);
+            }, 3000);
         }
 
-        async function syncLedger() {
-            const res = await fetch(`${SCRIPT_URL}?acao=get_resumo&user=${currentUser.ID}`);
-            const data = await res.json();
-            document.getElementById('saldo-display').innerText = `R$ ${data.saldo_total.toFixed(2)}`;
-            document.getElementById('valor-ativos').innerText = `R$ ${data.patrimonio.toFixed(2)}`;
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('show');
         }
 
-        // YOUTUBE INTEGRATION
-        function loadYT() {
-            if (window.YT) { onYouTubeIframeAPIReady(); }
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
         }
 
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('yt-placeholder', {
-                height: '100%', width: '100%',
-                playerVars: { 'controls': 0, 'modestbranding': 1 },
-                events: { 'onReady': carregarPlaylist, 'onStateChange': onPlayerStateChange }
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value);
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
             });
         }
 
-        async function carregarPlaylist() {
-            const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${YT_PLAYLIST_ID}&key=${YT_API_KEY}`);
-            const data = await res.json();
-            playlist = data.items.map(item => ({
-                id: item.snippet.resourceId.videoId,
-                title: item.snippet.title,
-                thumb: item.snippet.thumbnails.high.url,
-                price: 10.00 + (Math.random() * 5)
-            }));
-            renderizarMercado();
-        }
+        // ========== AUTENTICAÇÃO ==========
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
 
-        function renderizarMercado() {
-            const container = document.getElementById('lista-musicas');
-            container.innerHTML = playlist.map((track, index) => `
-                <div class="col-12 col-md-6">
-                    <div class="music-card d-flex align-items-center">
-                        <img src="${track.thumb}" class="rounded me-3" style="width: 65px; height: 65px; object-fit: cover; cursor: pointer" onclick="tocarMusica(${index})">
-                        <div class="flex-grow-1 overflow-hidden">
-                            <h6 class="text-truncate mb-0">${track.title}</h6>
-                            <span class="text-success fw-bold">R$ ${track.price.toFixed(2)}</span>
-                        </div>
-                        <button class="btn btn-miv btn-sm" onclick="investir(${index})">INVESTIR</button>
-                    </div>
-                </div>`).join('');
-        }
-
-        function tocarMusica(index) {
-            currentIndex = index; valorizou30s = false;
-            const track = playlist[index];
-            document.getElementById('player-bar').style.display = 'block';
-            document.getElementById('track-title').innerText = track.title;
-            document.getElementById('track-img').src = track.thumb;
-            document.getElementById('track-price').innerText = `Cota: R$ ${track.price.toFixed(2)}`;
-            player.loadVideoById(track.id);
-        }
-
-        function onPlayerStateChange(event) {
-            if (event.data === YT.PlayerState.PLAYING) { 
-                document.getElementById('btn-play-pause').className = "bi bi-pause-circle-fill h1";
-                updateUI();
-            } else { 
-                document.getElementById('btn-play-pause').className = "bi bi-play-circle-fill h1"; 
+            if (!email || !password) {
+                showToast('Preencha todos os campos', 'error');
+                return;
             }
-        }
 
-        function updateUI() {
-            if(player && player.getCurrentTime) {
-                const cur = player.getCurrentTime();
-                const pct = (cur / player.getDuration()) * 100;
-                document.getElementById('p-bar').style.width = pct + '%';
-                // REGRA PLAY: Valorização simbólica
-                if (cur >= 30 && !valorizou30s) {
-                    valorizou30s = true;
-                    playlist[currentIndex].price += 0.05;
-                    renderizarMercado();
+            showLoading('Autenticando...');
+
+            try {
+                const response = await fetch(`${CONFIG.API_URL}?acao=login&email=${encodeURIComponent(email)}&pass=${encodeURIComponent(password)}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    state.currentUser = data.data;
+                    state.currentToken = data.data.token;
+
+                    localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+                    localStorage.setItem('miv_token', state.currentToken);
+
+                    showToast('Login realizado com sucesso!');
+                    initializeApp();
+                } else {
+                    showToast(data.message || 'Credenciais inválidas', 'error');
                 }
-                if(player.getPlayerState() === 1) setTimeout(updateUI, 1000);
+            } catch (error) {
+                console.error('Login error:', error);
+                showToast('Erro de conexão', 'error');
+            } finally {
+                hideLoading();
             }
         }
 
-        function investir(index) {
-            window.open("https://link.mercadopago.com.br/selomiv", "_blank");
+        function showRegisterForm() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
         }
 
-        // UTILITÁRIOS UI
-        function toggleReg(show) {
-            document.getElementById('login-fields').style.display = show ? 'none' : 'block';
-            document.getElementById('reg-fields').style.display = show ? 'block' : 'none';
+        function showLoginForm() {
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
         }
-        function checkArtist() {
-            const tipo = document.getElementById('reg-tipo').value;
-            document.getElementById('reg-link').style.display = (tipo === 'artista') ? 'block' : 'none';
+
+        function toggleArtistField() {
+            const type = document.getElementById('registerType').value;
+            document.getElementById('artistLinkField').style.display = type === 'artista' ? 'block' : 'none';
         }
-        function openNav() { document.getElementById("mySidebar").style.width = "280px"; }
-        function closeNav() { document.getElementById("mySidebar").style.width = "0"; }
-        function changePage(pageId, btn) {
-            document.querySelectorAll('.section-page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-            if(btn) btn.classList.add('active');
-            closeNav();
+
+        async function handleRegister() {
+            const name = document.getElementById('registerName').value.trim();
+            const email = document.getElementById('registerEmail').value.trim();
+            const password = document.getElementById('registerPassword').value.trim();
+            const type = document.getElementById('registerType').value;
+            const link = document.getElementById('registerLink').value.trim();
+
+            if (!name || !email || !password || !type) {
+                showToast('Preencha todos os campos obrigatórios', 'error');
+                return;
+            }
+
+            if (type === 'artista' && !link) {
+                showToast('Artistas devem informar link do trabalho', 'error');
+                return;
+            }
+
+            showLoading('Criando conta...');
+
+            try {
+                const response = await fetch(CONFIG.API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        acao: 'registrar_usuario',
+                        nome: name,
+                        email: email,
+                        pass: password,
+                        tipo: type,
+                        workLink: link || ''
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('Conta criada com sucesso! Aguarde aprovação.', 'success');
+                    showLoginForm();
+                    document.getElementById('registerName').value = '';
+                    document.getElementById('registerEmail').value = '';
+                    document.getElementById('registerPassword').value = '';
+                    document.getElementById('registerType').value = '';
+                    document.getElementById('registerLink').value = '';
+                } else {
+                    showToast(data.message || 'Erro ao criar conta', 'error');
+                }
+            } catch (error) {
+                console.error('Register error:', error);
+                showToast('Erro de conexão com o servidor', 'error');
+            } finally {
+                hideLoading();
+            }
         }
-        function handlePlayerClick(e) {
-            if(e.target.closest('#btn-invest-player')) return;
-            const p = document.getElementById('player-bar');
-            p.classList.toggle('expanded');
+
+        // ========== INICIALIZAÇÃO DO APP ==========
+        function initializeApp() {
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+
+            updateUserInterface();
+            loadUserData();
+            loadMarketplace();
+
+            // Inicializa YouTube Player
+            initYouTubePlayer();
         }
-        function togglePlay() { player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo(); }
-        function playNext(dir) { 
-            currentIndex = (currentIndex + dir + playlist.length) % playlist.length;
-            tocarMusica(currentIndex);
+
+        function updateUserInterface() {
+            if (!state.currentUser) return;
+
+            document.getElementById('userBadge').textContent = state.currentUser.tipo === 'artista' ? 'Artista' :
+                                                              state.currentUser.tipo === 'admin' ? 'Admin' : 'Ouvinte';
+
+            document.getElementById('artistNavItem').style.display = (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin') ? 'block' : 'none';
         }
-        function seekTrack(e) { player.seekTo(player.getDuration() * (e.offsetX / e.currentTarget.offsetWidth)); }
-    </script>
-</body>
-</html>
+
+        // ========== CARREGAMENTO DE DADOS ==========
+        async function loadUserData() {
+            if (!state.currentToken) return;
+
+            showLoading('Carregando dados...');
+
+            try {
+                const balanceRes = await fetch(`${CONFIG.API_URL}?acao=get_saldo&token=${state.currentToken}`);
+                const balanceData = await balanceRes.json();
+                if (balanceData.success) {
+                    state.userBalance = balanceData.data.saldo || 0;
+                    document.getElementById('currentBalance').textContent = formatCurrency(state.userBalance);
+                }
+
+                const portfolioRes = await fetch(`${CONFIG.API_URL}?acao=get_resumo&token=${state.currentToken}`);
+                const portfolioData = await portfolioRes.json();
+                if (portfolioData.success) {
+                    state.portfolioValue = portfolioData.data.patrimonio || 0;
+                    document.getElementById('portfolioValue').textContent = formatCurrency(state.portfolioValue);
+                }
+
+                await loadPortfolio();
+                await loadLedger();
+
+                if (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin') {
+                    await loadArtistData();
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                showToast('Erro ao carregar dados', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function loadMarketplace() {
+            showLoading('Carregando músicas...');
+
+            try {
+                const response = await fetch(`${CONFIG.API_URL}?acao=get_musicas`);
+                const data = await response.json();
+
+                if (data.success) {
+                    state.playlist = data.data || [];
+                    renderMarketplace();
+                } else {
+                    state.playlist = [];
+                    renderMarketplace();
+                }
+            } catch (error) {
+                console.error('Error loading marketplace:', error);
+                state.playlist = [];
+                renderMarketplace();
+                showToast('Erro ao carregar marketplace', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderMarketplace() {
+            const container = document.getElementById('marketplaceContent');
+
+            if (!state.playlist || state.playlist.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-music-note-slash empty-icon"></i>
+                        <h5 class="text-muted">Nenhuma música disponível</h5>
+                        <p class="text-muted">As músicas serão carregadas em breve</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = state.playlist.map((track, index) => `
+                <div class="music-card" onclick="playTrack(${index})">
+                    <img src="${track.LINK_CAPA || 'https://via.placeholder.com/300x180/111418/00ff88?text=MIV'}"
+                         class="music-cover"
+                         alt="${track.TITULO}"
+                         onerror="this.src='https://via.placeholder.com/300x180/111418/00ff88?text=MIV'">
+                    <div class="music-info">
+                        <h6 class="music-title">${track.TITULO || 'Sem título'}</h6>
+                        <p class="music-artist">${track.ARTISTA || 'Artista'}</p>
+                        <div class="music-meta">
+                            <span class="music-price">${formatCurrency(track.VALOR_ACAO || 0)}</span>
+                            <span class="music-percent">${track.PERCENTUAL_DISPONIVEL || 0}% disp.</span>
+                        </div>
+                        <button class="btn-miv btn-sm w-100" onclick="event.stopPropagation(); openInvestModal(${index})">
+                            <i class="bi bi-currency-dollar me-1"></i>
+                            Investir
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadPortfolio() {
+            if (!state.currentToken) return;
+
+            try {
+                const response = await fetch(`${CONFIG.API_URL}?acao=get_carteira&token=${state.currentToken}`);
+                const data = await response.json();
+                renderPortfolio(data.data || []);
+            } catch (error) {
+                console.error('Error loading portfolio:', error);
+                renderPortfolio([]);
+            }
+        }
+
+        function renderPortfolio(assets) {
+            const container = document.getElementById('portfolioContent');
+            const countElement = document.getElementById('assetsCount');
+
+            if (!assets || assets.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-briefcase empty-icon"></i>
+                        <h5 class="text-muted">Nenhum ativo na carteira</
