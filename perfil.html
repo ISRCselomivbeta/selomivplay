@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil Artista | SELO MIV</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --miv-blue: #0072ff;
+            --miv-cyan: #00c6ff;
+            --bg-dark: #07090c;
+            --bg-card: #111418;
+            --border: #1e2329;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        /* Perfil Header */
+        .profile-header {
+            background: linear-gradient(180deg, rgba(0,114,255,0.2) 0%, var(--bg-dark) 100%);
+            padding: 40px 0 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .avatar-lg {
+            width: 100px; height: 100px;
+            background: linear-gradient(45deg, var(--miv-blue), var(--miv-cyan));
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 40px; font-weight: bold;
+            box-shadow: 0 0 20px rgba(0, 198, 255, 0.3);
+        }
+
+        .stat-box { text-align: center; padding: 10px; }
+        .stat-value { font-weight: bold; font-size: 1.2rem; color: var(--miv-cyan); }
+        .stat-label { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; }
+
+        /* Cards MIV */
+        .card-miv {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .saldo-display {
+            font-size: 2rem;
+            color: var(--miv-cyan);
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        /* Tokenizador Form */
+        .token-input {
+            background: #1c2127;
+            border: 1px solid var(--border);
+            color: white;
+            border-radius: 10px;
+        }
+        .token-input:focus { background: #252b32; border-color: var(--miv-cyan); color: white; box-shadow: none; }
+
+        .btn-miv {
+            background: linear-gradient(90deg, var(--miv-blue), var(--miv-cyan));
+            border: none; color: white; font-weight: bold; border-radius: 10px;
+            transition: 0.3s;
+        }
+        .btn-miv:hover { opacity: 0.9; transform: scale(1.02); }
+
+        .qr-area { background: white; padding: 10px; border-radius: 12px; display: inline-block; }
+        
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #000;
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0;
+            border-top: 1px solid var(--border);
+            z-index: 1000;
+        }
+        .nav-btn {
+            color: #8b949e;
+            border: none;
+            background: none;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+        .nav-btn.active {
+            color: var(--miv-cyan);
+        }
+        .nav-btn i {
+            display: block;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="profile-header text-center">
+        <div class="container">
+            <div class="avatar-lg mx-auto mb-3" id="iniciais">--</div>
+            <h4 class="mb-1" id="nomeArtista">Carregando...</h4>
+            <p class="text-muted small">ID: <span id="idArtista">...</span></p>
+            
+            <div class="d-flex justify-content-center gap-4 mt-3">
+                <div class="stat-box">
+                    <div class="stat-value" id="saldoDisplay">R$ 0,00</div>
+                    <div class="stat-label">Saldo MIV</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="ativosDisplay">0</div>
+                    <div class="stat-label">Ativos</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">MIV</div>
+                    <div class="stat-label">Selo</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container py-4">
+        <!-- Seção Principal (Marketplace) -->
+        <div id="marketSection">
+            <h5 class="mb-3 text-info">🎵 Marketplace de Músicas</h5>
+            <div id="listaMusicas" class="row g-3">
+                <!-- Músicas carregadas via API -->
+            </div>
+        </div>
+
+        <!-- Seção Carteira -->
+        <div id="walletSection" style="display: none;">
+            <div class="card-miv">
+                <h6 class="stat-label mb-3 text-info">💼 Minha Carteira</h6>
+                <div class="saldo-display mb-1" id="saldoTxt">R$ 0,00</div>
+                <p class="small text-muted mb-4">Saldo disponível para investimentos</p>
+                
+                <div class="text-center">
+                    <p class="small text-muted mb-2">QR Code para Depósitos</p>
+                    <div class="qr-area mb-2">
+                        <img id="qrCode" src="" alt="QR Code de Pagamento" width="150">
+                    </div>
+                    <p class="small text-muted">PIX: <span id="pixCode" class="text-info">carregando...</span></p>
+                </div>
+            </div>
+
+            <div class="card-miv">
+                <h6 class="stat-label mb-3 text-info">📊 Meus Ativos</h6>
+                <div id="listaAtivos">
+                    <!-- Ativos carregados via API -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção Perfil -->
+        <div id="profileSection" style="display: none;">
+            <div class="card-miv">
+                <h6 class="stat-label mb-3 text-info">👤 Meu Perfil</h6>
+                <p><strong>Nome:</strong> <span id="profileNome"></span></p>
+                <p><strong>Email:</strong> <span id="profileEmail"></span></p>
+                <p><strong>Tipo:</strong> <span id="profileTipo"></span></p>
+                <p><strong>ID:</strong> <span id="profileId"></span></p>
+                
+                <button class="btn btn-miv w-100 mt-3" onclick="gerarRelatorio()">📄 Gerar Relatório</button>
+                <button class="btn btn-outline-danger w-100 mt-2" onclick="logout()">🚪 Sair da Conta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-btn active" onclick="showSection('market')">
+            <i class="bi bi-music-note-beamed"></i> Market
+        </button>
+        <button class="nav-btn" onclick="showSection('wallet')">
+            <i class="bi bi-wallet2"></i> Carteira
+        </button>
+        <button class="nav-btn" onclick="showSection('profile')">
+            <i class="bi bi-person"></i> Perfil
+        </button>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbwWAsAyhd2Ltnra7fsRnPIcE4TSs7QbC4R4u95RA87usOclyg2Jc4-A1lpFjkBOOTg/exec";
+        let userId = null;
+        let userName = null;
+
+        window.onload = async function() {
+            userId = localStorage.getItem("userId");
+            userName = localStorage.getItem("userName");
+            
+            if (!userId) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            // Atualizar informações do perfil
+            document.getElementById("nomeArtista").innerText = userName;
+            document.getElementById("idArtista").innerText = userId;
+            document.getElementById("iniciais").innerText = userName.substring(0,2).toUpperCase();
+            
+            // Informações do perfil
+            document.getElementById("profileNome").innerText = userName;
+            document.getElementById("profileId").innerText = userId;
+            document.getElementById("profileEmail").innerText = localStorage.getItem("userEmail") || "Não informado";
+            document.getElementById("profileTipo").innerText = localStorage.getItem("userType") || "artista";
+            
+            // Gerar QR Code
+            const qrUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=MIV-${userId}&choe=UTF-8`;
+            document.getElementById("qrCode").src = qrUrl;
+            document.getElementById("pixCode").innerText = userId;
+
+            // Carregar dados
+            await carregarDados();
+            await carregarMusicas();
+            await carregarAtivos();
+        };
+
+        async function carregarDados() {
+            try {
+                const res = await fetch(`${API_URL}?acao=get_resumo&userId=${userId}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    const saldo = data.data.saldo_total.toFixed(2);
+                    const patrimonio = data.data.patrimonio.toFixed(2);
+                    
+                    document.getElementById("saldoDisplay").innerText = `R$ ${saldo}`;
+                    document.getElementById("saldoTxt").innerText = `R$ ${saldo}`;
+                    document.getElementById("ativosDisplay").innerText = data.data.patrimonio > 0 ? "✓" : "0";
+                }
+            } catch (e) {
+                console.error("Erro ao carregar dados:", e);
+            }
+        }
+
+        async function carregarMusicas() {
+            // Músicas de exemplo (em produção, buscar do YouTube API)
+            const musicas = [
+                { id: 1, titulo: "Vibe Noturna (Prod. MIV)", preco: 150.00, artista: "DJ MIV" },
+                { id: 2, titulo: "Cripto Dreams", preco: 250.00, artista: "Blockchain Beats" },
+                { id: 3, titulo: "Selo MIV Theme", preco: 100.00, artista: "Sistema" },
+                { id: 4, titulo: "Future Bass 2024", preco: 300.00, artista: "Neo Producer" }
+            ];
+
+            const container = document.getElementById("listaMusicas");
+            container.innerHTML = musicas.map(musica => `
+                <div class="col-md-6">
+                    <div class="card-miv">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">${musica.titulo}</h6>
+                                <p class="small text-muted mb-0">${musica.artista}</p>
+                            </div>
+                            <div class="text-end">
+                                <div class="stat-value">R$ ${musica.preco.toFixed(2)}</div>
+                                <button class="btn btn-sm btn-miv mt-1" onclick="investirMusica(${musica.id})">INVESTIR</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function carregarAtivos() {
+            try {
+                const res = await fetch(`${API_URL}?acao=get_carteira&
