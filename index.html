@@ -4,232 +4,671 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SELO MIV | Fintech Musical</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <style>
-        /* Seu CSS original mantido integralmente – não alterei nada aqui */
         :root {
             --neon-green: #00ff88;
-            --miv-blue: #0072ff;
             --bg-dark: #07090c;
             --bg-card: #111418;
             --border: #1e2329;
             --text-light: #f8f9fa;
             --text-muted: #6c757d;
         }
-        /* ... todo o resto do seu CSS continua exatamente igual ... */
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            min-height: 100vh;
+        }
+
+        .loading-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            width: 4rem;
+            height: 4rem;
+            border: 0.25rem solid rgba(0,255,136,0.3);
+            border-top-color: var(--neon-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .auth-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, var(--bg-dark), #0c0e12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 9998;
+        }
+
+        .auth-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .form-control-custom {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            color: var(--text-light);
+            padding: 0.875rem 1rem;
+        }
+
+        .form-control-custom:focus {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 0 0.25rem rgba(0,255,136,0.25);
+        }
+
+        .btn-miv {
+            background: linear-gradient(135deg, var(--neon-green), #00cc6a);
+            border: none;
+            color: #000;
+            font-weight: 700;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        .btn-miv:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,255,136,0.3); }
+
+        .main-app { display: none; min-height: 100vh; padding-bottom: 5rem; }
+
+        .app-header {
+            background: rgba(0,255,136,0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 300px;
+            height: 100vh;
+            background: #000;
+            border-right: 1px solid var(--border);
+            z-index: 1100;
+            transition: left 0.3s;
+            padding: 1.5rem;
+        }
+
+        .sidebar.open { left: 0; }
+
+        .section { display: none; padding: 1.5rem; }
+        .section.active { display: block; animation: fadeIn 0.3s; }
+
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+        .music-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .music-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .music-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--neon-green);
+        }
+
+        .music-cover { width: 100%; height: 180px; object-fit: cover; }
+
+        .music-info { padding: 1rem; }
+
+        .player-bar {
+            position: fixed;
+            bottom: 5rem;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            padding: 1rem;
+            z-index: 1000;
+            display: none;
+        }
+
+        .player-bar.expanded {
+            bottom: 0;
+            height: 100vh;
+            background: rgba(17,20,24,0.98);
+        }
+
+        .player-controls {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 1rem 0;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 1.8rem;
+            cursor: pointer;
+        }
+
+        .control-btn.active { color: var(--neon-green); }
+
+        .progress-container {
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 1rem 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--neon-green);
+            width: 0%;
+            border-radius: 3px;
+            transition: width 0.1s linear;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #000;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 0.75rem 0;
+            z-index: 1001;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .nav-btn.active { color: var(--neon-green); }
+
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1300;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 0.75rem;
+            animation: slideIn 0.3s;
+        }
+
+        .toast.success { border-left: 4px solid var(--neon-green); }
+        .toast.error { border-left: 4px solid #ff3232; }
+
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
     </style>
 </head>
 <body>
 
-    <!-- Seu HTML completo mantido (loading, auth, main app, player bar, modais, etc.) -->
-    <!-- ... cole aqui todo o seu HTML do <body> original ... -->
+    <!-- Loading -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content text-center">
+            <div class="loading-spinner"></div>
+            <h4 class="text-success mt-3">SELO MIV</h4>
+            <p class="text-muted">Carregando...</p>
+        </div>
+    </div>
 
-    <!-- JavaScript – versão atualizada e corrigida -->
+    <!-- Toast -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Auth -->
+    <div id="authScreen" class="auth-screen">
+        <div class="auth-card">
+            <div class="text-center mb-4">
+                <h2 class="text-white">SELO MIV</h2>
+                <p class="text-muted">Investimento em música</p>
+            </div>
+
+            <div id="loginForm">
+                <input type="email" id="loginEmail" class="form-control-custom mb-3" placeholder="E-mail" required>
+                <input type="password" id="loginPassword" class="form-control-custom mb-3" placeholder="Senha" required>
+                <button class="btn-miv mb-3" onclick="handleLogin()">Entrar</button>
+                <p class="text-center text-muted">
+                    Novo aqui? <a href="#" class="text-success" onclick="showRegisterForm()">Criar conta</a>
+                </p>
+            </div>
+
+            <div id="registerForm" style="display:none;">
+                <input type="text" id="registerName" class="form-control-custom mb-3" placeholder="Nome completo" required>
+                <input type="email" id="registerEmail" class="form-control-custom mb-3" placeholder="E-mail" required>
+                <input type="password" id="registerPassword" class="form-control-custom mb-3" placeholder="Senha (mín 6)" required>
+                <select id="registerType" class="form-control-custom mb-3" onchange="document.getElementById('artistLinkField').style.display=this.value==='artista'?'block':'none'">
+                    <option value="">Perfil...</option>
+                    <option value="ouvinte">Ouvinte/Investidor</option>
+                    <option value="artista">Artista</option>
+                </select>
+                <div id="artistLinkField" style="display:none;">
+                    <input type="url" id="registerLink" class="form-control-custom mb-3" placeholder="Link do trabalho (YouTube)">
+                </div>
+                <button class="btn-miv mb-3" onclick="handleRegister()">Solicitar Cadastro</button>
+                <p class="text-center text-muted">
+                    Já tem conta? <a href="#" class="text-success" onclick="showLoginForm()">Entrar</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="main-app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <button class="btn text-white" onclick="document.getElementById('sidebar').classList.toggle('open')">
+                    <i class="bi bi-list fs-3"></i>
+                </button>
+                <div class="text-center">
+                    <h5 class="mb-0">SELO MIV</h5>
+                    <small id="userBadge">Ouvinte</small>
+                </div>
+                <div class="saldo-display text-end">
+                    <small class="text-muted">Saldo</small>
+                    <h5 id="currentBalance">R$ 0,00</h5>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar">
+            <div class="d-flex justify-content-between mb-4">
+                <h4 class="text-white">Menu</h4>
+                <button class="btn text-white" onclick="document.getElementById('sidebar').classList.remove('open')">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <ul class="list-unstyled">
+                <li><a href="#" class="nav-link" onclick="changeSection('marketplace')">Marketplace</a></li>
+                <li><a href="#" class="nav-link" onclick="changeSection('portfolio')">Carteira</a></li>
+                <li><a href="#" class="nav-link" onclick="changeSection('ledger')">Extrato</a></li>
+                <li id="artistNavItem" style="display:none"><a href="#" class="nav-link" onclick="changeSection('artist')">Painel Artista</a></li>
+                <li><a href="#" class="nav-link text-danger" onclick="logout()">Sair</a></li>
+            </ul>
+        </div>
+
+        <!-- Sections -->
+        <main>
+            <section id="marketplaceSection" class="section active">
+                <h2 class="mb-4">Marketplace</h2>
+                <div id="marketplaceContent" class="music-grid"></div>
+            </section>
+
+            <section id="portfolioSection" class="section">
+                <h2 class="mb-4">Carteira</h2>
+                <div id="portfolioContent"></div>
+            </section>
+
+            <section id="ledgerSection" class="section">
+                <h2 class="mb-4">Extrato</h2>
+                <div id="ledgerContent"></div>
+            </section>
+
+            <section id="artistSection" class="section">
+                <div class="d-flex justify-content-between mb-4">
+                    <h2>Painel Artista</h2>
+                    <button class="btn-miv btn-sm" onclick="showModal('addMusicModal')">
+                        <i class="bi bi-plus"></i> Nova Música
+                    </button>
+                </div>
+                <div id="artistMusicContent" class="music-grid"></div>
+            </section>
+        </main>
+
+        <!-- Player -->
+        <div id="playerBar" class="player-bar">
+            <div class="player-content">
+                <div class="video-container">
+                    <div id="youtubePlayer"></div>
+                </div>
+
+                <div class="player-info" onclick="togglePlayerExpansion()">
+                    <img id="playerAlbumArt" src="https://via.placeholder.com/60?text=MIV" class="player-album-art" alt="Capa">
+                    <div class="player-text">
+                        <div id="playerTitle" class="player-title">Título</div>
+                        <div id="playerArtist" class="player-artist text-muted">Artista</div>
+                    </div>
+                    <div id="playerPrice" class="player-price text-success">R$ 0,00</div>
+                </div>
+
+                <div class="progress-container" onclick="seekMusic(event)">
+                    <div id="musicProgress" class="progress-bar"></div>
+                </div>
+
+                <div class="player-time d-flex justify-content-between small">
+                    <span id="currentTime">0:00</span>
+                    <span id="durationTime">0:00</span>
+                </div>
+
+                <div class="player-controls">
+                    <button onclick="toggleShuffle()"><i id="shuffleIcon" class="bi bi-shuffle"></i></button>
+                    <button onclick="playPrevious()"><i class="bi bi-skip-start-fill"></i></button>
+                    <button id="playButton" onclick="togglePlay()"><i class="bi bi-play-circle-fill fs-3"></i></button>
+                    <button onclick="playNext()"><i class="bi bi-skip-end-fill"></i></button>
+                    <button onclick="toggleRepeat()"><i id="repeatIcon" class="bi bi-repeat"></i></button>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="100" oninput="setVolume(this.value)">
+                </div>
+
+                <div id="queueContainer" style="display:none">
+                    <h6>Fila</h6>
+                    <ul id="queueList" class="list-group"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Nav -->
+        <nav class="bottom-nav">
+            <button onclick="changeSection('marketplace')" class="active"><i class="bi bi-house"></i><span>Market</span></button>
+            <button onclick="changeSection('portfolio')"><i class="bi bi-wallet"></i><span>Carteira</span></button>
+            <button onclick="changeSection('ledger')"><i class="bi bi-journal-text"></i><span>Extrato</span></button>
+        </nav>
+    </div>
+
+    <!-- Modals -->
+    <div id="investModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Investir</h5>
+                <button onclick="closeModal('investModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <h6 id="investTrackTitle"></h6>
+                <p id="investTrackArtist" class="text-muted"></p>
+                <input type="number" id="investQuantity" class="form-control-custom" value="1" min="1" oninput="updateInvestmentTotal()">
+                <div class="d-flex justify-content-between mt-3">
+                    <span>Total:</span>
+                    <strong id="investTotalPrice">R$ 0,00</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('investModal')">Cancelar</button>
+                <button class="btn-miv" onclick="confirmInvestment()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addMusicModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Nova Música</h5>
+                <button onclick="closeModal('addMusicModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="musicTitle" class="form-control-custom mb-3" placeholder="Título *" required>
+                <select id="musicGenre" class="form-control-custom mb-3" required>
+                    <option value="">Gênero *</option>
+                    <option value="FUNK">Funk</option>
+                    <option value="SERTANEJO">Sertanejo</option>
+                    <option value="TRAP">Trap</option>
+                </select>
+                <input type="url" id="musicYoutube" class="form-control-custom mb-3" placeholder="Link YouTube *" required>
+                <input type="number" id="musicPrice" class="form-control-custom mb-3" value="10" placeholder="Valor por ação *" min="1" required>
+                <input type="number" id="musicPercent" class="form-control-custom" value="20" placeholder="% disponível *" min="1" max="100" required>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('addMusicModal')">Cancelar</button>
+                <button class="btn-miv" onclick="registerMusic()">Cadastrar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // CONFIG
         const CONFIG = {
-            API_URL: 'https://script.google.com/macros/s/AKfycbxiQYgqr7fBru6fIPFIat_ke99aMdGZt13OhNo4gYwU3TQ4JwGea-geTS7-KeV1zyA4/exec'
+            API_URL: 'https://script.google.com/macros/s/AKfycbxVoPKB9DApWdGxOdp6Az0RoQwuPAduqDCoj5DpySf_xY14QKDcWTZkTEj7BZYUY9kh/exec'
         };
 
-        // ESTADO GLOBAL
         const state = {
             currentUser: null,
             currentToken: null,
-            userBalance: 0,
-            portfolioValue: 0,
             playlist: [],
             currentTrackIndex: -1,
             youtubePlayer: null,
             isPlaying: false,
             isPlayerExpanded: false,
-            currentInvestTrack: null,
             shuffle: false,
             repeat: false,
-            volume: 70,
-            progressInterval: null,
-            playerReady: false
+            volume: 100
         };
 
-        // UTILIDADES (com hideLoading reforçado)
-        function showLoading(message = 'Carregando...') {
+        function showLoading(msg = 'Carregando...') {
             document.getElementById('loadingScreen').style.display = 'flex';
-            document.getElementById('loadingMessage').textContent = message;
         }
 
         function hideLoading() {
             document.getElementById('loadingScreen').style.display = 'none';
         }
 
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toastContainer');
+        function showToast(msg, type = 'success') {
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
-            toast.innerHTML = `
-                <i class="bi ${type === 'success' ? 'bi-check-circle' : 'bi-exclamation-circle'} toast-icon"></i>
-                <div class="toast-message">${message}</div>
-            `;
-            container.appendChild(toast);
-            setTimeout(() => toast.classList.add('show'), 10);
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => container.removeChild(toast), 300);
-            }, 3000);
+            toast.innerHTML = msg;
+            document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
 
-        // AUTENTICAÇÃO (com timeout e hideLoading garantido)
+        function showModal(id) { document.getElementById(id).classList.add('show'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+        function formatCurrency(v) { return new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v); }
+
         async function handleLogin() {
             const email = document.getElementById('loginEmail').value.trim();
-            const password = document.getElementById('loginPassword').value.trim();
-            if (!email || !password) {
-                showToast('Preencha todos os campos', 'error');
-                return;
-            }
+            const pass = document.getElementById('loginPassword').value.trim();
+            if (!email || !pass) return showToast('Preencha email e senha', 'error');
 
-            showLoading('Autenticando...');
+            showLoading();
             try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 10000);
-
-                const response = await fetch(`${CONFIG.API_URL}?acao=login&email=${encodeURIComponent(email)}&pass=${encodeURIComponent(password)}`, {
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeout);
-
-                const data = await response.json();
+                const res = await fetch(`${CONFIG.API_URL}?acao=login&email=${encodeURIComponent(email)}&pass=${encodeURIComponent(pass)}`);
+                const data = await res.json();
                 if (data.success) {
                     state.currentUser = data.data;
                     state.currentToken = data.data.token;
-                    localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
                     localStorage.setItem('miv_token', state.currentToken);
-                    showToast('Login realizado!', 'success');
                     initializeApp();
                 } else {
-                    showToast(data.message || 'Credenciais inválidas', 'error');
+                    showToast(data.message || 'Erro no login', 'error');
                 }
-            } catch (error) {
-                console.error('Erro login:', error);
-                showToast('Erro ao conectar. Verifique internet ou tente novamente.', 'error');
+            } catch(e) {
+                showToast('Erro de conexão', 'error');
             } finally {
                 hideLoading();
             }
         }
 
-        // PLAYER DO YOUTUBE – CORRIGIDO
-        function initYouTubePlayer() {
-            if (state.youtubePlayer) return;
+        async function handleRegister() {
+            // Implementação similar ao login (POST para registrar_usuario)
+            // ... (adicione se precisar)
+        }
 
-            window.onYouTubeIframeAPIReady = function() {
-                state.playerReady = true;
-                console.log('YouTube API carregada com sucesso');
-                createYouTubePlayer();
-            };
+        function initializeApp() {
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            loadMarketplace();
+            initYouTubePlayer();
+        }
 
-            // Se API já estiver carregada
-            if (typeof YT !== 'undefined' && YT.Player) {
-                state.playerReady = true;
-                createYouTubePlayer();
+        async function loadMarketplace() {
+            try {
+                const res = await fetch(`${CONFIG.API_URL}?acao=get_musicas`);
+                const data = await res.json();
+                state.playlist = data.data || [];
+                renderMarketplace();
+            } catch(e) {
+                showToast('Erro ao carregar músicas', 'error');
             }
         }
 
-        function createYouTubePlayer() {
+        function renderMarketplace() {
+            const container = document.getElementById('marketplaceContent');
+            if (state.playlist.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted">Nenhuma música disponível</p>';
+                return;
+            }
+
+            container.innerHTML = state.playlist.map((track, i) => `
+                <div class="music-card" onclick="playTrack(${i})">
+                    <img src="${track.LINK_CAPA || 'https://via.placeholder.com/300x180/111418/00ff88?text=MIV'}" class="music-cover">
+                    <div class="music-info">
+                        <h6>${track.TITULO}</h6>
+                        <p class="text-muted">${track.ARTISTA}</p>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-success">${formatCurrency(track.VALOR_ACAO)}</span>
+                            <span>${track.PERCENTUAL_DISPONIVEL}% disp.</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function initYouTubePlayer() {
             state.youtubePlayer = new YT.Player('youtubePlayer', {
                 height: '100%',
                 width: '100%',
-                playerVars: {
-                    autoplay: 0,
-                    controls: 1,
-                    rel: 0,
-                    modestbranding: 1,
-                    fs: 1,
-                    playsinline: 1
-                },
+                playerVars: { controls: 1, modestbranding: 1, rel: 0 },
                 events: {
-                    onReady: (event) => {
-                        console.log('Player pronto');
-                        state.playerReady = true;
-                        event.target.setVolume(state.volume);
-                    },
-                    onStateChange: onPlayerStateChange,
-                    onError: (event) => {
-                        console.error('Erro YouTube:', event.data);
-                        showToast('Erro no vídeo do YouTube', 'error');
+                    onReady: e => e.target.setVolume(state.volume),
+                    onStateChange: e => {
+                        if (e.data === YT.PlayerState.PLAYING) state.isPlaying = true;
+                        else state.isPlaying = false;
                     }
                 }
             });
         }
 
-        function onPlayerStateChange(event) {
-            if (event.data === YT.PlayerState.PLAYING) {
-                state.isPlaying = true;
-                document.getElementById('playButton').innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-                startProgressTracker();
-            } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-                state.isPlaying = false;
-                document.getElementById('playButton').innerHTML = '<i class="bi bi-play-circle-fill"></i>';
-                stopProgressTracker();
-            }
+        function playTrack(index) {
+            const track = state.playlist[index];
+            if (!track) return;
 
-            if (event.data === YT.PlayerState.ENDED) {
-                if (state.repeat) event.target.playVideo();
-                else playNext();
+            state.currentTrackIndex = index;
+            document.getElementById('playerBar').style.display = 'block';
+
+            document.getElementById('playerTitle').textContent = track.TITULO || 'Sem título';
+            document.getElementById('playerArtist').textContent = track.ARTISTA || 'Artista';
+            document.getElementById('playerPrice').textContent = formatCurrency(track.VALOR_ACAO || 0);
+
+            const videoId = extractYouTubeId(track.LINK_YOUTUBE);
+            if (videoId && state.youtubePlayer) {
+                state.youtubePlayer.loadVideoById(videoId);
+                state.youtubePlayer.playVideo();
+            } else {
+                showToast('Link YouTube inválido', 'error');
             }
         }
 
-        function loadYouTubeVideo(url) {
-            if (!state.playerReady || !state.youtubePlayer) {
-                showToast('Player carregando... aguarde', 'warning');
-                return;
-            }
-
-            const videoId = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&\n?#]+)/)?.[1];
-            if (!videoId) {
-                showToast('Link do YouTube inválido', 'error');
-                return;
-            }
-
-            state.youtubePlayer.cueVideoById(videoId);
-            setTimeout(() => state.youtubePlayer.pauseVideo(), 500);
+        function extractYouTubeId(url) {
+            if (!url) return null;
+            const match = url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+            return match ? match[1] : null;
         }
 
         function togglePlay() {
-            if (!state.playerReady || !state.youtubePlayer) {
-                showToast('Aguarde o player carregar', 'warning');
-                return;
-            }
+            if (!state.youtubePlayer) return;
+            state.isPlaying ? state.youtubePlayer.pauseVideo() : state.youtubePlayer.playVideo();
+        }
 
-            if (state.isPlaying) {
-                state.youtubePlayer.pauseVideo();
-            } else {
-                state.youtubePlayer.playVideo().catch(e => {
-                    console.log('Erro play:', e);
-                    showToast('Reprodução bloqueada. Clique novamente.', 'warning');
-                });
-            }
+        function playNext() {
+            let next = state.currentTrackIndex + 1;
+            if (next >= state.playlist.length) next = 0;
+            playTrack(next);
+        }
+
+        function playPrevious() {
+            let prev = state.currentTrackIndex - 1;
+            if (prev < 0) prev = state.playlist.length - 1;
+            playTrack(prev);
+        }
+
+        function toggleShuffle() {
+            state.shuffle = !state.shuffle;
+            document.getElementById('shuffleIcon').classList.toggle('active', state.shuffle);
+        }
+
+        function toggleRepeat() {
+            state.repeat = !state.repeat;
+            document.getElementById('repeatIcon').classList.toggle('active', state.repeat);
+        }
+
+        function setVolume(val) {
+            state.volume = val;
+            if (state.youtubePlayer) state.youtubePlayer.setVolume(val);
+        }
+
+        function seekMusic(e) {
+            if (!state.youtubePlayer) return;
+            const bar = e.currentTarget;
+            const rect = bar.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            const duration = state.youtubePlayer.getDuration() || 0;
+            state.youtubePlayer.seekTo(duration * pos, true);
+        }
+
+        function togglePlayerExpansion() {
+            state.isPlayerExpanded = !state.isPlayerExpanded;
+            document.getElementById('playerBar').classList.toggle('expanded', state.isPlayerExpanded);
         }
 
         // Inicialização
-        function initializeApp() {
-            hideLoading(); // garante que loading suma mesmo se der erro
-            document.getElementById('authScreen').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'block';
-            updateUserInterface();
-            loadUserData();
-            loadMarketplace();
-            initYouTubePlayer();
-        }
-
-        // ... mantenha aqui todas as outras funções do seu código original ...
-        // (loadUserData, loadMarketplace, renderMarketplace, playTrack, etc.)
-
-        // Adicione isso no final para forçar hideLoading se algo travar
-        window.addEventListener('load', () => {
-            setTimeout(hideLoading, 5000); // segurança extra: esconde loading após 5s
-        });
+        window.onload = () => {
+            const token = localStorage.getItem('miv_token');
+            if (token) {
+                state.currentToken = token;
+                initializeApp();
+            } else {
+                hideLoading();
+            }
+        };
     </script>
 </body>
 </html>
