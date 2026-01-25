@@ -210,269 +210,299 @@
         </nav>
     </div>
 
-    <script>
-        // CONFIGURAÇÕES BACKEND (Troque pelo seu Link de Deploy)
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyMKFBZLBVGVcyS2tJoDYcxVbd0SBbFm6h9r-g5jIgSop2pXJhi6h_SRG4gc0FYAtw_/exec";
-        const YT_PLAYLIST_ID = 'PLvteL0_9cu8oE_N4Qfz5JJucTTkY2czcN';
-        const YT_API_KEY = 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
+  <script>
+    // CONFIGURAÇÕES BACKEND (Troque pelo seu Link de Deploy)
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz0xROnWaq3VDEC8WjZf83ks84LxM_AY0HIPcBSFexb8DAew0bTGlKwz7B8frOcmk0y/exec";
+    const YT_PLAYLIST_ID = 'PLvteL0_9cu8oE_N4Qfz5JJucTTkY2czcN';
+    const YT_API_KEY = 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
 
-        let player, playlist = [], currentIndex = 0, currentUser = null;
-        let valorizou30s = false;
-        let saldoVisivel = false;
+    let player, playlist = [], currentIndex = 0, currentUser = null;
+    let valorizou30s = false;
+    let saldoVisivel = false;
+    let authToken = localStorage.getItem('miv_token') || null;
 
-        // Função para formatar moeda
-        function formatarMoeda(valor) {
-            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-        }
+    // Função para formatar moeda
+    function formatarMoeda(valor) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+    }
 
-        // REGRA 5: LOGIN
-        async function handleLogin() {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('pass').value;
-            if(!email || !pass) return showToast("Preencha os campos!", 'error');
+    // REGRA 5: LOGIN
+    async function handleLogin() {
+        const email = document.getElementById('email').value.trim();
+        const pass = document.getElementById('pass').value;
+        if(!email || !pass) return showToast("Preencha email e senha!", 'error');
 
-            try {
-                const res = await fetch(`${SCRIPT_URL}?acao=login&email=${email}&pass=${pass}`);
-                const user = await res.json();
-                if(user.success) {
-                    currentUser = user.data;
-                    startApp();
-                    showToast("Bem-vindo de volta!", 'success');
-                } else { showToast("Acesso Negado. Verifique os dados.", 'error'); }
-            } catch(e) { showToast("Erro de conexão com o Ledger.", 'error'); }
-        }
-
-        // REGRA 6: CADASTRO COM LINK DE TRABALHO
-        async function handleRegister() {
-            const tipo = document.getElementById('reg-tipo').value;
-            const workLink = document.getElementById('reg-link').value;
-            if (tipo === 'artista' && !workLink) return showToast("Link do trabalho obrigatório para artistas!", 'error');
-
-            const data = {
-                acao: 'registrar_usuario',
-                nome: document.getElementById('reg-nome').value,
-                email: document.getElementById('reg-email').value,
-                pass: document.getElementById('reg-pass').value,
-                tipo: tipo,
-                workLink: workLink
-            };
-            
-            await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) });
-            showToast("Solicitação enviada! Auditores MIV entrarão em contato.", 'success');
-            toggleReg(false);
-        }
-
-        function startApp() {
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('main-app').style.display = 'flex';
-            document.getElementById('badge-tipo').innerText = currentUser.Tipo;
-            syncLedger();
-            loadYT();
-            renderizarCarteira(); // Nova chamada para renderizar ativos
-            renderizarLedger(); // Nova chamada para extrato
-        }
-
-        async function syncLedger() {
-            showLoading(true);
-            try {
-                const res = await fetch(`${SCRIPT_URL}?acao=get_resumo&user=${currentUser.ID}`);
-                const data = await res.json();
-                document.getElementById('saldo-display').innerText = formatarMoeda(data.saldo_total);
-                document.getElementById('valor-ativos').innerText = formatarMoeda(data.patrimonio);
-                checkOnboarding();
-            } catch(e) {
-                showToast("Erro ao sincronizar dados.", 'error');
+        try {
+            const res = await fetch(`${SCRIPT_URL}?acao=login&email=${encodeURIComponent(email)}&pass=${encodeURIComponent(pass)}`);
+            const result = await res.json();
+            if(result.success) {
+                currentUser = result.data;
+                localStorage.setItem('miv_token', result.data.token); // salva token
+                authToken = result.data.token;
+                startApp();
+                showToast("Bem-vindo!", 'success');
+            } else {
+                showToast(result.message || "Credenciais inválidas", 'error');
             }
-            showLoading(false);
+        } catch(e) {
+            showToast("Erro de conexão", 'error');
         }
+    }
 
-        // YOUTUBE INTEGRATION
-        function loadYT() {
-            if (window.YT) { onYouTubeIframeAPIReady(); }
+    // REGRA 6: CADASTRO COM LINK DE TRABALHO
+    async function handleRegister() {
+        const tipo = document.getElementById('reg-tipo').value;
+        const workLink = document.getElementById('reg-link').value;
+        if (tipo === 'artista' && !workLink) return showToast("Link do trabalho obrigatório para artistas!", 'error');
+
+        const data = {
+            acao: 'registrar_usuario',
+            nome: document.getElementById('reg-nome').value,
+            email: document.getElementById('reg-email').value,
+            pass: document.getElementById('reg-pass').value,
+            tipo: tipo,
+            workLink: workLink
+        };
+
+        await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) });
+        showToast("Solicitação enviada! Auditores MIV entrarão em contato.", 'success');
+        toggleReg(false);
+    }
+
+    function startApp() {
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('main-app').style.display = 'flex';
+        document.getElementById('badge-tipo').innerText = currentUser.Tipo;
+        syncLedger();
+        loadYT();
+        renderizarCarteira(); // Nova chamada para renderizar ativos
+        renderizarLedger(); // Nova chamada para extrato
+    }
+
+    async function syncLedger() {
+        showLoading(true);
+        try {
+            const res = await fetch(`${SCRIPT_URL}?acao=sync_ledger&token=${authToken}`);
+            const data = await res.json();
+            // processa os dados do ledger
+            atualizarLedgerNaTela(data);
+        } catch(e) {
+            showToast("Erro ao sincronizar ledger.", 'error');
         }
+        showLoading(false);
+    }
 
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('yt-placeholder', {
-                height: '100%', width: '100%',
-                playerVars: { 'controls': 0, 'modestbranding': 1 },
-                events: { 'onReady': carregarPlaylist, 'onStateChange': onPlayerStateChange }
-            });
+    // YOUTUBE INTEGRATION
+    function loadYT() {
+        if (window.YT) { onYouTubeIframeAPIReady(); }
+    }
+
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('yt-placeholder', {
+            height: '100%', width: '100%',
+            playerVars: { 'controls': 0, 'modestbranding': 1 },
+            events: { 'onReady': carregarPlaylist, 'onStateChange': onPlayerStateChange }
+        });
+    }
+
+    async function carregarMusicasDoBackend() {
+        showLoading(true);
+        try {
+            const res = await fetch(`${SCRIPT_URL}?acao=carregar_musicas&token=${authToken}`);
+            const data = await res.json();
+            playlist = data.musicas || [];
+            renderizarPlaylist();
+        } catch(e) {
+            showToast("Erro ao carregar músicas.", 'error');
         }
+        showLoading(false);
+    }
 
-        async function carregarPlaylist() {
-            showLoading(true);
-            try {
-                const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${YT_PLAYLIST_ID}&key=${YT_API_KEY}`);
-                const data = await res.json();
-                playlist = data.items.map(item => ({
-                    id: item.snippet.resourceId.videoId,
-                    title: item.snippet.title,
-                    thumb: item.snippet.thumbnails.high.url,
-                    price: 10.00 + (Math.random() * 5)
-                }));
-                renderizarMercado();
-            } catch(e) {
-                showToast("Erro ao carregar playlist.", 'error');
-            }
-            showLoading(false);
+    function renderizarMercado() {
+        const container = document.getElementById('lista-musicas');
+        if (playlist.length === 0) {
+            document.getElementById('onboarding-explorar').classList.remove('d-none');
+            return;
         }
-
-        function renderizarMercado() {
-            const container = document.getElementById('lista-musicas');
-            if (playlist.length === 0) {
-                document.getElementById('onboarding-explorar').classList.remove('d-none');
-                return;
-            }
-            container.innerHTML = playlist.map((track, index) => `
-                <div class="col-12 col-md-6">
-                    <div class="music-card d-flex align-items-center">
-                        <img src="${track.thumb}" class="rounded me-3" style="width: 65px; height: 65px; object-fit: cover; cursor: pointer" onclick="tocarMusica(${index})">
-                        <div class="flex-grow-1 overflow-hidden">
-                            <h6 class="text-truncate mb-0">${track.title}</h6>
-                            <span class="text-success fw-bold">R$ ${track.price.toFixed(2)}</span>
-                        </div>
-                        <button class="btn btn-miv btn-sm" onclick="investir(${index})">INVESTIR</button>
+        container.innerHTML = playlist.map((track, index) => `
+            <div class="col-12 col-md-6">
+                <div class="music-card d-flex align-items-center">
+                    <img src="${track.thumb}" class="rounded me-3" style="width: 65px; height: 65px; object-fit: cover; cursor: pointer" onclick="tocarMusica(${index})">
+                    <div class="flex-grow-1 overflow-hidden">
+                        <h6 class="text-truncate mb-0">${track.title}</h6>
+                        <span class="text-success fw-bold">R$ ${track.price.toFixed(2)}</span>
                     </div>
-                </div>`).join('');
-        }
-
-        // Nova função para renderizar carteira (exemplo com dados mock, adapte para API real)
-        async function renderizarCarteira() {
-            const container = document.getElementById('meus-ativos');
-            // Chame API get_carteira aqui se disponível
-            const ativos = []; // Substitua por fetch real
-            if (ativos.length === 0) {
-                document.getElementById('onboarding-carteira').classList.remove('d-none');
-                return;
-            }
-            container.innerHTML = ativos.map(a => `
-                <div class="music-card mb-3">
-                    <h6>${a.nome}</h6>
-                    <p class="text-success">Valor: ${formatarMoeda(a.valor)}</p>
+                    <button class="btn btn-miv btn-sm" onclick="investir(${index})">INVESTIR</button>
                 </div>
-            `).join('');
-        }
+            </div>
+        `).join('');
+    }
 
-        // Nova função para renderizar ledger (exemplo)
-        async function renderizarLedger() {
-            const tbody = document.getElementById('ledger-list');
-            // Chame API get_ledger aqui
-            const transacoes = []; // Substitua
-            if (transacoes.length === 0) {
-                document.getElementById('onboarding-extrato').classList.remove('d-none');
-                return;
+    // Nova função para renderizar carteira (exemplo com dados mock, adapte para API real)
+    async function renderizarCarteira() {
+        const container = document.getElementById('meus-ativos');
+        // Chame API get_carteira aqui se disponível
+        const ativos = []; // Substitua por fetch real
+        if (ativos.length === 0) {
+            document.getElementById('onboarding-carteira').classList.remove('d-none');
+            return;
+        }
+        container.innerHTML = ativos.map(a => `
+            <div class="music-card mb-3">
+                <h6>${a.nome}</h6>
+                <p class="text-success">Valor: ${formatarMoeda(a.valor)}</p>
+            </div>
+        `).join('');
+    }
+
+    // Nova função para renderizar ledger (exemplo)
+    async function renderizarLedger() {
+        const tbody = document.getElementById('ledger-list');
+        // Chame API get_ledger aqui
+        const transacoes = []; // Substitua
+        if (transacoes.length === 0) {
+            document.getElementById('onboarding-extrato').classList.remove('d-none');
+            return;
+        }
+        tbody.innerHTML = transacoes.map(t => `
+            <tr>
+                <td>${new Date(t.data).toLocaleString('pt-BR')}</td>
+                <td>${t.evento}</td>
+                <td class="text-end">${formatarMoeda(t.valor)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function tocarMusica(index) {
+        currentIndex = index; valorizou30s = false;
+        const track = playlist[index];
+        document.getElementById('player-bar').style.display = 'block';
+        document.getElementById('track-title').innerText = track.title;
+        document.getElementById('track-img').src = track.thumb;
+        document.getElementById('track-price').innerText = `Cota: ${formatarMoeda(track.price)}`;
+        player.loadVideoById(track.id);
+    }
+
+    function onPlayerStateChange(event) {
+        if (event.data === YT.PlayerState.PLAYING) {
+            document.getElementById('btn-play-pause').className = "bi bi-pause-circle-fill h1";
+            updateUI();
+        } else {
+            document.getElementById('btn-play-pause').className = "bi bi-play-circle-fill h1";
+        }
+    }
+
+    function updateUI() {
+        if(player && player.getCurrentTime) {
+            const cur = player.getCurrentTime();
+            const pct = (cur / player.getDuration()) * 100;
+            document.getElementById('p-bar').style.width = pct + '%';
+            // REGRA PLAY: Valorização simbólica
+            if (cur >= 30 && !valorizou30s) {
+                valorizou30s = true;
+                playlist[currentIndex].price += 0.05;
+                renderizarMercado();
+                showToast("Música valorizada após 30s de play!", 'success');
             }
-            tbody.innerHTML = transacoes.map(t => `
-                <tr>
-                    <td>${new Date(t.data).toLocaleString('pt-BR')}</td>
-                    <td>${t.evento}</td>
-                    <td class="text-end">${formatarMoeda(t.valor)}</td>
-                </tr>
-            `).join('');
+            if(player.getPlayerState() === 1) setTimeout(updateUI, 1000);
         }
+    }
 
-        function tocarMusica(index) {
-            currentIndex = index; valorizou30s = false;
-            const track = playlist[index];
-            document.getElementById('player-bar').style.display = 'block';
-            document.getElementById('track-title').innerText = track.title;
-            document.getElementById('track-img').src = track.thumb;
-            document.getElementById('track-price').innerText = `Cota: ${formatarMoeda(track.price)}`;
-            player.loadVideoById(track.id);
-        }
+    async function investir(index) {
+        if (!authToken) return showToast("Faça login primeiro!", 'error');
+        const track = playlist[index];
+        if (!track?.ID) return showToast("Música inválida", 'error');
+        if (!confirm(`Investir R$ ${track.VALOR_ACAO.toFixed(2)} em "${track.TITULO}"?`)) return;
 
-        function onPlayerStateChange(event) {
-            if (event.data === YT.PlayerState.PLAYING) { 
-                document.getElementById('btn-play-pause').className = "bi bi-pause-circle-fill h1";
-                updateUI();
-            } else { 
-                document.getElementById('btn-play-pause').className = "bi bi-play-circle-fill h1"; 
-            }
-        }
-
-        function updateUI() {
-            if(player && player.getCurrentTime) {
-                const cur = player.getCurrentTime();
-                const pct = (cur / player.getDuration()) * 100;
-                document.getElementById('p-bar').style.width = pct + '%';
-                // REGRA PLAY: Valorização simbólica
-                if (cur >= 30 && !valorizou30s) {
-                    valorizou30s = true;
-                    playlist[currentIndex].price += 0.05;
-                    renderizarMercado();
-                    showToast("Música valorizada após 30s de play!", 'success');
-                }
-                if(player.getPlayerState() === 1) setTimeout(updateUI, 1000);
-            }
-        }
-
-        function investir(index) {
-            showToast("Redirecionando para pagamento...", 'info');
-            window.open("https://link.mercadopago.com.br/selomiv", "_blank");
-        }
-
-        // UTILITÁRIOS UI
-        function toggleReg(show) {
-            document.getElementById('login-fields').style.display = show ? 'none' : 'block';
-            document.getElementById('reg-fields').style.display = show ? 'block' : 'none';
-        }
-        function checkArtist() {
-            const tipo = document.getElementById('reg-tipo').value;
-            document.getElementById('reg-link').style.display = (tipo === 'artista') ? 'block' : 'none';
-        }
-        function openNav() { document.getElementById("mySidebar").style.width = "280px"; }
-        function closeNav() { document.getElementById("mySidebar").style.width = "0"; }
-        function changePage(pageId, btn) {
-            document.querySelectorAll('.section-page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-            if(btn) btn.classList.add('active');
-            closeNav();
-            syncLedger(); // Atualiza ao mudar página
-        }
-        function handlePlayerClick(e) {
-            if(e.target.closest('#btn-invest-player')) return;
-            const p = document.getElementById('player-bar');
-            p.classList.toggle('expanded');
-        }
-        function togglePlay() { player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo(); }
-        function playNext(dir) { 
-            currentIndex = (currentIndex + dir + playlist.length) % playlist.length;
-            tocarMusica(currentIndex);
-        }
-        function seekTrack(e) { player.seekTo(player.getDuration() * (e.offsetX / e.currentTarget.offsetWidth)); }
-
-        // Novas funções
-        function showToast(msg, type = 'info') {
-            Toastify({
-                text: msg,
-                duration: 3000,
-                gravity: "top",
-                position: "right",
-                style: { background: type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue' }
-            }).showToast();
-        }
-
-        function showLoading(show) {
-            // Adicione skeletons
-            const containers = ['lista-musicas', 'meus-ativos', 'ledger-list'];
-            containers.forEach(id => {
-                const el = document.getElementById(id);
-                if (show) el.innerHTML = '<div class="skeleton mb-3"></div>'.repeat(3);
-                else if (el.innerHTML.includes('skeleton')) el.innerHTML = ''; // Limpa se era skeleton
+        try {
+            const res = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    acao: 'investir_musica',
+                    token: authToken,
+                    musicaId: track.ID,
+                    valor: track.VALOR_ACAO,
+                    quantidade: 1
+                })
             });
+            const result = await res.json();
+            if (result.success) {
+                showToast("Investimento realizado!", 'success');
+                syncAllData(); // atualiza tudo
+            } else {
+                showToast(result.message || "Falha", 'error');
+            }
+        } catch(e) {
+            showToast("Erro ao investir", 'error');
         }
+    }
 
-        function checkOnboarding() {
-            // Verifique se seções estão vazias e mostre onboarding
-            // Já integrado nas render functions
-        }
+    // UTILITÁRIOS UI
+    function toggleReg(show) {
+        document.getElementById('login-fields').style.display = show ? 'none' : 'block';
+        document.getElementById('reg-fields').style.display = show ? 'block' : 'none';
+    }
 
-        function toggleSaldoVisivel(el) {
-            saldoVisivel = !saldoVisivel;
-            el.classList.toggle('visible');
-            showToast(saldoVisivel ? "Saldo visível" : "Saldo oculto", 'info');
-        }
-    </script>
-</body>
-</html>
+    function checkArtist() {
+        const tipo = document.getElementById('reg-tipo').value;
+        document.getElementById('reg-link').style.display = (tipo === 'artista') ? 'block' : 'none';
+    }
+
+    function openNav() { document.getElementById("mySidebar").style.width = "280px"; }
+    function closeNav() { document.getElementById("mySidebar").style.width = "0"; }
+
+    function changePage(pageId, btn) {
+        document.querySelectorAll('.section-page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+        if(btn) btn.classList.add('active');
+        closeNav();
+        syncLedger(); // Atualiza ao mudar página
+    }
+
+    function handlePlayerClick(e) {
+        if(e.target.closest('#btn-invest-player')) return;
+        const p = document.getElementById('player-bar');
+        p.classList.toggle('expanded');
+    }
+
+    function togglePlay() { player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo(); }
+
+    function playNext(dir) {
+        currentIndex = (currentIndex + dir + playlist.length) % playlist.length;
+        tocarMusica(currentIndex);
+    }
+
+    function seekTrack(e) { player.seekTo(player.getDuration() * (e.offsetX / e.currentTarget.offsetWidth)); }
+
+    // Novas funções
+    function showToast(msg, type = 'info') {
+        Toastify({
+            text: msg,
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            style: { background: type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue' }
+        }).showToast();
+    }
+
+    function showLoading(show) {
+        const containers = ['lista-musicas', 'meus-ativos', 'ledger-list'];
+        containers.forEach(id => {
+            const el = document.getElementById(id);
+            if (show) el.innerHTML = '<div class="skeleton mb-3"></div>'.repeat(3);
+            else if (el.innerHTML.includes('skeleton')) el.innerHTML = '';
+        });
+    }
+
+    function checkOnboarding() {
+        // Já integrado nas render functions
+    }
+
+    function toggleSaldoVisivel(el) {
+        saldoVisivel = !saldoVisivel;
+        el.classList.toggle('visible');
+        showToast(saldoVisivel ? "Saldo visível" : "Saldo oculto", 'info');
+    }
+</script>
