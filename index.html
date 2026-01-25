@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-BR"><head>
+<html lang="pt-BR">
+<head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SELO MIV | Fintech Musical</title>
 
@@ -14,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&amp;display=swap" rel="stylesheet">
 
     <!-- YouTube IFrame API -->
-    <script type="text/javascript" id="www-widgetapi-script" src="https://www.youtube.com/s/player/c9168c90/www-widgetapi.vflset/www-widgetapi.js" async=""></script><script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
 
     <style>
         :root {
@@ -808,11 +810,13 @@
                 <div id="loginMessage" class="alert d-none"></div>
 
                 <div class="form-group">
-                    <input type="email" id="loginEmail" class="form-control-custom" placeholder="E-mail" required="">
+                    <label for="loginEmail" class="form-label text-muted mb-2">E-mail:</label>
+                    <input type="email" id="loginEmail" class="form-control-custom" placeholder="seu@email.com" required>
                 </div>
 
                 <div class="form-group">
-                    <input type="password" id="loginPassword" class="form-control-custom" placeholder="Senha" required="">
+                    <label for="loginPassword" class="form-label text-muted mb-2">Senha:</label>
+                    <input type="password" id="loginPassword" class="form-control-custom" placeholder="Sua senha" required>
                 </div>
 
                 <button class="btn-miv mb-3" onclick="handleLogin()">
@@ -840,19 +844,23 @@
                 <div id="registerMessage" class="alert d-none"></div>
 
                 <div class="form-group">
-                    <input type="text" id="registerName" class="form-control-custom" placeholder="Nome completo" required="">
+                    <label for="registerName" class="form-label text-muted mb-2">Nome completo:</label>
+                    <input type="text" id="registerName" class="form-control-custom" placeholder="Seu nome completo" required>
                 </div>
 
                 <div class="form-group">
-                    <input type="email" id="registerEmail" class="form-control-custom" placeholder="E-mail" required="">
+                    <label for="registerEmail" class="form-label text-muted mb-2">E-mail:</label>
+                    <input type="email" id="registerEmail" class="form-control-custom" placeholder="seu@email.com" required>
                 </div>
 
                 <div class="form-group">
-                    <input type="password" id="registerPassword" class="form-control-custom" placeholder="Senha (mínimo 6 caracteres)" required="" minlength="6">
+                    <label for="registerPassword" class="form-label text-muted mb-2">Senha:</label>
+                    <input type="password" id="registerPassword" class="form-control-custom" placeholder="Mínimo 6 caracteres" required minlength="6">
                 </div>
 
                 <div class="form-group">
-                    <select id="registerType" class="form-control-custom" onchange="toggleArtistField()">
+                    <label for="registerType" class="form-label text-muted mb-2">Perfil:</label>
+                    <select id="registerType" class="form-control-custom" onchange="toggleArtistField()" required>
                         <option value="">Selecione seu perfil...</option>
                         <option value="ouvinte">🎧 Ouvinte/Investidor</option>
                         <option value="artista">🎤 Artista</option>
@@ -860,7 +868,8 @@
                 </div>
 
                 <div class="form-group" id="artistLinkField" style="display: none;">
-                    <input type="url" id="registerLink" class="form-control-custom" placeholder="Link do seu trabalho (YouTube, Spotify, etc.)">
+                    <label for="registerLink" class="form-label text-muted mb-2">Link do seu trabalho:</label>
+                    <input type="url" id="registerLink" class="form-control-custom" placeholder="https://youtube.com/canal ou https://spotify.com/artista">
                     <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
                 </div>
 
@@ -982,7 +991,7 @@
             <!-- Ledger Section -->
             <section id="ledgerSection" class="section">
                 <div class="section-header">
-                    <h2 class="section-title">📋 Histórico de Transações</h2>
+                    <h2 class="section-title">📋 Histórico de Transações</th>
                     <button class="btn btn-sm btn-outline-success" onclick="loadLedger()">
                         <i class="bi bi-arrow-clockwise"></i> Atualizar
                     </button>
@@ -1139,7 +1148,7 @@
                 <p class="text-muted mb-4" id="investTrackArtist">Artista</p>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block">Quantidade de Ações</label>
+                    <label for="investQuantity" class="text-muted mb-2 d-block">Quantidade de Ações:</label>
                     <input type="number" id="investQuantity" class="form-control-custom" value="1" min="1" step="1" oninput="updateInvestmentTotal()">
                 </div>
 
@@ -1186,13 +1195,13 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block">Título da Música *</label>
-                    <input type="text" id="musicTitle" class="form-control-custom" placeholder="Digite o título da música" required="">
+                    <label for="musicTitle" class="text-muted mb-2 d-block">Título da Música *</label>
+                    <input type="text" id="musicTitle" class="form-control-custom" placeholder="Digite o título da música" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block">Gênero Musical *</label>
-                    <select id="musicGenre" class="form-control-custom" required="">
+                    <label for="musicGenre" class="text-muted mb-2 d-block">Gênero Musical *</label>
+                    <select id="musicGenre" class="form-control-custom" required>
                         <option value="">Selecione um gênero</option>
                         <option value="POP">🎵 POP</option>
                         <option value="HIPHOP_RAP">🎤 HIP HOP / RAP</option>
@@ -1206,24 +1215,24 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block">Link do YouTube *</label>
-                    <input type="url" id="musicYoutube" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required="">
+                    <label for="musicYoutube" class="text-muted mb-2 d-block">Link do YouTube *</label>
+                    <input type="url" id="musicYoutube" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
                 </div>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
+                    <label for="musicCover" class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
                     <input type="url" id="musicCover" class="form-control-custom" placeholder="https://exemplo.com/capa.jpg">
                 </div>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block">Valor por Ação *</label>
-                    <input type="number" id="musicPrice" class="form-control-custom" value="10.00" min="1" step="0.01" required="">
+                    <label for="musicPrice" class="text-muted mb-2 d-block">Valor por Ação *</label>
+                    <input type="number" id="musicPrice" class="form-control-custom" value="10.00" min="1" step="0.01" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block">Percentual Disponível *</label>
+                    <label for="musicPercent" class="text-muted mb-2 d-block">Percentual Disponível *</label>
                     <div class="input-group">
-                        <input type="number" id="musicPercent" class="form-control-custom" value="20" min="1" max="100" required="">
+                        <input type="number" id="musicPercent" class="form-control-custom" value="20" min="1" max="100" required>
                         <span class="input-group-text bg-dark text-white border-secondary">%</span>
                     </div>
                 </div>
@@ -1239,7 +1248,7 @@
     </div>
 
     <!-- JavaScript -->
-     <script>
+    <script>
         // ========== CONFIGURAÇÃO ==========
         const CONFIG = {
             API_URL: 'https://script.google.com/macros/s/AKfycbz0xROnWaq3VDEC8WjZf83ks84LxM_AY0HIPcBSFexb8DAew0bTGlKwz7B8frOcmk0y/exec'
@@ -2746,6 +2755,5 @@
 
         console.log('Sistema SELO MIV carregado com sucesso!');
     </script>
-
-
-</body></html>
+</body>
+</html>
