@@ -1429,76 +1429,78 @@
 
         // ========== AUTENTICAÇÃO ==========
         async function handleLogin() {
-            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-            const password = document.getElementById('loginPassword').value.trim();
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+    const password = document.getElementById('loginPassword').value.trim();
 
-            if (!email || !password) {
-                showToast('Preencha todos os campos', 'error');
-                return;
-            }
+    if (!email || !password) {
+        showToast('Preencha todos os campos', 'error');
+        return;
+    }
 
-            showLoading('Autenticando...');
+    showLoading('Autenticando...');
 
-            try {
-                // Teste rápido para admin padrão
-                if (email === 'admin@miv.com' && password === 'admin123') {
-                    console.log('Usando credenciais de teste');
-                    state.currentUser = {
-                        id: 1,
-                        nome: 'Administrador',
-                        email: 'admin@miv.com',
-                        tipo: 'admin',
-                        acesso: 'aprovado',
-                        saldo: 1000
-                    };
-                    state.currentToken = 'admin_token_123';
-                    
-                    localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-                    localStorage.setItem('miv_token', state.currentToken);
-                    
-                    showToast('Login realizado com sucesso!');
-                    initializeApp();
-                    return;
-                }
+    try {
+        // Credenciais de teste locais (para debug rápido)
+        if (email === 'admin@miv.com' && password === 'admin123') {
+            console.log('Usando credenciais de teste');
+            state.currentUser = {
+                id: 1,
+                nome: 'Administrador',
+                email: 'admin@miv.com',
+                tipo: 'admin',
+                acesso: 'aprovado',
+                saldo: 1000
+            };
+            state.currentToken = 'admin_token_123';
 
-                // Conexão real com a API
-                const params = new URLSearchParams({
-                    action: 'login',
-                    email: email,
-                    password: password
-                });
+            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+            localStorage.setItem('miv_token', state.currentToken);
 
-                console.log('Enviando requisição para:', `${CONFIG.API_URL}?${params.toString()}`);
-                
-                const response = await fetch(`${CONFIG.API_URL}?${params.toString()}`);
-                const data = await response.json();
-                
-                console.log('Resposta da API:', data);
-
-                if (data.success && data.data) {
-                    state.currentUser = data.data;
-                    state.currentToken = data.data.id || data.data.token;
-
-                    localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-                    localStorage.setItem('miv_token', state.currentToken);
-
-                    showToast('Login realizado com sucesso!');
-                    
-                    // Limpa campos
-                    document.getElementById('loginEmail').value = '';
-                    document.getElementById('loginPassword').value = '';
-                    
-                    initializeApp();
-                } else {
-                    showToast(data.message || 'Credenciais inválidas', 'error');
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                showToast('Erro de conexão com o servidor', 'error');
-            } finally {
-                hideLoading();
-            }
+            showToast('Login realizado com sucesso!');
+            initializeApp();
+            hideLoading();
+            return;
         }
+
+        // Chamada real ao backend com POST (igual ao register)
+        const formData = new URLSearchParams();
+        formData.append('action', 'login');
+        formData.append('email', email);
+        formData.append('password', password);
+
+        console.log('Enviando POST para login:', formData.toString());
+
+        const response = await fetch(CONFIG.API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+        console.log('Resposta do login:', data);
+
+        if (data.success && data.data) {
+            state.currentUser = data.data;
+            state.currentToken = data.data.id || data.data.token || email;  // fallback para email se não tiver token
+            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+            localStorage.setItem('miv_token', state.currentToken);
+
+            showToast('Login realizado com sucesso!');
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            initializeApp();
+        } else {
+            showToast(data.message || data.error || 'Credenciais inválidas', 'error');
+        }
+    } catch (error) {
+        console.error('Erro no login:', error);
+        showToast('Erro de conexão com o servidor. Verifique sua internet.', 'error');
+    } finally {
+        hideLoading();
+    }
+}
 
         function showRegisterForm() {
             document.getElementById('loginForm').style.display = 'none';
