@@ -525,7 +525,7 @@
     // CONFIGURAÇÕES GERAIS
     // ============================================
     const CONFIG = {
-        API_URL: "https://script.google.com/macros/s/AKfycbzHX2YYdDwveoxPnieerRdBBpnEj07iPh1Nzz_iQvbV_DYLA6tf6huD5NzQKK_DnOvl/exec",
+        API_URL: "https://script.google.com/macros/s/AKfycbyyRnqWsHxidkkG7zQg7mM1ODd0EwACqueOhbYph7rN7iggML8sMyDnv3L9YWCvs8Ze/exec",
         VERSION: "1.6.2",
         APP_NAME: "Selo MIV"
     };
@@ -773,7 +773,12 @@
     // CARREGAMENTO DE DADOS
     // ============================================
     async function loadBalance() {
-        if (!state.currentToken) return;
+        if (!state.currentToken) {
+            showToast('Sessão expirada. Faça login novamente.', 'error');
+            handleLogout();
+            return;
+        }
+
         try {
             const params = new URLSearchParams({ acao: 'get_saldo', token: state.currentToken });
             const response = await fetch(`${CONFIG.API_URL}?${params.toString()}`);
@@ -781,13 +786,18 @@
             if (data.success && data.data) {
                 state.userBalance = parseFloat(data.data.saldo) || 0;
                 document.getElementById('currentBalance').textContent = formatCurrency(state.userBalance);
+            } else {
+                showToast(data.message || 'Erro ao carregar saldo', 'error');
             }
         } catch (error) {
             console.error('Error loading balance:', error);
+            showToast('Erro ao carregar saldo', 'error');
         }
     }
 
     async function loadMarketplace() {
+        if (!state.currentToken) return;
+
         try {
             const params = new URLSearchParams({ acao: 'get_musicas', token: state.currentToken });
             const response = await fetch(`${CONFIG.API_URL}?${params.toString()}`);
@@ -798,6 +808,7 @@
             console.error('Error loading marketplace:', error);
             state.playlist = getSampleMusic();
             renderMarketplace();
+            showToast('Usando dados de exemplo', 'info');
         }
     }
 
@@ -822,7 +833,110 @@
         });
     }
 
-    // ... (as outras funções loadPortfolio, loadLedger, loadArtistData, renderPortfolio, renderLedger, renderArtistData, registerMusic, confirmInvestment, openInvestModal, initializeApp, handleLogout permanecem exatamente como no seu código original, sem alterações)
+    function getSampleMusic() {
+        return [
+            {
+                id: 'MUS001',
+                titulo: 'Música Exemplo 1',
+                artista: 'Artista Teste',
+                genero: 'POP',
+                link_youtube: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                link_capa: 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV',
+                valor_acao: 10.00,
+                percentual_disponivel: 50,
+                status: 'ativo'
+            },
+            {
+                id: 'MUS002',
+                titulo: 'Música Exemplo 2',
+                artista: 'Outro Artista',
+                genero: 'ROCK',
+                link_youtube: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+                link_capa: 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV',
+                valor_acao: 15.00,
+                percentual_disponivel: 30,
+                status: 'ativo'
+            }
+        ];
+    }
+
+    // ============================================
+    // CARREGAMENTO DE CARTEIRA E EXTRATO (exemplo - mantenha como no original)
+    // ============================================
+    async function loadPortfolio() {
+        if (!state.currentToken) return;
+        try {
+            const params = new URLSearchParams({ acao: 'get_carteira', token: state.currentToken });
+            const response = await fetch(`${CONFIG.API_URL}?${params.toString()}`);
+            const data = await response.json();
+            if (data.success && data.data) {
+                state.portfolioAssets = data.data;
+            } else {
+                state.portfolioAssets = [];
+            }
+            renderPortfolio();
+        } catch (error) {
+            console.error('Error loading portfolio:', error);
+            state.portfolioAssets = [];
+            renderPortfolio();
+        }
+    }
+
+    // ... (mantenha as funções renderPortfolio, loadLedger, renderLedger, loadArtistData, renderArtistData, registerMusic, confirmInvestment, openInvestModal exatamente como no seu código original)
+
+    function initializeApp() {
+        console.log('Inicializando app...');
+
+        const savedUser = localStorage.getItem('miv_user');
+        const savedToken = localStorage.getItem('miv_token');
+
+        if (savedUser && savedToken) {
+            state.currentUser = JSON.parse(savedUser);
+            state.currentToken = savedToken;
+        }
+
+        if (state.currentUser && state.currentToken) {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('registerSection').style.display = 'none';
+            document.getElementById('headerSection').style.display = 'flex';
+            document.getElementById('appContent').style.display = 'block';
+
+            if (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin') {
+                document.getElementById('artistTab').style.display = 'inline-block';
+                document.getElementById('addMusicTab').style.display = 'inline-block';
+            }
+
+            Promise.all([
+                loadBalance(),
+                loadMarketplace(),
+                loadPortfolio(),
+                loadLedger(),
+                loadArtistData()
+            ]).then(() => {
+                console.log('Todos os dados carregados');
+                showToast('Bem-vindo, ' + state.currentUser.nome + '!', 'success');
+            }).catch(error => {
+                console.error('Erro ao carregar dados:', error);
+                showToast('Erro ao carregar dados. Faça login novamente.', 'error');
+                handleLogout();
+            });
+        } else {
+            showLoginForm();
+        }
+    }
+
+    function handleLogout() {
+        if (confirm('Tem certeza que deseja sair?')) {
+            localStorage.removeItem('miv_user');
+            localStorage.removeItem('miv_token');
+            state.currentUser = null;
+            state.currentToken = null;
+            document.getElementById('appContent').style.display = 'none';
+            document.getElementById('headerSection').style.display = 'none';
+            showLoginForm();
+            showToast('Você saiu do sistema.', 'info');
+        }
+    }
 
     // Inicializa a aplicação
     document.addEventListener('DOMContentLoaded', initializeApp);
