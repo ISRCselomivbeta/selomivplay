@@ -1,1180 +1,167 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="SELO MIV - Plataforma de Investimento em Música">
-  <meta name="theme-color" content="#00ff88">
+  <meta charset="UTF-8" />
   <title>SELO MIV | Fintech Musical</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#00ff88" />
 
-  <!-- Bootstrap 5.3.0 -->
+  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
 
   <style>
-    :root {
-      --neon-green: #00ff88;
-      --miv-blue: #0072ff;
-      --bg-dark: #07090c;
-      --bg-card: #111418;
-      --border: #1e2329;
-      --text-light: #f8f9fa;
-      --text-muted: #6c757d;
-    }
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
     body {
-      font-family: 'Outfit', sans-serif;
-      background-color: var(--bg-dark);
-      color: var(--text-light);
-      min-height: 100vh;
-      overflow-x: hidden;
+      background:#07090c;
+      color:#fff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
     }
-    .loading-screen {
-      position: fixed;
-      inset: 0;
-      background: var(--bg-dark);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      transition: opacity 0.3s ease;
-    }
-    .loading-content {
-      text-align: center;
-    }
-    .loading-spinner {
-      width: 4rem;
-      height: 4rem;
-      border: 0.25rem solid rgba(0, 255, 136, 0.3);
-      border-top-color: var(--neon-green);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 1.5rem;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    .auth-screen {
-      position: fixed;
-      inset: 0;
-      background: linear-gradient(135deg, var(--bg-dark) 0%, #0c0e12 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-      z-index: 9998;
-      overflow-y: auto;
-    }
-    .auth-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 1.5rem;
-      padding: 2.5rem;
-      width: 100%;
-      max-width: 420px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-      transform: translateY(0);
-      transition: transform 0.3s ease;
-    }
-    .auth-card:hover {
-      transform: translateY(-5px);
-    }
-    .logo-header {
-      text-align: center;
-      margin-bottom: 2.5rem;
-    }
-    .logo-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 80px;
-      height: 80px;
-      background: rgba(0, 255, 136, 0.1);
-      border-radius: 50%;
-      margin-bottom: 1.5rem;
-      border: 2px solid var(--neon-green);
-    }
-    .logo-icon i {
-      font-size: 2.5rem;
-      color: var(--neon-green);
-    }
-    .form-group {
-      margin-bottom: 1.25rem;
-    }
-    .form-control-custom {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border);
-      border-radius: 0.75rem;
-      color: var(--text-light);
-      padding: 0.875rem 1rem;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-    }
-    .form-control-custom:focus {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: var(--neon-green);
-      color: var(--text-light);
-      box-shadow: 0 0 0 0.25rem rgba(0, 255, 136, 0.25);
-    }
-    .form-control-custom::placeholder {
-      color: var(--text-muted);
+    .card {
+      background:#111418;
+      border:1px solid #1e2329;
     }
     .btn-miv {
-      background: linear-gradient(135deg, var(--neon-green) 0%, #00cc6a 100%);
-      border: none;
-      border-radius: 0.75rem;
-      color: #000;
-      font-weight: 700;
-      padding: 1rem 1.5rem;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      width: 100%;
+      background:#00ff88;
+      color:#000;
+      font-weight:700;
     }
     .btn-miv:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
-    }
-    .btn-miv:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-    .auth-link {
-      color: var(--neon-green);
-      text-decoration: none;
-      font-weight: 600;
-      transition: opacity 0.3s ease;
-    }
-    .auth-link:hover {
-      opacity: 0.8;
-      text-decoration: underline;
-    }
-    .main-app {
-      display: none;
-      min-height: 100vh;
-      padding-bottom: 5rem;
-    }
-    .app-header {
-      background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, rgba(7, 9, 12, 0.8) 100%);
-      backdrop-filter: blur(10px);
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
-    .header-content {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .saldo-display h6 {
-      color: var(--text-muted);
-      font-size: 0.75rem;
-      margin-bottom: 0.25rem;
-    }
-    .saldo-display h4 {
-      color: var(--neon-green);
-      font-weight: 700;
-      margin-bottom: 0;
-    }
-    .user-badge {
-      background: var(--neon-green);
-      color: #000;
-      padding: 0.25rem 0.75rem;
-      border-radius: 1rem;
-      font-size: 0.75rem;
-      font-weight: 700;
-    }
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: -300px;
-      width: 300px;
-      height: 100vh;
-      background: #000;
-      border-right: 1px solid var(--border);
-      z-index: 1100;
-      transition: left 0.3s ease;
-      overflow-y: auto;
-      padding: 1.5rem;
-    }
-    .sidebar.open {
-      left: 0;
-    }
-    .sidebar-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .sidebar-close {
-      background: none;
-      border: none;
-      color: var(--text-light);
-      font-size: 1.5rem;
-      cursor: pointer;
-      padding: 0.25rem;
-    }
-    .nav-menu {
-      list-style: none;
-      padding: 0;
-    }
-    .nav-item {
-      margin-bottom: 0.5rem;
-    }
-    .nav-link {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.875rem 1rem;
-      color: var(--text-muted);
-      text-decoration: none;
-      border-radius: 0.75rem;
-      transition: all 0.3s ease;
-    }
-    .nav-link:hover, .nav-link.active {
-      background: rgba(0, 255, 136, 0.1);
-      color: var(--neon-green);
-    }
-    .nav-link i {
-      font-size: 1.25rem;
-    }
-    .section {
-      display: none;
-      padding: 1.5rem;
-      animation: fadeIn 0.3s ease;
-    }
-    .section.active {
-      display: block;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
-    .section-title {
-      color: var(--text-light);
-      font-weight: 700;
-      margin-bottom: 0;
-    }
-    .music-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-    .music-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      overflow: hidden;
-      transition: all 0.3s ease;
-      cursor: pointer;
-    }
-    .music-card:hover {
-      transform: translateY(-5px);
-      border-color: var(--neon-green);
-      box-shadow: 0 10px 20px rgba(0, 255, 136, 0.1);
-    }
-    .music-cover {
-      width: 100%;
-      height: 180px;
-      object-fit: cover;
-    }
-    .music-info {
-      padding: 1rem;
-    }
-    .music-title {
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-      color: var(--text-light);
-    }
-    .music-artist {
-      color: var(--text-muted);
-      font-size: 0.875rem;
-      margin-bottom: 0.75rem;
-    }
-    .music-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-    .music-price {
-      color: var(--neon-green);
-      font-weight: 700;
-      font-size: 1.125rem;
-    }
-    .music-percent {
-      background: rgba(0, 123, 255, 0.1);
-      color: #007bff;
-      padding: 0.25rem 0.75rem;
-      border-radius: 1rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-    .player-bar {
-      position: fixed;
-      bottom: 5rem;
-      left: 0;
-      right: 0;
-      background: var(--bg-card);
-      border-top: 1px solid var(--border);
-      padding: 1rem;
-      z-index: 1000;
-      transition: all 0.3s ease;
-      display: none;
-    }
-    .player-bar.expanded {
-      bottom: 0;
-      height: 100vh;
-      background: rgba(17, 20, 24, 0.98);
-      backdrop-filter: blur(20px);
-    }
-    .player-content {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .video-container {
-      width: 100%;
-      aspect-ratio: 16/9;
-      background: #000;
-      border-radius: 1rem;
-      overflow: hidden;
-      margin-bottom: 1.5rem;
-      display: none;
-    }
-    .player-bar.expanded .video-container {
-      display: block;
-    }
-    .player-info {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-    .player-album-art {
-      width: 60px;
-      height: 60px;
-      border-radius: 0.75rem;
-      object-fit: cover;
-    }
-    .player-text {
-      flex: 1;
-    }
-    .player-title {
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-    }
-    .player-artist {
-      color: var(--text-muted);
-      font-size: 0.875rem;
-    }
-    .player-price {
-      color: var(--neon-green);
-      font-weight: 700;
-    }
-    .progress-container {
-      height: 6px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 3px;
-      margin: 1rem 0;
-      cursor: pointer;
-    }
-    .progress-bar {
-      height: 100%;
-      background: var(--neon-green);
-      border-radius: 3px;
-      width: 0%;
-      transition: width 0.3s ease;
-    }
-    .player-controls {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 2rem;
-      margin-top: 1rem;
-    }
-    .control-btn {
-      background: none;
-      border: none;
-      color: var(--text-light);
-      font-size: 1.5rem;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      padding: 0.5rem;
-    }
-    .control-btn:hover {
-      color: var(--neon-green);
-      transform: scale(1.1);
-    }
-    .play-btn {
-      font-size: 2.5rem;
-    }
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: #000;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: space-around;
-      padding: 0.75rem 0;
-      z-index: 1001;
-    }
-    .nav-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.25rem;
-      padding: 0.5rem;
-      cursor: pointer;
-      transition: color 0.3s ease;
-      flex: 1;
-    }
-    .nav-btn:hover, .nav-btn.active {
-      color: var(--neon-green);
-    }
-    .nav-btn i {
-      font-size: 1.25rem;
-    }
-    .nav-btn span {
-      font-size: 0.75rem;
-    }
-    .portfolio-summary {
-      background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 123, 255, 0.1) 100%);
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      text-align: center;
-    }
-    .portfolio-value {
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: var(--neon-green);
-      margin: 0.5rem 0;
-    }
-    .ledger-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-    }
-    .ledger-table th {
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--text-muted);
-      font-weight: 600;
-      text-align: left;
-      padding: 1rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .ledger-table td {
-      padding: 1rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .ledger-table tr:hover {
-      background: rgba(255, 255, 255, 0.02);
-    }
-    .artist-stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-    .stat-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      padding: 1.5rem;
-      text-align: center;
-    }
-    .stat-icon {
-      font-size: 2rem;
-      color: var(--neon-green);
-      margin-bottom: 1rem;
-    }
-    .stat-value {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--text-light);
-      margin: 0.5rem 0;
-    }
-    .stat-label {
-      color: var(--text-muted);
-      font-size: 0.875rem;
-    }
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1200;
-      opacity: 0;
-      visibility: hidden;
-      transition: all 0.3s ease;
-    }
-    .modal-overlay.show {
-      opacity: 1;
-      visibility: visible;
-    }
-    .modal-content {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      width: 90%;
-      max-width: 500px;
-      max-height: 90vh;
-      overflow-y: auto;
-      transform: translateY(20px);
-      transition: transform 0.3s ease;
-    }
-    .modal-overlay.show .modal-content {
-      transform: translateY(0);
-    }
-    .modal-header {
-      padding: 1.5rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .modal-title {
-      color: var(--text-light);
-      font-weight: 700;
-      margin-bottom: 0;
-    }
-    .modal-close {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.5rem;
-      cursor: pointer;
-      padding: 0.25rem;
-    }
-    .modal-body {
-      padding: 1.5rem;
-    }
-    .modal-footer {
-      padding: 1.5rem;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: flex-end;
-      gap: 1rem;
-    }
-    .toast-container {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      z-index: 1300;
-      max-width: 350px;
-    }
-    .toast {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 0.75rem;
-      padding: 1rem;
-      margin-bottom: 0.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      transform: translateX(100%);
-      opacity: 0;
-      transition: all 0.3s ease;
-    }
-    .toast.show {
-      transform: translateX(0);
-      opacity: 1;
-    }
-    .toast.success {
-      border-color: var(--neon-green);
-      background: rgba(0, 255, 136, 0.1);
-    }
-    .toast.error {
-      border-color: #ff3232;
-      background: rgba(255, 50, 50, 0.1);
-    }
-    .toast-icon {
-      font-size: 1.25rem;
-    }
-    .toast.success .toast-icon {
-      color: var(--neon-green);
-    }
-    .toast.error .toast-icon {
-      color: #ff3232;
-    }
-    .toast-message {
-      flex: 1;
-      color: var(--text-light);
-    }
-    .empty-state {
-      text-align: center;
-      padding: 3rem 1rem;
-      color: var(--text-muted);
-    }
-    .empty-icon {
-      font-size: 3rem;
-      margin-bottom: 1rem;
-      opacity: 0.5;
-    }
-    @media (max-width: 768px) {
-      .auth-card { padding: 1.5rem; }
-      .music-grid { grid-template-columns: 1fr; }
-      .artist-stats { grid-template-columns: 1fr; }
-      .section { padding: 1rem; }
-    }
-    .music-card {
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .music-card:hover {
-      transform: scale(1.02);
-      box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
-    }
-    .btn-miv {
-      transition: background 0.3s ease;
-    }
-    .btn-miv:active {
-      background: linear-gradient(135deg, #00cc6a 0%, var(--neon-green) 100%);
-    }
-    .music-percent {
-      position: relative;
-    }
-    .music-percent::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: 125%;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--bg-dark);
-      color: var(--text-light);
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.5rem;
-      white-space: nowrap;
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-    }
-    .music-percent:hover::after {
-      opacity: 1;
-    }
-    .player-bar.expanded {
-      backdrop-filter: blur(15px);
-      background: rgba(7,9,12,0.95);
-    }
-    .progress-bar {
-      background: linear-gradient(to right, var(--neon-green) 0%, #00cc6a 100%);
-    }
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
+      background:#00cc6a;
     }
   </style>
 </head>
 <body>
 
-<!-- Loading Screen -->
-<div id="loadingScreen" class="loading-screen">
-  <div class="loading-content">
-    <div class="loading-spinner"></div>
-    <h4 class="text-success mb-2">Conectando ao SELO MIV</h4>
-    <p class="text-muted" id="loadingMessage">Autenticando...</p>
-  </div>
-</div>
+<!-- AUTH -->
+<div id="authScreen" class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-4">
 
-<!-- Toast Container -->
-<div class="toast-container" id="toastContainer"></div>
+      <!-- LOGIN -->
+      <div id="loginForm" class="card p-4">
+        <h4 class="text-center mb-3">Login</h4>
+        <input id="loginEmail" class="form-control mb-2" placeholder="Email">
+        <input id="loginPassword" type="password" class="form-control mb-3" placeholder="Senha">
+        <button class="btn btn-miv w-100" onclick="handleLogin()">Entrar</button>
+        <p class="text-center mt-3">
+          <a href="#" onclick="showRegister()">Criar conta</a>
+        </p>
+      </div>
 
-<!-- Authentication Screen -->
-<div id="authScreen" class="auth-screen">
-  <div class="auth-card">
-    <div class="logo-header">
-      <div class="logo-icon">
-        <i class="bi bi-shield-lock"></i>
-      </div>
-      <h2 class="text-white mb-2">SELO MIV</h2>
-      <p class="text-muted">Plataforma de Investimento em Música</p>
-    </div>
-
-    <!-- Login Form -->
-    <div id="loginForm">
-      <div id="loginMessage" class="alert d-none"></div>
-      <div class="form-group">
-        <input type="email" id="loginEmail" class="form-control-custom" placeholder="E-mail" required>
-      </div>
-      <div class="form-group">
-        <input type="password" id="loginPassword" class="form-control-custom" placeholder="Senha" required>
-      </div>
-      <button class="btn-miv mb-3" onclick="handleLogin()">
-        <i class="bi bi-box-arrow-in-right"></i> Entrar
-      </button>
-      <p class="text-center text-muted">
-        Novo por aqui? <a href="javascript:void(0)" class="auth-link" onclick="showRegisterForm()">Criar conta</a>
-      </p>
-      <div class="text-center mt-3">
-        <small class="text-muted">
-          <i class="bi bi-info-circle me-1"></i> Use: admin@miv.com / admin123
-        </small>
-      </div>
-    </div>
-
-    <!-- Register Form -->
-    <div id="registerForm" style="display: none;">
-      <div id="registerMessage" class="alert d-none"></div>
-      <div class="form-group">
-        <input type="text" id="registerName" class="form-control-custom" placeholder="Nome completo" required>
-      </div>
-      <div class="form-group">
-        <input type="email" id="registerEmail" class="form-control-custom" placeholder="E-mail" required>
-      </div>
-      <div class="form-group">
-        <input type="password" id="registerPassword" class="form-control-custom" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
-      </div>
-      <div class="form-group">
-        <select id="registerType" class="form-control-custom" onchange="toggleArtistField()">
-          <option value="">Selecione seu perfil...</option>
-          <option value="ouvinte">🎧 Ouvinte/Investidor</option>
-          <option value="artista">🎤 Artista</option>
+      <!-- REGISTER -->
+      <div id="registerForm" class="card p-4 d-none">
+        <h4 class="text-center mb-3">Cadastro</h4>
+        <input id="regName" class="form-control mb-2" placeholder="Nome">
+        <input id="regEmail" class="form-control mb-2" placeholder="Email">
+        <input id="regPassword" type="password" class="form-control mb-2" placeholder="Senha">
+        <select id="regType" class="form-control mb-3">
+          <option value="">Tipo</option>
+          <option value="ouvinte">Ouvinte</option>
+          <option value="artista">Artista</option>
         </select>
+        <button class="btn btn-miv w-100" onclick="handleRegister()">Cadastrar</button>
+        <p class="text-center mt-3">
+          <a href="#" onclick="showLogin()">Já tenho conta</a>
+        </p>
       </div>
-      <div class="form-group" id="artistLinkField" style="display: none;">
-        <input type="url" id="registerLink" class="form-control-custom" placeholder="Link do seu trabalho (YouTube, Spotify, etc.)">
-        <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
-      </div>
-      <button class="btn-miv mb-3" onclick="handleRegister()">
-        <i class="bi bi-person-plus"></i> Solicitar Cadastro
-      </button>
-      <p class="text-center text-muted">
-        Já tem conta? <a href="javascript:void(0)" class="auth-link" onclick="showLoginForm()">Fazer login</a>
-      </p>
+
     </div>
   </div>
 </div>
 
-<!-- Main Application -->
-<div id="mainApp" class="main-app">
-  <!-- Sidebar -->
-  <div id="sidebar" class="sidebar">
-    <div class="sidebar-header">
-      <h4 class="text-white mb-0">🎵 MIV PRO</h4>
-      <button class="sidebar-close" onclick="toggleSidebar()">
-        <i class="bi bi-x-lg"></i>
-      </button>
-    </div>
-    <ul class="nav-menu">
-      <li class="nav-item">
-        <a href="#" class="nav-link active" onclick="changeSection('marketplace')">
-          <i class="bi bi-house"></i> <span>Marketplace</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="#" class="nav-link" onclick="changeSection('portfolio')">
-          <i class="bi bi-briefcase"></i> <span>Portfólio</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="#" class="nav-link" onclick="changeSection('ledger')">
-          <i class="bi bi-receipt"></i> <span>Extrato</span>
-        </a>
-      </li>
-      <li class="nav-item" id="artistNavItem" style="display: none;">
-        <a href="#" class="nav-link" onclick="changeSection('artist')">
-          <i class="bi bi-mic"></i> <span>Painel Artista</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="https://link.mercadopago.com.br/selomiv" target="_blank" class="nav-link">
-          <i class="bi bi-plus-circle text-success"></i> <span class="text-success">Adicionar Saldo</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="#" class="nav-link text-danger" onclick="logout()">
-          <i class="bi bi-box-arrow-right"></i> <span>Sair</span>
-        </a>
-      </li>
-    </ul>
-  </div>
+<!-- APP -->
+<div id="mainApp" class="container py-4 d-none">
 
-  <!-- Main Header -->
-  <header class="app-header">
-    <div class="header-content">
-      <div class="d-flex align-items-center">
-        <button class="btn text-white me-3" onclick="toggleSidebar()">
-          <i class="bi bi-list fs-3"></i>
-        </button>
-        <div class="saldo-display">
-          <h6>CRÉDITO DISPONÍVEL</h6>
-          <h4 id="currentBalance">R$ 0,00</h4>
-        </div>
-      </div>
-      <div class="user-badge" id="userBadge">Ouvinte</div>
-    </div>
-  </header>
-
-  <!-- Main Content -->
-  <main>
-    <!-- Marketplace Section -->
-    <section id="marketplaceSection" class="section active">
-      <div class="section-header">
-        <h2 class="section-title">🎵 Marketplace</h2>
-        <div>
-          <small class="text-muted">Taxa 0% em compras</small>
-        </div>
-      </div>
-      <div id="marketplaceContent" class="music-grid">
-        <!-- Music cards will be loaded here -->
-      </div>
-    </section>
-
-    <!-- Portfolio Section -->
-    <section id="portfolioSection" class="section">
-      <div class="portfolio-summary">
-        <h6 class="text-muted">VALOR TOTAL DA CARTEIRA</h6>
-        <div class="portfolio-value" id="portfolioValue">R$ 0,00</div>
-        <small class="text-muted">Atualizado em tempo real</small>
-      </div>
-      <div class="section-header">
-        <h2 class="section-title">📊 Meus Ativos</h2>
-        <span class="badge bg-secondary" id="assetsCount">0 ativos</span>
-      </div>
-      <div id="portfolioContent">
-        <!-- Portfolio assets will be loaded here -->
-      </div>
-    </section>
-
-    <!-- Ledger Section -->
-    <section id="ledgerSection" class="section">
-      <div class="section-header">
-        <h2 class="section-title">📋 Histórico de Transações</h2>
-        <button class="btn btn-sm btn-outline-success" onclick="loadLedger()">
-          <i class="bi bi-arrow-clockwise"></i> Atualizar
-        </button>
-      </div>
-      <div class="table-responsive">
-        <table class="ledger-table">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Descrição</th>
-              <th class="text-end">Valor</th>
-            </tr>
-          </thead>
-          <tbody id="ledgerContent">
-            <tr>
-              <td colspan="3" class="text-center text-muted py-4">
-                <i class="bi bi-receipt fs-4 d-block mb-2"></i>
-                Nenhuma transação encontrada
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Artist Panel Section -->
-    <section id="artistSection" class="section">
-      <div class="section-header">
-        <h2 class="section-title">🎤 Painel Artista</h2>
-        <button class="btn-miv btn-sm" onclick="openAddMusicModal()">
-          <i class="bi bi-plus-circle"></i> Nova Música
-        </button>
-      </div>
-      <div class="artist-stats">
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="bi bi-music-note-beamed"></i>
-          </div>
-          <div class="stat-value" id="artistMusicCount">0</div>
-          <div class="stat-label">Músicas Cadastradas</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="bi bi-cash-coin"></i>
-          </div>
-          <div class="stat-value" id="artistRoyalties">R$ 0,00</div>
-          <div class="stat-label">Royalties Acumulados</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="bi bi-bar-chart"></i>
-          </div>
-          <div class="stat-value" id="artistSharesSold">0</div>
-          <div class="stat-label">Ações Vendidas</div>
-        </div>
-      </div>
-      <h5 class="mb-3">Minhas Músicas</h5>
-      <div id="artistMusicContent" class="music-grid">
-        <!-- Artist's music will be loaded here -->
-      </div>
-    </section>
-  </main>
-
-  <!-- Music Player -->
-  <div id="playerBar" class="player-bar">
-    <div class="player-content">
-      <div class="video-container" id="videoContainer">
-        <div id="youtubePlayer"></div>
-      </div>
-      <div class="player-info" onclick="togglePlayerExpansion()">
-        <img src="https://via.placeholder.com/60x60/111418/00ff88?text=MIV" class="player-album-art" alt="Album Art" id="playerAlbumArt">
-        <div class="player-text">
-          <div class="player-title" id="playerTitle">Título da Música</div>
-          <div class="player-artist" id="playerArtist">Artista</div>
-          <div class="player-price" id="playerPrice">R$ 0,00 por ação</div>
-        </div>
-        <button class="btn-miv btn-sm" onclick="event.stopPropagation(); openInvestModal(state.currentTrackIndex)">
-          <i class="bi bi-currency-dollar"></i> Investir
-        </button>
-      </div>
-      <div class="progress-container" onclick="seekMusic(event)">
-        <div class="progress-bar" id="musicProgress"></div>
-      </div>
-      <div class="player-time d-flex justify-content-between mt-1 small">
-        <span id="currentTime">0:00</span>
-        <span id="durationTime">0:00</span>
-      </div>
-      <div class="player-controls mt-2 d-flex justify-content-center gap-3">
-        <button class="control-btn" onclick="toggleShuffle()">
-          <i class="bi bi-shuffle" id="shuffleIcon"></i>
-        </button>
-        <button class="control-btn" onclick="playPrevious()">
-          <i class="bi bi-skip-start-fill"></i>
-        </button>
-        <button class="control-btn play-btn fs-1" id="playButton" onclick="togglePlay()">
-          <i class="bi bi-play-circle-fill"></i>
-        </button>
-        <button class="control-btn" onclick="playNext()">
-          <i class="bi bi-skip-end-fill"></i>
-        </button>
-        <button class="control-btn" onclick="toggleRepeat()">
-          <i class="bi bi-repeat" id="repeatIcon"></i>
-        </button>
-        <input type="range" id="volumeSlider" min="0" max="100" value="100" class="ms-3" oninput="setVolume(this.value)" style="width: 120px;">
-      </div>
-      <div id="queueContainer" class="mt-3" style="display:none; max-height: 40vh; overflow-y: auto;">
-        <h6 class="text-center mb-2">Fila de reprodução</h6>
-        <ul id="queueList" class="list-group list-group-flush"></ul>
-      </div>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Marketplace</h3>
+    <div>
+      Saldo: <strong id="currentBalance">R$ 0,00</strong>
+      <button class="btn btn-sm btn-danger ms-2" onclick="logout()">Sair</button>
     </div>
   </div>
 
-  <!-- Bottom Navigation -->
-  <nav class="bottom-nav">
-    <button class="nav-btn active" onclick="changeSection('marketplace', this)">
-      <i class="bi bi-house"></i> <span>Market</span>
-    </button>
-    <button class="nav-btn" onclick="changeSection('portfolio', this)">
-      <i class="bi bi-briefcase"></i> <span>Carteira</span>
-    </button>
-    <button class="nav-btn" onclick="changeSection('ledger', this)">
-      <i class="bi bi-receipt"></i> <span>Extrato</span>
-    </button>
-  </nav>
+  <!-- MUSIC GRID -->
+  <div id="marketplaceContent" class="row g-3"></div>
+
 </div>
 
-<!-- JavaScript -->
+<!-- PLAYER (SEM PLACEHOLDER EXTERNO) -->
+<img
+  id="playerAlbumArt"
+  style="display:none"
+  src="data:image/svg+xml;utf8,
+  <svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'>
+    <rect width='100%' height='100%' fill='%23111418'/>
+    <text x='50%' y='50%'
+          dominant-baseline='middle'
+          text-anchor='middle'
+          fill='%2300ff88'
+          font-size='14'>MIV</text>
+  </svg>"
+>
+
 <script>
-/* ===============================
-   CONFIG
-================================ */
-const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbwoo1T0Cgw6TVqCyCY7CniAsg0pD3guOAVs5BNutvbvqQaYOMlAfCO6HLw2REil4UY/exec'
-};
+/* ================= CONFIG ================= */
+const API_URL = 'https://script.google.com/macros/s/AKfycbwoo1T0Cgw6TVqCyCY7CniAsg0pD3guOAVs5BNutvbvqQaYOMlAfCO6HLw2REil4UY/exec';
 
+/* ================= STATE ================= */
 let currentUser = null;
 
-/* ===============================
-   INIT
-================================ */
-window.onload = async () => {
-  setTimeout(() => {
-    document.getElementById('loadingScreen').style.display = 'none';
-
-    const saved = localStorage.getItem('user');
-    if (saved) {
-      currentUser = JSON.parse(saved);
-      entrarNoSistema();
-    }
-  }, 1200);
+/* ================= INIT ================= */
+window.onload = () => {
+  const saved = localStorage.getItem('user');
+  if (saved) {
+    currentUser = JSON.parse(saved);
+    showApp();
+    loadSaldo();
+    loadMusicas();
+  }
 };
 
-/* ===============================
-   AUTH
-================================ */
-async function handleLogin() {
-  const email = loginEmail.value.trim();
-  const password = loginPassword.value.trim();
+/* ================= AUTH ================= */
+function showRegister() {
+  loginForm.classList.add('d-none');
+  registerForm.classList.remove('d-none');
+}
 
-  if (!email || !password) return toast('Preencha todos os campos', 'error');
-
-  const res = await api({ action: 'login', email, password });
-  if (!res.success) return toast(res.error, 'error');
-
-  currentUser = res.user;
-  localStorage.setItem('user', JSON.stringify(currentUser));
-  entrarNoSistema();
+function showLogin() {
+  registerForm.classList.add('d-none');
+  loginForm.classList.remove('d-none');
 }
 
 async function handleRegister() {
-  const nome = registerName.value.trim();
-  const email = registerEmail.value.trim();
-  const password = registerPassword.value.trim();
-  const tipo = registerType.value;
-  const link = registerLink.value.trim();
+  const nome = regName.value;
+  const email = regEmail.value;
+  const password = regPassword.value;
+  const tipo = regType.value;
 
-  if (!nome || !email || !password || !tipo)
-    return toast('Preencha todos os campos', 'error');
-
-  const res = await api({
-    action: 'register',
-    nome,
-    email,
-    password,
-    tipo,
-    link
+  const res = await fetch(API_URL, {
+    method:'POST',
+    body: JSON.stringify({ action:'register', nome, email, password, tipo })
   });
+  const data = await res.json();
 
-  if (!res.success) return toast(res.error, 'error');
-
-  toast('Cadastro solicitado com sucesso', 'success');
-  showLoginForm();
+  alert(data.message || data.error);
+  if (data.success) showLogin();
 }
 
-function entrarNoSistema() {
-  authScreen.style.display = 'none';
-  mainApp.style.display = 'block';
-  userBadge.textContent = currentUser.tipo || 'Ouvinte';
+async function handleLogin() {
+  const email = loginEmail.value;
+  const password = loginPassword.value;
 
-  if (currentUser.tipo === 'artista') {
-    artistNavItem.style.display = 'block';
-  }
-
-  carregarSaldo();
-  carregarMarketplace();
-}
-
-/* ===============================
-   API
-================================ */
-async function api(body) {
-  const r = await fetch(CONFIG.API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+  const res = await fetch(API_URL, {
+    method:'POST',
+    body: JSON.stringify({ action:'login', email, password })
   });
-  return r.json();
-}
+  const data = await res.json();
 
-/* ===============================
-   SALDO
-================================ */
-async function carregarSaldo() {
-  const res = await api({ action: 'getSaldo', userId: currentUser.id });
-  if (res.success) {
-    currentBalance.textContent =
-      'R$ ' + Number(res.saldo).toFixed(2).replace('.', ',');
-  }
-}
+  if (!data.success) return alert(data.error);
 
-/* ===============================
-   MARKETPLACE
-================================ */
-async function carregarMarketplace() {
-  marketplaceContent.innerHTML = '';
-
-  const res = await api({ action: 'getMusicas' });
-  if (!res.success || !res.musicas.length) {
-    marketplaceContent.innerHTML =
-      '<div class="empty-state">Nenhuma música disponível</div>';
-    return;
-  }
-
-  res.musicas.forEach((m, i) => {
-    marketplaceContent.innerHTML += `
-      <div class="music-card" onclick="abrirPlayer(${i})">
-        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE4MCIgZmlsbD0iIzExMTQxOCI+PC9zdmc+" class="music-cover">
-        <div class="music-info">
-          <div class="music-title">${m.nome}</div>
-          <div class="music-artist">ISRC ${m.isrc}</div>
-          <div class="music-meta">
-            <div class="music-price">R$ ${m.precoAcao.toFixed(2)}</div>
-            <div class="music-percent">${m.acoesDisponiveis} ações</div>
-          </div>
-          <button class="btn-miv" onclick="event.stopPropagation(); comprar('${m.id}')">
-            Investir
-          </button>
-        </div>
-      </div>
-    `;
-  });
-
-  window.listaMusicas = res.musicas;
-}
-
-/* ===============================
-   PLAYER
-================================ */
-function abrirPlayer(i) {
-  const m = listaMusicas[i];
-  playerBar.style.display = 'block';
-  playerTitle.textContent = m.nome;
-  playerArtist.textContent = m.isrc;
-  playerPrice.textContent = 'R$ ' + m.precoAcao.toFixed(2);
-}
-
-/* ===============================
-   COMPRA
-================================ */
-async function comprar(musicaId) {
-  const res = await api({
-    action: 'buy',
-    userId: currentUser.id,
-    musicaId,
-    quantidade: 1
-  });
-
-  if (!res.success) return toast(res.error, 'error');
-
-  toast('Ação comprada com sucesso', 'success');
-  carregarSaldo();
-  carregarMarketplace();
-}
-
-/* ===============================
-   UI HELPERS
-================================ */
-function toggleSidebar() {
-  sidebar.classList.toggle('open');
-}
-
-function changeSection(sec) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.getElementById(sec + 'Section').classList.add('active');
+  currentUser = data.user;
+  localStorage.setItem('user', JSON.stringify(currentUser));
+  showApp();
+  loadSaldo();
+  loadMusicas();
 }
 
 function logout() {
@@ -1182,26 +169,63 @@ function logout() {
   location.reload();
 }
 
-function showRegisterForm() {
-  loginForm.style.display = 'none';
-  registerForm.style.display = 'block';
+function showApp() {
+  authScreen.classList.add('d-none');
+  mainApp.classList.remove('d-none');
 }
 
-function showLoginForm() {
-  registerForm.style.display = 'none';
-  loginForm.style.display = 'block';
+/* ================= DATA ================= */
+async function loadSaldo() {
+  const res = await fetch(API_URL, {
+    method:'POST',
+    body: JSON.stringify({ action:'getSaldo', userId: currentUser.id })
+  });
+  const data = await res.json();
+  if (data.success) {
+    currentBalance.innerText = 'R$ ' + data.saldo.toFixed(2);
+  }
 }
 
-function toast(msg, type) {
-  const t = document.createElement('div');
-  t.className = `toast ${type} show`;
-  t.innerHTML = `<i class="bi bi-info-circle toast-icon"></i><div>${msg}</div>`;
-  toastContainer.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+async function loadMusicas() {
+  const res = await fetch(API_URL, {
+    method:'POST',
+    body: JSON.stringify({ action:'getMusicas' })
+  });
+  const data = await res.json();
+
+  marketplaceContent.innerHTML = '';
+  if (!data.musicas) return;
+
+  data.musicas.forEach(m => {
+    marketplaceContent.innerHTML += `
+      <div class="col-md-4">
+        <div class="card p-3">
+          <h5>${m.nome}</h5>
+          <small class="text-muted">Ações: ${m.acoesDisponiveis}</small>
+          <p>R$ ${m.precoAcao.toFixed(2)}</p>
+          <button class="btn btn-miv btn-sm" onclick="buy('${m.id}')">Comprar 1</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+async function buy(musicaId) {
+  const res = await fetch(API_URL, {
+    method:'POST',
+    body: JSON.stringify({
+      action:'buy',
+      userId: currentUser.id,
+      musicaId,
+      quantidade:1
+    })
+  });
+  const data = await res.json();
+  alert(data.message || data.error);
+  loadSaldo();
+  loadMusicas();
 }
 </script>
 
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
