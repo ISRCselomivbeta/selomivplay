@@ -2019,7 +2019,53 @@
             }
         }
 
-      /** * Retorna músicas de exemplo (fallback) */ function getSampleMusic() { return [ { id: 1, titulo: "EVA", artista: "Elzo Henschell", genero: "ROCK", link_youtube: "https://youtu.be/u7_BJ-nB3NU?list=PLvteL0_9cu8oE_N4Qfz5JJucTTkY2czcN", link_capa: "https://i.ytimg.com/vi/bFqLIyxuiMM/hqdefault.jpg?sqp=-oaymwEmCOADEOgC8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGBEgYChyMA8=&rs=AOn4CLBYyPifAKobgwgNeR3viXgGdfzo0A", valor_acao: 15.50, percentual_disponivel: 25, acoes_vendidas: 75, status: "ativo" }, { id: 2, titulo: "Taylor", artista: "Elzo Henschell", genero: "ROCK", link_youtube: "https://www.youtube.com/watch?v=DYYX_jBfN_E&list=PLvteL0_9cu8oE_N4Qfz5JJucTTkY2czcN&index=3", link_capa: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR2T5RSbstuyaS3Zs0jsj-q9y97WxW5sSwvBg&s", valor_acao: 22.00, percentual_disponivel: 40, acoes_vendidas: 60, status: "ativo" }, { id: 3, titulo: "Som ON ", artista: "Selo MIV", genero: "INSTRUMENTAL", link_youtube: "https://www.youtube.com/watch?v=SGYQMLIN2yw", link_capa: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR1sL8DHIoCmZHyY1z04NFb0hc_JKEtHzivwA&s", valor_acao: 18.75, percentual_disponivel: 35, acoes_vendidas: 65, status: "ativo" } { id: 4, titulo: "Som Out ", artista: "Selo MIV", genero: "INSTRUMENTAL", link_youtube: "https://youtu.be/k5ZCy0ddG4Y", link_capa: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR1sL8DHIoCmZHyY1z04NFb0hc_JKEtHzivwA&s", valor_acao: 18.75, percentual_disponivel: 35, acoes_vendidas: 65, status: "ativo" } { id: 5, titulo: "Fala Memo ", artista: "U-Thon FRR feat Selo MIV", genero: "HIP HOP", link_youtube: "https://www.youtube.com/watch?v=-I8lJ--5owY&list=PLvteL0_9cu8oE_N4Qfz5JJucTTkY2czcN&index=13", link_capa: "https://yt3.googleusercontent.com/-FaXszVQ6litheDqL5AgMOR7f16N7mrhae36LDL9dY1Oy58oSA5Nqq7ypeGzI1ZO0DE2KCXe-p8=s160-c-k-c0x00ffffff-no-rj", valor_acao: 18.75, percentual_disponivel: 35, acoes_vendidas: 65, status: "ativo" } { id: 6, titulo: "knig ", artista: "Elzo Henschell", genero: "Instrumental", link_youtube: "https://www.youtube.com/watch?v=Marms0SwYA0&start_radio=1", link_capa: "https://yt3.ggpht.com/6WDO9C2JMGR-TUwmlunxhnDn9MPJqzFSZieI2BKRIvR-pAIyyCa69bQ-yYtBIlbFwN91eTmhSrM=s48-c-k-c0x00ffffff-no-rj", valor_acao: 18.75, percentual_disponivel: 35, acoes_vendidas: 65, status: "ativo" } ]; } / * Renderiza marketplace */
+        /**
+         * Retorna músicas de exemplo (fallback)
+         */
+        function getSampleMusic() {
+            return [
+                {
+                    id: 1,
+                    titulo: "EVA",
+                    artista: "Elzo Henschell",
+                    genero: "ROCK",
+                    link_youtube: "https://youtu.be/u7_BJ-nB3NU?list=PLvteL0_9cu8oE_N4Qfz5JJucTTkY2czcN",
+                    link_capa: "https://i.ytimg.com/vi/bFqLIyxuiMM/hqdefault.jpg?sqp=-oaymwEmCOADEOgC8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGBEgYChyMA8=&rs=AOn4CLBYyPifAKobgwgNeR3viXgGdfzo0A",
+                    valor_acao: 15.50,
+                    percentual_disponivel: 25,
+                    acoes_vendidas: 75,
+                    status: "ativo"
+                },
+                {
+                    id: 2,
+                    titulo: "Taylor",
+                    artista: "Elzo Henschell",
+                    genero: "ROCK",
+                    link_youtube: "https://www.youtube.com/watch?v=DYYX_jBfN_E&list=PLvteL0_9cu8oE_N4Qfz5JJucTTkY2czcN&index=3",
+                    link_capa: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR2T5RSbstuyaS3Zs0jsj-q9y97WxW5sSwvBg&s",
+                    valor_acao: 22.00,
+                    percentual_disponivel: 40,
+                    acoes_vendidas: 60,
+                    status: "ativo"
+                },
+                {
+                    id: 3,
+                    titulo: "Som ON BB",
+                    artista: "Selo MIV",
+                    genero: "INSTRUMENTAL",
+                    link_youtube: "https://youtu.be/O4vSvOLtkuM?list=PLvteL0_9cu8oE_N4Qfz5JJucTTkY2czcN",
+                    link_capa: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR1sL8DHIoCmZHyY1z04NFb0hc_JKEtHzivwA&s",
+                    valor_acao: 18.75,
+                    percentual_disponivel: 35,
+                    acoes_vendidas: 65,
+                    status: "ativo"
+                }
+            ];
+        }
+
+        /**
+         * Renderiza marketplace
+         */
         function renderMarketplace() {
             const container = document.getElementById('marketplaceContent');
             if (!container) return;
