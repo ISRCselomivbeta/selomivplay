@@ -999,222 +999,208 @@
 
 <!-- JavaScript -->
 <script>
-  // CONFIGURAÇÃO DO BACKEND (atualizada com a última implantação que você enviou)
-  const CONFIG = {
-    API_URL: 'https://script.google.com/macros/s/AKfycbwoo1T0Cgw6TVqCyCY7CniAsg0pD3guOAVs5BNutvbvqQaYOMlAfCO6HLw2REil4UY/exec',
-    VERSION: '2.0.1'
-  };
+/* ===============================
+   CONFIG
+================================ */
+const CONFIG = {
+  API_URL: 'https://script.google.com/macros/s/AKfycbwoo1T0Cgw6TVqCyCY7CniAsg0pD3guOAVs5BNutvbvqQaYOMlAfCO6HLw2REil4UY/exec'
+};
 
-  // Estado global (mantido original)
-  let currentUser = null;
-  let currentToken = null;
+let currentUser = null;
 
-  // Inicialização
-  window.onload = () => {
-    setTimeout(() => {
-      document.getElementById('loadingScreen').style.display = 'none';
-      const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        document.getElementById('authScreen').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        carregarMarketplace();
-      }
-    }, 1500);
-  };
+/* ===============================
+   INIT
+================================ */
+window.onload = async () => {
+  setTimeout(() => {
+    document.getElementById('loadingScreen').style.display = 'none';
 
-  function toggleForm() {
-    const isRegister = document.getElementById('nome').style.display !== 'block';
-    document.getElementById('nome').style.display = isRegister ? 'block' : 'none';
-    document.getElementById('tipo-container').style.display = isRegister ? 'block' : 'none';
-    document.getElementById('btn-action').textContent = isRegister ? 'Cadastrar' : 'Entrar';
-    document.getElementById('toggle-link').textContent = isRegister ? 'Já tenho conta' : 'Não tem conta? Cadastre-se';
-  }
-
-  async function logarOuCadastrar() {
-    const email = document.getElementById('email').value.trim();
-    const senha = document.getElementById('senha').value.trim();
-
-    if (!email || !senha) {
-      alert('Preencha e-mail e senha');
-      return;
+    const saved = localStorage.getItem('user');
+    if (saved) {
+      currentUser = JSON.parse(saved);
+      entrarNoSistema();
     }
+  }, 1200);
+};
 
-    if (document.getElementById('nome').style.display === 'block') {
-      // Cadastro
-      const nome = document.getElementById('nome').value.trim();
-      const tipo = document.getElementById('tipo').value;
+/* ===============================
+   AUTH
+================================ */
+async function handleLogin() {
+  const email = loginEmail.value.trim();
+  const password = loginPassword.value.trim();
 
-      if (!nome || !tipo) {
-        alert('Preencha todos os campos');
-        return;
-      }
+  if (!email || !password) return toast('Preencha todos os campos', 'error');
 
-      try {
-        const res = await fetch(CONFIG.API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'register', nome, email, password: senha, tipo })
-        });
-        const data = await res.json();
+  const res = await api({ action: 'login', email, password });
+  if (!res.success) return toast(res.error, 'error');
 
-        if (data.success) {
-          alert(data.message);
-          toggleForm();
-        } else {
-          alert(data.error || 'Erro ao cadastrar');
-        }
-      } catch (err) {
-        alert('Erro de conexão com o servidor');
-        console.error(err);
-      }
-    } else {
-      // Login
-      try {
-        const res = await fetch(CONFIG.API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'login', email, password: senha })
-        });
-        const data = await res.json();
+  currentUser = res.user;
+  localStorage.setItem('user', JSON.stringify(currentUser));
+  entrarNoSistema();
+}
 
-        if (data.success) {
-          currentUser = data.user;
-          localStorage.setItem('user', JSON.stringify(currentUser));
-          document.getElementById('authScreen').style.display = 'none';
-          document.getElementById('mainApp').style.display = 'block';
-          carregarMarketplace();
-        } else {
-          alert(data.error || 'Credenciais inválidas');
-        }
-      } catch (err) {
-        alert('Erro de conexão com o servidor');
-        console.error(err);
-      }
-    }
+async function handleRegister() {
+  const nome = registerName.value.trim();
+  const email = registerEmail.value.trim();
+  const password = registerPassword.value.trim();
+  const tipo = registerType.value;
+  const link = registerLink.value.trim();
+
+  if (!nome || !email || !password || !tipo)
+    return toast('Preencha todos os campos', 'error');
+
+  const res = await api({
+    action: 'register',
+    nome,
+    email,
+    password,
+    tipo,
+    link
+  });
+
+  if (!res.success) return toast(res.error, 'error');
+
+  toast('Cadastro solicitado com sucesso', 'success');
+  showLoginForm();
+}
+
+function entrarNoSistema() {
+  authScreen.style.display = 'none';
+  mainApp.style.display = 'block';
+  userBadge.textContent = currentUser.tipo || 'Ouvinte';
+
+  if (currentUser.tipo === 'artista') {
+    artistNavItem.style.display = 'block';
   }
 
-  function sair() {
-    localStorage.removeItem('user');
-    location.reload();
+  carregarSaldo();
+  carregarMarketplace();
+}
+
+/* ===============================
+   API
+================================ */
+async function api(body) {
+  const r = await fetch(CONFIG.API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return r.json();
+}
+
+/* ===============================
+   SALDO
+================================ */
+async function carregarSaldo() {
+  const res = await api({ action: 'getSaldo', userId: currentUser.id });
+  if (res.success) {
+    currentBalance.textContent =
+      'R$ ' + Number(res.saldo).toFixed(2).replace('.', ',');
+  }
+}
+
+/* ===============================
+   MARKETPLACE
+================================ */
+async function carregarMarketplace() {
+  marketplaceContent.innerHTML = '';
+
+  const res = await api({ action: 'getMusicas' });
+  if (!res.success || !res.musicas.length) {
+    marketplaceContent.innerHTML =
+      '<div class="empty-state">Nenhuma música disponível</div>';
+    return;
   }
 
-  async function carregarMarketplace() {
-    const container = document.getElementById('musicas-container');
-    container.innerHTML = '<p class="text-center text-muted">Carregando músicas...</p>';
+  res.musicas.forEach((m, i) => {
+    marketplaceContent.innerHTML += `
+      <div class="music-card" onclick="abrirPlayer(${i})">
+        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE4MCIgZmlsbD0iIzExMTQxOCI+PC9zdmc+" class="music-cover">
+        <div class="music-info">
+          <div class="music-title">${m.nome}</div>
+          <div class="music-artist">ISRC ${m.isrc}</div>
+          <div class="music-meta">
+            <div class="music-price">R$ ${m.precoAcao.toFixed(2)}</div>
+            <div class="music-percent">${m.acoesDisponiveis} ações</div>
+          </div>
+          <button class="btn-miv" onclick="event.stopPropagation(); comprar('${m.id}')">
+            Investir
+          </button>
+        </div>
+      </div>
+    `;
+  });
 
-    try {
-      const res = await fetch(CONFIG.API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'getMusicas' })
-      });
-      const data = await res.json();
+  window.listaMusicas = res.musicas;
+}
 
-      container.innerHTML = '';
-      if (data.success && data.musicas && data.musicas.length > 0) {
-        data.musicas.forEach(m => {
-          container.innerHTML += `
-            <div class="col-md-4 col-lg-3">
-              <div class="card card-music">
-                <div class="card-body">
-                  <h5 class="card-title">${m.nome || 'Sem título'}</h5>
-                  <p class="card-text text-muted">Artista ID: ${m.artistaId || 'Desconhecido'}</p>
-                  <p>Preço: R$ ${(m.precoAcao || 0).toFixed(2)}</p>
-                  <p>Ações disponíveis: ${m.acoesDisponiveis || 0}</p>
-                  <button class="btn btn-neon btn-sm me-2" onclick="comprarAcoes('${m.id}', 1)">Comprar 1 ação</button>
-                  <button class="btn btn-outline-light btn-sm" onclick="tocarMusica('${m.youtubeUrl || ''}', '${m.nome || 'Música'}')">Ouvir</button>
-                </div>
-              </div>
-            </div>
-          `;
-        });
-      } else {
-        container.innerHTML = '<p class="text-center text-muted">Nenhuma música disponível no momento.</p>';
-      }
-    } catch (err) {
-      container.innerHTML = '<p class="text-center text-danger">Erro ao carregar músicas</p>';
-      console.error(err);
-    }
-  }
+/* ===============================
+   PLAYER
+================================ */
+function abrirPlayer(i) {
+  const m = listaMusicas[i];
+  playerBar.style.display = 'block';
+  playerTitle.textContent = m.nome;
+  playerArtist.textContent = m.isrc;
+  playerPrice.textContent = 'R$ ' + m.precoAcao.toFixed(2);
+}
 
-  async function comprarAcoes(musicaId, qtd = 1) {
-    if (!currentUser) return alert('Faça login primeiro');
+/* ===============================
+   COMPRA
+================================ */
+async function comprar(musicaId) {
+  const res = await api({
+    action: 'buy',
+    userId: currentUser.id,
+    musicaId,
+    quantidade: 1
+  });
 
-    try {
-      const res = await fetch(CONFIG.API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'buy', userId: currentUser.id, musicaId, quantidade: qtd })
-      });
-      const data = await res.json();
+  if (!res.success) return toast(res.error, 'error');
 
-      if (data.success) {
-        alert(data.message);
-        carregarCarteira();
-        carregarMarketplace();
-      } else {
-        alert(data.error || 'Erro ao comprar');
-      }
-    } catch (err) {
-      alert('Erro de conexão ao comprar');
-      console.error(err);
-    }
-  }
+  toast('Ação comprada com sucesso', 'success');
+  carregarSaldo();
+  carregarMarketplace();
+}
 
-  async function carregarCarteira() {
-    if (!currentUser) return;
+/* ===============================
+   UI HELPERS
+================================ */
+function toggleSidebar() {
+  sidebar.classList.toggle('open');
+}
 
-    try {
-      const res = await fetch(CONFIG.API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'getSaldo', userId: currentUser.id })
-      });
-      const data = await res.json();
+function changeSection(sec) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(sec + 'Section').classList.add('active');
+}
 
-      if (data.success) {
-        document.getElementById('currentBalance').textContent = (data.saldo || 0).toFixed(2);
-      }
-    } catch (err) {
-      console.error('Erro ao carregar saldo', err);
-    }
-  }
+function logout() {
+  localStorage.clear();
+  location.reload();
+}
 
-  function tocarMusica(url, nome) {
-    document.getElementById('player-bar').style.display = 'flex';
-    document.getElementById('musica-atual').innerText = nome || 'Música';
+function showRegisterForm() {
+  loginForm.style.display = 'none';
+  registerForm.style.display = 'block';
+}
 
-    const videoId = extractVideoId(url);
-    if (videoId) {
-      document.getElementById('youtube-player-container').innerHTML = `
-        <iframe width="100%" height="80" src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allowfullscreen></iframe>
-      `;
-    } else {
-      alert('Link do YouTube inválido');
-    }
-  }
+function showLoginForm() {
+  registerForm.style.display = 'none';
+  loginForm.style.display = 'block';
+}
 
-  function extractVideoId(url) {
-    if (!url) return null;
-    const match = url.match(/v=([^&]+)/) || url.match(/youtu\.be\/([^?]+)/);
-    return match ? match[1] : null;
-  }
-
-  // Funções placeholder (mantidas do original, sem mudanças)
-  function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('open');
-  }
-
-  function changeSection(section, btn) {
-    // Implementação original aqui (você já tem)
-    alert('Seção: ' + section);
-  }
-
-  function logout() {
-    sair();
-  }
+function toast(msg, type) {
+  const t = document.createElement('div');
+  t.className = `toast ${type} show`;
+  t.innerHTML = `<i class="bi bi-info-circle toast-icon"></i><div>${msg}</div>`;
+  toastContainer.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
 </script>
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
