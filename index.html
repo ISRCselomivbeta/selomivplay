@@ -2,230 +2,173 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>SELO MIV | Fintech Musical</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#00ff88" />
-
-  <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-
+  <title>SELO MIV — Login / Investimentos Musicais</title>
   <style>
-    body {
-      background:#07090c;
-      color:#fff;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont;
-    }
-    .card {
-      background:#111418;
-      border:1px solid #1e2329;
-    }
-    .btn-miv {
-      background:#00ff88;
-      color:#000;
-      font-weight:700;
-    }
-    .btn-miv:hover {
-      background:#00cc6a;
-    }
+    body{font-family:Arial,Helvetica,sans-serif;background:#0e0e11;color:#eaeaf0;margin:0}
+    header{padding:16px 20px;background:#141420;border-bottom:1px solid #1f1f33}
+    h1{margin:0;font-size:20px}
+    main{padding:20px;max-width:980px;margin:0 auto}
+    .card{background:#141420;border:1px solid #1f1f33;border-radius:8px;padding:16px;margin-bottom:16px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .col{flex:1 1 240px}
+    label{display:block;font-size:12px;margin-bottom:6px;color:#bdbde6}
+    input,select,button{width:100%;padding:10px;border-radius:6px;border:1px solid #2a2a55;background:#0e0e11;color:#fff}
+    button{cursor:pointer;background:#5b5bf0;border:none}
+    button.secondary{background:#2a2a55}
+    button.danger{background:#a33}
+    .muted{color:#9aa}
+    .msg{margin-top:8px;font-size:13px}
+    .ok{color:#6ef06e}
+    .err{color:#ff7b7b}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{border-bottom:1px solid #1f1f33;padding:8px;text-align:left;font-size:13px}
+    th{color:#bdbde6}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .hide{display:none}
   </style>
 </head>
 <body>
-
-<!-- AUTH -->
-<div id="authScreen" class="container py-5">
-  <div class="row justify-content-center">
-    <div class="col-md-4">
-
-      <!-- LOGIN -->
-      <div id="loginForm" class="card p-4">
-        <h4 class="text-center mb-3">Login</h4>
-        <input id="loginEmail" class="form-control mb-2" placeholder="Email">
-        <input id="loginPassword" type="password" class="form-control mb-3" placeholder="Senha">
-        <button class="btn btn-miv w-100" onclick="handleLogin()">Entrar</button>
-        <p class="text-center mt-3">
-          <a href="#" onclick="showRegister()">Criar conta</a>
-        </p>
-      </div>
-
-      <!-- REGISTER -->
-      <div id="registerForm" class="card p-4 d-none">
-        <h4 class="text-center mb-3">Cadastro</h4>
-        <input id="regName" class="form-control mb-2" placeholder="Nome">
-        <input id="regEmail" class="form-control mb-2" placeholder="Email">
-        <input id="regPassword" type="password" class="form-control mb-2" placeholder="Senha">
-        <select id="regType" class="form-control mb-3">
-          <option value="">Tipo</option>
-          <option value="ouvinte">Ouvinte</option>
-          <option value="artista">Artista</option>
-        </select>
-        <button class="btn btn-miv w-100" onclick="handleRegister()">Cadastrar</button>
-        <p class="text-center mt-3">
-          <a href="#" onclick="showLogin()">Já tenho conta</a>
-        </p>
-      </div>
-
-    </div>
+<header>
+  <div class="top">
+    <h1>SELO MIV</h1>
+    <div id="userBox" class="muted"></div>
   </div>
-</div>
+</header>
 
-<!-- APP -->
-<div id="mainApp" class="container py-4 d-none">
-
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3>Marketplace</h3>
-    <div>
-      Saldo: <strong id="currentBalance">R$ 0,00</strong>
-      <button class="btn btn-sm btn-danger ms-2" onclick="logout()">Sair</button>
+<main>
+  <!-- AUTH -->
+  <div id="auth" class="card">
+    <h3>Cadastro</h3>
+    <div class="row">
+      <div class="col"><label>Nome</label><input id="r_nome"></div>
+      <div class="col"><label>Email</label><input id="r_email"></div>
+      <div class="col"><label>Senha</label><input id="r_pass" type="password"></div>
+      <div class="col"><label>Tipo</label>
+        <select id="r_tipo"><option value="ouvinte">Ouvinte</option><option value="artista">Artista</option></select>
+      </div>
     </div>
+    <button onclick="register()">Cadastrar</button>
+    <div id="r_msg" class="msg"></div>
+
+    <hr style="border-color:#1f1f33;margin:16px 0">
+
+    <h3>Login</h3>
+    <div class="row">
+      <div class="col"><label>Email</label><input id="l_email"></div>
+      <div class="col"><label>Senha</label><input id="l_pass" type="password"></div>
+    </div>
+    <button onclick="login()">Entrar</button>
+    <div id="l_msg" class="msg"></div>
   </div>
 
-  <!-- MUSIC GRID -->
-  <div id="marketplaceContent" class="row g-3"></div>
+  <!-- APP -->
+  <div id="app" class="hide">
+    <div class="card">
+      <div class="row">
+        <div class="col"><strong>Saldo:</strong> R$ <span id="saldo">0.00</span></div>
+        <div class="col"><button class="secondary" onclick="logout()">Sair</button></div>
+      </div>
+    </div>
 
-</div>
-
-<!-- PLAYER (SEM PLACEHOLDER EXTERNO) -->
-<img
-  id="playerAlbumArt"
-  style="display:none"
-  src="data:image/svg+xml;utf8,
-  <svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'>
-    <rect width='100%' height='100%' fill='%23111418'/>
-    <text x='50%' y='50%'
-          dominant-baseline='middle'
-          text-anchor='middle'
-          fill='%2300ff88'
-          font-size='14'>MIV</text>
-  </svg>"
->
+    <div class="card">
+      <h3>Músicas</h3>
+      <table>
+        <thead><tr><th>Nome</th><th>Ações Disp.</th><th>Preço</th><th>Qtd</th><th></th></tr></thead>
+        <tbody id="musicas"></tbody>
+      </table>
+      <div id="buy_msg" class="msg"></div>
+    </div>
+  </div>
+</main>
 
 <script>
-/* ================= CONFIG ================= */
-const API_URL = 'https://script.google.com/macros/s/AKfycbwoo1T0Cgw6TVqCyCY7CniAsg0pD3guOAVs5BNutvbvqQaYOMlAfCO6HLw2REil4UY/exec';
+// ===== CONFIG =====
+const API_URL = 'COLE_AQUI_A_URL_DO_SEU_APPS_SCRIPT';
 
-/* ================= STATE ================= */
-let currentUser = null;
+// ===== STATE =====
+let session = JSON.parse(localStorage.getItem('miv_session') || 'null');
 
-/* ================= INIT ================= */
+// ===== INIT =====
 window.onload = () => {
-  const saved = localStorage.getItem('user');
-  if (saved) {
-    currentUser = JSON.parse(saved);
+  if (session && session.user?.id) {
     showApp();
     loadSaldo();
     loadMusicas();
   }
 };
 
-/* ================= AUTH ================= */
-function showRegister() {
-  loginForm.classList.add('d-none');
-  registerForm.classList.remove('d-none');
+// ===== HELPERS =====
+function qs(id){return document.getElementById(id)}
+function msg(el, text, ok=true){el.className='msg '+(ok?'ok':'err'); el.innerText=text}
+async function api(body){
+  const res = await fetch(API_URL, {method:'POST', body: JSON.stringify(body)});
+  return res.json();
 }
 
-function showLogin() {
-  registerForm.classList.add('d-none');
-  loginForm.classList.remove('d-none');
+// ===== AUTH =====
+async function register(){
+  const data = {
+    action:'register',
+    nome: qs('r_nome').value,
+    email: qs('r_email').value,
+    password: qs('r_pass').value,
+    tipo: qs('r_tipo').value
+  };
+  const r = await api(data);
+  if(r.success) msg(qs('r_msg'), r.message || 'Cadastrado');
+  else msg(qs('r_msg'), r.error, false);
 }
 
-async function handleRegister() {
-  const nome = regName.value;
-  const email = regEmail.value;
-  const password = regPassword.value;
-  const tipo = regType.value;
-
-  const res = await fetch(API_URL, {
-    method:'POST',
-    body: JSON.stringify({ action:'register', nome, email, password, tipo })
-  });
-  const data = await res.json();
-
-  alert(data.message || data.error);
-  if (data.success) showLogin();
-}
-
-async function handleLogin() {
-  const email = loginEmail.value;
-  const password = loginPassword.value;
-
-  const res = await fetch(API_URL, {
-    method:'POST',
-    body: JSON.stringify({ action:'login', email, password })
-  });
-  const data = await res.json();
-
-  if (!data.success) return alert(data.error);
-
-  currentUser = data.user;
-  localStorage.setItem('user', JSON.stringify(currentUser));
+async function login(){
+  const data = {action:'login', email: qs('l_email').value, password: qs('l_pass').value};
+  const r = await api(data);
+  if(!r.success){ msg(qs('l_msg'), r.error, false); return; }
+  session = {user: r.user};
+  localStorage.setItem('miv_session', JSON.stringify(session));
   showApp();
   loadSaldo();
   loadMusicas();
 }
 
-function logout() {
-  localStorage.clear();
-  location.reload();
+function logout(){ localStorage.removeItem('miv_session'); location.reload(); }
+
+function showApp(){
+  qs('auth').classList.add('hide');
+  qs('app').classList.remove('hide');
+  qs('userBox').innerText = session.user.nome + ' ('+session.user.tipo+')';
 }
 
-function showApp() {
-  authScreen.classList.add('d-none');
-  mainApp.classList.remove('d-none');
+// ===== DATA =====
+async function loadSaldo(){
+  const r = await api({action:'getSaldo', userId: session.user.id});
+  if(r.success) qs('saldo').innerText = (r.saldo||0).toFixed(2);
 }
 
-/* ================= DATA ================= */
-async function loadSaldo() {
-  const res = await fetch(API_URL, {
-    method:'POST',
-    body: JSON.stringify({ action:'getSaldo', userId: currentUser.id })
-  });
-  const data = await res.json();
-  if (data.success) {
-    currentBalance.innerText = 'R$ ' + data.saldo.toFixed(2);
-  }
-}
-
-async function loadMusicas() {
-  const res = await fetch(API_URL, {
-    method:'POST',
-    body: JSON.stringify({ action:'getMusicas' })
-  });
-  const data = await res.json();
-
-  marketplaceContent.innerHTML = '';
-  if (!data.musicas) return;
-
-  data.musicas.forEach(m => {
-    marketplaceContent.innerHTML += `
-      <div class="col-md-4">
-        <div class="card p-3">
-          <h5>${m.nome}</h5>
-          <small class="text-muted">Ações: ${m.acoesDisponiveis}</small>
-          <p>R$ ${m.precoAcao.toFixed(2)}</p>
-          <button class="btn btn-miv btn-sm" onclick="buy('${m.id}')">Comprar 1</button>
-        </div>
-      </div>
-    `;
+async function loadMusicas(){
+  const r = await api({action:'getMusicas'});
+  if(!r.success) return;
+  const tb = qs('musicas'); tb.innerHTML='';
+  r.musicas.forEach(m=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${m.nome}</td>
+      <td>${m.acoesDisponiveis}</td>
+      <td>R$ ${Number(m.precoAcao).toFixed(2)}</td>
+      <td><input id="q_${m.id}" type="number" min="1" style="width:70px"></td>
+      <td><button onclick="buy('${m.id}', ${m.precoAcao})">Comprar</button></td>`;
+    tb.appendChild(tr);
   });
 }
 
-async function buy(musicaId) {
-  const res = await fetch(API_URL, {
-    method:'POST',
-    body: JSON.stringify({
-      action:'buy',
-      userId: currentUser.id,
-      musicaId,
-      quantidade:1
-    })
-  });
-  const data = await res.json();
-  alert(data.message || data.error);
-  loadSaldo();
-  loadMusicas();
+async function buy(musicaId, preco){
+  const qtd = Number(qs('q_'+musicaId).value);
+  if(!qtd||qtd<=0){ msg(qs('buy_msg'),'Quantidade inválida',false); return; }
+  const r = await api({action:'buy', userId: session.user.id, musicaId, quantidade:qtd});
+  if(!r.success){ msg(qs('buy_msg'), r.error, false); return; }
+  msg(qs('buy_msg'), r.message);
+  loadSaldo(); loadMusicas();
 }
 </script>
-
 </body>
 </html>
