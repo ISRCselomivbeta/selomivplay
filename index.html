@@ -1686,26 +1686,26 @@
         }
 
         async function loadMarketplace() {
-            try {
-                console.log('Carregando marketplace...');
-                
-                // Primeiro tenta carregar da API
-                const params = new URLSearchParams({
-                    action: 'get_musicas'
-                });
-                
-                const response = await fetch(`${CONFIG.API_URL}?${params.toString()}`);
-                const data = await response.json();
-                
-                if (data.success && data.data) {
-                    console.log('Músicas carregadas da API:', data.data.length);
-                    state.playlist = data.data.filter(music => 
-                        music && (music.status || '').toLowerCase() === 'ativo'
-                    ) || [];
-                } else {
-                    console.log('API não retornou dados, usando dados de exemplo');
-                    state.playlist = getSampleMusic();
-                }
+  console.log('Carregando marketplace...');
+  
+  try {
+    const response = await fetch('/api/proxy?action=getMusics');
+    const data = await response.json();
+    
+    if (data.success && data.data && data.data.length > 0) {
+      state.playlist = data.data;
+      console.log('Músicas reais carregadas:', state.playlist.length);
+    } else {
+      console.log('API retornou vazio, usando exemplos');
+      state.playlist = getSampleMusic();
+    }
+  } catch (err) {
+    console.error('Erro ao carregar músicas:', err);
+    state.playlist = getSampleMusic();
+  }
+  
+  renderMarketplace();
+}
                 
                 renderMarketplace();
             } catch (error) {
