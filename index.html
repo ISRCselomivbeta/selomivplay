@@ -1703,14 +1703,9 @@
     console.error('Erro ao carregar músicas:', err);
     state.playlist = getSampleMusic();
   }
-            renderMarketplace();
-            } catch (error) {
-                console.error('Error loading marketplace:', error);
-                state.playlist = getSampleMusic();
-                renderMarketplace();
-                showToast('Usando dados de exemplo', 'info');
-            }
-        }
+  
+  renderMarketplace();
+}
 
         function getSampleMusic() {
             return [
