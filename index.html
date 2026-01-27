@@ -1,3 +1,1434 @@
+# **CÓDIGO COMPLETO ATUALIZADO - SELO MIV**
+
+## **1. CÓDIGO DO GOOGLE APPS SCRIPT (backend.gs)**
+
+```javascript
+// ========== CONFIGURAÇÃO DO WEB APP ========== 
+const SPREADSHEET_ID = '1CwF9hf-lsjYkol-V7r3WOT5ld3dQFqKRTQ8nHcV45Wo';
+
+// ========== FUNÇÕES PRINCIPAIS ==========
+function doGet(e) {
+  console.log('📥 GET Recebido');
+  
+  const params = e?.parameter || {};
+  const action = params.action || params.acao;
+  
+  // Se for uma chamada de API
+  if (action) {
+    console.log(`🎯 API GET: ${action}`, params);
+    
+    try {
+      let result;
+      
+      switch(action) {
+        case 'test':
+          result = {
+            success: true,
+            message: '🎵 MIV API ONLINE v1.0',
+            timestamp: new Date().toISOString(),
+            endpoints: ['test', 'login', 'register', 'get_musicas', 'get_saldo', 'setup']
+          };
+          break;
+          
+        case 'get_musicas':
+          result = getMusicas();
+          break;
+          
+        case 'login':
+          result = handleLogin(params);
+          break;
+          
+        case 'register':
+          result = handleRegister(params);
+          break;
+          
+        case 'get_saldo':
+          result = getSaldo(params);
+          break;
+          
+        case 'get_carteira':
+          result = getCarteira(params);
+          break;
+          
+        case 'get_extrato':
+          result = getExtrato(params);
+          break;
+          
+        case 'get_historico_financeiro':
+          result = getHistoricoFinanceiro(params.user_id);
+          break;
+          
+        case 'get_resumo':
+          result = getResumoPortfolio(params);
+          break;
+          
+        case 'get_artist_data':
+          result = getArtistData(params);
+          break;
+          
+        case 'setup':
+          result = setupSpreadsheet();
+          break;
+          
+        case 'ping':
+          result = { success: true, pong: Date.now() };
+          break;
+          
+        default:
+          result = {
+            success: false,
+            message: `Ação '${action}' não suportada via GET`,
+            supported: ['test', 'get_musicas', 'login', 'register', 'get_saldo', 'get_carteira', 'get_extrato', 'setup', 'ping']
+          };
+      }
+      
+      console.log('✅ Resultado:', JSON.stringify(result).substring(0, 200));
+      return ContentService
+        .createTextOutput(JSON.stringify(result))
+        .setMimeType(ContentService.MimeType.JSON);
+        
+    } catch (error) {
+      console.error('❌ Erro no GET:', error);
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Erro interno',
+          error: error.message
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+  
+  // Se não for API, retorna página HTML básica
+  return HtmlService.createHtmlOutput(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>🎵 SELO MIV - Backend</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 40px; text-align: center; background: #07090c; color: white; }
+        h1 { color: #00ff88; margin-bottom: 20px; }
+        .card { background: #111418; padding: 30px; border-radius: 15px; max-width: 600px; margin: 0 auto; border: 1px solid #1e2329; }
+        code { background: #000; color: #00ff88; padding: 5px 10px; border-radius: 5px; }
+        .endpoint { text-align: left; margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; }
+      </style>
+    </head>
+    <body>
+      <h1>🎵 SELO MIV - Backend</h1>
+      <div class="card">
+        <h3>✅ API Funcionando</h3>
+        <p>Sistema de investimento em música</p>
+        
+        <div class="endpoint">
+          <h4>📡 Endpoints Disponíveis:</h4>
+          <p><code>GET ?action=test</code> - Testar API</p>
+          <p><code>GET ?action=get_musicas</code> - Listar músicas</p>
+          <p><code>GET ?action=login&email=...&password=...</code> - Login</p>
+          <p><code>GET ?action=setup</code> - Configurar banco de dados</p>
+        </div>
+        
+        <p><strong>Frontend:</strong> <a href="https://selomivplay.vercel.app" target="_blank">selomivplay.vercel.app</a></p>
+        <p><small>${new Date().toLocaleString('pt-BR')}</small></p>
+      </div>
+    </body>
+    </html>
+  `).setTitle('SELO MIV - Backend');
+}
+
+function doPost(e) {
+  console.log('📨 POST Recebido');
+  
+  // Se for chamada vazia (do Vercel)
+  if (!e) {
+    console.log('📭 POST vazio - retornando status');
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: true,
+        message: 'MIV API POST endpoint',
+        note: 'Para API use GET: ?action=nome',
+        timestamp: new Date().toISOString()
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  console.log('📦 Dados POST:', JSON.stringify(e).substring(0, 500));
+  
+  let params = {};
+  
+  // Pega dados do FormData
+  if (e.parameter) {
+    params = e.parameter;
+    console.log('📋 Parâmetros URL:', params);
+  }
+  
+  // Pega dados do JSON body
+  if (e.postData && e.postData.contents) {
+    try {
+      const jsonData = JSON.parse(e.postData.contents);
+      params = { ...params, ...jsonData };
+      console.log('📦 JSON Body:', jsonData);
+    } catch (error) {
+      console.log('⚠️ Não é JSON válido:', error.message);
+    }
+  }
+  
+  const action = params.action || params.acao;
+  
+  if (!action) {
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Parâmetro "action" é obrigatório',
+        usage: 'Use ?action=test ou envie JSON com {"action": "nome"}'
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  console.log(`🎯 Processando ação POST: ${action}`);
+  
+  try {
+    let result;
+    
+    switch(action) {
+      case 'login':
+        result = handleLogin(params);
+        break;
+      case 'register':
+        result = handleRegister(params);
+        break;
+      case 'get_musicas':
+        result = getMusicas();
+        break;
+      case 'get_saldo':
+        result = getSaldo(params);
+        break;
+      case 'get_carteira':
+        result = getCarteira(params);
+        break;
+      case 'get_extrato':
+        result = getExtrato(params);
+        break;
+      case 'get_historico_financeiro':
+        result = getHistoricoFinanceiro(params.user_id);
+        break;
+      case 'get_resumo':
+        result = getResumoPortfolio(params);
+        break;
+      case 'buy':
+        result = buyShares(params);
+        break;
+      case 'uploadMusic':
+        result = uploadMusic(params);
+        break;
+      case 'get_artist_data':
+        result = getArtistData(params);
+        break;
+      case 'confirmar_deposito':
+        result = confirmarDepositoPix(params.user_id, params.valor, params.referencia);
+        break;
+      case 'solicitar_saque':
+        result = solicitarSaque(params.user_id, params.valor);
+        break;
+      case 'confirmar_saque':
+        result = confirmarSaque(params.user_id, params.valor, params.referencia);
+        break;
+      case 'test':
+        result = { 
+          success: true, 
+          message: 'API POST funcionando',
+          action: action,
+          params: params,
+          timestamp: new Date().toISOString()
+        };
+        break;
+      default:
+        result = {
+          success: false,
+          message: `Ação '${action}' não implementada`
+        };
+    }
+    
+    console.log('✅ Resultado POST:', JSON.stringify(result).substring(0, 200));
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    console.error('💥 Erro no POST:', error);
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        message: error.message,
+        stack: error.stack
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ========== FUNÇÕES DO BANCO DE DADOS ==========
+function getSpreadsheet() {
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
+// ========== FUNÇÕES DE USUÁRIO ==========
+function handleLogin(params) {
+  console.log('🔐 handleLogin chamado:', params);
+  
+  if (!params || typeof params !== 'object') {
+    return { success: false, message: 'Parâmetros inválidos' };
+  }
+  
+  const email = params.email || params.loginEmail || '';
+  const password = params.pass || params.password || params.loginPassword || '';
+  
+  console.log('Tentando login:', { email: email.substring(0, 10) + '...', password: '***' });
+  
+  if (!email || !password) {
+    return { success: false, message: 'Email e senha são obrigatórios' };
+  }
+  
+  try {
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('USUARIOS');
+    
+    if (!sheet) {
+      return { 
+        success: false, 
+        message: 'Sistema não configurado. Execute ?action=setup primeiro.',
+        tip: 'Acesse: ' + ScriptApp.getService().getUrl() + '?action=setup'
+      };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return { success: false, message: 'Nenhum usuário cadastrado. Execute setup.' };
+    }
+    
+    const headers = data[0];
+    const emailIndex = headers.indexOf('EMAIL');
+    const senhaIndex = headers.indexOf('SENHA');
+    const nomeIndex = headers.indexOf('NOME');
+    const tipoIndex = headers.indexOf('TIPO');
+    const saldoIndex = headers.indexOf('SALDO');
+    const idIndex = headers.indexOf('ID');
+    const acessoIndex = headers.indexOf('ACESSO');
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const userEmail = String(row[emailIndex] || '').trim();
+      const userSenha = String(row[senhaIndex] || '').trim();
+      
+      if (userEmail === email && userSenha === password) {
+        console.log('✅ Login bem-sucedido para:', email);
+        
+        const user = {
+          id: row[idIndex] || i,
+          nome: row[nomeIndex] || '',
+          email: userEmail,
+          tipo: row[tipoIndex] || 'ouvinte',
+          saldo: parseFloat(row[saldoIndex]) || 0,
+          acesso: row[acessoIndex] || 'pendente',
+          token: 'miv_' + Date.now() + '_' + (row[idIndex] || i)
+        };
+        
+        if (user.acesso !== 'aprovado') {
+          return {
+            success: false,
+            message: 'Conta aguardando aprovação administrativa'
+          };
+        }
+        
+        return {
+          success: true,
+          data: user
+        };
+      }
+    }
+    
+    return { success: false, message: 'Email ou senha incorretos' };
+    
+  } catch (error) {
+    console.error('Erro em handleLogin:', error);
+    return { success: false, message: 'Erro interno: ' + error.message };
+  }
+}
+
+function handleRegister(params) {
+  console.log('📝 handleRegister chamado:', params);
+  
+  if (!params || typeof params !== 'object') {
+    return { success: false, message: 'Parâmetros inválidos' };
+  }
+  
+  const nome = params.nome || params.registerName || '';
+  const email = params.email || params.registerEmail || '';
+  const password = params.pass || params.password || params.registerPassword || '';
+  const tipo = params.tipo || params.registerType || '';
+  const workLink = params.workLink || params.registerLink || '';
+  
+  if (!nome || !email || !password || !tipo) {
+    return { success: false, message: 'Preencha todos os campos obrigatórios' };
+  }
+  
+  if (password.length < 6) {
+    return { success: false, message: 'Senha deve ter pelo menos 6 caracteres' };
+  }
+  
+  if (tipo === 'artista' && !workLink) {
+    return { success: false, message: 'Artistas devem informar link do trabalho' };
+  }
+  
+  try {
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('USUARIOS');
+    
+    if (!sheet) {
+      return { success: false, message: 'Sistema não configurado' };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const emailIndex = headers.indexOf('EMAIL');
+    
+    // Verifica se email já existe
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][emailIndex]).trim() === email) {
+        return { success: false, message: 'Email já cadastrado' };
+      }
+    }
+    
+    // Gera novo ID
+    const lastId = data[data.length - 1][0] || 0;
+    const newId = lastId + 1;
+    
+    // Adiciona novo usuário
+    sheet.appendRow([
+      newId,
+      nome,
+      email,
+      password,
+      tipo,
+      workLink,
+      0, // saldo inicial
+      'pendente', // acesso
+      new Date().toISOString() // data_cadastro
+    ]);
+    
+    logEvent('REGISTRO', `Novo usuário: ${nome} (${email}) - Tipo: ${tipo}`);
+    
+    console.log('✅ Usuário registrado com sucesso:', { id: newId, email });
+    
+    return {
+      success: true,
+      message: 'Conta criada com sucesso! Aguarde aprovação.',
+      data: { id: newId, nome: nome }
+    };
+    
+  } catch (error) {
+    console.error('Erro em handleRegister:', error);
+    return { success: false, message: 'Erro ao criar conta: ' + error.message };
+  }
+}
+
+// ========== FUNÇÕES DE MÚSICAS ==========
+function getMusicas() {
+  try {
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('MUSICAS');
+    
+    if (!sheet) {
+      console.log('📭 Sheet MUSICAS não encontrada');
+      return { success: true, data: [], message: 'Nenhuma música cadastrada' };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return { success: true, data: [] };
+    }
+    
+    const headers = data[0];
+    
+    const musicas = data.slice(1).map((row, index) => {
+      const obj = {};
+      headers.forEach((header, i) => {
+        obj[header.toLowerCase()] = row[i];
+      });
+      obj.id = obj.id || (index + 1);
+      return obj;
+    }).filter(m => !m.status || m.status === 'ativo');
+    
+    console.log(`✅ Retornando ${musicas.length} músicas`);
+    return {
+      success: true,
+      data: musicas
+    };
+    
+  } catch (error) {
+    console.error('Erro em getMusicas:', error);
+    return {
+      success: false,
+      message: 'Erro ao carregar músicas: ' + error.message,
+      data: []
+    };
+  }
+}
+
+function uploadMusic(params) {
+  console.log('🎶 uploadMusic chamado:', params);
+  
+  if (!params || typeof params !== 'object') {
+    return { success: false, message: 'Parâmetros inválidos' };
+  }
+  
+  const user_id = params.user_id || '';
+  const titulo = params.titulo || params.musicTitle || '';
+  const artista = params.artista || params.musicArtist || '';
+  const genero = params.genero || params.musicGenre || '';
+  const link_youtube = params.link_youtube || params.musicYoutube || '';
+  const link_capa = params.link_capa || params.musicCover || '';
+  const valor_acao = params.valor_acao || params.musicPrice || '10';
+  const percentual_disponivel = params.percentual_disponivel || params.musicPercent || '20';
+  
+  if (!titulo || !genero || !link_youtube) {
+    return { success: false, message: 'Preencha título, gênero e link do YouTube' };
+  }
+  
+  try {
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('MUSICAS');
+    
+    if (!sheet) {
+      return { success: false, message: 'Erro no servidor' };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const lastId = data[data.length - 1][0] || 0;
+    const newId = lastId + 1;
+    
+    sheet.appendRow([
+      newId,
+      titulo,
+      artista,
+      genero,
+      link_youtube,
+      link_capa || '',
+      parseFloat(valor_acao) || 10.00,
+      parseFloat(percentual_disponivel) || 20.00,
+      0, // acoes_vendidas inicial
+      'ativo',
+      new Date().toISOString()
+    ]);
+    
+    logEvent('UPLOAD_MUSICA', `Usuário ${user_id} cadastrou música: ${titulo}`);
+    
+    return {
+      success: true,
+      message: 'Música cadastrada com sucesso!',
+      data: { id: newId, titulo: titulo }
+    };
+    
+  } catch (error) {
+    console.error('Erro em uploadMusic:', error);
+    return { success: false, message: 'Erro ao cadastrar música: ' + error.message };
+  }
+}
+
+// ========== FUNÇÕES FINANCEIRAS ==========
+function criarSheetTransacoes() {
+  try {
+    const ss = getSpreadsheet();
+    let sheet = ss.getSheetByName('TRANSACOES');
+
+    if (!sheet) {
+      sheet = ss.insertSheet('TRANSACOES');
+      sheet.appendRow([
+        'ID',
+        'USER_ID',
+        'TIPO',
+        'VALOR',
+        'SALDO_ANTES',
+        'SALDO_DEPOIS',
+        'REFERENCIA',
+        'STATUS',
+        'DATA'
+      ]);
+      
+      sheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#f0f0f0');
+      sheet.setFrozenRows(1);
+      sheet.autoResizeColumns(1, 9);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Erro ao criar sheet TRANSACOES:', error);
+    return false;
+  }
+}
+
+function registrarTransacao(userId, tipo, valor, saldoAntes, saldoDepois, referencia, status) {
+  try {
+    criarSheetTransacoes();
+    
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('TRANSACOES');
+    
+    const data = sheet.getDataRange().getValues();
+    const lastId = data.length > 1 ? Number(data[data.length - 1][0]) || 0 : 0;
+
+    sheet.appendRow([
+      lastId + 1,
+      userId,
+      tipo,
+      valor,
+      saldoAntes,
+      saldoDepois,
+      referencia || '',
+      status || 'CONFIRMADO',
+      new Date().toISOString()
+    ]);
+    
+    return true;
+  } catch (error) {
+    console.error('Erro em registrarTransacao:', error);
+    return false;
+  }
+}
+
+function getSaldo(params) {
+  console.log('💰 getSaldo chamado com:', params);
+  
+  if (!params || !params.token) {
+    return { success: false, message: 'Token não fornecido' };
+  }
+  
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('USUARIOS');
+  
+  if (!sheet) {
+    return { success: false, message: 'Erro no servidor' };
+  }
+  
+  try {
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIndex = headers.indexOf('ID');
+    const saldoIndex = headers.indexOf('SALDO');
+    
+    // Extrai user_id do token (formato: miv_TIMESTAMP_USERID)
+    const tokenParts = params.token.split('_');
+    const user_id = tokenParts.length >= 3 ? tokenParts[2] : params.token;
+    
+    console.log('Buscando saldo para user_id:', user_id);
+    
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][idIndex]) === String(user_id)) {
+        const saldo = parseFloat(data[i][saldoIndex]) || 0;
+        console.log('✅ Saldo encontrado:', saldo);
+        return {
+          success: true,
+          data: { saldo: saldo }
+        };
+      }
+    }
+    
+    console.log('❌ Usuário não encontrado para token');
+    return { success: false, message: 'Usuário não encontrado' };
+    
+  } catch (error) {
+    console.error('Erro em getSaldo:', error);
+    return { success: false, message: 'Erro ao buscar saldo: ' + error.message };
+  }
+}
+
+function getResumoPortfolio(params) {
+  console.log('📊 getResumoPortfolio chamado com:', params);
+  
+  if (!params || !params.token) {
+    return { success: false, message: 'Token não fornecido' };
+  }
+  
+  try {
+    // Obtém saldo
+    const saldoRes = getSaldo(params);
+    if (!saldoRes.success) {
+      return saldoRes;
+    }
+    
+    const saldo = saldoRes.data.saldo;
+    
+    // Extrai user_id do token
+    const tokenParts = params.token.split('_');
+    const user_id = tokenParts.length >= 3 ? tokenParts[2] : params.token;
+    
+    // Obtém valor da carteira
+    const carteiraRes = getCarteira({ user_id: user_id });
+    let patrimonio = 0;
+    
+    if (carteiraRes.success && carteiraRes.data) {
+      patrimonio = carteiraRes.data.reduce((total, item) => {
+        return total + (parseFloat(item.valor_total) || 0);
+      }, 0);
+    }
+    
+    const total = saldo + patrimonio;
+    
+    console.log('✅ Resumo portfolio:', { saldo, patrimonio, total });
+    
+    return {
+      success: true,
+      data: {
+        saldo: saldo,
+        patrimonio: patrimonio,
+        total: total
+      }
+    };
+    
+  } catch (error) {
+    console.error('Erro em getResumoPortfolio:', error);
+    return {
+      success: false,
+      message: 'Erro ao carregar resumo: ' + error.message,
+      data: { saldo: 0, patrimonio: 0, total: 0 }
+    };
+  }
+}
+
+function buyShares(params) {
+  console.log('💳 buyShares chamado com:', params);
+  
+  if (!params || !params.user_id || !params.music_id || !params.quantidade || !params.valor_total) {
+    return { success: false, message: 'Parâmetros incompletos' };
+  }
+  
+  const user_id = params.user_id;
+  const music_id = params.music_id;
+  const quantidadeNum = parseInt(params.quantidade) || 0;
+  const valorTotalNum = parseFloat(params.valor_total) || 0;
+  
+  if (quantidadeNum <= 0) {
+    return { success: false, message: 'Quantidade inválida' };
+  }
+  
+  if (valorTotalNum <= 0) {
+    return { success: false, message: 'Valor inválido' };
+  }
+  
+  const ss = getSpreadsheet();
+  
+  try {
+    // 1. Verifica saldo do usuário
+    const usersSheet = ss.getSheetByName('USUARIOS');
+    const usersData = usersSheet.getDataRange().getValues();
+    const userHeaders = usersData[0];
+    
+    let userRow = -1;
+    let userSaldo = 0;
+    let userNome = '';
+    
+    for (let i = 1; i < usersData.length; i++) {
+      if (String(usersData[i][userHeaders.indexOf('ID')]) === String(user_id)) {
+        userRow = i + 1;
+        userSaldo = parseFloat(usersData[i][userHeaders.indexOf('SALDO')]) || 0;
+        userNome = usersData[i][userHeaders.indexOf('NOME')] || '';
+        break;
+      }
+    }
+    
+    if (userRow === -1) {
+      return { success: false, message: 'Usuário não encontrado' };
+    }
+    
+    if (userSaldo < valorTotalNum) {
+      return {
+        success: false,
+        message: `Saldo insuficiente. Disponível: R$ ${userSaldo.toFixed(2)}`
+      };
+    }
+    
+    // 2. Verifica disponibilidade da música
+    const musicSheet = ss.getSheetByName('MUSICAS');
+    const musicData = musicSheet.getDataRange().getValues();
+    const musicHeaders = musicData[0];
+    
+    let musicRow = -1;
+    let musicObj = {};
+    
+    for (let i = 1; i < musicData.length; i++) {
+      if (String(musicData[i][musicHeaders.indexOf('ID')]) === String(music_id)) {
+        musicRow = i + 1;
+        musicHeaders.forEach((header, index) => {
+          musicObj[header.toLowerCase()] = musicData[i][index];
+        });
+        break;
+      }
+    }
+    
+    if (musicRow === -1) {
+      return { success: false, message: 'Música não encontrada' };
+    }
+    
+    const percentualDisponivel = parseFloat(musicObj.percentual_disponivel) || 0;
+    const acoesVendidas = parseFloat(musicObj.acoes_vendidas) || 0;
+    const totalAcoes = (percentualDisponivel / 0.01);
+    const acoesDisponiveis = totalAcoes - acoesVendidas;
+    
+    if (quantidadeNum > acoesDisponiveis) {
+      return {
+        success: false,
+        message: `Apenas ${acoesDisponiveis} ações disponíveis`
+      };
+    }
+    
+    // 3. Processa a compra
+    const novoSaldo = userSaldo - valorTotalNum;
+    usersSheet.getRange(userRow, userHeaders.indexOf('SALDO') + 1).setValue(novoSaldo);
+    
+    const novasAcoesVendidas = acoesVendidas + quantidadeNum;
+    musicSheet.getRange(musicRow, musicHeaders.indexOf('ACOES_VENDIDAS') + 1)
+      .setValue(novasAcoesVendidas);
+    
+    // 4. Registro financeiro LEDGER
+    registrarTransacao(
+      user_id,
+      'COMPRA_ACOES',
+      -valorTotalNum,
+      userSaldo,
+      novoSaldo,
+      'COMPRA_MUSICA_' + music_id,
+      'CONFIRMADO'
+    );
+    
+    // 5. Adiciona à carteira
+    const carteiraSheet = ss.getSheetByName('CARTEIRA');
+    const carteiraData = carteiraSheet.getDataRange().getValues();
+    const lastCarteiraId = carteiraData.length > 1 ? carteiraData[carteiraData.length - 1][0] || 0 : 0;
+    const novoCarteiraId = lastCarteiraId + 1;
+    
+    const valorPorAcao = valorTotalNum / quantidadeNum;
+    
+    carteiraSheet.appendRow([
+      novoCarteiraId,
+      user_id,
+      music_id,
+      quantidadeNum,
+      valorPorAcao,
+      valorTotalNum,
+      new Date().toISOString()
+    ]);
+    
+    // 6. Adiciona ao extrato
+    const extratoSheet = ss.getSheetByName('EXTRATO');
+    if (extratoSheet) {
+      const extratoData = extratoSheet.getDataRange().getValues();
+      const lastExtratoId = extratoData.length > 1 ? extratoData[extratoData.length - 1][0] || 0 : 0;
+      const novoExtratoId = lastExtratoId + 1;
+      
+      extratoSheet.appendRow([
+        novoExtratoId,
+        user_id,
+        'COMPRA_ACOES',
+        `Compra de ${quantidadeNum} ação(ões) de "${musicObj.titulo}" - ${musicObj.artista}`,
+        -valorTotalNum,
+        new Date().toISOString()
+      ]);
+    }
+    
+    // 7. Log
+    logEvent('COMPRA', `Usuário ${userNome} (${user_id}) comprou ${quantidadeNum} ações da música ${music_id}`);
+    
+    console.log('✅ Compra realizada com sucesso:', {
+      user_id,
+      novo_saldo: novoSaldo,
+      saldo_anterior: userSaldo
+    });
+    
+    return {
+      success: true,
+      message: 'Compra realizada com sucesso!',
+      data: {
+        novo_saldo: novoSaldo,
+        saldo_anterior: userSaldo
+      }
+    };
+    
+  } catch (error) {
+    console.error('Erro em buyShares:', error);
+    return { success: false, message: 'Erro ao processar compra: ' + error.message };
+  }
+}
+
+function confirmarDepositoPix(userId, valor, referenciaMP) {
+  console.log('📥 confirmarDepositoPix chamado:', { userId, valor, referenciaMP });
+  
+  const ss = getSpreadsheet();
+  const usersSheet = ss.getSheetByName('USUARIOS');
+  const data = usersSheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const colId = headers.indexOf('ID');
+  const colSaldo = headers.indexOf('SALDO');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][colId]) === String(userId)) {
+      const saldoAntes = Number(data[i][colSaldo]) || 0;
+      const saldoDepois = saldoAntes + Number(valor);
+
+      usersSheet.getRange(i + 1, colSaldo + 1).setValue(saldoDepois);
+
+      registrarTransacao(
+        userId,
+        'DEPOSITO_CONFIRMADO',
+        Number(valor),
+        saldoAntes,
+        saldoDepois,
+        referenciaMP,
+        'CONFIRMADO'
+      );
+
+      // Adiciona ao extrato
+      const extratoSheet = ss.getSheetByName('EXTRATO');
+      if (extratoSheet) {
+        const extratoData = extratoSheet.getDataRange().getValues();
+        const lastExtratoId = extratoData.length > 1 ? extratoData[extratoData.length - 1][0] || 0 : 0;
+        
+        extratoSheet.appendRow([
+          lastExtratoId + 1,
+          userId,
+          'DEPOSITO',
+          `Depósito via PIX - ${referenciaMP}`,
+          Number(valor),
+          new Date().toISOString()
+        ]);
+      }
+
+      return { success: true, message: 'Depósito confirmado!' };
+    }
+  }
+
+  return { success: false, error: 'Usuário não encontrado' };
+}
+
+function solicitarSaque(userId, valor) {
+  console.log('📤 solicitarSaque chamado:', { userId, valor });
+  
+  const ss = getSpreadsheet();
+  const usersSheet = ss.getSheetByName('USUARIOS');
+  const data = usersSheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const colId = headers.indexOf('ID');
+  const colSaldo = headers.indexOf('SALDO');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][colId]) === String(userId)) {
+      const saldoAtual = Number(data[i][colSaldo]) || 0;
+
+      if (saldoAtual < valor) {
+        return { success: false, error: 'Saldo insuficiente' };
+      }
+
+      registrarTransacao(
+        userId,
+        'SAQUE_SOLICITADO',
+        -valor,
+        saldoAtual,
+        saldoAtual,
+        '',
+        'PENDENTE'
+      );
+
+      return { success: true, message: 'Saque solicitado com sucesso!' };
+    }
+  }
+
+  return { success: false, error: 'Usuário não encontrado' };
+}
+
+function confirmarSaque(userId, valor, referenciaMP) {
+  console.log('✅ confirmarSaque chamado:', { userId, valor, referenciaMP });
+  
+  const ss = getSpreadsheet();
+  const usersSheet = ss.getSheetByName('USUARIOS');
+  const data = usersSheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const colId = headers.indexOf('ID');
+  const colSaldo = headers.indexOf('SALDO');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][colId]) === String(userId)) {
+      const saldoAntes = Number(data[i][colSaldo]) || 0;
+      const saldoDepois = saldoAntes - Number(valor);
+
+      usersSheet.getRange(i + 1, colSaldo + 1).setValue(saldoDepois);
+
+      registrarTransacao(
+        userId,
+        'SAQUE_PAGO',
+        -valor,
+        saldoAntes,
+        saldoDepois,
+        referenciaMP,
+        'CONFIRMADO'
+      );
+
+      // Adiciona ao extrato
+      const extratoSheet = ss.getSheetByName('EXTRATO');
+      if (extratoSheet) {
+        const extratoData = extratoSheet.getDataRange().getValues();
+        const lastExtratoId = extratoData.length > 1 ? extratoData[extratoData.length - 1][0] || 0 : 0;
+        
+        extratoSheet.appendRow([
+          lastExtratoId + 1,
+          userId,
+          'SAQUE',
+          `Saque realizado - ${referenciaMP}`,
+          -Number(valor),
+          new Date().toISOString()
+        ]);
+      }
+
+      return { success: true, message: 'Saque confirmado!' };
+    }
+  }
+
+  return { success: false, error: 'Usuário não encontrado' };
+}
+
+function getHistoricoFinanceiro(userId) {
+  console.log('📋 getHistoricoFinanceiro chamado:', userId);
+  
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('TRANSACOES');
+  
+  if (!sheet) {
+    return { success: true, data: [], message: 'Nenhuma transação encontrada' };
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  const historico = data.slice(1)
+    .filter(row => row[headers.indexOf('USER_ID')].toString() === String(userId))
+    .map(row => {
+      const obj = {};
+      headers.forEach((header, index) => {
+        obj[header.toLowerCase()] = row[index];
+      });
+      return obj;
+    })
+    .sort((a, b) => new Date(b.data) - new Date(a.data));
+  
+  return {
+    success: true,
+    data: historico
+  };
+}
+
+// ========== FUNÇÕES DE PORTFÓLIO E EXTRATO ==========
+function getCarteira(params) {
+  console.log('💼 getCarteira chamado com:', params);
+  
+  if (!params || !params.user_id) {
+    return { success: true, data: [] };
+  }
+  
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('CARTEIRA');
+  
+  if (!sheet) {
+    return { success: true, data: [] };
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  const carteira = data.slice(1)
+    .filter(row => row[headers.indexOf('USER_ID')].toString() === String(params.user_id))
+    .map(row => {
+      const obj = {};
+      headers.forEach((header, index) => {
+        obj[header.toLowerCase()] = row[index];
+      });
+      return obj;
+    });
+  
+  console.log(`✅ Retornando ${carteira.length} itens da carteira`);
+  return {
+    success: true,
+    data: carteira
+  };
+}
+
+function getExtrato(params) {
+  console.log('🧾 getExtrato chamado com:', params);
+  
+  if (!params || !params.user_id) {
+    return { success: true, data: [] };
+  }
+  
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('EXTRATO');
+  
+  if (!sheet) {
+    return { success: true, data: [] };
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  const extrato = data.slice(1)
+    .filter(row => row[headers.indexOf('USER_ID')].toString() === String(params.user_id))
+    .map(row => {
+      const obj = {};
+      headers.forEach((header, index) => {
+        obj[header.toLowerCase()] = row[index];
+      });
+      return obj;
+    });
+  
+  console.log(`✅ Retornando ${extrato.length} itens do extrato`);
+  return {
+    success: true,
+    data: extrato
+  };
+}
+
+// ========== FUNÇÕES DE ARTISTA ==========
+function getArtistData(params) {
+  console.log('🎤 getArtistData chamado com:', params);
+  
+  if (!params || !params.user_id) {
+    return { success: false, message: 'ID do usuário não fornecido' };
+  }
+  
+  const ss = getSpreadsheet();
+  
+  // Primeiro obtém o nome do artista
+  const usersSheet = ss.getSheetByName('USUARIOS');
+  const usersData = usersSheet.getDataRange().getValues();
+  const userHeaders = usersData[0];
+  
+  let artistaNome = '';
+  let artistaId = '';
+  for (let i = 1; i < usersData.length; i++) {
+    if (String(usersData[i][userHeaders.indexOf('ID')]) === String(params.user_id)) {
+      artistaNome = usersData[i][userHeaders.indexOf('NOME')] || '';
+      artistaId = usersData[i][userHeaders.indexOf('ID')] || '';
+      break;
+    }
+  }
+  
+  if (!artistaNome) {
+    return { success: false, message: 'Artista não encontrado' };
+  }
+  
+  // Obtém músicas do artista
+  const musicasSheet = ss.getSheetByName('MUSICAS');
+  const musicasData = musicasSheet.getDataRange().getValues();
+  const musicasHeaders = musicasData[0];
+  
+  const artistMusics = musicasData.slice(1)
+    .filter(row => row[musicasHeaders.indexOf('ARTISTA')] === artistaNome)
+    .map(row => {
+      const obj = {};
+      musicasHeaders.forEach((header, index) => {
+        obj[header.toLowerCase()] = row[index];
+      });
+      
+      // Calcula estatísticas
+      const percentualDisponivel = parseFloat(obj.percentual_disponivel) || 0;
+      const acoesVendidas = parseFloat(obj.acoes_vendidas) || 0;
+      const valorAcao = parseFloat(obj.valor_acao) || 0;
+      const totalAcoes = (percentualDisponivel / 0.01);
+      obj.percentual_vendido = totalAcoes > 0 ? (acoesVendidas / totalAcoes * 100) : 0;
+      obj.arrecadacao_total = acoesVendidas * valorAcao;
+      obj.acoes_disponiveis = totalAcoes - acoesVendidas;
+      
+      return obj;
+    });
+  
+  // Calcula estatísticas gerais
+  const totalMusicas = artistMusics.length;
+  const totalRoyalties = artistMusics.reduce((sum, music) => sum + (music.arrecadacao_total || 0), 0);
+  const totalAcoesVendidas = artistMusics.reduce((sum, music) => sum + (parseFloat(music.acoes_vendidas) || 0), 0);
+  
+  console.log(`✅ Dados do artista ${artistaNome}:`, {
+    totalMusicas,
+    totalRoyalties,
+    totalAcoesVendidas
+  });
+  
+  return {
+    success: true,
+    data: {
+      artista_id: artistaId,
+      artista: artistaNome,
+      total_musicas: totalMusicas,
+      total_royalties: totalRoyalties,
+      total_acoes_vendidas: totalAcoesVendidas,
+      musicas: artistMusics
+    }
+  };
+}
+
+// ========== FUNÇÃO DE LOG ==========
+function logEvent(tipo, descricao) {
+  try {
+    const ss = getSpreadsheet();
+    let sheet = ss.getSheetByName('LOG');
+    
+    if (!sheet) {
+      sheet = ss.insertSheet('LOG');
+      sheet.appendRow(['ID', 'TIPO', 'DESCRICAO', 'DATA']);
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const lastId = data.length > 1 ? data[data.length - 1][0] || 0 : 0;
+    const newId = lastId + 1;
+    
+    sheet.appendRow([
+      newId,
+      tipo,
+      descricao,
+      new Date().toISOString()
+    ]);
+    
+    console.log(`📝 LOG [${tipo}]: ${descricao}`);
+  } catch (error) {
+    console.error('Erro ao registrar log:', error);
+  }
+}
+
+// ========== FUNÇÕES DE TESTE E DEPURAÇÃO ==========
+function testAPI() {
+  return {
+    success: true,
+    message: 'API está funcionando!',
+    timestamp: new Date().toISOString(),
+    sheets: ['USUARIOS', 'MUSICAS', 'CARTEIRA', 'EXTRATO', 'TRANSACOES', 'LOG']
+  };
+}
+
+function testLogin() {
+  const testParams = {
+    email: 'admin@miv.com',
+    password: 'admin123'
+  };
+  
+  return handleLogin(testParams);
+}
+
+function testSetup() {
+  try {
+    const ss = getSpreadsheet();
+    const sheets = ss.getSheets();
+    const sheetNames = sheets.map(s => s.getName());
+    
+    return {
+      success: true,
+      sheets: sheetNames,
+      count: sheetNames.length
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// ========== FUNÇÃO PRINCIPAL DE SETUP ==========
+function setupSpreadsheet() {
+  console.log('🔧 Iniciando setup da planilha...');
+  
+  try {
+    const ss = getSpreadsheet();
+    
+    // Remove sheets antigos
+    const sheetsToRemove = ['Sheet1', 'Sheet2', 'Sheet3', 'Planilha1'];
+    sheetsToRemove.forEach(sheetName => {
+      const sheet = ss.getSheetByName(sheetName);
+      if (sheet && sheetName !== 'TRANSACOES' && sheetName !== 'LOG') {
+        ss.deleteSheet(sheet);
+      }
+    });
+    
+    // Sheets necessários com dados de exemplo
+    const sheetsConfig = [
+      {
+        name: 'USUARIOS',
+        headers: ['ID', 'NOME', 'EMAIL', 'SENHA', 'TIPO', 'WORKLINK', 'SALDO', 'ACESSO', 'DATA_CADASTRO'],
+        sampleData: [
+          [1, 'Administrador', 'admin@miv.com', 'admin123', 'admin', '', 10000, 'aprovado', new Date().toISOString()],
+          [2, 'Elzo Henschell', 'elzo@artista.com', 'elzo123', 'artista', 'https://youtube.com/elzo', 5000, 'aprovado', new Date().toISOString()],
+          [3, 'Investidor Teste', 'investidor@teste.com', 'teste123', 'ouvinte', '', 2000, 'aprovado', new Date().toISOString()]
+        ]
+      },
+      {
+        name: 'MUSICAS',
+        headers: ['ID', 'TITULO', 'ARTISTA', 'GENERO', 'LINK_YOUTUBE', 'LINK_CAPA', 'VALOR_ACAO', 'PERCENTUAL_DISPONIVEL', 'ACOES_VENDIDAS', 'STATUS', 'DATA_CADASTRO'],
+        sampleData: [
+          [1, 'EVA', 'Elzo Henschell', 'ROCK', 'https://www.youtube.com/watch?v=bFqLIyxuiMM', 'https://i.ytimg.com/vi/bFqLIyxuiMM/hqdefault.jpg', 15.50, 25, 75, 'ativo', new Date().toISOString()],
+          [2, 'O Máximo', 'Elzo Henschell', 'ROCK', 'https://youtu.be/utoRQzolfqs', 'https://i9.ytimg.com/vi_webp/utoRQzolfqs/mqdefault.webp', 22.00, 40, 60, 'ativo', new Date().toISOString()],
+          [3, 'Som ON', 'Selo MIV', 'INSTRUMENTAL', 'https://youtu.be/O4vSvOLtkuM', 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV', 18.75, 35, 65, 'ativo', new Date().toISOString()]
+        ]
+      },
+      {
+        name: 'CARTEIRA',
+        headers: ['ID', 'USER_ID', 'MUSIC_ID', 'QUANTIDADE', 'VALOR_PAGO_POR_ACAO', 'VALOR_TOTAL', 'DATA_COMPRA'],
+        sampleData: [
+          [1, 3, 1, 5, 15.50, 77.50, new Date().toISOString()],
+          [2, 3, 2, 3, 22.00, 66.00, new Date().toISOString()]
+        ]
+      },
+      {
+        name: 'EXTRATO',
+        headers: ['ID', 'USER_ID', 'TIPO', 'DESCRICAO', 'VALOR', 'DATA'],
+        sampleData: [
+          [1, 3, 'DEPOSITO', 'Depósito inicial', 2000, new Date().toISOString()],
+          [2, 3, 'COMPRA_ACOES', 'Compra de 5 ação(ões) de "EVA" - Elzo Henschell', -77.50, new Date().toISOString()],
+          [3, 3, 'COMPRA_ACOES', 'Compra de 3 ação(ões) de "O Máximo" - Elzo Henschell', -66.00, new Date().toISOString()]
+        ]
+      },
+      {
+        name: 'TRANSACOES',
+        headers: ['ID', 'USER_ID', 'TIPO', 'VALOR', 'SALDO_ANTES', 'SALDO_DEPOIS', 'REFERENCIA', 'STATUS', 'DATA'],
+        sampleData: [
+          [1, 3, 'DEPOSITO_INICIAL', 2000, 0, 2000, 'SISTEMA', 'CONFIRMADO', new Date().toISOString()],
+          [2, 3, 'COMPRA_ACOES', -77.50, 2000, 1922.50, 'COMPRA_MUSICA_1', 'CONFIRMADO', new Date().toISOString()],
+          [3, 3, 'COMPRA_ACOES', -66.00, 1922.50, 1856.50, 'COMPRA_MUSICA_2', 'CONFIRMADO', new Date().toISOString()]
+        ]
+      },
+      {
+        name: 'LOG',
+        headers: ['ID', 'TIPO', 'DESCRICAO', 'DATA'],
+        sampleData: [
+          [1, 'SISTEMA', 'Setup inicial', new Date().toISOString()]
+        ]
+      }
+    ];
+    
+    // Cria ou atualiza cada sheet
+    sheetsConfig.forEach(config => {
+      console.log(`📊 Processando sheet: ${config.name}`);
+      
+      let sheet = ss.getSheetByName(config.name);
+      
+      if (!sheet) {
+        sheet = ss.insertSheet(config.name);
+        console.log(`✅ Sheet ${config.name} criada`);
+      } else {
+        // Limpa apenas se for menor que 100 linhas (para não perder dados grandes)
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 100) {
+          sheet.clear();
+          console.log(`🔄 Sheet ${config.name} limpa`);
+        } else {
+          console.log(`📈 Sheet ${config.name} mantida (${lastRow} linhas)`);
+        }
+      }
+      
+      // Adiciona headers
+      sheet.getRange(1, 1, 1, config.headers.length).setValues([config.headers]);
+      
+      // Adiciona dados de exemplo se fornecidos
+      if (config.sampleData && config.sampleData.length > 0) {
+        sheet.getRange(2, 1, config.sampleData.length, config.headers.length).setValues(config.sampleData);
+        console.log(`📝 Adicionados ${config.sampleData.length} registros de exemplo`);
+      }
+      
+      // Formatação
+      sheet.getRange(1, 1, 1, config.headers.length)
+        .setFontWeight('bold')
+        .setBackground('#f0f0f0')
+        .setHorizontalAlignment('center');
+      
+      sheet.setFrozenRows(1);
+      sheet.autoResizeColumns(1, config.headers.length);
+      
+      // Formata números
+      if (config.name === 'USUARIOS') {
+        sheet.getRange('G:G').setNumberFormat('"R$ "#,##0.00');
+      }
+      if (config.name === 'MUSICAS') {
+        sheet.getRange('G:H').setNumberFormat('0.00');
+        sheet.getRange('I:I').setNumberFormat('0');
+      }
+      if (config.name === 'CARTEIRA') {
+        sheet.getRange('D:F').setNumberFormat('0.00');
+      }
+      if (config.name === 'EXTRATO') {
+        sheet.getRange('E:E').setNumberFormat('"R$ "#,##0.00');
+      }
+      if (config.name === 'TRANSACOES') {
+        sheet.getRange('D:F').setNumberFormat('"R$ "#,##0.00');
+      }
+    });
+    
+    logEvent('SETUP', 'Planilha configurada com sucesso');
+    
+    console.log('✅ Setup completo!');
+    return {
+      success: true,
+      message: '🎉 Planilha MIV configurada com sucesso!',
+      timestamp: new Date().toISOString(),
+      login_test: {
+        email: 'admin@miv.com',
+        password: 'admin123',
+        url: ScriptApp.getService().getUrl() + '?action=login&email=admin@miv.com&password=admin123'
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Erro no setup:', error);
+    return {
+      success: false,
+      message: '❌ Erro no setup: ' + error.message,
+      error: error.toString()
+    };
+  }
+}
+
+function runSetup() {
+  return setupSpreadsheet();
+}
+
+// ========== FUNÇÃO DE INICIALIZAÇÃO SIMPLES ==========
+function init() {
+  // Verifica se as sheets básicas existem
+  const ss = getSpreadsheet();
+  const requiredSheets = ['USUARIOS', 'MUSICAS', 'CARTEIRA', 'EXTRATO'];
+  const missingSheets = [];
+  
+  requiredSheets.forEach(sheetName => {
+    if (!ss.getSheetByName(sheetName)) {
+      missingSheets.push(sheetName);
+    }
+  });
+  
+  if (missingSheets.length === 0) {
+    return {
+      success: true,
+      message: 'Sistema já inicializado',
+      sheets: requiredSheets
+    };
+  } else {
+    // Executa setup automático
+    return runSetup();
+  }
+}
+
+// Execute esta função para iniciar o sistema
+function iniciarSistema() {
+  console.log('🚀 Iniciando sistema MIV...');
+  return init();
+}
+```
+
+## **2. CÓDIGO HTML DO FRONTEND (com correções)**
+
+```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -896,10 +2327,12 @@
                 <div id="loginMessage" class="alert d-none"></div>
 
                 <div class="form-group">
+                    <label for="loginEmail" class="text-muted mb-2 d-block">E-mail</label>
                     <input type="email" id="loginEmail" class="form-control-custom" placeholder="E-mail" required>
                 </div>
 
                 <div class="form-group">
+                    <label for="loginPassword" class="text-muted mb-2 d-block">Senha</label>
                     <input type="password" id="loginPassword" class="form-control-custom" placeholder="Senha" required>
                 </div>
 
@@ -928,18 +2361,22 @@
                 <div id="registerMessage" class="alert d-none"></div>
 
                 <div class="form-group">
+                    <label for="registerName" class="text-muted mb-2 d-block">Nome completo *</label>
                     <input type="text" id="registerName" class="form-control-custom" placeholder="Nome completo" required>
                 </div>
 
                 <div class="form-group">
+                    <label for="registerEmail" class="text-muted mb-2 d-block">E-mail *</label>
                     <input type="email" id="registerEmail" class="form-control-custom" placeholder="E-mail" required>
                 </div>
 
                 <div class="form-group">
+                    <label for="registerPassword" class="text-muted mb-2 d-block">Senha (mínimo 6 caracteres) *</label>
                     <input type="password" id="registerPassword" class="form-control-custom" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
                 </div>
 
                 <div class="form-group">
+                    <label for="registerType" class="text-muted mb-2 d-block">Perfil *</label>
                     <select id="registerType" class="form-control-custom" onchange="toggleArtistField()">
                         <option value="">Selecione seu perfil...</option>
                         <option value="ouvinte">🎧 Ouvinte/Investidor</option>
@@ -948,6 +2385,7 @@
                 </div>
 
                 <div class="form-group" id="artistLinkField" style="display: none;">
+                    <label for="registerLink" class="text-muted mb-2 d-block">Link do seu trabalho (YouTube, Spotify, etc.)</label>
                     <input type="url" id="registerLink" class="form-control-custom" placeholder="Link do seu trabalho (YouTube, Spotify, etc.)">
                     <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
                 </div>
@@ -1213,7 +2651,7 @@
                 <p class="text-muted mb-4" id="investTrackArtist">Artista</p>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block">Quantidade de Ações</label>
+                    <label for="investQuantity" class="text-muted mb-2 d-block">Quantidade de Ações</label>
                     <input type="number" id="investQuantity" class="form-control-custom"
                            value="1" min="1" step="1" oninput="updateInvestmentTotal()">
                 </div>
@@ -1261,12 +2699,12 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block required">Título da Música *</label>
+                    <label for="musicTitle" class="text-muted mb-2 d-block required">Título da Música *</label>
                     <input type="text" id="musicTitle" class="form-control-custom" placeholder="Digite o título da música" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block required">Gênero Musical *</label>
+                    <label for="musicGenre" class="text-muted mb-2 d-block required">Gênero Musical *</label>
                     <select id="musicGenre" class="form-control-custom" required>
                         <option value="">Selecione um gênero</option>
                         <option value="POP">🎵 POP</option>
@@ -1281,22 +2719,22 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block required">Link do YouTube *</label>
+                    <label for="musicYoutube" class="text-muted mb-2 d-block required">Link do YouTube *</label>
                     <input type="url" id="musicYoutube" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
                 </div>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
+                    <label for="musicCover" class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
                     <input type="url" id="musicCover" class="form-control-custom" placeholder="https://exemplo.com/capa.jpg">
                 </div>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block required">Valor por Ação *</label>
+                    <label for="musicPrice" class="text-muted mb-2 d-block required">Valor por Ação *</label>
                     <input type="number" id="musicPrice" class="form-control-custom" value="10.00" min="1" step="0.01" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="text-muted mb-2 d-block required">Percentual Disponível *</label>
+                    <label for="musicPercent" class="text-muted mb-2 d-block required">Percentual Disponível *</label>
                     <div class="input-group">
                         <input type="number" id="musicPercent" class="form-control-custom" value="20" min="1" max="100" required>
                         <span class="input-group-text bg-dark text-white border-secondary">%</span>
@@ -1343,12 +2781,12 @@
                     </div>
                     
                     <div class="form-group">
-                        <label class="text-muted mb-2 d-block">Valor do Depósito (R$)</label>
+                        <label for="depositAmount" class="text-muted mb-2 d-block">Valor do Depósito (R$)</label>
                         <input type="number" id="depositAmount" class="form-control-custom" value="50" min="10" step="0.01">
                     </div>
 
                     <div class="form-group">
-                        <label class="text-muted mb-2 d-block">Chave PIX (CNPJ)</label>
+                        <label for="pixKey" class="text-muted mb-2 d-block">Chave PIX (CNPJ)</label>
                         <div class="input-group">
                             <input type="text" id="pixKey" class="form-control-custom" value="12.345.678/0001-90" readonly>
                             <button class="btn btn-outline-success" onclick="copyToClipboard('pixKey')">
@@ -1358,7 +2796,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="text-muted mb-2 d-block">Código da Transação</label>
+                        <label for="depositReference" class="text-muted mb-2 d-block">Código da Transação</label>
                         <input type="text" id="depositReference" class="form-control-custom" placeholder="Copie do comprovante">
                     </div>
                 </div>
@@ -1371,17 +2809,17 @@
                     </div>
                     
                     <div class="form-group">
-                        <label class="text-muted mb-2 d-block">Valor do Saque (R$)</label>
+                        <label for="withdrawAmount" class="text-muted mb-2 d-block">Valor do Saque (R$)</label>
                         <input type="number" id="withdrawAmount" class="form-control-custom" value="50" min="20" step="0.01">
                     </div>
 
                     <div class="form-group">
-                        <label class="text-muted mb-2 d-block">Chave PIX para Receber</label>
+                        <label for="withdrawPixKey" class="text-muted mb-2 d-block">Chave PIX para Receber</label>
                         <input type="text" id="withdrawPixKey" class="form-control-custom" placeholder="CPF, Email, Telefone ou Chave Aleatória">
                     </div>
 
                     <div class="form-group">
-                        <label class="text-muted mb-2 d-block">Tipo de Chave</label>
+                        <label for="withdrawPixType" class="text-muted mb-2 d-block">Tipo de Chave</label>
                         <select id="withdrawPixType" class="form-control-custom">
                             <option value="cpf">CPF</option>
                             <option value="email">Email</option>
@@ -1410,8 +2848,9 @@
     <script>
         // ========== CONFIGURAÇÃO ==========
         const CONFIG = {
-            API_URL: 'https://script.google.com/macros/s/AKfycby14fXBzZOMBJGzNPVhmKVGg0EEo2Ju6miRe8-kpk1iN9YKWR4CsI9t11-BJQj_M0o/exec', // ← SEU URL DO WEB APP
-            YT_API_KEY: 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM' // opcional
+            // ✅ URL CORRIGIDA - Use 'password' ao invés de 'pass'
+            API_URL: 'https://script.google.com/macros/s/AKfycby14fXBzZOMBJGzNPVhmKVGg0EEo2Ju6miRe8-kpk1iN9YKWR4CsI9t11-BJQj_M0o/exec',
+            YT_API_KEY: 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM'
         };
 
         // ========== ESTADO GLOBAL ==========
@@ -1511,984 +2950,5 @@
             showLoading('Autenticando...');
 
             try {
-                const response = await fetch(`${CONFIG.API_URL}?acao=login&email=${encodeURIComponent(email)}&pass=${encodeURIComponent(password)}`);
-                const data = await response.json();
-
-                if (data.success) {
-                    state.currentUser = data.data;
-                    state.currentToken = data.data.id.toString();
-
-                    localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-                    localStorage.setItem('miv_token', state.currentToken);
-
-                    showToast('Login realizado com sucesso!');
-                    initializeApp();
-                } else {
-                    showToast(data.message || 'Credenciais inválidas', 'error');
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                showToast('Erro de conexão com o servidor', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        function showRegisterForm() {
-            document.getElementById('loginForm').style.display = 'none';
-            document.getElementById('registerForm').style.display = 'block';
-        }
-
-        function showLoginForm() {
-            document.getElementById('registerForm').style.display = 'none';
-            document.getElementById('loginForm').style.display = 'block';
-        }
-
-        function toggleArtistField() {
-            const type = document.getElementById('registerType').value;
-            document.getElementById('artistLinkField').style.display = type === 'artista' ? 'block' : 'none';
-        }
-
-        async function handleRegister() {
-            const name = document.getElementById('registerName').value.trim();
-            const email = document.getElementById('registerEmail').value.trim();
-            const password = document.getElementById('registerPassword').value.trim();
-            const type = document.getElementById('registerType').value;
-            const link = document.getElementById('registerLink').value.trim();
-
-            if (!name || !email || !password || !type) {
-                showToast('Preencha todos os campos obrigatórios', 'error');
-                return;
-            }
-
-            if (type === 'artista' && !link) {
-                showToast('Artistas devem informar link do trabalho', 'error');
-                return;
-            }
-
-            showLoading('Criando conta...');
-
-            try {
-                const response = await fetch(CONFIG.API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        acao: 'register',
-                        nome: name,
-                        email: email,
-                        pass: password,
-                        tipo: type,
-                        workLink: link || ''
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    showToast('Conta criada com sucesso! Aguarde aprovação.', 'success');
-                    showLoginForm();
-                    document.getElementById('registerName').value = '';
-                    document.getElementById('registerEmail').value = '';
-                    document.getElementById('registerPassword').value = '';
-                    document.getElementById('registerType').value = '';
-                    document.getElementById('registerLink').value = '';
-                } else {
-                    showToast(data.message || 'Erro ao criar conta', 'error');
-                }
-            } catch (error) {
-                console.error('Register error:', error);
-                showToast('Erro de conexão com o servidor', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // ========== INICIALIZAÇÃO DO APP ==========
-        function initializeApp() {
-            document.getElementById('authScreen').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'block';
-
-            updateUserInterface();
-            loadUserData();
-            loadMarketplace();
-
-            // Inicializa YouTube Player
-            initYouTubePlayer();
-        }
-
-        function updateUserInterface() {
-            if (!state.currentUser) return;
-
-            document.getElementById('userBadge').textContent = 
-                state.currentUser.tipo === 'artista' ? 'Artista' :
-                state.currentUser.tipo === 'admin' ? 'Admin' : 'Ouvinte';
-
-            document.getElementById('artistNavItem').style.display = 
-                (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin') ? 'block' : 'none';
-        }
-
-        // ========== CARREGAMENTO DE DADOS ==========
-        async function loadUserData() {
-            if (!state.currentToken) return;
-
-            showLoading('Carregando dados...');
-
-            try {
-                // Saldo
-                const balanceRes = await fetch(`${CONFIG.API_URL}?acao=get_saldo&token=${state.currentToken}`);
-                const balanceData = await balanceRes.json();
-                
-                if (balanceData.success) {
-                    state.userBalance = balanceData.data.saldo || 0;
-                    document.getElementById('currentBalance').textContent = formatCurrency(state.userBalance);
-                }
-
-                // Portfólio resumo
-                const portfolioRes = await fetch(`${CONFIG.API_URL}?acao=get_resumo&token=${state.currentToken}`);
-                const portfolioData = await portfolioRes.json();
-                
-                if (portfolioData.success) {
-                    state.portfolioValue = portfolioData.data.patrimonio || 0;
-                    document.getElementById('portfolioValue').textContent = formatCurrency(state.portfolioValue);
-                }
-
-                await loadPortfolio();
-                await loadLedger();
-
-                if (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin') {
-                    await loadArtistData();
-                }
-            } catch (error) {
-                console.error('Error loading user data:', error);
-                showToast('Erro ao carregar dados', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        async function loadMarketplace() {
-            showLoading('Carregando músicas...');
-
-            try {
-                const response = await fetch(`${CONFIG.API_URL}?acao=get_musicas`);
-                const data = await response.json();
-
-                if (data.success) {
-                    state.playlist = data.data || [];
-                    renderMarketplace();
-                } else {
-                    state.playlist = [];
-                    renderMarketplace();
-                }
-            } catch (error) {
-                console.error('Error loading marketplace:', error);
-                state.playlist = [];
-                renderMarketplace();
-                showToast('Erro ao carregar marketplace', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        function renderMarketplace() {
-            const container = document.getElementById('marketplaceContent');
-
-            if (!state.playlist || state.playlist.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="bi bi-music-note-slash empty-icon"></i>
-                        <h5 class="text-muted">Nenhuma música disponível</h5>
-                        <p class="text-muted">Cadastre e aprove músicas no painel artista</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = state.playlist.map((track, index) => `
-                <div class="music-card" onclick="playTrack(${index})">
-                    <img src="${track.link_capa || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMTExNDE4Ii8+PHJlY3QgeD0iMTUlIiB5PSIxNSUiIHdpZHRoPSI3MCUiIGhlaWdodD0iNzAlIiBmaWxsPSIjMDBmZjg4IiBvcGFjaXR5PSIwLjEiIHJ4PSIxMCIvPjxwYXRoIGQ9Ik05MCw1NSBMMTgwLDkwIEw5MCwxMjUgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC42Ii8+PHRleHQgeD0iMTUwIiB5PSIxNjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMwMGZmODgiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPk1JVjwvdGV4dD48L3N2Zz4='}"
-                         class="music-cover"
-                         alt="${track.titulo}"
-                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMTExNDE4Ii8+PHJlY3QgeD0iMTUlIiB5PSIxNSUiIHdpZHRoPSI3MCUiIGhlaWdodD0iNzAlIiBmaWxsPSIjMDBmZjg4IiBvcGFjaXR5PSIwLjEiIHJ4PSIxMCIvPjxwYXRoIGQ9Ik05MCw1NSBMMTgwLDkwIEw5MCwxMjUgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC42Ii8+PHRleHQgeD0iMTUwIiB5PSIxNjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMwMGZmODgiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPk1JVjwvdGV4dD48L3N2Zz4='">
-                    <div class="music-info">
-                        <h6 class="music-title">${track.titulo || 'Sem título'}</h6>
-                        <p class="music-artist">${track.artista || 'Artista'}</p>
-                        <div class="music-meta">
-                            <span class="music-price">${formatCurrency(track.valor_acao || 0)}</span>
-                            <span class="music-percent">${track.percentual_disponivel || 0}% disp.</span>
-                        </div>
-                        <button class="btn-miv btn-sm w-100" onclick="event.stopPropagation(); openInvestModal(${index})">
-                            <i class="bi bi-currency-dollar me-1"></i>
-                            Investir
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function loadPortfolio() {
-            if (!state.currentToken) return;
-
-            try {
-                const response = await fetch(`${CONFIG.API_URL}?acao=get_carteira&user_id=${state.currentToken}`);
-                const data = await response.json();
-                renderPortfolio(data.data || []);
-            } catch (error) {
-                console.error('Error loading portfolio:', error);
-                renderPortfolio([]);
-            }
-        }
-
-        function renderPortfolio(assets) {
-            const container = document.getElementById('portfolioContent');
-            const countElement = document.getElementById('assetsCount');
-
-            if (!assets || assets.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="bi bi-briefcase empty-icon"></i>
-                        <h5 class="text-muted">Nenhum ativo na carteira</h5>
-                        <p class="text-muted">Comece investindo em músicas no Marketplace</p>
-                    </div>
-                `;
-                countElement.textContent = '0 ativos';
-                return;
-            }
-
-            container.innerHTML = assets.map(asset => {
-                const track = state.playlist.find(t => t.id === asset.music_id);
-                if (!track) return '';
-
-                return `
-                    <div class="music-card">
-                        <img src="${track.link_capa || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMTExNDE4Ii8+PHJlY3QgeD0iMTUlIiB5PSIxNSUiIHdpZHRoPSI3MCUiIGhlaWdodD0iNzAlIiBmaWxsPSIjMDBmZjg4IiBvcGFjaXR5PSIwLjEiIHJ4PSIxMCIvPjxwYXRoIGQ9Ik05MCw1NSBMMTgwLDkwIEw5MCwxMjUgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC42Ii8+PHRleHQgeD0iMTUwIiB5PSIxNjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMwMGZmODgiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPk1JVjwvdGV4dD48L3N2Zz4='}"
-                             class="music-cover"
-                             alt="${track.titulo}"
-                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMTExNDE4Ii8+PHJlY3QgeD0iMTUlIiB5PSIxNSUiIHdpZHRoPSI3MCUiIGhlaWdodD0iNzAlIiBmaWxsPSIjMDBmZjg4IiBvcGFjaXR5PSIwLjEiIHJ4PSIxMCIvPjxwYXRoIGQ9Ik05MCw1NSBMMTgwLDkwIEw5MCwxMjUgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC42Ii8+PHRleHQgeD0iMTUwIiB5PSIxNjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMwMGZmODgiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPk1JVjwvdGV4dD48L3N2Zz4='">
-                        <div class="music-info">
-                            <h6 class="music-title">${track.titulo || 'Sem título'}</h6>
-                            <p class="music-artist">${track.artista || 'Artista'}</p>
-                            <div class="music-meta">
-                                <span class="music-price">${asset.quantidade} ações</span>
-                                <span class="music-percent">${formatCurrency(asset.valor_total)}</span>
-                            </div>
-                            <small class="text-muted">Comprado em ${formatDate(asset.data_compra)}</small>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            countElement.textContent = `${assets.length} ativo${assets.length !== 1 ? 's' : ''}`;
-        }
-
-        async function loadLedger() {
-            if (!state.currentToken) return;
-
-            showLoading('Carregando histórico...');
-
-            try {
-                const response = await fetch(`${CONFIG.API_URL}?acao=get_historico_financeiro&user_id=${state.currentToken}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    renderLedger(data.data || []);
-                } else {
-                    renderLedger([]);
-                }
-            } catch (error) {
-                console.error('Error loading ledger:', error);
-                renderLedger([]);
-            } finally {
-                hideLoading();
-            }
-        }
-
-        function renderLedger(transactions) {
-            const container = document.getElementById('ledgerContent');
-
-            if (!transactions || transactions.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="bi bi-receipt empty-icon"></i>
-                        <h5 class="text-muted">Nenhuma transação encontrada</h5>
-                        <p class="text-muted">Realize investimentos ou depósitos</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = `
-                <div class="transaction-list">
-                    ${transactions.map(t => `
-                        <div class="transaction-item">
-                            <div>
-                                <div class="fw-bold">${t.tipo}</div>
-                                <small class="text-muted">${formatDate(t.data)}</small>
-                                <div><small>${t.referencia || ''}</small></div>
-                            </div>
-                            <div class="text-end">
-                                <div class="fw-bold ${t.valor >= 0 ? 'text-success' : 'text-danger'}">
-                                    ${formatCurrency(t.valor)}
-                                </div>
-                                <small class="text-muted">Saldo: ${formatCurrency(t.saldo_depois)}</small>
-                                <div><span class="badge bg-${t.status === 'CONFIRMADO' ? 'success' : 'warning'}">${t.status}</span></div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-
-        // ========== YOUTUBE PLAYER CONFIG (CORRIGIDO) ==========
-        let youtubePlayer = null;
-        let playerReady = false;
-
-        function initYouTubePlayer() {
-          console.log('Inicializando YouTube Player...');
-          
-          // Se a API já carregou
-          if (window.YT && window.YT.Player) {
-            createYouTubePlayer();
-            return;
-          }
-          
-          // Configura callback
-          window.onYouTubeIframeAPIReady = function() {
-            console.log('YouTube API Ready');
-            createYouTubePlayer();
-          };
-          
-          // Carrega a API
-          const tag = document.createElement('script');
-          tag.src = "https://www.youtube.com/iframe_api";
-          tag.async = true;
-          tag.defer = true;
-          
-          const firstScriptTag = document.getElementsByTagName('script')[0];
-          firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-        }
-
-        function createYouTubePlayer() {
-          try {
-            const origin = window.location.origin;
-            
-            youtubePlayer = new YT.Player('youtubePlayer', {
-              height: '100%',
-              width: '100%',
-              videoId: '',
-              playerVars: {
-                'autoplay': 0,
-                'controls': 0, // Controles customizados
-                'enablejsapi': 1,
-                'playsinline': 1,
-                'rel': 0,
-                'origin': origin // IMPORTANTE!
-              },
-              events: {
-                'onReady': function(event) {
-                  console.log('YouTube Player pronto');
-                  playerReady = true;
-                  state.youtubePlayer = event.target;
-                },
-                'onStateChange': function(event) {
-                  console.log('Estado:', event.data);
-                  handleYouTubeStateChange(event.data);
-                }
-              }
-            });
-            
-          } catch (error) {
-            console.error('Erro YouTube:', error);
-          }
-        }
-
-        function handleYouTubeStateChange(stateCode) {
-          switch(stateCode) {
-            case 1: // PLAYING
-              state.isPlaying = true;
-              updatePlayButton(true);
-              break;
-            case 2: // PAUSED
-              state.isPlaying = false;
-              updatePlayButton(false);
-              break;
-            case 0: // ENDED
-              state.isPlaying = false;
-              updatePlayButton(false);
-              if (!state.repeat) playNext();
-              break;
-          }
-        }
-
-        function updatePlayButton(isPlaying) {
-          const playButton = document.getElementById('playButton');
-          if (isPlaying) {
-            playButton.innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-          } else {
-            playButton.innerHTML = '<i class="bi bi-play-circle-fill"></i>';
-          }
-        }
-
-        function showPlayer() {
-          document.getElementById('playerBar').style.display = 'block';
-        }
-
-        // ========== FUNÇÕES DO PLAYER ==========
-        function playTrack(index) {
-          if (index < 0 || index >= state.playlist.length) return;
-          
-          const track = state.playlist[index];
-          if (!track) return;
-          
-          state.currentTrackIndex = index;
-          
-          // Atualiza UI do player
-          updatePlayerUI(track);
-          
-          // Tenta tocar via YouTube
-          if (playerReady && youtubePlayer) {
-            const videoId = extractYouTubeId(track.LINK_YOUTUBE || track.link_youtube || '');
-            if (videoId) {
-              console.log('Tocando:', videoId);
-              youtubePlayer.loadVideoById(videoId);
-              youtubePlayer.playVideo();
-            }
-          }
-          
-          // Mostra o player
-          showPlayer();
-        }
-
-        // Função auxiliar para extrair ID do YouTube
-        function extractYouTubeId(url) {
-          if (!url) return null;
-          const patterns = [
-            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-            /^([a-zA-Z0-9_-]{11})$/
-          ];
-          
-          for (const pattern of patterns) {
-            const match = url.match(pattern);
-            if (match && match[1]) return match[1];
-          }
-          return null;
-        }
-
-        function updatePlayerUI(track) {
-            document.getElementById('playerTitle').textContent = track.titulo || 'Sem título';
-            document.getElementById('playerArtist').textContent = track.artista || 'Artista';
-            document.getElementById('playerPrice').textContent = `${formatCurrency(track.valor_acao)} por ação`;
-            document.getElementById('playerAlbumArt').src = track.link_capa || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzExMTQxOCIvPjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMDBmZjg4IiBvcGFjaXR5PSIwLjIiIHJ4PSI1Ii8+PHBhdGggZD0iTTIwLDIwIEw0MCwzMCBMMjAsNDAgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjMwIiB5PSI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzAwZmY4OCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmb250LXdlaWdodD0iYm9sZCI+TUlWPC90ZXh0Pjwvc3ZnPg==';
-        }
-
-        function togglePlay() {
-          if (!playerReady || !youtubePlayer) {
-            showToast('Player não está pronto. Clique em uma música primeiro.', 'info');
-            return;
-          }
-          
-          if (state.isPlaying) {
-            youtubePlayer.pauseVideo();
-          } else {
-            if (state.currentTrackIndex === -1 && state.playlist.length > 0) {
-              playTrack(0);
-            } else {
-              youtubePlayer.playVideo();
-            }
-          }
-        }
-
-        function playNext() {
-            if (state.shuffle) {
-                const randomIndex = Math.floor(Math.random() * state.playlist.length);
-                playTrack(randomIndex);
-            } else {
-                const nextIndex = (state.currentTrackIndex + 1) % state.playlist.length;
-                playTrack(nextIndex);
-            }
-        }
-
-        function playPrevious() {
-            if (state.shuffle) {
-                const randomIndex = Math.floor(Math.random() * state.playlist.length);
-                playTrack(randomIndex);
-            } else {
-                const prevIndex = (state.currentTrackIndex - 1 + state.playlist.length) % state.playlist.length;
-                playTrack(prevIndex);
-            }
-        }
-
-        function toggleShuffle() {
-            state.shuffle = !state.shuffle;
-            const icon = document.getElementById('shuffleIcon');
-            icon.style.color = state.shuffle ? 'var(--neon-green)' : 'var(--text-light)';
-            showToast(state.shuffle ? 'Modo aleatório ativado' : 'Modo aleatório desativado');
-        }
-
-        function toggleRepeat() {
-            state.repeat = !state.repeat;
-            const icon = document.getElementById('repeatIcon');
-            icon.style.color = state.repeat ? 'var(--neon-green)' : 'var(--text-light)';
-            showToast(state.repeat ? 'Repetir ativado' : 'Repetir desativado');
-        }
-
-        function setVolume(value) {
-            state.volume = value;
-            if (youtubePlayer) {
-                youtubePlayer.setVolume(value);
-            }
-        }
-
-        function togglePlayerExpansion() {
-            const playerBar = document.getElementById('playerBar');
-            state.isPlayerExpanded = !state.isPlayerExpanded;
-            
-            if (state.isPlayerExpanded) {
-                playerBar.classList.add('expanded');
-            } else {
-                playerBar.classList.remove('expanded');
-            }
-        }
-
-        function startProgressUpdate() {
-            stopProgressUpdate();
-            state.progressInterval = setInterval(updateProgress, 1000);
-        }
-
-        function stopProgressUpdate() {
-            if (state.progressInterval) {
-                clearInterval(state.progressInterval);
-                state.progressInterval = null;
-            }
-        }
-
-        function updateProgress() {
-            if (!youtubePlayer) return;
-
-            const currentTime = youtubePlayer.getCurrentTime();
-            const duration = youtubePlayer.getDuration();
-            
-            if (duration > 0) {
-                const progress = (currentTime / duration) * 100;
-                document.getElementById('musicProgress').style.width = `${progress}%`;
-                document.getElementById('currentTime').textContent = formatTime(currentTime);
-                document.getElementById('durationTime').textContent = formatTime(duration);
-            }
-        }
-
-        function seekMusic(event) {
-            if (!youtubePlayer) return;
-
-            const progressContainer = event.currentTarget;
-            const rect = progressContainer.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const width = rect.width;
-            const percentage = x / width;
-            
-            const duration = youtubePlayer.getDuration();
-            const seekTime = duration * percentage;
-            
-            youtubePlayer.seekTo(seekTime, true);
-        }
-
-        // ========== FUNÇÕES DE INVESTIMENTO ==========
-        function openInvestModal(trackIndex) {
-            if (trackIndex < 0 || trackIndex >= state.playlist.length) return;
-
-            state.currentInvestTrack = state.playlist[trackIndex];
-            
-            document.getElementById('investTrackTitle').textContent = state.currentInvestTrack.titulo || 'Sem título';
-            document.getElementById('investTrackArtist').textContent = state.currentInvestTrack.artista || 'Artista';
-            document.getElementById('investUnitPrice').textContent = formatCurrency(state.currentInvestTrack.valor_acao || 0);
-            document.getElementById('investAvailableBalance').textContent = formatCurrency(state.userBalance);
-            
-            updateInvestmentTotal();
-            showModal('investModal');
-        }
-
-        function updateInvestmentTotal() {
-            if (!state.currentInvestTrack) return;
-
-            const quantity = parseInt(document.getElementById('investQuantity').value) || 1;
-            const unitPrice = parseFloat(state.currentInvestTrack.valor_acao) || 0;
-            const total = quantity * unitPrice;
-
-            document.getElementById('investTotalPrice').textContent = formatCurrency(total);
-
-            // Verifica se tem saldo suficiente
-            const confirmBtn = document.getElementById('confirmInvestBtn');
-            if (total > state.userBalance) {
-                confirmBtn.disabled = true;
-                confirmBtn.innerHTML = 'Saldo insuficiente';
-            } else {
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML = 'Confirmar Investimento';
-            }
-        }
-
-        async function confirmInvestment() {
-            if (!state.currentInvestTrack || !state.currentToken) return;
-
-            const quantity = parseInt(document.getElementById('investQuantity').value) || 1;
-            const unitPrice = parseFloat(state.currentInvestTrack.valor_acao) || 0;
-            const total = quantity * unitPrice;
-
-            if (total > state.userBalance) {
-                showToast('Saldo insuficiente', 'error');
-                return;
-            }
-
-            showLoading('Processando investimento...');
-
-            try {
-                const response = await fetch(CONFIG.API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        acao: 'buy',
-                        user_id: state.currentToken,
-                        music_id: state.currentInvestTrack.id,
-                        quantidade: quantity,
-                        valor_total: total
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    showToast('Investimento realizado com sucesso!');
-                    closeModal('investModal');
-                    
-                    // Atualiza dados do usuário
-                    state.userBalance = data.data.novo_saldo || state.userBalance;
-                    document.getElementById('currentBalance').textContent = formatCurrency(state.userBalance);
-                    
-                    // Recarrega dados
-                    await loadUserData();
-                    await loadMarketplace();
-                } else {
-                    showToast(data.message || 'Erro ao realizar investimento', 'error');
-                }
-            } catch (error) {
-                console.error('Investment error:', error);
-                showToast('Erro de conexão com o servidor', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // ========== FUNÇÕES DO ARTISTA ==========
-        async function loadArtistData() {
-            if (!state.currentToken) return;
-
-            try {
-                const response = await fetch(`${CONFIG.API_URL}?acao=get_artist_data&user_id=${state.currentToken}`);
-                const data = await response.json();
-
-                if (data.success) {
-                    document.getElementById('artistMusicCount').textContent = data.data.total_musicas;
-                    document.getElementById('artistRoyalties').textContent = formatCurrency(data.data.total_royalties);
-                    document.getElementById('artistSharesSold').textContent = data.data.total_acoes_vendidas;
-
-                    renderArtistMusic(data.data.musicas || []);
-                }
-            } catch (error) {
-                console.error('Error loading artist data:', error);
-            }
-        }
-
-        function renderArtistMusic(musics) {
-            const container = document.getElementById('artistMusicContent');
-
-            if (!musics || musics.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="bi bi-music-note-slash empty-icon"></i>
-                        <h5 class="text-muted">Nenhuma música cadastrada</h5>
-                        <p class="text-muted">Clique em "Nova Música" para começar</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = musics.map(music => `
-                <div class="music-card">
-                    <img src="${music.link_capa || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMTExNDE4Ii8+PHJlY3QgeD0iMTUlIiB5PSIxNSUiIHdpZHRoPSI3MCUiIGhlaWdodD0iNzAlIiBmaWxsPSIjMDBmZjg4IiBvcGFjaXR5PSIwLjEiIHJ4PSIxMCIvPjxwYXRoIGQ9Ik05MCw1NSBMMTgwLDkwIEw5MCwxMjUgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC42Ii8+PHRleHQgeD0iMTUwIiB5PSIxNjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMwMGZmODgiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPk1JVjwvdGV4dD48L3N2Zz4='}"
-                         class="music-cover"
-                         alt="${music.titulo}"
-                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMTExNDE4Ii8+PHJlY3QgeD0iMTUlIiB5PSIxNSUiIHdpZHRoPSI3MCUiIGhlaWdodD0iNzAlIiBmaWxsPSIjMDBmZjg4IiBvcGFjaXR5PSIwLjEiIHJ4PSIxMCIvPjxwYXRoIGQ9Ik05MCw1NSBMMTgwLDkwIEw5MCwxMjUgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC42Ii8+PHRleHQgeD0iMTUwIiB5PSIxNjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMwMGZmODgiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPk1JVjwvdGV4dD48L3N2Zz4='">
-                    <div class="music-info">
-                        <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
-                        <p class="music-artist">${music.genero || 'Sem gênero'}</p>
-                        <div class="music-meta">
-                            <span class="music-price">${formatCurrency(music.valor_acao || 0)}</span>
-                            <span class="music-percent">${music.percentual_vendido?.toFixed(1) || 0}% vendido</span>
-                        </div>
-                        <div class="mt-2">
-                            <small class="text-muted">${music.acoes_vendidas || 0} ações vendidas</small>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function openAddMusicModal() {
-            showModal('addMusicModal');
-        }
-
-        async function registerMusic() {
-            const titulo = document.getElementById('musicTitle').value.trim();
-            const genero = document.getElementById('musicGenre').value;
-            const link_youtube = document.getElementById('musicYoutube').value.trim();
-            const link_capa = document.getElementById('musicCover').value.trim();
-            const valor_acao = parseFloat(document.getElementById('musicPrice').value) || 0;
-            const percentual_disponivel = parseFloat(document.getElementById('musicPercent').value) || 0;
-
-            if (!titulo || !genero || !link_youtube || !valor_acao || !percentual_disponivel) {
-                showToast('Preencha todos os campos obrigatórios', 'error');
-                return;
-            }
-
-            if (valor_acao <= 0) {
-                showToast('Valor por ação deve ser maior que zero', 'error');
-                return;
-            }
-
-            if (percentual_disponivel <= 0 || percentual_disponivel > 100) {
-                showToast('Percentual deve estar entre 1% e 100%', 'error');
-                return;
-            }
-
-            showLoading('Cadastrando música...');
-
-            try {
-                const response = await fetch(CONFIG.API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        acao: 'uploadMusic',
-                        user_id: state.currentToken,
-                        titulo: titulo,
-                        artista: state.currentUser.nome, // Nome do artista é o nome do usuário
-                        genero: genero,
-                        link_youtube: link_youtube,
-                        link_capa: link_capa,
-                        valor_acao: valor_acao,
-                        percentual_disponivel: percentual_disponivel
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    showToast('Música cadastrada com sucesso!');
-                    closeModal('addMusicModal');
-                    
-                    // Limpa o formulário
-                    document.getElementById('musicTitle').value = '';
-                    document.getElementById('musicGenre').value = '';
-                    document.getElementById('musicYoutube').value = '';
-                    document.getElementById('musicCover').value = '';
-                    document.getElementById('musicPrice').value = '10.00';
-                    document.getElementById('musicPercent').value = '20';
-                    
-                    // Recarrega dados
-                    await loadArtistData();
-                    await loadMarketplace();
-                } else {
-                    showToast(data.message || 'Erro ao cadastrar música', 'error');
-                }
-            } catch (error) {
-                console.error('Music registration error:', error);
-                showToast('Erro de conexão com o servidor', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // ========== FUNÇÕES FINANCEIRAS ==========
-        function openFinanceModal() {
-            document.getElementById('modalAvailableBalance').textContent = formatCurrency(state.userBalance);
-            showModal('financeModal');
-        }
-
-        function showFinanceTab(tab) {
-            document.getElementById('depositTab').style.display = tab === 'deposit' ? 'block' : 'none';
-            document.getElementById('withdrawTab').style.display = tab === 'withdraw' ? 'block' : 'none';
-            
-            const depositBtn = document.querySelector('button[onclick*="deposit"]');
-            const withdrawBtn = document.querySelector('button[onclick*="withdraw"]');
-            
-            depositBtn.classList.toggle('active', tab === 'deposit');
-            withdrawBtn.classList.toggle('active', tab === 'withdraw');
-            
-            document.getElementById('confirmFinanceBtn').innerHTML = tab === 'deposit' 
-                ? '<i class="bi bi-check-circle me-2"></i> Confirmar Depósito'
-                : '<i class="bi bi-check-circle me-2"></i> Solicitar Saque';
-        }
-
-        async function processFinanceTransaction() {
-            const isDeposit = document.getElementById('depositTab').style.display !== 'none';
-            
-            if (isDeposit) {
-                await processDeposit();
-            } else {
-                await processWithdraw();
-            }
-        }
-
-        async function processDeposit() {
-            const amount = parseFloat(document.getElementById('depositAmount').value) || 0;
-            const reference = document.getElementById('depositReference').value.trim();
-
-            if (amount < 10) {
-                showToast('Valor mínimo de depósito é R$ 10,00', 'error');
-                return;
-            }
-
-            if (!reference) {
-                showToast('Informe o código da transação', 'error');
-                return;
-            }
-
-            showLoading('Processando depósito...');
-
-            try {
-                const response = await fetch(CONFIG.API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        acao: 'confirmar_deposito',
-                        user_id: state.currentToken,
-                        valor: amount,
-                        referencia: reference
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    showToast('Depósito confirmado com sucesso!');
-                    closeModal('financeModal');
-                    
-                    // Atualiza dados
-                    await loadUserData();
-                    await loadLedger();
-                } else {
-                    showToast(data.error || 'Erro ao confirmar depósito', 'error');
-                }
-            } catch (error) {
-                console.error('Deposit error:', error);
-                showToast('Erro de conexão com o servidor', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        async function processWithdraw() {
-            const amount = parseFloat(document.getElementById('withdrawAmount').value) || 0;
-            const pixKey = document.getElementById('withdrawPixKey').value.trim();
-            const pixType = document.getElementById('withdrawPixType').value;
-
-            if (amount < 20) {
-                showToast('Valor mínimo de saque é R$ 20,00', 'error');
-                return;
-            }
-
-            if (amount > state.userBalance) {
-                showToast('Saldo insuficiente', 'error');
-                return;
-            }
-
-            if (!pixKey) {
-                showToast('Informe a chave PIX para receber', 'error');
-                return;
-            }
-
-            showLoading('Processando solicitação de saque...');
-
-            try {
-                const response = await fetch(CONFIG.API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        acao: 'solicitar_saque',
-                        user_id: state.currentToken,
-                        valor: amount
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    showToast('Solicitação de saque enviada! Processaremos em até 48h úteis.');
-                    closeModal('financeModal');
-                    
-                    // Atualiza dados
-                    await loadLedger();
-                } else {
-                    showToast(data.error || 'Erro ao solicitar saque', 'error');
-                }
-            } catch (error) {
-                console.error('Withdraw error:', error);
-                showToast('Erro de conexão com o servidor', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // ========== NAVEGAÇÃO ==========
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
-        }
-
-        function changeSection(sectionId, button = null) {
-            // Atualiza navegação
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            
-            // Ativa a seção
-            document.getElementById(`${sectionId}Section`).classList.add('active');
-            
-            // Ativa links correspondentes
-            document.querySelector(`.nav-link[onclick*="${sectionId}"]`)?.classList.add('active');
-            
-            if (button) {
-                button.classList.add('active');
-            }
-            
-            // Fecha sidebar no mobile
-            if (window.innerWidth < 768) {
-                toggleSidebar();
-            }
-        }
-
-        function logout() {
-            state.currentUser = null;
-            state.currentToken = null;
-            localStorage.removeItem('miv_user');
-            localStorage.removeItem('miv_token');
-            
-            document.getElementById('mainApp').style.display = 'none';
-            document.getElementById('authScreen').style.display = 'flex';
-            document.getElementById('playerBar').style.display = 'none';
-            
-            showToast('Logout realizado com sucesso');
-        }
-
-        // ========== INICIALIZAÇÃO ==========
-        document.addEventListener('DOMContentLoaded', function() {
-            // Verifica login salvo
-            const savedUser = localStorage.getItem('miv_user');
-            const savedToken = localStorage.getItem('miv_token');
-            
-            if (savedUser && savedToken) {
-                state.currentUser = JSON.parse(savedUser);
-                state.currentToken = savedToken;
-                initializeApp();
-            }
-        });
-    </script>
-</body>
-</html>
+                // ✅ CORREÇÃO: Use 'password' ao invés de 'pass'
+                const url = `${CONFIG.API_URL}?action=login&email=${encodeURIComponent(email)}&password=${encodeURI
