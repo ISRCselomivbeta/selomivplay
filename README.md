@@ -1,100 +1,127 @@
-# 🎵 Selo MIV - Sistema de Tokenização de Músicas
+Percebi que o **SELO MIV** que está no endereço que você me enviou **([https://selomivplay.vercel.app/#](https://selomivplay.vercel.app/#))** é uma plataforma de investimento em música com login, marketplace, dashboard de artista e funcionalidades de compra e venda de ações de músicas — algo como um *simulador de tokenização de músicas/ativos musicais*. ([selomivplay.vercel.app][1])
 
-![Selo MIV Banner](https://img.shields.io/badge/Selo-MIV-blue)
-![Versão Beta](https://img.shields.io/badge/Versão-Beta-orange)
-![GitHub Pages](https://img.shields.io/badge/GitHub-Pages-green)
+Baseado nisso e no conteúdo da descrição que você já passou, aqui está **uma versão reorganizada, profissional e mais clara da apresentação do site**, com melhor estrutura de copy e foco em usuário. Isso pode servir como **template para o site atual** ou para uma página de marketing focada em conversão.
 
-**Transforme músicas em ativos digitais negociáveis.** Sistema completo para tokenização de direitos autorais e distribuição automática de royalties.
+---
 
-## 🚀 Demonstração
+# 🎵 SELO MIV — Plataforma de Tokenização e Investimento em Música
 
-🌐 **Site Oficial:** [https://isrcselomivbeta.github.io/royalties-demo/](https://isrcselomivbeta.github.io/royalties-demo/)
+## Transforme suas músicas em ativos digitais e gere renda com direitos autorais.
 
-📱 **Interface Moderna:** Design responsivo que funciona em desktop e mobile
+**Selo MIV** é um sistema completo que permite **artistas tokenizarem suas músicas** e **investidores negociarem participações** nos royalties de cada obra — com acompanhamento em tempo real e ferramentas de gestão fáceis de usar.
 
-## ✨ Funcionalidades Principais
+---
+
+## 💡 O que é Tokenização de Música?
+
+A tokenização divide uma música em **unidades de participação (ações)** que podem ser compradas por investidores.
+Essas ações representam **direitos proporcionais aos royalties gerados por streams e uso comercial da faixa** — democratizando o acesso a investimentos na música. ([Wikipedia][2])
+
+---
+
+## 🚀 Funcionalidades Principais
 
 ### 🎤 Para Artistas
-- ✅ Cadastro simplificado de artistas
-- 📝 Registro de músicas com ISRC automático
-- 🏷️ Tokenização de até 49% dos direitos
-- 📊 Dashboard de acompanhamento em tempo real
-- 💰 Recebimento automático de royalties (51%)
 
-### 💰 Para Investidores
-- 👤 Cadastro rápido com validação
-- 🛒 Mercado de ações musicais
-- 📈 Compra/venda de ações de músicas
-- 📊 Acompanhamento de streams e royalties
-- 💸 Distribuição automática de dividendos
+* 🎶 **Cadastro de artista e música**
+* 📌 **Geração automática de ISRC para cada obra**
+* 🪙 **Tokenização de até 49% dos direitos da música**
+* 📊 **Painel completo com métricas de royalties**
+* 💸 **Recebimento automático de royalties direto no dashboard**
 
-### ⚙️ Sistema Automático
-- 🔄 Cálculo de royalties por stream (R$0,003)
-- 🤖 Distribuição proporcional aos acionistas
-- 📊 Valorização automática das ações
-- 📧 Notificações por e-mail
-- 📈 Dashboard administrativo
+### 💼 Para Investidores
 
-## 🏗️ Arquitetura do Sistema
+* 👤 **Cadastro simples e seguro**
+* 📈 **Marketplace de músicas tokenizadas**
+* 🛒 **Compra e venda de ações musicais**
+* 📊 **Visualização de desempenho e royalties**
+* 📬 **Relatórios de dividendos automáticos**
 
+### ⚙️ Sistema Automatizado
 
-## 📈 Como Funciona o Negócio
+* 🔢 **Cálculo automático de royalties por stream**
+* 🤖 **Distribuição proporcional entre acionistas**
+* 📈 **Valorização automática das ações com base em performance**
+* 📧 **Notificações por e-mail sobre transações e métricas**
 
-### Tokenização de Músicas
-1. **Cada música** é dividida em 100 ações (100%)
-2. **Artista mantém** 51% das ações (não negociáveis)
-3. **49% disponíveis** para venda no mercado
-4. **Cada ação** dá direito a % dos royalties
+---
 
-### Cálculo de Royalties
+## 🧠 Como o Negócio Funciona
 
-🛠️ Tecnologias Utilizadas
-Frontend
-https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white
+### 🎼 Divisão da Música
 
-https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white
+1. Cada música é dividida em **100 ações** (100%).
+2. O artista mantém **51% das ações** (não negociáveis).
+3. **49% ficam disponíveis** para investidores.
+4. Cada ação dá direito a uma parte proporcional dos royalties. ([selomivplay.vercel.app][1])
 
-https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black
+---
 
-https://img.shields.io/badge/Font_Awesome-339AF0?logo=fontawesome&logoColor=white
+## 💹 Cálculo de Royalties
 
-Backend
-https://img.shields.io/badge/Google_Apps_Script-4285F4?logo=google&logoColor=white
+Os royalties são calculados com base em streams, plays e outras formas de receita — então quanto mais a música for ouvida, mais valor as ações podem gerar.
 
-https://img.shields.io/badge/Google_Sheets-34A853?logo=googlesheets&logoColor=white
+---
 
-https://img.shields.io/badge/Google_Drive-4285F4?logo=googledrive&logoColor=white
+## 🛠️ Tecnologias Usadas
 
-Infraestrutura
-https://img.shields.io/badge/GitHub_Pages-222222?logo=githubpages&logoColor=white
+**Frontend**
 
-https://img.shields.io/badge/Google_Cloud-4285F4?logo=googlecloud&logoColor=white
+* HTML5
+* CSS3
+* JavaScript
+* Font Awesome
 
-🚀 Começando
-Para Artistas
-Acesse o site
+**Backend / Dados**
 
-Clique em "Cadastrar como Artista"
+* Google Apps Script
+* Google Sheets
+* Google Drive
 
-Preencha seus dados
+**Infraestrutura**
 
-Cadastre suas músicas
+* GitHub Pages
+* Google Cloud
 
-Defina % para tokenização
+---
 
-Para Investidores
-Crie sua conta de investidor
+## 📱 Experiência do Usuário
 
-Carregue saldo (simulação)
+### Para Artistas
 
-Navegue no mercado de ações
+1. Acesse o site
+2. Crie seu perfil de artista
+3. Cadastre sua música
+4. Defina percentuais e preços de tokenização
+5. Acompanhe métricas e royalties
 
-Compre ações das músicas preferidas
+### Para Investidores
 
-Acompanhe seus royalties
+1. Crie sua conta
+2. Explore o marketplace
+3. Compre participações nas músicas
+4. Veja seu portfólio evoluir
 
-📊 Planilhas do Sistema
-Planilha	Função	Link
-MÚSICAS	Todas as músicas tokenizadas	Abrir
-ARTISTAS	Cadastro de artistas	Abrir
-INVESTIDORES	Cadastro de investidores	Abrir
+---
+
+## 📊 O que você pode fazer agora
+
+👉 **Cadastrar suas músicas** e começar a tokenizar.
+
+👉 **Explorar o marketplace** e investir em artistas que você acredita.
+
+👉 **Monitorar performance e royalties** diretamente no painel do usuário.
+
+---
+
+## 📈 Porque o SELO MIV Importa
+
+O Selo MIV une **tecnologia Web3, direitos autorais e investimento democratizado**, oferecendo uma experiência diferente de modelos tradicionais de música digital — alinhado com a tendência de música como **ativo digital negociável**. ([Zoniqx][3])
+
+---
+
+Se quiser, posso também criar um **layout visual de design (estilo UX)** para a página inicial e as principais telas (como login, marketplace e painel), com sugestões de cores, tipografia e fluxo de usuário — é só pedir! 🎨✨
+
+[1]: https://selomivplay.vercel.app/ "SELO MIV | Fintech Musical"
+[2]: https://en.wikipedia.org/wiki/Non-fungible_token?utm_source=chatgpt.com "Non-fungible token"
+[3]: https://www.zoniqx.com/resources/key-features-to-look-for-in-an-asset-tokenization-platform?utm_source=chatgpt.com "Key Features to Look for in an Asset Tokenization Platform"
