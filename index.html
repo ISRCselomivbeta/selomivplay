@@ -1023,7 +1023,7 @@
         </section>
     </main>
 
-      <!-- Music Player -->
+    <!-- Music Player -->
     <div id="playerBar" class="player-bar">
         <div class="player-content">
             <div class="video-container" id="videoContainer">
@@ -1076,7 +1076,60 @@
             </div>
         </div>
     </div>
+</div>
 
+<!-- Invest Modal -->
+<div id="investModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-currency-dollar me-2"></i> Investir em Música</h5>
+            <button class="modal-close" onclick="closeModal('investModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="text-center mb-4">
+                <h6 id="investTrackTitle" class="fw-bold">Título da Música</h6>
+                <p class="text-muted" id="investTrackArtist">Artista</p>
+            </div>
+            <div class="form-group">
+                <label class="text-muted mb-2">Valor por ação:</label>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="fw-bold fs-5" id="investUnitPrice">R$ 0,00</span>
+                    <span class="badge bg-success" id="sharesAvailable">Disponível: 0 ações</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="text-muted mb-2">Quantidade de ações:</label>
+                <div class="input-group">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)">
+                        <i class="bi bi-dash"></i>
+                    </button>
+                    <input type="number" id="investQuantity" class="form-control-custom text-center" value="1" min="1" oninput="updateInvestmentTotal()">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(1)">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="text-muted mb-2">Valor total do investimento:</label>
+                <div class="fw-bold fs-4 text-success" id="investTotalPrice">R$ 0,00</div>
+            </div>
+            <div class="alert alert-info bg-dark border-info mt-3">
+                <i class="bi bi-info-circle me-2"></i> 
+                Saldo disponível: <span id="investAvailableBalance" class="fw-bold">R$ 0,00</span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('investModal')">Cancelar</button>
+            <button class="btn btn-miv" onclick="confirmInvestment()" id="confirmInvestBtn">
+                <i class="bi bi-check-circle me-2"></i> Confirmar Investimento
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Music Modal -->
 <div id="addMusicModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
@@ -1141,6 +1194,7 @@
     </div>
 </div>
 
+<!-- Add Balance Modal -->
 <div id="addBalanceModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
@@ -2934,7 +2988,70 @@ function setVolume(value) {
     }
 }
 
-// Adicione esta função para garantir que o player seja limpo ao sair
+function toggleShuffle() {
+    state.isShuffle = !state.isShuffle;
+    const icon = document.getElementById('shuffleIcon');
+    const btn = document.getElementById('shuffleBtn');
+    
+    if (state.isShuffle) {
+        icon.style.color = 'var(--neon-green)';
+        btn.style.color = 'var(--neon-green)';
+        showToast('Modo aleatório ativado', 'info');
+    } else {
+        icon.style.color = '';
+        btn.style.color = '';
+        showToast('Modo aleatório desativado', 'info');
+    }
+}
+
+function toggleRepeat() {
+    state.isRepeat = !state.isRepeat;
+    const icon = document.getElementById('repeatIcon');
+    const btn = document.getElementById('repeatBtn');
+    
+    if (state.isRepeat) {
+        icon.style.color = 'var(--neon-green)';
+        btn.style.color = 'var(--neon-green)';
+        showToast('Repetição ativada', 'info');
+    } else {
+        icon.style.color = '';
+        btn.style.color = '';
+        showToast('Repetição desativada', 'info');
+    }
+}
+
+function playNext() {
+    if (state.playlist.length === 0) return;
+    
+    let nextIndex;
+    if (state.isShuffle) {
+        nextIndex = Math.floor(Math.random() * state.playlist.length);
+        while (nextIndex === state.currentTrackIndex && state.playlist.length > 1) {
+            nextIndex = Math.floor(Math.random() * state.playlist.length);
+        }
+    } else {
+        nextIndex = (state.currentTrackIndex + 1) % state.playlist.length;
+    }
+    
+    playTrack(nextIndex);
+}
+
+function playPrevious() {
+    if (state.playlist.length === 0) return;
+    
+    let prevIndex;
+    if (state.isShuffle) {
+        prevIndex = Math.floor(Math.random() * state.playlist.length);
+        while (prevIndex === state.currentTrackIndex && state.playlist.length > 1) {
+            prevIndex = Math.floor(Math.random() * state.playlist.length);
+        }
+    } else {
+        prevIndex = state.currentTrackIndex > 0 ? state.currentTrackIndex - 1 : state.playlist.length - 1;
+    }
+    
+    playTrack(prevIndex);
+}
+
 function cleanupPlayer() {
     if (youtubePlayer && youtubePlayer.destroy) {
         try {
@@ -2951,14 +3068,77 @@ function cleanupPlayer() {
     }
 }
 
-// Modifique a função logout para limpar o player
-const originalLogout = logout;
-logout = function() {
+// ========== NAVEGAÇÃO ==========
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+}
+
+function changeSection(sectionId, buttonElement = null) {
+    document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    const sectionElement = document.getElementById(`${sectionId}Section`);
+    if (sectionElement) {
+        sectionElement.classList.add('active');
+    }
+    
+    if (buttonElement) {
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        buttonElement.classList.add('active');
+    }
+    
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('onclick')?.includes(sectionId)) {
+            link.classList.add('active');
+        }
+    });
+    
+    if (window.innerWidth < 768) {
+        toggleSidebar();
+    }
+    
+    const titles = {
+        'marketplace': 'Marketplace',
+        'portfolio': 'Portfólio',
+        'ledger': 'Extrato',
+        'artist': 'Painel Artista'
+    };
+    document.title = `SELO MIV | ${titles[sectionId] || 'Fintech Musical'}`;
+}
+
+function logout() {
     if (confirm('Tem certeza que deseja sair?')) {
         cleanupPlayer();
-        originalLogout();
+        
+        if (youtubePlayer && state.isPlaying) {
+            youtubePlayer.pauseVideo();
+        }
+        
+        localStorage.removeItem('miv_user');
+        localStorage.removeItem('miv_session');
+        
+        document.getElementById('playerBar').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'none';
+        document.getElementById('authScreen').style.display = 'flex';
+        showLoginForm();
+        
+        state.currentUser = null;
+        state.userBalance = 0;
+        state.playlist = [];
+        state.portfolioAssets = [];
+        state.ledgerData = [];
+        state.currentTrackIndex = -1;
+        state.isPlaying = false;
+        state.offlineMode = false;
+        state.appInitialized = false;
+        
+        showToast('Logout realizado com sucesso', 'success');
     }
-};
+}
 
 // ========== INICIALIZAÇÃO ==========
 document.addEventListener('DOMContentLoaded', function() {
