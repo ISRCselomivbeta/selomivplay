@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SELO MIV - Plataforma de Investimento em Música">
-    <meta name="theme-color" content="#007bff">
+    <meta name="theme-color" content="#00ff88">
     <title>SELO MIV | Fintech Musical</title>
 
     <!-- Bootstrap 5.3.0 -->
@@ -18,9 +18,8 @@
 
     <style>
         :root {
-            --primary-blue: #007bff;
-            --miv-blue: #0056b3;
-            --success-color: #28a745;
+            --neon-green: #00ff88;
+            --miv-blue: #0072ff;
             --bg-dark: #07090c;
             --bg-card: #111418;
             --border: #1e2329;
@@ -55,8 +54,8 @@
         .loading-spinner {
             width: 4rem;
             height: 4rem;
-            border: 0.25rem solid rgba(0, 123, 255, 0.3);
-            border-top-color: var(--primary-blue);
+            border: 0.25rem solid rgba(0, 255, 136, 0.3);
+            border-top-color: var(--neon-green);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 1.5rem;
@@ -99,14 +98,14 @@
             justify-content: center;
             width: 80px;
             height: 80px;
-            background: rgba(0, 123, 255, 0.1);
+            background: rgba(0, 255, 136, 0.1);
             border-radius: 50%;
             margin-bottom: 1.5rem;
-            border: 2px solid var(--primary-blue);
+            border: 2px solid var(--neon-green);
         }
         .logo-icon i {
             font-size: 2.5rem;
-            color: var(--primary-blue);
+            color: var(--neon-green);
         }
         .form-group {
             margin-bottom: 1.25rem;
@@ -122,18 +121,18 @@
         }
         .form-control-custom:focus {
             background: rgba(255, 255, 255, 0.08);
-            border-color: var(--primary-blue);
+            border-color: var(--neon-green);
             color: var(--text-light);
-            box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+            box-shadow: 0 0 0 0.25rem rgba(0, 255, 136, 0.25);
         }
         .form-control-custom::placeholder {
             color: var(--text-muted);
         }
         .btn-miv {
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--miv-blue) 100%);
+            background: linear-gradient(135deg, var(--neon-green) 0%, #00cc6a 100%);
             border: none;
             border-radius: 0.75rem;
-            color: #fff;
+            color: #000;
             font-weight: 700;
             padding: 1rem 1.5rem;
             font-size: 1rem;
@@ -147,7 +146,7 @@
         }
         .btn-miv:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 123, 255, 0.3);
+            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
         }
         .btn-miv:disabled {
             opacity: 0.6;
@@ -155,7 +154,7 @@
             transform: none;
         }
         .auth-link {
-            color: var(--primary-blue);
+            color: var(--neon-green);
             text-decoration: none;
             font-weight: 600;
             transition: opacity 0.3s ease;
@@ -170,7 +169,7 @@
             padding-bottom: 5rem;
         }
         .app-header {
-            background: linear-gradient(180deg, rgba(0, 123, 255, 0.1) 0%, rgba(7, 9, 12, 0.8) 100%);
+            background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, rgba(7, 9, 12, 0.8) 100%);
             backdrop-filter: blur(10px);
             padding: 1rem 1.5rem;
             border-bottom: 1px solid var(--border);
@@ -189,13 +188,13 @@
             margin-bottom: 0.25rem;
         }
         .saldo-display h4 {
-            color: var(--primary-blue);
+            color: var(--neon-green);
             font-weight: 700;
             margin-bottom: 0;
         }
         .user-badge {
-            background: var(--primary-blue);
-            color: #fff;
+            background: var(--neon-green);
+            color: #000;
             padding: 0.25rem 0.75rem;
             border-radius: 1rem;
             font-size: 0.75rem;
@@ -251,8 +250,8 @@
             transition: all 0.3s ease;
         }
         .nav-link:hover, .nav-link.active {
-            background: rgba(0, 123, 255, 0.1);
-            color: var(--primary-blue);
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--neon-green);
         }
         .nav-link i {
             font-size: 1.25rem;
@@ -296,8 +295,8 @@
         }
         .music-card:hover {
             transform: translateY(-5px);
-            border-color: var(--primary-blue);
-            box-shadow: 0 10px 20px rgba(0, 123, 255, 0.1);
+            border-color: var(--neon-green);
+            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.1);
         }
         .music-cover {
             width: 100%;
@@ -324,13 +323,13 @@
             margin-bottom: 1rem;
         }
         .music-price {
-            color: var(--primary-blue);
+            color: var(--neon-green);
             font-weight: 700;
             font-size: 1.125rem;
         }
         .music-percent {
             background: rgba(0, 123, 255, 0.1);
-            color: var(--primary-blue);
+            color: #007bff;
             padding: 0.25rem 0.75rem;
             border-radius: 1rem;
             font-size: 0.75rem;
@@ -394,7 +393,7 @@
             font-size: 0.875rem;
         }
         .player-price {
-            color: var(--primary-blue);
+            color: var(--neon-green);
             font-weight: 700;
         }
         .progress-container {
@@ -407,7 +406,7 @@
         }
         .progress-bar {
             height: 100%;
-            background: var(--primary-blue);
+            background: var(--neon-green);
             border-radius: 3px;
             width: 0%;
             transition: width 0.1s linear;
@@ -434,7 +433,7 @@
             justify-content: center;
         }
         .control-btn:hover {
-            color: var(--primary-blue);
+            color: var(--neon-green);
             transform: scale(1.1);
         }
         .play-btn {
@@ -467,7 +466,7 @@
             min-height: 60px;
         }
         .nav-btn:hover, .nav-btn.active {
-            color: var(--primary-blue);
+            color: var(--neon-green);
         }
         .nav-btn i {
             font-size: 1.25rem;
@@ -476,7 +475,7 @@
             font-size: 0.75rem;
         }
         .portfolio-summary {
-            background: linear-gradient(135deg, rgba(0, 123, 255, 0.1) 0%, rgba(108, 117, 125, 0.1) 100%);
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 123, 255, 0.1) 100%);
             border: 1px solid var(--border);
             border-radius: 1rem;
             padding: 1.5rem;
@@ -486,7 +485,7 @@
         .portfolio-value {
             font-size: 2.5rem;
             font-weight: 700;
-            color: var(--primary-blue);
+            color: var(--neon-green);
             margin: 0.5rem 0;
         }
         .ledger-table {
@@ -524,7 +523,7 @@
         }
         .stat-icon {
             font-size: 2rem;
-            color: var(--primary-blue);
+            color: var(--neon-green);
             margin-bottom: 1rem;
         }
         .stat-value {
@@ -622,8 +621,8 @@
             opacity: 1;
         }
         .toast.success {
-            border-color: var(--success-color);
-            background: rgba(40, 167, 69, 0.1);
+            border-color: var(--neon-green);
+            background: rgba(0, 255, 136, 0.1);
         }
         .toast.error {
             border-color: #ff3232;
@@ -641,7 +640,7 @@
             font-size: 1.25rem;
         }
         .toast.success .toast-icon {
-            color: var(--success-color);
+            color: var(--neon-green);
         }
         .toast.error .toast-icon {
             color: #ff3232;
@@ -675,7 +674,7 @@
         }
         .progress-loading {
             height: 4px;
-            background: rgba(0, 123, 255, 0.2);
+            background: rgba(0, 255, 136, 0.2);
             border-radius: 2px;
             overflow: hidden;
             margin: 1rem auto;
@@ -683,7 +682,7 @@
         }
         .progress-loading-bar {
             height: 100%;
-            background: linear-gradient(90deg, var(--primary-blue), var(--miv-blue));
+            background: linear-gradient(90deg, var(--neon-green), #00cc6a);
             border-radius: 2px;
             width: 0%;
             animation: loading 2s infinite;
@@ -697,13 +696,13 @@
         }
         .music-card:hover {
             transform: scale(1.02);
-            box-shadow: 0 0 15px rgba(0, 123, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
         }
         .btn-miv {
             transition: background 0.3s ease;
         }
         .btn-miv:active {
-            background: linear-gradient(135deg, var(--miv-blue) 0%, var(--primary-blue) 100%);
+            background: linear-gradient(135deg, #00cc6a 0%, var(--neon-green) 100%);
         }
         .music-percent::after {
             content: attr(data-tooltip);
@@ -730,7 +729,7 @@
             background: rgba(7,9,12,0.95);
         }
         .progress-bar {
-            background: linear-gradient(to right, var(--primary-blue) 0%, var(--miv-blue) 100%);
+            background: linear-gradient(to right, var(--neon-green) 0%, #00cc6a 100%);
         }
         @keyframes pulse {
             0% { transform: scale(1); }
@@ -738,9 +737,9 @@
             100% { transform: scale(1); }
         }
         .badge-success {
-            background: rgba(0, 123, 255, 0.2);
-            color: var(--primary-blue);
-            border: 1px solid rgba(0, 123, 255, 0.3);
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--neon-green);
+            border: 1px solid rgba(0, 255, 136, 0.3);
         }
         .badge-warning {
             background: rgba(255, 193, 7, 0.2);
@@ -774,7 +773,7 @@
 <div id="loadingScreen" class="loading-screen">
     <div class="loading-content">
         <div class="loading-spinner"></div>
-        <h4 class="text-primary mb-2">SELO MIV</h4>
+        <h4 class="text-success mb-2">SELO MIV</h4>
         <p class="text-muted" id="loadingMessage">Inicializando plataforma...</p>
         <div class="progress-loading">
             <div class="progress-loading-bar"></div>
@@ -884,7 +883,7 @@
             </li>
             <li class="nav-item">
                 <a href="#" class="nav-link" onclick="openAddBalanceModal()">
-                    <i class="bi bi-plus-circle text-primary"></i> <span class="text-primary">Adicionar Saldo</span>
+                    <i class="bi bi-plus-circle text-success"></i> <span class="text-success">Adicionar Saldo</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -919,7 +918,7 @@
                 <h2 class="section-title">🎵 Marketplace</h2>
                 <div>
                     <small class="text-muted">Taxa 0% em compras</small>
-                    <button class="btn btn-sm btn-outline-primary ms-2" onclick="loadMarketplace(true)">
+                    <button class="btn btn-sm btn-outline-success ms-2" onclick="loadMarketplace(true)">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
                 </div>
@@ -950,7 +949,7 @@
             <div class="section-header">
                 <h2 class="section-title">📋 Histórico de Transações</h2>
                 <div>
-                    <button class="btn btn-sm btn-outline-primary" onclick="loadLedger(true)">
+                    <button class="btn btn-sm btn-outline-success" onclick="loadLedger(true)">
                         <i class="bi bi-arrow-clockwise"></i> Atualizar
                     </button>
                     <button class="btn btn-sm btn-outline-info ms-2" onclick="exportExtrato()">
@@ -1024,14 +1023,14 @@
         </section>
     </main>
 
-    <!-- Music Player -->
+      <!-- Music Player -->
     <div id="playerBar" class="player-bar">
         <div class="player-content">
             <div class="video-container" id="videoContainer">
                 <div id="youtubePlayer"></div>
             </div>
             <div class="player-info" onclick="togglePlayerExpansion()">
-                <img src="https://via.placeholder.com/60x60/111418/007bff?text=MIV" class="player-album-art" alt="Album Art" id="playerAlbumArt">
+                <img src="https://via.placeholder.com/60x60/111418/00ff88?text=MIV" class="player-album-art" alt="Album Art" id="playerAlbumArt">
                 <div class="player-text">
                     <div class="player-title" id="playerTitle">Título da Música</div>
                     <div class="player-artist" id="playerArtist">Artista</div>
@@ -1039,6 +1038,10 @@
                 </div>
                 <button class="btn-miv btn-sm" onclick="event.stopPropagation(); openInvestModal(state.currentTrackIndex)">
                     <i class="bi bi-currency-dollar"></i> Investir
+                </button>
+                <!-- Botão para minimizar/expandir -->
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="event.stopPropagation(); togglePlayerExpansion()" id="expandCollapseBtn">
+                    <i class="bi bi-chevron-up" id="expandCollapseIcon"></i>
                 </button>
             </div>
             <div class="progress-container" onclick="seekMusic(event)" id="progressContainer">
@@ -1073,63 +1076,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav">
-        <button class="nav-btn active" onclick="changeSection('marketplace', this)">
-            <i class="bi bi-house"></i> <span>Market</span>
-        </button>
-        <button class="nav-btn" onclick="changeSection('portfolio', this)">
-            <i class="bi bi-briefcase"></i> <span>Carteira</span>
-        </button>
-        <button class="nav-btn" onclick="changeSection('ledger', this)">
-            <i class="bi bi-receipt"></i> <span>Extrato</span>
-        </button>
-    </nav>
-</div>
-
-<!-- Modais -->
-<div id="investModal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-currency-dollar me-2"></i> Investir em Música</h5>
-            <button class="modal-close" onclick="closeModal('investModal')">
-                <i class="bi bi-x"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <h6 id="investTrackTitle" class="mb-2">Título da Música</h6>
-            <p class="text-muted mb-4" id="investTrackArtist">Artista</p>
-            <div class="form-group">
-                <label class="text-muted mb-2 d-block">Quantidade de Ações</label>
-                <div class="input-group">
-                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)">-</button>
-                    <input type="number" id="investQuantity" class="form-control-custom text-center" value="1" min="1" step="1" oninput="updateInvestmentTotal()">
-                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(1)">+</button>
-                </div>
-                <small class="text-muted mt-1 d-block" id="sharesAvailable">Disponível: calculando...</small>
-            </div>
-            <div class="d-flex justify-content-between mb-3">
-                <span class="text-muted">Valor por ação:</span>
-                <span class="text-primary fw-bold" id="investUnitPrice">R$ 0,00</span>
-            </div>
-            <div class="d-flex justify-content-between mb-4">
-                <span class="text-muted">Valor total:</span>
-                <span class="text-primary fw-bold fs-4" id="investTotalPrice">R$ 0,00</span>
-            </div>
-            <div class="alert alert-info bg-dark border-info mb-3">
-                <i class="bi bi-info-circle me-2"></i> Cada ação representa 0.01% de participação nos royalties
-            </div>
-            <div class="alert alert-warning bg-dark border-warning">
-                <i class="bi bi-exclamation-triangle me-2"></i> Saldo disponível: <span id="investAvailableBalance" class="fw-bold">R$ 0,00</span>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('investModal')">Cancelar</button>
-            <button class="btn-miv" id="confirmInvestBtn" onclick="confirmInvestment()">Confirmar Investimento</button>
-        </div>
-    </div>
-</div>
 
 <div id="addMusicModal" class="modal-overlay">
     <div class="modal-content">
@@ -1207,10 +1153,10 @@
             <div class="form-group">
                 <label class="text-muted mb-2 d-block">Valor para adicionar</label>
                 <div class="btn-group w-100 mb-3" role="group">
-                    <button type="button" class="btn btn-outline-primary" onclick="setBalanceAmount(50)">R$ 50</button>
-                    <button type="button" class="btn btn-outline-primary" onclick="setBalanceAmount(100)">R$ 100</button>
-                    <button type="button" class="btn btn-outline-primary" onclick="setBalanceAmount(200)">R$ 200</button>
-                    <button type="button" class="btn btn-outline-primary" onclick="setBalanceAmount(500)">R$ 500</button>
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(50)">R$ 50</button>
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(100)">R$ 100</button>
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(200)">R$ 200</button>
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(500)">R$ 500</button>
                 </div>
                 <input type="number" id="balanceAmount" class="form-control-custom" value="100" min="10" step="10" oninput="validateBalanceAmount()">
             </div>
@@ -1246,11 +1192,10 @@
 <script>
 // ========== CONFIGURAÇÃO AVANÇADA ==========
 const CONFIG = {
-    // Usando um proxy para contornar CORS
-    API_URL: 'https://corsproxy.io/?https://script.google.com/macros/s/AKfycbxdGpjuyXUfi0JwN64GXGDel4iKTwDATL2ZUboTGGUw4KvvxabZnsPtJ9HRQaboqwk/exec',
+    API_URL: 'https://script.google.com/macros/s/AKfycbxdGpjuyXUfi0JwN64GXGDel4iKTwDATL2ZUboTGGUw4KvvxabZnsPtJ9HRQaboqwk/exec',
     LOCAL_STORAGE_KEY: 'selo_miv_data',
-    VERSION: '2.0.1',
-    AUTO_REFRESH_INTERVAL: 60000,
+    VERSION: '2.0.0',
+    AUTO_REFRESH_INTERVAL: 60000, // 1 minuto
     DEFAULT_BALANCE: 1000
 };
 
@@ -1342,7 +1287,7 @@ class DataManager {
                 artista: "Selo MIV",
                 genero: "INSTRUMENTAL",
                 link_youtube: "https://youtu.be/O4vSvOLtkuM",
-                link_capa: "https://via.placeholder.com/300x300/111418/007bff?text=MIV",
+                link_capa: "https://via.placeholder.com/300x300/111418/00ff88?text=MIV",
                 valor_acao: 18.75,
                 percentual_disponivel: 35,
                 acoes_vendidas: 65,
@@ -1358,35 +1303,31 @@ class DataManager {
 
         for (let i = 0; i < maxRetries; i++) {
             try {
-                // Usando FormData para envio POST
-                const formData = new FormData();
+                const formData = new URLSearchParams();
                 formData.append('action', action);
                 Object.keys(params).forEach(key => {
                     formData.append(key, params[key]);
                 });
 
-                // Usando fetch com modo 'cors' e proxy
                 const response = await fetch(CONFIG.API_URL, {
                     method: 'POST',
-                    mode: 'cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: formData
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const result = await response.json();
                 
-                if (result && (result.success || result.data)) {
-                    this.updateLocalCache(action, result.data || result, params);
-                    return { success: true, data: result.data || result };
+                if (result.success) {
+                    this.updateLocalCache(action, result.data, params);
+                    return result;
                 } else {
-                    throw new Error(result?.message || 'Ação falhou');
+                    throw new Error(result.message || 'Ação falhou');
                 }
             } catch (error) {
                 lastError = error;
-                console.warn(`Tentativa ${i + 1} falhou para ${action}:`, error.message);
+                console.warn(`Tentativa ${i + 1} falhou para ${action}:`, error);
                 
                 if (i === maxRetries - 1) {
                     const localData = this.getLocalData(action, params);
@@ -1401,7 +1342,7 @@ class DataManager {
             }
         }
 
-        return { success: false, error: lastError };
+        throw lastError;
     }
 
     updateLocalCache(action, data, params) {
@@ -1409,7 +1350,7 @@ class DataManager {
         const cache = {
             data,
             timestamp: Date.now(),
-            ttl: 5 * 60 * 1000 // 5 minutos
+            ttl: 5 * 60 * 1000
         };
         localStorage.setItem(`cache_${cacheKey}`, JSON.stringify(cache));
     }
@@ -1425,7 +1366,6 @@ class DataManager {
                 }
             }
 
-            // Fallback para dados offline
             switch(action) {
                 case 'get_musicas':
                     return this.offlineData.music;
@@ -1438,10 +1378,9 @@ class DataManager {
                         t.user_id === (params.user_id || state.currentUser?.id)
                     );
                 case 'login':
-                    if (params.email === 'admin@miv.com' && params.password === 'admin123') {
-                        return this.offlineData.users[0];
-                    }
-                    return null;
+                    return this.offlineData.users.find(u => 
+                        u.email === params.email && u.password === params.password
+                    );
                 default:
                     return null;
             }
@@ -1463,8 +1402,7 @@ class DataManager {
         this.offlineData.transactions.push(transaction);
         localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(this.offlineData));
         
-        // Tentar sincronizar em background
-        setTimeout(() => this.syncPendingTransactions(), 5000);
+        this.syncPendingTransactions();
     }
 
     async syncPendingTransactions() {
@@ -1472,10 +1410,8 @@ class DataManager {
         
         for (const transaction of pending) {
             try {
-                const result = await this.fetchWithFallback(transaction.type, transaction.data);
-                if (result.success) {
-                    transaction.synced = true;
-                }
+                await this.fetchWithFallback(transaction.type, transaction.data);
+                transaction.synced = true;
             } catch (e) {
                 console.error('Falha ao sincronizar transação:', e);
             }
@@ -1620,32 +1556,7 @@ async function handleLogin() {
     showLoading('Autenticando...');
 
     try {
-        // Primeiro, tenta login offline com credenciais padrão
-        if (email === 'admin@miv.com' && password === 'admin123') {
-            state.currentUser = {
-                id: 1,
-                nome: 'Administrador',
-                email: 'admin@miv.com',
-                tipo: 'admin',
-                saldo: 1500,
-                acesso: 'aprovado'
-            };
-            state.userBalance = 1500;
-            
-            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-            localStorage.setItem('miv_session', Date.now().toString());
-            
-            showToast('Login realizado com sucesso! (Modo Demo)', 'success');
-            initializeApp();
-            return;
-        }
-
-        // Tenta login via API
-        const result = await dataManager.fetchWithFallback('login', { 
-            email, 
-            password,
-            action: 'login'
-        });
+        const result = await dataManager.fetchWithFallback('login', { email, password });
 
         if (result.success && result.data) {
             state.currentUser = result.data;
@@ -1660,30 +1571,29 @@ async function handleLogin() {
             document.getElementById('loginPassword').value = '';
             
             initializeApp();
-        } else if (result.offline) {
-            // Modo offline com dados locais
-            showToast('Modo offline ativado', 'warning');
-            initializeApp();
         } else {
-            showToast(result.error?.message || 'Credenciais inválidas', 'error');
+            showToast(result.message || 'Credenciais inválidas', 'error');
         }
     } catch (error) {
         console.error('Erro no login:', error);
-        showToast('Erro de conexão. Usando modo demonstração.', 'warning');
         
-        // Fallback para modo demo
-        state.currentUser = {
-            id: 1,
-            nome: 'Administrador',
-            email: 'admin@miv.com',
-            tipo: 'admin',
-            saldo: 1500,
-            acesso: 'aprovado'
-        };
-        state.userBalance = 1500;
-        
-        localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-        initializeApp();
+        if (email === 'admin@miv.com' && password === 'admin123') {
+            state.currentUser = {
+                id: 1,
+                nome: 'Administrador',
+                email: 'admin@miv.com',
+                tipo: 'admin',
+                saldo: 1500,
+                acesso: 'aprovado'
+            };
+            state.userBalance = 1500;
+            
+            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+            showToast('Modo de demonstração ativado', 'info');
+            initializeApp();
+        } else {
+            showToast('Erro de conexão. Tente novamente.', 'error');
+        }
     } finally {
         loginBtn.disabled = false;
         loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
@@ -1758,7 +1668,7 @@ async function handleRegister() {
                 document.getElementById('registerLink').value = '';
             }
         } else {
-            showToast(result.error?.message || 'Erro ao criar conta', 'error');
+            showToast(result.message || 'Erro ao criar conta', 'error');
         }
     } catch (error) {
         console.error('Erro no registro:', error);
@@ -1788,7 +1698,7 @@ function updateUserInterface() {
     if (userBadge) {
         const userType = state.currentUser.tipo || 'ouvinte';
         const badges = {
-            'ouvinte': { text: 'Ouvinte', color: 'var(--primary-blue)' },
+            'ouvinte': { text: 'Ouvinte', color: 'var(--neon-green)' },
             'artista': { text: 'Artista', color: '#007bff' },
             'admin': { text: 'Admin', color: '#ff3232' }
         };
@@ -1890,24 +1800,18 @@ async function loadMarketplace(forceRefresh = false) {
         const result = await dataManager.fetchWithFallback('get_musicas');
         
         if (result.success && result.data) {
-            state.playlist = Array.isArray(result.data) 
-                ? result.data.filter(music => 
-                    music && (music.status || '').toLowerCase() === 'ativo'
-                  )
-                : this.getSampleMusic();
+            state.playlist = result.data.filter(music => 
+                music && (music.status || '').toLowerCase() === 'ativo'
+            ) || [];
             
             if (result.offline) {
                 state.offlineMode = true;
             }
-        } else {
-            // Fallback para dados de exemplo
-            state.playlist = dataManager.getSampleMusic();
         }
         
         renderMarketplace();
     } catch (error) {
         console.error('Erro ao carregar marketplace:', error);
-        state.playlist = dataManager.getSampleMusic();
         renderMarketplace();
     }
 }
@@ -1944,10 +1848,10 @@ function renderMarketplace() {
         return `
             <div class="music-card" onclick="playTrack(${index})">
                 <div class="position-relative">
-                    <img src="${track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/007bff?text=MIV'}" 
+                    <img src="${track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV'}" 
                          class="music-cover" 
                          alt="${track.titulo || track.TITULO || 'Música'}"
-                         onerror="this.src='https://via.placeholder.com/300x300/111418/007bff?text=MIV'">
+                         onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
                     ${percentSold >= 90 ? `
                         <div class="position-absolute top-0 end-0 m-2">
                             <span class="badge ${badgeClass}">Esgotando</span>
@@ -2107,24 +2011,27 @@ async function confirmInvestment() {
             
             closeModal('investModal');
         } else {
-            showToast(result.error?.message || 'Erro ao processar investimento', 'error');
+            showToast(result.message || 'Erro ao processar investimento', 'error');
         }
     } catch (error) {
         console.error('Erro no investimento:', error);
         
-        // Modo offline
-        state.userBalance -= totalPrice;
-        updateBalanceDisplay();
-        
-        dataManager.saveTransaction('buy', {
-            user_id: state.currentUser.id,
-            music_id: state.currentInvestTrack.id,
-            quantidade: quantity,
-            valor_total: totalPrice
-        });
-        
-        showToast('Investimento registrado localmente. Será sincronizado quando online.', 'warning');
-        closeModal('investModal');
+        if (state.offlineMode) {
+            state.userBalance -= totalPrice;
+            updateBalanceDisplay();
+            
+            dataManager.saveTransaction('buy', {
+                user_id: state.currentUser.id,
+                music_id: state.currentInvestTrack.id,
+                quantidade: quantity,
+                valor_total: totalPrice
+            });
+            
+            showToast('Investimento registrado localmente. Será sincronizado quando online.', 'warning');
+            closeModal('investModal');
+        } else {
+            showToast('Erro de conexão ao processar investimento', 'error');
+        }
     } finally {
         hideLoading();
     }
@@ -2143,13 +2050,10 @@ async function loadPortfolio(silent = false) {
         
         if (result.success) {
             state.portfolioAssets = result.data || [];
-        } else {
-            state.portfolioAssets = [];
+            renderPortfolio();
         }
-        renderPortfolio();
     } catch (error) {
         console.error('Erro ao carregar portfólio:', error);
-        state.portfolioAssets = [];
         renderPortfolio();
     } finally {
         if (!silent) hideLoading();
@@ -2210,7 +2114,7 @@ function renderPortfolio() {
                     <button class="btn-miv me-2" onclick="changeSection('marketplace')">
                         <i class="bi bi-arrow-right me-2"></i> Explorar Marketplace
                     </button>
-                    <button class="btn btn-outline-primary" onclick="openAddBalanceModal()">
+                    <button class="btn btn-outline-success" onclick="openAddBalanceModal()">
                         <i class="bi bi-plus-circle me-2"></i> Adicionar Saldo
                     </button>
                 </div>
@@ -2242,10 +2146,10 @@ function renderPortfolio() {
         return `
             <div class="music-card mb-3">
                 <div class="d-flex">
-                    <img src="${music.link_capa || music.LINK_CAPA || 'https://via.placeholder.com/80x80/111418/007bff?text=MIV'}" 
+                    <img src="${music.link_capa || music.LINK_CAPA || 'https://via.placeholder.com/80x80/111418/00ff88?text=MIV'}" 
                          style="width: 80px; height: 80px; object-fit: cover; border-radius: 0.75rem; margin-right: 1rem;" 
                          alt="${music.titulo || music.TITULO || 'Música'}"
-                         onerror="this.src='https://via.placeholder.com/80x80/111418/007bff?text=MIV'">
+                         onerror="this.src='https://via.placeholder.com/80x80/111418/00ff88?text=MIV'">
                     <div style="flex: 1;">
                         <h6 class="music-title">${music.titulo || music.TITULO || 'Música não encontrada'}</h6>
                         <p class="music-artist">${music.artista || music.ARTISTA || 'Artista Desconhecido'}</p>
@@ -2287,13 +2191,10 @@ async function loadLedger(forceRefresh = false) {
         
         if (result.success) {
             state.ledgerData = result.data || [];
-        } else {
-            state.ledgerData = [];
+            renderLedger();
         }
-        renderLedger();
     } catch (error) {
         console.error('Erro ao carregar extrato:', error);
-        state.ledgerData = [];
         renderLedger();
     }
 }
@@ -2314,7 +2215,7 @@ function renderLedger() {
                             <button class="btn-miv me-2" onclick="changeSection('marketplace')">
                                 <i class="bi bi-currency-dollar me-2"></i> Investir Agora
                             </button>
-                            <button class="btn btn-outline-primary" onclick="openAddBalanceModal()">
+                            <button class="btn btn-outline-success" onclick="openAddBalanceModal()">
                                 <i class="bi bi-plus-circle me-2"></i> Adicionar Saldo
                             </button>
                         </div>
@@ -2424,8 +2325,6 @@ async function loadArtistData(forceRefresh = false) {
             document.getElementById('artistMonthlyEarnings').textContent = formatCurrency(monthlyEarnings);
             
             renderArtistMusic(artistData.musicas || []);
-        } else {
-            renderArtistMusic([]);
         }
     } catch (error) {
         console.error('Erro ao carregar dados do artista:', error);
@@ -2462,10 +2361,10 @@ function renderArtistMusic(musics) {
         
         return `
             <div class="music-card">
-                <img src="${music.link_capa || 'https://via.placeholder.com/300x300/111418/007bff?text=MIV'}" 
+                <img src="${music.link_capa || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV'}" 
                      class="music-cover" 
                      alt="${music.titulo}"
-                     onerror="this.src='https://via.placeholder.com/300x300/111418/007bff?text=MIV'">
+                     onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
                 <div class="music-info">
                     <h6 class="music-title">${music.titulo}</h6>
                     <p class="music-artist">${state.currentUser.nome}</p>
@@ -2476,7 +2375,7 @@ function renderArtistMusic(musics) {
                         </span>
                     </div>
                     <div class="d-flex gap-2 mt-2">
-                        <button class="btn btn-outline-primary btn-sm flex-fill" onclick="editMusic('${music.id}')">
+                        <button class="btn btn-outline-success btn-sm flex-fill" onclick="editMusic('${music.id}')">
                             <i class="bi bi-pencil"></i> Editar
                         </button>
                     </div>
@@ -2581,7 +2480,7 @@ async function registerMusic() {
             
             closeModal('addMusicModal');
         } else {
-            showToast(result.error?.message || 'Erro ao cadastrar música', 'error');
+            showToast(result.message || 'Erro ao cadastrar música', 'error');
         }
     } catch (error) {
         console.error('Erro ao cadastrar música:', error);
@@ -2666,11 +2565,12 @@ async function processBalanceAdd() {
 let youtubePlayer = null;
 
 function onYouTubeIframeAPIReady() {
+    CONFIG.YOUTUBE_API_LOADED = true;
     console.log('YouTube API carregada');
 }
 
 function initializeYouTubePlayer(videoId) {
-    if (!videoId) {
+    if (!videoId || !CONFIG.YOUTUBE_API_LOADED) {
         document.getElementById('youtubePlayer').innerHTML = `
             <iframe width="100%" height="100%" 
                     src="https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&showinfo=0&rel=0" 
@@ -2683,14 +2583,25 @@ function initializeYouTubePlayer(videoId) {
     }
     
     try {
-        document.getElementById('youtubePlayer').innerHTML = `
-            <iframe width="100%" height="100%" 
-                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&showinfo=0&rel=0" 
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-            </iframe>
-        `;
+        if (youtubePlayer) {
+            youtubePlayer.destroy();
+        }
+        
+        youtubePlayer = new YT.Player('youtubePlayer', {
+            videoId: videoId,
+            playerVars: {
+                'autoplay': 1,
+                'controls': 1,
+                'modestbranding': 1,
+                'rel': 0,
+                'showinfo': 0
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange,
+                'onError': onPlayerError
+            }
+        });
     } catch (error) {
         console.error('Erro ao inicializar player YouTube:', error);
         document.getElementById('youtubePlayer').innerHTML = `
@@ -2700,6 +2611,65 @@ function initializeYouTubePlayer(videoId) {
                     allowfullscreen>
             </iframe>
         `;
+    }
+}
+
+function onPlayerReady(event) {
+    console.log('Player YouTube pronto');
+    event.target.setVolume(state.currentVolume);
+    updateProgressBar();
+    document.getElementById('volumeSlider').addEventListener('input', (e) => {
+        setVolume(e.target.value);
+    });
+}
+
+function onPlayerStateChange(event) {
+    switch(event.data) {
+        case YT.PlayerState.PLAYING:
+            state.isPlaying = true;
+            document.getElementById('playButton').innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
+            updateProgressBar();
+            break;
+        case YT.PlayerState.PAUSED:
+            state.isPlaying = false;
+            document.getElementById('playButton').innerHTML = '<i class="bi bi-play-circle-fill"></i>';
+            break;
+        case YT.PlayerState.ENDED:
+            state.isPlaying = false;
+            document.getElementById('playButton').innerHTML = '<i class="bi bi-play-circle-fill"></i>';
+            if (state.isRepeat) {
+                playTrack(state.currentTrackIndex);
+            } else {
+                playNext();
+            }
+            break;
+    }
+}
+
+function onPlayerError(event) {
+    console.error('Erro no player YouTube:', event.data);
+    showToast('Erro ao reproduzir vídeo. Tente outra música.', 'error');
+}
+
+function updateProgressBar() {
+    if (!youtubePlayer || !state.isPlaying) return;
+    
+    try {
+        const currentTime = youtubePlayer.getCurrentTime();
+        const duration = youtubePlayer.getDuration();
+        
+        if (duration > 0) {
+            const percent = (currentTime / duration) * 100;
+            document.getElementById('musicProgress').style.width = `${percent}%`;
+            document.getElementById('currentTime').textContent = formatTime(currentTime);
+            document.getElementById('durationTime').textContent = formatTime(duration);
+        }
+        
+        if (state.isPlaying) {
+            requestAnimationFrame(updateProgressBar);
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar barra de progresso:', error);
     }
 }
 
@@ -2717,10 +2687,10 @@ function playTrack(index) {
     document.getElementById('playerPrice').textContent = `${formatCurrency(track.valor_acao || track.VALOR_ACAO || 0)} por ação`;
     
     const playerAlbumArt = document.getElementById('playerAlbumArt');
-    const coverUrl = track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/007bff?text=MIV';
+    const coverUrl = track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
     playerAlbumArt.src = coverUrl;
     playerAlbumArt.onerror = function() {
-        this.src = 'https://via.placeholder.com/300x300/111418/007bff?text=MIV';
+        this.src = 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
     };
     
     document.getElementById('playerBar').style.display = 'block';
@@ -2729,7 +2699,22 @@ function playTrack(index) {
     if (youtubeLink) {
         const videoId = extractYouTubeId(youtubeLink);
         if (videoId) {
-            initializeYouTubePlayer(videoId);
+            if (CONFIG.YOUTUBE_API_LOADED && typeof YT !== 'undefined') {
+                initializeYouTubePlayer(videoId);
+            } else {
+                const tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                const firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+                
+                document.getElementById('youtubePlayer').innerHTML = `
+                    <iframe width="100%" height="100%" 
+                            src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
+                            frameborder="0" 
+                            allowfullscreen>
+                    </iframe>
+                `;
+            }
         }
     }
     
@@ -2745,12 +2730,17 @@ function extractYouTubeId(url) {
 }
 
 function togglePlay() {
-    if (!state.isPlaying) {
-        document.getElementById('playButton').innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-        state.isPlaying = true;
-    } else {
+    if (!youtubePlayer) return;
+    
+    if (state.isPlaying) {
+        youtubePlayer.pauseVideo();
         document.getElementById('playButton').innerHTML = '<i class="bi bi-play-circle-fill"></i>';
         state.isPlaying = false;
+    } else {
+        youtubePlayer.playVideo();
+        document.getElementById('playButton').innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
+        state.isPlaying = true;
+        updateProgressBar();
     }
 }
 
@@ -2758,23 +2748,40 @@ function togglePlayerExpansion() {
     const playerBar = document.getElementById('playerBar');
     const isExpanded = playerBar.classList.toggle('expanded');
     
-    if (isExpanded) {
-        document.body.style.overflow = 'hidden';
-    } else {
-        document.body.style.overflow = 'auto';
+    if (isExpanded && youtubePlayer) {
+        setTimeout(() => {
+            if (youtubePlayer.getPlayerState) {
+                const state = youtubePlayer.getPlayerState();
+                if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING) {
+                    youtubePlayer.playVideo();
+                }
+            }
+        }, 300);
     }
 }
 
 function seekMusic(event) {
+    if (!youtubePlayer) return;
+    
     const progressContainer = document.getElementById('progressContainer');
     const rect = progressContainer.getBoundingClientRect();
     const percent = (event.clientX - rect.left) / rect.width;
     
-    document.getElementById('musicProgress').style.width = `${percent * 100}%`;
+    try {
+        const duration = youtubePlayer.getDuration();
+        if (duration) {
+            const seekTime = duration * percent;
+            youtubePlayer.seekTo(seekTime, true);
+            document.getElementById('musicProgress').style.width = `${percent * 100}%`;
+        }
+    } catch (error) {
+        console.error('Erro ao buscar posição:', error);
+    }
 }
 
 function setVolume(value) {
     state.currentVolume = parseInt(value);
+    
     document.getElementById('volumeSlider').value = value;
     
     const volumeIcon = document.getElementById('volumeIcon');
@@ -2785,6 +2792,14 @@ function setVolume(value) {
     } else {
         volumeIcon.className = 'bi bi-volume-up';
     }
+    
+    if (youtubePlayer && youtubePlayer.setVolume) {
+        try {
+            youtubePlayer.setVolume(value);
+        } catch (error) {
+            console.error('Erro ao definir volume:', error);
+        }
+    }
 }
 
 function toggleShuffle() {
@@ -2793,8 +2808,8 @@ function toggleShuffle() {
     const btn = document.getElementById('shuffleBtn');
     
     if (state.isShuffle) {
-        icon.style.color = 'var(--primary-blue)';
-        btn.style.color = 'var(--primary-blue)';
+        icon.style.color = 'var(--neon-green)';
+        btn.style.color = 'var(--neon-green)';
         showToast('Modo aleatório ativado', 'info');
     } else {
         icon.style.color = '';
@@ -2809,8 +2824,8 @@ function toggleRepeat() {
     const btn = document.getElementById('repeatBtn');
     
     if (state.isRepeat) {
-        icon.style.color = 'var(--primary-blue)';
-        btn.style.color = 'var(--primary-blue)';
+        icon.style.color = 'var(--neon-green)';
+        btn.style.color = 'var(--neon-green)';
         showToast('Repetição ativada', 'info');
     } else {
         icon.style.color = '';
@@ -2895,6 +2910,10 @@ function changeSection(sectionId, buttonElement = null) {
 
 function logout() {
     if (confirm('Tem certeza que deseja sair?')) {
+        if (youtubePlayer && state.isPlaying) {
+            youtubePlayer.pauseVideo();
+        }
+        
         localStorage.removeItem('miv_user');
         localStorage.removeItem('miv_session');
         
@@ -2961,6 +2980,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Enter') handleRegister();
     });
     
+    document.getElementById('loginEmail')?.addEventListener('input', function(e) {
+        validateEmailField(e.target);
+    });
+    
+    document.getElementById('registerEmail')?.addEventListener('input', function(e) {
+        validateEmailField(e.target);
+    });
+    
     window.addEventListener('online', () => {
         if (state.offlineMode) {
             state.offlineMode = false;
@@ -2975,6 +3002,17 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('Modo offline ativado', 'warning');
     });
 });
+
+function validateEmailField(field) {
+    const email = field.value.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (email && !emailRegex.test(email)) {
+        field.classList.add('is-invalid');
+    } else {
+        field.classList.remove('is-invalid');
+    }
+}
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
