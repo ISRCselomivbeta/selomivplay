@@ -1,3068 +1,1742 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="SELO MIV - Plataforma de Investimento em Música">
-    <meta name="theme-color" content="#00ff88">
-    <title>SELO MIV | Fintech Musical</title>
+// ========== CONFIGURAÇÃO ==========
+const SPREADSHEET_ID = '1CwF9hf-lsjYkol-V7r3WOT5ld3dQFqKRTQ8nHcV45Wo';
 
-    <!-- Bootstrap 5.3.0 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
-    <!-- YouTube Iframe API -->
-    <script src="https://www.youtube.com/iframe_api"></script>
+// ========== CORS HEADERS ==========
+function setCorsHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '3600'
+  };
+}
 
-    <style>
-        :root {
-            --neon-green: #00ff88;
-            --miv-blue: #0072ff;
-            --bg-dark: #07090c;
-            --bg-card: #111418;
-            --border: #1e2329;
-            --text-light: #f8f9fa;
-            --text-muted: #6c757d;
-        }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-light);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-        .loading-screen {
-            position: fixed;
-            inset: 0;
-            background: var(--bg-dark);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.3s ease;
-        }
-        .loading-content {
-            text-align: center;
-        }
-        .loading-spinner {
-            width: 4rem;
-            height: 4rem;
-            border: 0.25rem solid rgba(0, 255, 136, 0.3);
-            border-top-color: var(--neon-green);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .auth-screen {
-            position: fixed;
-            inset: 0;
-            background: linear-gradient(135deg, var(--bg-dark) 0%, #0c0e12 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            z-index: 9998;
-            overflow-y: auto;
-        }
-        .auth-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 1.5rem;
-            padding: 2.5rem;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-            transform: translateY(0);
-            transition: transform 0.3s ease;
-        }
-        .auth-card:hover {
-            transform: translateY(-5px);
-        }
-        .logo-header {
-            text-align: center;
-            margin-bottom: 2.5rem;
-        }
-        .logo-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 80px;
-            height: 80px;
-            background: rgba(0, 255, 136, 0.1);
-            border-radius: 50%;
-            margin-bottom: 1.5rem;
-            border: 2px solid var(--neon-green);
-        }
-        .logo-icon i {
-            font-size: 2.5rem;
-            color: var(--neon-green);
-        }
-        .form-group {
-            margin-bottom: 1.25rem;
-        }
-        .form-control-custom {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            color: var(--text-light);
-            padding: 0.875rem 1rem;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-        .form-control-custom:focus {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: var(--neon-green);
-            color: var(--text-light);
-            box-shadow: 0 0 0 0.25rem rgba(0, 255, 136, 0.25);
-        }
-        .form-control-custom::placeholder {
-            color: var(--text-muted);
-        }
-        .btn-miv {
-            background: linear-gradient(135deg, var(--neon-green) 0%, #00cc6a 100%);
-            border: none;
-            border-radius: 0.75rem;
-            color: #000;
-            font-weight: 700;
-            padding: 1rem 1.5rem;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            width: 100%;
-        }
-        .btn-miv:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
-        }
-        .btn-miv:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .auth-link {
-            color: var(--neon-green);
-            text-decoration: none;
-            font-weight: 600;
-            transition: opacity 0.3s ease;
-        }
-        .auth-link:hover {
-            opacity: 0.8;
-            text-decoration: underline;
-        }
-        .main-app {
-            display: none;
-            min-height: 100vh;
-            padding-bottom: 5rem;
-        }
-        .app-header {
-            background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, rgba(7, 9, 12, 0.8) 100%);
-            backdrop-filter: blur(10px);
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        .header-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .saldo-display h6 {
-            color: var(--text-muted);
-            font-size: 0.75rem;
-            margin-bottom: 0.25rem;
-        }
-        .saldo-display h4 {
-            color: var(--neon-green);
-            font-weight: 700;
-            margin-bottom: 0;
-        }
-        .user-badge {
-            background: var(--neon-green);
-            color: #000;
-            padding: 0.25rem 0.75rem;
-            border-radius: 1rem;
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: -300px;
-            width: 300px;
-            height: 100vh;
-            background: #000;
-            border-right: 1px solid var(--border);
-            z-index: 1100;
-            transition: left 0.3s ease;
-            overflow-y: auto;
-            padding: 1.5rem;
-        }
-        .sidebar.open {
-            left: 0;
-        }
-        .sidebar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border);
-        }
-        .sidebar-close {
-            background: none;
-            border: none;
-            color: var(--text-light);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.25rem;
-        }
-        .nav-menu {
-            list-style: none;
-            padding: 0;
-        }
-        .nav-item {
-            margin-bottom: 0.5rem;
-        }
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.875rem 1rem;
-            color: var(--text-muted);
-            text-decoration: none;
-            border-radius: 0.75rem;
-            transition: all 0.3s ease;
-        }
-        .nav-link:hover, .nav-link.active {
-            background: rgba(0, 255, 136, 0.1);
-            color: var(--neon-green);
-        }
-        .nav-link i {
-            font-size: 1.25rem;
-        }
-        .section {
-            display: none;
-            padding: 1.5rem;
-            animation: fadeIn 0.3s ease;
-        }
-        .section.active {
-            display: block;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-        .section-title {
-            color: var(--text-light);
-            font-weight: 700;
-            margin-bottom: 0;
-        }
-        .music-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        .music-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 1rem;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        .music-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--neon-green);
-            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.1);
-        }
-        .music-cover {
-            width: 100%;
-            height: 180px;
-            object-fit: cover;
-        }
-        .music-info {
-            padding: 1rem;
-        }
-        .music-title {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-            color: var(--text-light);
-        }
-        .music-artist {
-            color: var(--text-muted);
-            font-size: 0.875rem;
-            margin-bottom: 0.75rem;
-        }
-        .music-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        .music-price {
-            color: var(--neon-green);
-            font-weight: 700;
-            font-size: 1.125rem;
-        }
-        .music-percent {
-            background: rgba(0, 123, 255, 0.1);
-            color: #007bff;
-            padding: 0.25rem 0.75rem;
-            border-radius: 1rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-        .player-bar {
-            position: fixed;
-            bottom: 5rem;
-            left: 0;
-            right: 0;
-            background: var(--bg-card);
-            border-top: 1px solid var(--border);
-            padding: 1rem;
-            z-index: 1000;
-            transition: all 0.3s ease;
-            display: none;
-        }
-        .player-bar.expanded {
-            bottom: 0;
-            height: 100vh;
-            background: rgba(17, 20, 24, 0.98);
-            backdrop-filter: blur(20px);
-        }
-        .player-content {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .video-container {
-            width: 100%;
-            aspect-ratio: 16/9;
-            background: #000;
-            border-radius: 1rem;
-            overflow: hidden;
-            margin-bottom: 1.5rem;
-            display: none;
-        }
-        .player-bar.expanded .video-container {
-            display: block;
-        }
-        .player-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-        .player-album-art {
-            width: 60px;
-            height: 60px;
-            border-radius: 0.75rem;
-            object-fit: cover;
-        }
-        .player-text {
-            flex: 1;
-        }
-        .player-title {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
-        .player-artist {
-            color: var(--text-muted);
-            font-size: 0.875rem;
-        }
-        .player-price {
-            color: var(--neon-green);
-            font-weight: 700;
-        }
-        .progress-container {
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            margin: 1rem 0;
-            cursor: pointer;
-            position: relative;
-        }
-        .progress-bar {
-            height: 100%;
-            background: var(--neon-green);
-            border-radius: 3px;
-            width: 0%;
-            transition: width 0.1s linear;
-        }
-        .player-controls {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 2rem;
-            margin-top: 1rem;
-        }
-        .control-btn {
-            background: none;
-            border: none;
-            color: var(--text-light);
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            padding: 0.5rem;
-            min-width: 44px;
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .control-btn:hover {
-            color: var(--neon-green);
-            transform: scale(1.1);
-        }
-        .play-btn {
-            font-size: 2.5rem;
-        }
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #000;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: space-around;
-            padding: 0.75rem 0;
-            z-index: 1001;
-        }
-        .nav-btn {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.25rem;
-            padding: 0.5rem;
-            cursor: pointer;
-            transition: color 0.3s ease;
-            flex: 1;
-            min-height: 60px;
-        }
-        .nav-btn:hover, .nav-btn.active {
-            color: var(--neon-green);
-        }
-        .nav-btn i {
-            font-size: 1.25rem;
-        }
-        .nav-btn span {
-            font-size: 0.75rem;
-        }
-        .portfolio-summary {
-            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 123, 255, 0.1) 100%);
-            border: 1px solid var(--border);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-        .portfolio-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--neon-green);
-            margin: 0.5rem 0;
-        }
-        .ledger-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-        .ledger-table th {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-muted);
-            font-weight: 600;
-            text-align: left;
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-        }
-        .ledger-table td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-        }
-        .ledger-table tr:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
-        .artist-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        .stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            text-align: center;
-        }
-        .stat-icon {
-            font-size: 2rem;
-            color: var(--neon-green);
-            margin-bottom: 1rem;
-        }
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text-light);
-            margin: 0.5rem 0;
-        }
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 0.875rem;
-        }
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1200;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-        .modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-        .modal-content {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 1rem;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            transform: translateY(20px);
-            transition: transform 0.3s ease;
-        }
-        .modal-overlay.show .modal-content {
-            transform: translateY(0);
-        }
-        .modal-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .modal-title {
-            color: var(--text-light);
-            font-weight: 700;
-            margin-bottom: 0;
-        }
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.25rem;
-        }
-        .modal-body {
-            padding: 1.5rem;
-        }
-        .modal-footer {
-            padding: 1.5rem;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-        }
-        .toast-container {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 1300;
-            max-width: 350px;
-        }
-        .toast {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            padding: 1rem;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            transform: translateX(100%);
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
-        .toast.show {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        .toast.success {
-            border-color: var(--neon-green);
-            background: rgba(0, 255, 136, 0.1);
-        }
-        .toast.error {
-            border-color: #ff3232;
-            background: rgba(255, 50, 50, 0.1);
-        }
-        .toast.warning {
-            border-color: #ffc107;
-            background: rgba(255, 193, 7, 0.1);
-        }
-        .toast.info {
-            border-color: #0dcaf0;
-            background: rgba(13, 202, 240, 0.1);
-        }
-        .toast-icon {
-            font-size: 1.25rem;
-        }
-        .toast.success .toast-icon {
-            color: var(--neon-green);
-        }
-        .toast.error .toast-icon {
-            color: #ff3232;
-        }
-        .toast.warning .toast-icon {
-            color: #ffc107;
-        }
-        .toast.info .toast-icon {
-            color: #0dcaf0;
-        }
-        .toast-message {
-            flex: 1;
-            color: var(--text-light);
-        }
-        .empty-state {
-            text-align: center;
-            padding: 3rem 1rem;
-            color: var(--text-muted);
-        }
-        .empty-state-actionable {
-            text-align: center;
-            padding: 2rem 1rem;
-            border: 2px dashed var(--border);
-            border-radius: 1rem;
-            margin: 1rem 0;
-        }
-        .empty-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-        .progress-loading {
-            height: 4px;
-            background: rgba(0, 255, 136, 0.2);
-            border-radius: 2px;
-            overflow: hidden;
-            margin: 1rem auto;
-            max-width: 200px;
-        }
-        .progress-loading-bar {
-            height: 100%;
-            background: linear-gradient(90deg, var(--neon-green), #00cc6a);
-            border-radius: 2px;
-            width: 0%;
-            animation: loading 2s infinite;
-        }
-        @keyframes loading {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(400%); }
-        }
-        .music-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .music-card:hover {
-            transform: scale(1.02);
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
-        }
-        .btn-miv {
-            transition: background 0.3s ease;
-        }
-        .btn-miv:active {
-            background: linear-gradient(135deg, #00cc6a 0%, var(--neon-green) 100%);
-        }
-        .music-percent::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 125%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--bg-dark);
-            color: var(--text-light);
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.5rem;
-            white-space: nowrap;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            z-index: 100;
-            font-size: 0.75rem;
-        }
-        .music-percent:hover::after {
-            opacity: 1;
-        }
-        .player-bar.expanded {
-            backdrop-filter: blur(15px);
-            background: rgba(7,9,12,0.95);
-        }
-        .progress-bar {
-            background: linear-gradient(to right, var(--neon-green) 0%, #00cc6a 100%);
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        .badge-success {
-            background: rgba(0, 255, 136, 0.2);
-            color: var(--neon-green);
-            border: 1px solid rgba(0, 255, 136, 0.3);
-        }
-        .badge-warning {
-            background: rgba(255, 193, 7, 0.2);
-            color: #ffc107;
-            border: 1px solid rgba(255, 193, 7, 0.3);
-        }
-        .badge-danger {
-            background: rgba(255, 50, 50, 0.2);
-            color: #ff3232;
-            border: 1px solid rgba(255, 50, 50, 0.3);
-        }
-        @media (max-width: 768px) {
-            .auth-card { padding: 1.5rem; }
-            .music-grid { grid-template-columns: 1fr; }
-            .artist-stats { grid-template-columns: 1fr; }
-            .section { padding: 1rem; }
-            .player-bar.expanded {
-                padding-top: env(safe-area-inset-top);
-                height: calc(100vh - env(safe-area-inset-bottom));
-            }
-            .control-btn, .btn-miv {
-                min-height: 44px;
-                min-width: 44px;
-            }
-        }
-    </style>
-</head>
-<body>
-
-<!-- Loading Screen -->
-<div id="loadingScreen" class="loading-screen">
-    <div class="loading-content">
-        <div class="loading-spinner"></div>
-        <h4 class="text-success mb-2">SELO MIV</h4>
-        <p class="text-muted" id="loadingMessage">Inicializando plataforma...</p>
-        <div class="progress-loading">
-            <div class="progress-loading-bar"></div>
-        </div>
-    </div>
-</div>
-
-<!-- Toast Container -->
-<div class="toast-container" id="toastContainer"></div>
-
-<!-- Authentication Screen -->
-<div id="authScreen" class="auth-screen">
-    <div class="auth-card">
-        <div class="logo-header">
-            <div class="logo-icon">
-                <i class="bi bi-shield-lock"></i>
-            </div>
-            <h2 class="text-white mb-2">SELO MIV</h2>
-            <p class="text-muted">Plataforma de Investimento em Música</p>
-        </div>
-
-        <!-- Login Form -->
-        <div id="loginForm">
-            <div id="loginMessage" class="alert d-none"></div>
-            <div class="form-group">
-                <input type="email" id="loginEmail" class="form-control-custom" placeholder="E-mail" required>
-            </div>
-            <div class="form-group">
-                <input type="password" id="loginPassword" class="form-control-custom" placeholder="Senha" required>
-            </div>
-            <button class="btn-miv mb-3" onclick="handleLogin()" id="loginBtn">
-                <i class="bi bi-box-arrow-in-right"></i> Entrar
-            </button>
-            <p class="text-center text-muted">
-                Novo por aqui? <a href="javascript:void(0)" class="auth-link" onclick="showRegisterForm()">Criar conta</a>
-            </p>
-            <div class="text-center mt-3">
-                <small class="text-muted">
-                    <i class="bi bi-info-circle me-1"></i> Conta de teste: admin@miv.com / admin123
-                </small>
-            </div>
-        </div>
-
-        <!-- Register Form -->
-        <div id="registerForm" style="display: none;">
-            <div id="registerMessage" class="alert d-none"></div>
-            <div class="form-group">
-                <input type="text" id="registerName" class="form-control-custom" placeholder="Nome completo" required>
-            </div>
-            <div class="form-group">
-                <input type="email" id="registerEmail" class="form-control-custom" placeholder="E-mail" required>
-            </div>
-            <div class="form-group">
-                <input type="password" id="registerPassword" class="form-control-custom" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
-            </div>
-            <div class="form-group">
-                <select id="registerType" class="form-control-custom" onchange="toggleArtistField()">
-                    <option value="">Selecione seu perfil...</option>
-                    <option value="ouvinte">🎧 Ouvinte/Investidor</option>
-                    <option value="artista">🎤 Artista</option>
-                </select>
-            </div>
-            <div class="form-group" id="artistLinkField" style="display: none;">
-                <input type="url" id="registerLink" class="form-control-custom" placeholder="Link do seu trabalho (YouTube, Spotify, etc.)">
-                <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
-            </div>
-            <button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn">
-                <i class="bi bi-person-plus"></i> Solicitar Cadastro
-            </button>
-            <p class="text-center text-muted">
-                Já tem conta? <a href="javascript:void(0)" class="auth-link" onclick="showLoginForm()">Fazer login</a>
-            </p>
-        </div>
-    </div>
-</div>
-
-<!-- Main Application -->
-<div id="mainApp" class="main-app">
-    <!-- Sidebar -->
-    <div id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-            <h4 class="text-white mb-0">🎵 MIV PRO</h4>
-            <button class="sidebar-close" onclick="toggleSidebar()">
-                <i class="bi bi-x-lg"></i>
-            </button>
-        </div>
-        <ul class="nav-menu">
-            <li class="nav-item">
-                <a href="#" class="nav-link active" onclick="changeSection('marketplace')">
-                    <i class="bi bi-house"></i> <span>Marketplace</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link" onclick="changeSection('portfolio')">
-                    <i class="bi bi-briefcase"></i> <span>Portfólio</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link" onclick="changeSection('ledger')">
-                    <i class="bi bi-receipt"></i> <span>Extrato</span>
-                </a>
-            </li>
-            <li class="nav-item" id="artistNavItem" style="display: none;">
-                <a href="#" class="nav-link" onclick="changeSection('artist')">
-                    <i class="bi bi-mic"></i> <span>Painel Artista</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link" onclick="openAddBalanceModal()">
-                    <i class="bi bi-plus-circle text-success"></i> <span class="text-success">Adicionar Saldo</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link text-danger" onclick="logout()">
-                    <i class="bi bi-box-arrow-right"></i> <span>Sair</span>
-                </a>
-            </li>
-        </ul>
-    </div>
-
-    <!-- Main Header -->
-    <header class="app-header">
-        <div class="header-content">
-            <div class="d-flex align-items-center">
-                <button class="btn text-white me-3" onclick="toggleSidebar()">
-                    <i class="bi bi-list fs-3"></i>
-                </button>
-                <div class="saldo-display">
-                    <h6>CRÉDITO DISPONÍVEL</h6>
-                    <h4 id="currentBalance">R$ 0,00</h4>
-                </div>
-            </div>
-            <div class="user-badge" id="userBadge">Ouvinte</div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main>
-        <!-- Marketplace Section -->
-        <section id="marketplaceSection" class="section active">
-            <div class="section-header">
-                <h2 class="section-title">🎵 Marketplace</h2>
-                <div>
-                    <small class="text-muted">Taxa 0% em compras</small>
-                    <button class="btn btn-sm btn-outline-success ms-2" onclick="loadMarketplace(true)">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                </div>
-            </div>
-            <div id="marketplaceContent" class="music-grid">
-                <!-- Music cards will be loaded here -->
-            </div>
-        </section>
-
-        <!-- Portfolio Section -->
-        <section id="portfolioSection" class="section">
-            <div class="portfolio-summary">
-                <h6 class="text-muted">VALOR TOTAL DA CARTEIRA</h6>
-                <div class="portfolio-value" id="portfolioValue">R$ 0,00</div>
-                <small class="text-muted" id="portfolioUpdateTime">Atualizado em tempo real</small>
-            </div>
-            <div class="section-header">
-                <h2 class="section-title">📊 Meus Ativos</h2>
-                <span class="badge bg-secondary" id="assetsCount">0 ativos</span>
-            </div>
-            <div id="portfolioContent">
-                <!-- Portfolio assets will be loaded here -->
-            </div>
-        </section>
-
-        <!-- Ledger Section -->
-        <section id="ledgerSection" class="section">
-            <div class="section-header">
-                <h2 class="section-title">📋 Histórico de Transações</h2>
-                <div>
-                    <button class="btn btn-sm btn-outline-success" onclick="loadLedger(true)">
-                        <i class="bi bi-arrow-clockwise"></i> Atualizar
-                    </button>
-                    <button class="btn btn-sm btn-outline-info ms-2" onclick="exportExtrato()">
-                        <i class="bi bi-download"></i> Exportar
-                    </button>
-                </div>
-            </div>
-            <div class="table-responsive">
-                <table class="ledger-table">
-                    <thead>
-                        <tr>
-                            <th>Data</th>
-                            <th>Descrição</th>
-                            <th class="text-end">Valor</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ledgerContent">
-                        <!-- Transactions will be loaded here -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- Artist Panel Section -->
-        <section id="artistSection" class="section">
-            <div class="section-header">
-                <h2 class="section-title">🎤 Painel Artista</h2>
-                <div>
-                    <button class="btn-miv btn-sm" onclick="openAddMusicModal()">
-                        <i class="bi bi-plus-circle"></i> Nova Música
-                    </button>
-                    <button class="btn btn-sm btn-outline-info ms-2" onclick="loadArtistData(true)">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="artist-stats">
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="bi bi-music-note-beamed"></i>
-                    </div>
-                    <div class="stat-value" id="artistMusicCount">0</div>
-                    <div class="stat-label">Músicas Cadastradas</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="bi bi-cash-coin"></i>
-                    </div>
-                    <div class="stat-value" id="artistRoyalties">R$ 0,00</div>
-                    <div class="stat-label">Royalties Acumulados</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="bi bi-bar-chart"></i>
-                    </div>
-                    <div class="stat-value" id="artistSharesSold">0</div>
-                    <div class="stat-label">Ações Vendidas</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="bi bi-currency-exchange"></i>
-                    </div>
-                    <div class="stat-value" id="artistMonthlyEarnings">R$ 0,00</div>
-                    <div class="stat-label">Receita Mensal</div>
-                </div>
-            </div>
-            <h5 class="mb-3">Minhas Músicas</h5>
-            <div id="artistMusicContent" class="music-grid">
-                <!-- Artist's music will be loaded here -->
-            </div>
-        </section>
-    </main>
-
-    <!-- Music Player -->
-    <div id="playerBar" class="player-bar">
-        <div class="player-content">
-            <div class="video-container" id="videoContainer">
-                <div id="youtubePlayer"></div>
-            </div>
-            <div class="player-info" onclick="togglePlayerExpansion()">
-                <img src="https://via.placeholder.com/60x60/111418/00ff88?text=MIV" class="player-album-art" alt="Album Art" id="playerAlbumArt">
-                <div class="player-text">
-                    <div class="player-title" id="playerTitle">Título da Música</div>
-                    <div class="player-artist" id="playerArtist">Artista</div>
-                    <div class="player-price" id="playerPrice">R$ 0,00 por ação</div>
-                </div>
-                <button class="btn-miv btn-sm" onclick="event.stopPropagation(); openInvestModal(state.currentTrackIndex)">
-                    <i class="bi bi-currency-dollar"></i> Investir
-                </button>
-            </div>
-            <div class="progress-container" onclick="seekMusic(event)" id="progressContainer">
-                <div class="progress-bar" id="musicProgress"></div>
-            </div>
-            <div class="player-time d-flex justify-content-between mt-1 small">
-                <span id="currentTime">0:00</span>
-                <span id="durationTime">0:00</span>
-            </div>
-            <div class="player-controls mt-2 d-flex justify-content-center gap-3">
-                <button class="control-btn" onclick="toggleShuffle()" id="shuffleBtn">
-                    <i class="bi bi-shuffle" id="shuffleIcon"></i>
-                </button>
-                <button class="control-btn" onclick="playPrevious()">
-                    <i class="bi bi-skip-start-fill"></i>
-                </button>
-                <button class="control-btn play-btn fs-1" id="playButton" onclick="togglePlay()">
-                    <i class="bi bi-play-circle-fill"></i>
-                </button>
-                <button class="control-btn" onclick="playNext()">
-                    <i class="bi bi-skip-end-fill"></i>
-                </button>
-                <button class="control-btn" onclick="toggleRepeat()" id="repeatBtn">
-                    <i class="bi bi-repeat" id="repeatIcon"></i>
-                </button>
-                <div class="d-flex align-items-center gap-2 ms-3">
-                    <i class="bi bi-volume-up" id="volumeIcon"></i>
-                    <input type="range" id="volumeSlider" min="0" max="100" value="80" 
-                           class="form-range" style="width: 100px;" 
-                           oninput="setVolume(this.value)">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav">
-        <button class="nav-btn active" onclick="changeSection('marketplace', this)">
-            <i class="bi bi-house"></i> <span>Market</span>
-        </button>
-        <button class="nav-btn" onclick="changeSection('portfolio', this)">
-            <i class="bi bi-briefcase"></i> <span>Carteira</span>
-        </button>
-        <button class="nav-btn" onclick="changeSection('ledger', this)">
-            <i class="bi bi-receipt"></i> <span>Extrato</span>
-        </button>
-    </nav>
-</div>
-
-<!-- Modais -->
-<div id="investModal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-currency-dollar me-2"></i> Investir em Música</h5>
-            <button class="modal-close" onclick="closeModal('investModal')">
-                <i class="bi bi-x"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <h6 id="investTrackTitle" class="mb-2">Título da Música</h6>
-            <p class="text-muted mb-4" id="investTrackArtist">Artista</p>
-            <div class="form-group">
-                <label class="text-muted mb-2 d-block">Quantidade de Ações</label>
-                <div class="input-group">
-                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)">-</button>
-                    <input type="number" id="investQuantity" class="form-control-custom text-center" value="1" min="1" step="1" oninput="updateInvestmentTotal()">
-                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(1)">+</button>
-                </div>
-                <small class="text-muted mt-1 d-block" id="sharesAvailable">Disponível: calculando...</small>
-            </div>
-            <div class="d-flex justify-content-between mb-3">
-                <span class="text-muted">Valor por ação:</span>
-                <span class="text-success fw-bold" id="investUnitPrice">R$ 0,00</span>
-            </div>
-            <div class="d-flex justify-content-between mb-4">
-                <span class="text-muted">Valor total:</span>
-                <span class="text-success fw-bold fs-4" id="investTotalPrice">R$ 0,00</span>
-            </div>
-            <div class="alert alert-info bg-dark border-info mb-3">
-                <i class="bi bi-info-circle me-2"></i> Cada ação representa 0.01% de participação nos royalties
-            </div>
-            <div class="alert alert-warning bg-dark border-warning">
-                <i class="bi bi-exclamation-triangle me-2"></i> Saldo disponível: <span id="investAvailableBalance" class="fw-bold">R$ 0,00</span>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('investModal')">Cancelar</button>
-            <button class="btn-miv" id="confirmInvestBtn" onclick="confirmInvestment()">Confirmar Investimento</button>
-        </div>
-    </div>
-</div>
-
-<div id="addMusicModal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-music-note-beamed me-2"></i> Cadastrar Nova Música</h5>
-            <button class="modal-close" onclick="closeModal('addMusicModal')">
-                <i class="bi bi-x"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div class="form-group">
-                <label class="text-muted mb-2 d-block">Título da Música *</label>
-                <input type="text" id="musicTitle" class="form-control-custom" placeholder="Digite o título da música" required>
-            </div>
-            <div class="form-group">
-                <label class="text-muted mb-2 d-block">Gênero Musical *</label>
-                <select id="musicGenre" class="form-control-custom" required>
-                    <option value="">Selecione um gênero</option>
-                    <option value="POP">🎵 POP</option>
-                    <option value="HIPHOP_RAP">🎤 HIP HOP / RAP</option>
-                    <option value="ROCK">🤘 ROCK</option>
-                    <option value="ELETRONICA">⚡ ELETRÔNICA</option>
-                    <option value="MPB">🎸 MPB</option>
-                    <option value="SERTANEJO">🎶 SERTANEJO</option>
-                    <option value="FUNK">💃 FUNK</option>
-                    <option value="OUTRO">🎼 OUTRO</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="text-muted mb-2 d-block">Link do YouTube *</label>
-                <input type="url" id="musicYoutube" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
-            </div>
-            <div class="form-group">
-                <label class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
-                <input type="url" id="musicCover" class="form-control-custom" placeholder="https://exemplo.com/capa.jpg">
-                <small class="text-muted">Recomendado: 300x300 pixels</small>
-            </div>
-            <div class="form-group">
-                <label class="text-muted mb-2 d-block">Valor por Ação *</label>
-                <input type="number" id="musicPrice" class="form-control-custom" value="10.00" min="1" step="0.01" required>
-            </div>
-            <div class="form-group">
-                <label class="text-muted mb-2 d-block">Percentual Disponível *</label>
-                <div class="input-group">
-                    <input type="number" id="musicPercent" class="form-control-custom" value="20" min="1" max="100" required>
-                    <span class="input-group-text bg-dark text-white border-secondary">%</span>
-                </div>
-                <small class="text-muted">Este percentual será disponibilizado para investimento</small>
-            </div>
-            <div class="form-check mt-3">
-                <input class="form-check-input" type="checkbox" id="musicTerms" required>
-                <label class="form-check-label text-muted">
-                    Aceito os termos de distribuição e compartilhamento de royalties
-                </label>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('addMusicModal')">Cancelar</button>
-            <button class="btn-miv" onclick="registerMusic()" id="registerMusicBtn">
-                <i class="bi bi-save me-2"></i> Cadastrar Música
-            </button>
-        </div>
-    </div>
-</div>
-
-<div id="addBalanceModal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-wallet2 me-2"></i> Adicionar Saldo</h5>
-            <button class="modal-close" onclick="closeModal('addBalanceModal')">
-                <i class="bi bi-x"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div class="form-group">
-                <label class="text-muted mb-2 d-block">Valor para adicionar</label>
-                <div class="btn-group w-100 mb-3" role="group">
-                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(50)">R$ 50</button>
-                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(100)">R$ 100</button>
-                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(200)">R$ 200</button>
-                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(500)">R$ 500</button>
-                </div>
-                <input type="number" id="balanceAmount" class="form-control-custom" value="100" min="10" step="10" oninput="validateBalanceAmount()">
-            </div>
-            <div class="alert alert-info bg-dark border-info">
-                <i class="bi bi-info-circle me-2"></i> O saldo será adicionado instantaneamente à sua conta
-            </div>
-            <div class="mt-4">
-                <h6>Métodos de pagamento:</h6>
-                <div class="form-check mt-2">
-                    <input class="form-check-input" type="radio" name="paymentMethod" id="paymentMercadoPago" checked>
-                    <label class="form-check-label" for="paymentMercadoPago">
-                        <i class="bi bi-credit-card me-2"></i> Mercado Pago
-                    </label>
-                </div>
-                <div class="form-check mt-2">
-                    <input class="form-check-input" type="radio" name="paymentMethod" id="paymentPix">
-                    <label class="form-check-label" for="paymentPix">
-                        <i class="bi bi-qr-code me-2"></i> PIX
-                    </label>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('addBalanceModal')">Cancelar</button>
-            <button class="btn-miv" onclick="processBalanceAdd()">
-                <i class="bi bi-currency-dollar me-2"></i> Adicionar Saldo
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- JavaScript -->
-<script>
-CONFIGURAÇÃO AVANÇADA ==========
- const CONFIG = { API_URL: 'https://script.google.com/macros/s/AKfycbwZ4dnpmH-12UB0z07l2K2NafAeL3LA6N3m9OI4-SEbEGvnsAw1BwwTu1tct7Xu9tw/exec', 
-                 // ← SEU URL DO WEB APP YT_API_KEY: '1CwF9hf-lsjYkol-V7r3WOT5ld3dQFqKRTQ8nHcV45Wo' // opcional };
-
-// ========== ESTADO GLOBAL ==========
-const state = {
-    currentUser: null,
-    userBalance: 0,
-    playlist: [],
-    portfolioAssets: [],
-    ledgerData: [],
-    currentTrackIndex: -1,
-    isPlaying: false,
-    currentInvestTrack: null,
-    youtubePlayer: null,
-    currentVolume: 80,
-    isShuffle: false,
-    isRepeat: false,
-    offlineMode: false,
-    appInitialized: false
-};
-
-// ========== SISTEMA DE FALLBACK AVANÇADO ==========
-class DataManager {
-    constructor() {
-        this.offlineData = this.loadOfflineData();
-    }
-
-    loadOfflineData() {
-        try {
-            const data = localStorage.getItem(CONFIG.LOCAL_STORAGE_KEY);
-            return data ? JSON.parse(data) : this.getDefaultData();
-        } catch (e) {
-            console.error('Erro ao carregar dados offline:', e);
-            return this.getDefaultData();
-        }
-    }
-
-    getDefaultData() {
-        return {
-            users: [
-                {
-                    id: 1,
-                    nome: 'Administrador',
-                    email: 'admin@miv.com',
-                    tipo: 'admin',
-                    saldo: 1500,
-                    acesso: 'aprovado',
-                    workLink: ''
-                }
-            ],
-            music: this.getSampleMusic(),
-            portfolio: [],
-            transactions: [],
-            lastUpdated: new Date().toISOString()
-        };
-    }
-
-    getSampleMusic() {
-        return [
-            {
-                id: 1,
-                titulo: "EVA",
-                artista: "Elzo Henschell",
-                genero: "ROCK",
-                link_youtube: "https://www.youtube.com/watch?v=bFqLIyxuiMM",
-                link_capa: "https://i.ytimg.com/vi/bFqLIyxuiMM/hqdefault.jpg",
-                valor_acao: 15.50,
-                percentual_disponivel: 25,
-                acoes_vendidas: 75,
-                status: "ativo",
-                data_cadastro: new Date().toISOString()
-            },
-            {
-                id: 2,
-                titulo: "O Máximo",
-                artista: "Elzo Henschell",
-                genero: "ROCK",
-                link_youtube: "https://youtu.be/utoRQzolfqs",
-                link_capa: "https://i9.ytimg.com/vi_webp/utoRQzolfqs/mqdefault.webp",
-                valor_acao: 22.00,
-                percentual_disponivel: 40,
-                acoes_vendidas: 60,
-                status: "ativo",
-                data_cadastro: new Date().toISOString()
-            },
-            {
-                id: 3,
-                titulo: "Som ON",
-                artista: "Selo MIV",
-                genero: "INSTRUMENTAL",
-                link_youtube: "https://youtu.be/O4vSvOLtkuM",
-                link_capa: "https://via.placeholder.com/300x300/111418/00ff88?text=MIV",
-                valor_acao: 18.75,
-                percentual_disponivel: 35,
-                acoes_vendidas: 65,
-                status: "ativo",
-                data_cadastro: new Date().toISOString()
-            }
-        ];
-    }
-
-    async fetchWithFallback(action, params = {}) {
-        const maxRetries = 2;
-        let lastError;
-
-        for (let i = 0; i < maxRetries; i++) {
-            try {
-                const formData = new URLSearchParams();
-                formData.append('action', action);
-                Object.keys(params).forEach(key => {
-                    formData.append(key, params[key]);
-                });
-
-                const response = await fetch(CONFIG.API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: formData
-                });
-
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const result = await response.json();
-                
-                if (result.success) {
-                    this.updateLocalCache(action, result.data, params);
-                    return result;
-                } else {
-                    throw new Error(result.message || 'Ação falhou');
-                }
-            } catch (error) {
-                lastError = error;
-                console.warn(`Tentativa ${i + 1} falhou para ${action}:`, error);
-                
-                if (i === maxRetries - 1) {
-                    const localData = this.getLocalData(action, params);
-                    if (localData) {
-                        state.offlineMode = true;
-                        showToast('Modo offline ativado. Dados podem não estar atualizados.', 'warning');
-                        return { success: true, data: localData, offline: true };
-                    }
-                }
-                
-                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-            }
-        }
-
-        throw lastError;
-    }
-
-    updateLocalCache(action, data, params) {
-        const cacheKey = `${action}_${JSON.stringify(params)}`;
-        const cache = {
-            data,
-            timestamp: Date.now(),
-            ttl: 5 * 60 * 1000
-        };
-        localStorage.setItem(`cache_${cacheKey}`, JSON.stringify(cache));
-    }
-
-    getLocalData(action, params) {
-        try {
-            const cacheKey = `${action}_${JSON.stringify(params)}`;
-            const cached = localStorage.getItem(`cache_${cacheKey}`);
-            if (cached) {
-                const { data, timestamp, ttl } = JSON.parse(cached);
-                if (Date.now() - timestamp < ttl) {
-                    return data;
-                }
-            }
-
-            switch(action) {
-                case 'get_musicas':
-                    return this.offlineData.music;
-                case 'get_carteira':
-                    return this.offlineData.portfolio.filter(p => 
-                        p.user_id === (params.user_id || state.currentUser?.id)
-                    );
-                case 'get_extrato':
-                    return this.offlineData.transactions.filter(t => 
-                        t.user_id === (params.user_id || state.currentUser?.id)
-                    );
-                case 'login':
-                    return this.offlineData.users.find(u => 
-                        u.email === params.email && u.password === params.password
-                    );
-                default:
-                    return null;
-            }
-        } catch (e) {
-            console.error('Erro ao obter dados locais:', e);
-            return null;
-        }
-    }
-
-    saveTransaction(type, data) {
-        const transaction = {
-            id: Date.now(),
-            type,
-            data,
+// ========== FUNÇÃO PRINCIPAL GET ==========
+function doGet(e) {
+  console.log('📥 GET Recebido - MIV API');
+  
+  const params = e?.parameter || {};
+  const action = params.action || params.acao;
+  
+  if (action) {
+    console.log(`🎯 API GET: ${action}`, params);
+    
+    try {
+      let result;
+      
+      switch(action) {
+        case 'test':
+          result = {
+            success: true,
+            message: '🎵 MIV API ONLINE v1.0',
             timestamp: new Date().toISOString(),
-            synced: false
+            endpoints: ['test', 'login', 'register', 'get_musicas', 'get_saldo', 'setup']
+          };
+          break;
+          
+        case 'get_musicas':
+          result = getMusicas();
+          break;
+          
+        case 'login':
+          result = handleLogin(params);
+          break;
+          
+        case 'register':
+          result = handleRegister(params);
+          break;
+          
+        case 'get_saldo':
+          result = getSaldo(params);
+          break;
+          
+        case 'get_carteira':
+          result = getCarteira(params);
+          break;
+          
+        case 'get_extrato':
+          result = getExtrato(params);
+          break;
+          
+        case 'get_historico_financeiro':
+          result = getHistoricoFinanceiro(params.user_id);
+          break;
+          
+        case 'get_resumo':
+          result = getResumoPortfolio(params);
+          break;
+          
+        case 'get_artist_data':
+          result = getArtistData(params);
+          break;
+          
+        case 'setup':
+          result = setupSpreadsheet();
+          break;
+          
+        case 'ping':
+          result = { success: true, pong: Date.now() };
+          break;
+          
+        default:
+          result = {
+            success: false,
+            message: `Ação '${action}' não suportada via GET`,
+            supported: ['test', 'get_musicas', 'login', 'register', 'get_saldo', 'get_carteira', 'get_extrato', 'setup', 'ping']
+          };
+      }
+      
+      console.log('✅ Resultado:', JSON.stringify(result).substring(0, 200));
+      return ContentService
+        .createTextOutput(JSON.stringify(result))
+        .setMimeType(ContentService.MimeType.JSON)
+        .setHeaders(setCorsHeaders());
+        
+    } catch (error) {
+      console.error('❌ Erro no GET:', error);
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Erro interno',
+          error: error.message
+        }))
+        .setMimeType(ContentService.MimeType.JSON)
+        .setHeaders(setCorsHeaders());
+    }
+  }
+  
+  // Retorna página HTML básica
+  return HtmlService.createHtmlOutput(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>🎵 SELO MIV - Backend</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 40px; text-align: center; background: #07090c; color: white; }
+        h1 { color: #00ff88; margin-bottom: 20px; }
+        .card { background: #111418; padding: 30px; border-radius: 15px; max-width: 600px; margin: 0 auto; border: 1px solid #1e2329; }
+        code { background: #000; color: #00ff88; padding: 5px 10px; border-radius: 5px; }
+        .endpoint { text-align: left; margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; }
+        a { color: #00ff88; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+      </style>
+    </head>
+    <body>
+      <h1>🎵 SELO MIV - Backend</h1>
+      <div class="card">
+        <h3>✅ API Funcionando</h3>
+        <p>Sistema de investimento em música</p>
+        
+        <div class="endpoint">
+          <h4>📡 Endpoints Disponíveis:</h4>
+          <p><code>GET ?action=test</code> - Testar API</p>
+          <p><code>GET ?action=get_musicas</code> - Listar músicas</p>
+          <p><code>GET ?action=login&email=...&password=...</code> - Login</p>
+          <p><code>GET ?action=setup</code> - Configurar banco de dados</p>
+        </div>
+        
+        <div style="margin-top: 30px; padding: 15px; background: rgba(0, 255, 136, 0.1); border-radius: 10px;">
+          <h4>⚠️ IMPORTANTE:</h4>
+          <p>Para usar o sistema completo:</p>
+          <ol style="text-align: left;">
+            <li>Execute o <a href="${ScriptApp.getService().getUrl()}?action=setup" target="_blank">Setup Inicial</a></li>
+            <li>Teste login com: admin@miv.com / admin123</li>
+            <li>Configure o frontend com esta URL</li>
+          </ol>
+        </div>
+        
+        <p><small>${new Date().toLocaleString('pt-BR')}</small></p>
+      </div>
+    </body>
+    </html>
+  `).setTitle('SELO MIV - Backend');
+}
+
+// ========== FUNÇÃO PRINCIPAL POST ==========
+function doPost(e) {
+  console.log('📨 POST Recebido - MIV API');
+  
+  if (!e) {
+    console.log('📭 POST vazio - retornando status');
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: true,
+        message: 'MIV API POST endpoint',
+        note: 'Para API use GET: ?action=nome',
+        timestamp: new Date().toISOString()
+      }))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeaders(setCorsHeaders());
+  }
+  
+  console.log('📦 Dados POST recebidos:', JSON.stringify(e));
+  
+  let params = {};
+  
+  if (e.parameter) {
+    params = e.parameter;
+    console.log('📋 Parâmetros URL:', params);
+  }
+  
+  if (e.postData && e.postData.contents) {
+    try {
+      const jsonData = JSON.parse(e.postData.contents);
+      params = { ...params, ...jsonData };
+      console.log('📦 JSON Body:', jsonData);
+    } catch (error) {
+      console.log('⚠️ Não é JSON válido:', error.message);
+    }
+  }
+  
+  console.log('✅ Parâmetros finais:', params);
+  
+  const action = params.action || params.acao;
+  
+  if (!action) {
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Parâmetro "action" é obrigatório',
+        usage: 'Use ?action=test ou envie JSON com {"action": "nome"}'
+      }))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeaders(setCorsHeaders());
+  }
+  
+  console.log(`🎯 Processando ação POST: ${action}`);
+  
+  try {
+    let result;
+    
+    switch(action) {
+      case 'login':
+        result = handleLogin(params);
+        break;
+      case 'register':
+        result = handleRegister(params);
+        break;
+      case 'get_musicas':
+        result = getMusicas();
+        break;
+      case 'get_saldo':
+        result = getSaldo(params);
+        break;
+      case 'get_carteira':
+        result = getCarteira(params);
+        break;
+      case 'get_extrato':
+        result = getExtrato(params);
+        break;
+      case 'get_historico_financeiro':
+        result = getHistoricoFinanceiro(params.user_id);
+        break;
+      case 'get_resumo':
+        result = getResumoPortfolio(params);
+        break;
+      case 'buy':
+        result = buyShares(params);
+        break;
+      case 'uploadMusic':
+        result = uploadMusic(params);
+        break;
+      case 'get_artist_data':
+        result = getArtistData(params);
+        break;
+      case 'confirmar_deposito':
+        result = confirmarDepositoPix(params.user_id, params.valor, params.referencia);
+        break;
+      case 'solicitar_saque':
+        result = solicitarSaque(params.user_id, params.valor);
+        break;
+      case 'confirmar_saque':
+        result = confirmarSaque(params.user_id, params.valor, params.referencia);
+        break;
+      case 'test':
+        result = { 
+          success: true, 
+          message: 'API POST funcionando',
+          action: action,
+          params: params,
+          timestamp: new Date().toISOString()
         };
-        
-        this.offlineData.transactions.push(transaction);
-        localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(this.offlineData));
-        
-        this.syncPendingTransactions();
+        break;
+      case 'health':
+        result = healthCheck();
+        break;
+      default:
+        result = {
+          success: false,
+          message: `Ação '${action}' não implementada`,
+          available_actions: ['login', 'register', 'get_musicas', 'buy', 'uploadMusic', 'get_saldo', 'get_carteira', 'get_extrato', 'get_artist_data', 'confirmar_deposito', 'solicitar_saque', 'confirmar_saque']
+        };
     }
-
-    async syncPendingTransactions() {
-        const pending = this.offlineData.transactions.filter(t => !t.synced);
-        
-        for (const transaction of pending) {
-            try {
-                await this.fetchWithFallback(transaction.type, transaction.data);
-                transaction.synced = true;
-            } catch (e) {
-                console.error('Falha ao sincronizar transação:', e);
-            }
-        }
-        
-        localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(this.offlineData));
-    }
+    
+    console.log('✅ Resultado POST:', JSON.stringify(result).substring(0, 200));
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeaders(setCorsHeaders());
+    
+  } catch (error) {
+    console.error('💥 Erro no POST:', error);
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        message: error.message,
+        stack: error.stack
+      }))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeaders(setCorsHeaders());
+  }
 }
 
-const dataManager = new DataManager();
-
-// ========== UTILITÁRIOS ==========
-function showToast(message, type = 'success', duration = 3000) {
-    const container = document.getElementById('toastContainer');
-    const toast = document.createElement('div');
-    const toastId = 'toast_' + Date.now();
+// ========== HEALTH CHECK ==========
+function healthCheck() {
+  try {
+    const ss = getSpreadsheet();
+    const sheets = ss.getSheets();
+    const sheetNames = sheets.map(s => s.getName());
     
-    toast.id = toastId;
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-        <i class="bi ${getToastIcon(type)} toast-icon"></i>
-        <div class="toast-message">${message}</div>
-        <button class="btn btn-sm btn-link text-white p-0" onclick="dismissToast('${toastId}')">
-            <i class="bi bi-x"></i>
-        </button>
-    `;
+    const requiredSheets = ['USUARIOS', 'MUSICAS', 'CARTEIRA', 'EXTRATO'];
+    const missingSheets = requiredSheets.filter(sheet => !sheetNames.includes(sheet));
     
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 10);
-    
-    if (duration > 0) {
-        setTimeout(() => {
-            dismissToast(toastId);
-        }, duration);
-    }
-    
-    return toastId;
-}
-
-function getToastIcon(type) {
-    const icons = {
-        'success': 'bi-check-circle',
-        'error': 'bi-exclamation-circle',
-        'warning': 'bi-exclamation-triangle',
-        'info': 'bi-info-circle'
+    return {
+      success: true,
+      status: missingSheets.length === 0 ? 'healthy' : 'setup_required',
+      timestamp: new Date().toISOString(),
+      sheets: sheetNames,
+      missing_sheets: missingSheets,
+      required_sheets: requiredSheets,
+      setup_url: ScriptApp.getService().getUrl() + '?action=setup'
     };
-    return icons[type] || 'bi-info-circle';
+  } catch (error) {
+    return {
+      success: false,
+      status: 'error',
+      error: error.message
+    };
+  }
 }
 
-function dismissToast(toastId) {
-    const toast = document.getElementById(toastId);
-    if (toast) {
-        toast.classList.remove('show');
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 300);
-    }
+// ========== FUNÇÕES DO BANCO DE DADOS ==========
+function getSpreadsheet() {
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
 }
 
-function showLoading(message = 'Carregando...') {
-    document.getElementById('loadingScreen').style.display = 'flex';
-    document.getElementById('loadingMessage').textContent = message;
-}
-
-function hideLoading() {
-    document.getElementById('loadingScreen').style.display = 'none';
-}
-
-function showModal(modalId) {
-    document.getElementById(modalId).classList.add('show');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('show');
-    document.body.style.overflow = 'auto';
-}
-
-function formatCurrency(value) {
-    if (value === null || value === undefined || isNaN(value)) value = 0;
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(Number(value));
-}
-
-function formatDate(dateString) {
-    if (!dateString) return '-';
-    try {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-        
-        if (diffMins < 1) return 'Agora mesmo';
-        if (diffMins < 60) return `Há ${diffMins} min`;
-        if (diffHours < 24) return `Há ${diffHours} h`;
-        if (diffDays === 1) return 'Ontem';
-        if (diffDays < 7) return `Há ${diffDays} dias`;
-        
-        return date.toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } catch (e) {
-        return dateString;
-    }
-}
-
-function formatTime(seconds) {
-    if (!seconds || isNaN(seconds)) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
-// ========== AUTENTICAÇÃO ==========
-async function handleLogin() {
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value.trim();
-    const loginBtn = document.getElementById('loginBtn');
-
-    if (!email || !password) {
-        showToast('Preencha todos os campos', 'error');
-        return;
-    }
-
-    loginBtn.disabled = true;
-    loginBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Autenticando...';
-    showLoading('Autenticando...');
-
-    try {
-        const result = await dataManager.fetchWithFallback('login', { email, password });
-
-        if (result.success && result.data) {
-            state.currentUser = result.data;
-            state.userBalance = result.data.saldo || 0;
-            
-            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-            localStorage.setItem('miv_session', Date.now().toString());
-            
-            showToast('Login realizado com sucesso!', 'success');
-            
-            document.getElementById('loginEmail').value = '';
-            document.getElementById('loginPassword').value = '';
-            
-            initializeApp();
-        } else {
-            showToast(result.message || 'Credenciais inválidas', 'error');
-        }
-    } catch (error) {
-        console.error('Erro no login:', error);
-        
-        if (email === 'admin@miv.com' && password === 'admin123') {
-            state.currentUser = {
-                id: 1,
-                nome: 'Administrador',
-                email: 'admin@miv.com',
-                tipo: 'admin',
-                saldo: 1500,
-                acesso: 'aprovado'
-            };
-            state.userBalance = 1500;
-            
-            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-            showToast('Modo de demonstração ativado', 'info');
-            initializeApp();
-        } else {
-            showToast('Erro de conexão. Tente novamente.', 'error');
-        }
-    } finally {
-        loginBtn.disabled = false;
-        loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
-        hideLoading();
-    }
-}
-
-function showRegisterForm() {
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('registerForm').style.display = 'block';
-}
-
-function showLoginForm() {
-    document.getElementById('registerForm').style.display = 'none';
-    document.getElementById('loginForm').style.display = 'block';
-}
-
-function toggleArtistField() {
-    const type = document.getElementById('registerType').value;
-    const field = document.getElementById('artistLinkField');
-    field.style.display = type === 'artista' ? 'block' : 'none';
-}
-
-async function handleRegister() {
-    const name = document.getElementById('registerName').value.trim();
-    const email = document.getElementById('registerEmail').value.trim();
-    const password = document.getElementById('registerPassword').value.trim();
-    const type = document.getElementById('registerType').value;
-    const link = document.getElementById('registerLink')?.value.trim() || '';
-    const registerBtn = document.getElementById('registerBtn');
-
-    if (!name || !email || !password || !type) {
-        showToast('Preencha todos os campos obrigatórios', 'error');
-        return;
-    }
-
-    if (password.length < 6) {
-        showToast('A senha deve ter no mínimo 6 caracteres', 'error');
-        return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        showToast('Digite um e-mail válido', 'error');
-        return;
-    }
-
-    registerBtn.disabled = true;
-    registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
-    showLoading('Criando conta...');
-
-    try {
-        const result = await dataManager.fetchWithFallback('register', {
-            nome: name,
-            email: email,
-            password: password,
-            tipo: type,
-            workLink: link,
-            saldo: '0',
-            acesso: 'pendente'
-        });
-
-        if (result.success) {
-            showToast('Conta criada com sucesso! Aguarde aprovação.', 'success');
-            showLoginForm();
-            
-            document.getElementById('registerName').value = '';
-            document.getElementById('registerEmail').value = '';
-            document.getElementById('registerPassword').value = '';
-            document.getElementById('registerType').value = '';
-            if (document.getElementById('registerLink')) {
-                document.getElementById('registerLink').value = '';
-            }
-        } else {
-            showToast(result.message || 'Erro ao criar conta', 'error');
-        }
-    } catch (error) {
-        console.error('Erro no registro:', error);
-        showToast('Conta criada localmente. Será sincronizada quando online.', 'warning');
-        showLoginForm();
-    } finally {
-        registerBtn.disabled = false;
-        registerBtn.innerHTML = '<i class="bi bi-person-plus"></i> Solicitar Cadastro';
-        hideLoading();
-    }
-}
-
-// ========== INICIALIZAÇÃO DO APP ==========
-function initializeApp() {
-    document.getElementById('authScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
+// ========== FUNÇÕES DE USUÁRIO ==========
+function handleLogin(params) {
+  console.log('🔐 handleLogin chamado:', params);
+  
+  if (!params || typeof params !== 'object') {
+    return { success: false, message: 'Parâmetros inválidos' };
+  }
+  
+  const email = (params.email || params.loginEmail || '').toLowerCase().trim();
+  const password = params.pass || params.password || params.loginPassword || '';
+  
+  console.log('Tentando login:', { email: email.substring(0, 10) + '...', password: '***' });
+  
+  if (!email || !password) {
+    return { success: false, message: 'Email e senha são obrigatórios' };
+  }
+  
+  try {
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('USUARIOS');
     
-    updateUserInterface();
-    initializeRealTimeUpdates();
-    loadAllData();
-}
-
-function updateUserInterface() {
-    if (!state.currentUser) return;
+    if (!sheet) {
+      return { 
+        success: false, 
+        message: 'Sistema não configurado. Execute ?action=setup primeiro.',
+        tip: 'Acesse: ' + ScriptApp.getService().getUrl() + '?action=setup'
+      };
+    }
     
-    const userBadge = document.getElementById('userBadge');
-    if (userBadge) {
-        const userType = state.currentUser.tipo || 'ouvinte';
-        const badges = {
-            'ouvinte': { text: 'Ouvinte', color: 'var(--neon-green)' },
-            'artista': { text: 'Artista', color: '#007bff' },
-            'admin': { text: 'Admin', color: '#ff3232' }
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return { success: false, message: 'Nenhum usuário cadastrado. Execute setup.' };
+    }
+    
+    const headers = data[0];
+    const emailIndex = headers.indexOf('EMAIL');
+    const senhaIndex = headers.indexOf('SENHA');
+    const nomeIndex = headers.indexOf('NOME');
+    const tipoIndex = headers.indexOf('TIPO');
+    const saldoIndex = headers.indexOf('SALDO');
+    const idIndex = headers.indexOf('ID');
+    const acessoIndex = headers.indexOf('ACESSO');
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const userEmail = String(row[emailIndex] || '').trim().toLowerCase();
+      const userSenha = String(row[senhaIndex] || '').trim();
+      
+      if (userEmail === email && userSenha === password) {
+        console.log('✅ Login bem-sucedido para:', email);
+        
+        const user = {
+          id: row[idIndex] || i,
+          nome: row[nomeIndex] || '',
+          email: userEmail,
+          tipo: row[tipoIndex] || 'ouvinte',
+          saldo: parseFloat(row[saldoIndex]) || 0,
+          acesso: row[acessoIndex] || 'pendente',
+          token: generateToken(row[idIndex] || i)
         };
-        const badge = badges[userType] || badges.ouvinte;
-        userBadge.textContent = badge.text;
-        userBadge.style.background = badge.color;
-    }
-    
-    const artistNavItem = document.getElementById('artistNavItem');
-    if (artistNavItem) {
-        const userType = state.currentUser.tipo || 'ouvinte';
-        artistNavItem.style.display = (userType === 'artista' || userType === 'admin') ? 'block' : 'none';
-    }
-    
-    updateBalanceDisplay();
-}
-
-function initializeRealTimeUpdates() {
-    setInterval(() => {
-        if (state.currentUser && !state.offlineMode) {
-            loadBalance(true);
-        }
-    }, CONFIG.AUTO_REFRESH_INTERVAL);
-    
-    setInterval(() => {
-        const updateEl = document.getElementById('portfolioUpdateTime');
-        if (updateEl) {
-            updateEl.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-        }
-    }, 60000);
-}
-
-async function loadAllData() {
-    showLoading('Carregando dados...');
-    
-    try {
-        await Promise.allSettled([
-            loadBalance(),
-            loadMarketplace(),
-            loadPortfolio(),
-            loadLedger(),
-            (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin') ? loadArtistData() : Promise.resolve()
-        ]);
         
-        showToast('Sistema carregado com sucesso!', 'success');
-        state.appInitialized = true;
-        
-        if (state.offlineMode) {
-            dataManager.syncPendingTransactions();
+        if (user.acesso !== 'aprovado') {
+          return {
+            success: false,
+            message: 'Conta aguardando aprovação administrativa'
+          };
         }
-    } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        showToast('Alguns dados podem não estar atualizados', 'warning');
-    } finally {
-        hideLoading();
+        
+        return {
+          success: true,
+          data: user
+        };
+      }
     }
+    
+    return { success: false, message: 'Email ou senha incorretos' };
+    
+  } catch (error) {
+    console.error('Erro em handleLogin:', error);
+    return { success: false, message: 'Erro interno: ' + error.message };
+  }
 }
 
-// ========== SISTEMA DE SALDO ==========
-async function loadBalance(silent = false) {
-    if (!state.currentUser) return;
+function generateToken(userId) {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 15);
+  return `miv_${timestamp}_${userId}_${random}`;
+}
+
+function handleRegister(params) {
+  console.log('📝 handleRegister chamado:', params);
+  
+  if (!params || typeof params !== 'object') {
+    return { success: false, message: 'Parâmetros inválidos' };
+  }
+  
+  const nome = (params.nome || params.registerName || '').trim();
+  const email = (params.email || params.registerEmail || '').toLowerCase().trim();
+  const password = params.pass || params.password || params.registerPassword || '';
+  const tipo = params.tipo || params.registerType || '';
+  const workLink = params.workLink || params.registerLink || '';
+  
+  if (!nome || !email || !password || !tipo) {
+    return { success: false, message: 'Preencha todos os campos obrigatórios' };
+  }
+  
+  if (password.length < 6) {
+    return { success: false, message: 'Senha deve ter pelo menos 6 caracteres' };
+  }
+  
+  if (tipo === 'artista' && !workLink) {
+    return { success: false, message: 'Artistas devem informar link do trabalho' };
+  }
+  
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { success: false, message: 'Email inválido' };
+  }
+  
+  try {
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('USUARIOS');
     
-    if (!silent) showLoading('Carregando saldo...');
+    if (!sheet) {
+      return { success: false, message: 'Sistema não configurado' };
+    }
     
-    try {
-        const result = await dataManager.fetchWithFallback('get_saldo', {
-            user_id: state.currentUser.id || state.currentUser.email
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const emailIndex = headers.indexOf('EMAIL');
+    
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][emailIndex]).trim().toLowerCase() === email) {
+        return { success: false, message: 'Email já cadastrado' };
+      }
+    }
+    
+    const lastId = data[data.length - 1][0] || 0;
+    const newId = lastId + 1;
+    
+    sheet.appendRow([
+      newId,
+      nome,
+      email,
+      password,
+      tipo,
+      workLink,
+      0,
+      'pendente',
+      new Date().toISOString()
+    ]);
+    
+    logEvent('REGISTRO', `Novo usuário: ${nome} (${email}) - Tipo: ${tipo}`);
+    
+    console.log('✅ Usuário registrado com sucesso:', { id: newId, email });
+    
+    return {
+      success: true,
+      message: 'Conta criada com sucesso! Aguarde aprovação.',
+      data: { id: newId, nome: nome }
+    };
+    
+  } catch (error) {
+    console.error('Erro em handleRegister:', error);
+    return { success: false, message: 'Erro ao criar conta: ' + error.message };
+  }
+}
+
+// ========== FUNÇÕES DE MÚSICAS ==========
+function getMusicas() {
+  try {
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('MUSICAS');
+    
+    if (!sheet) {
+      console.log('📭 Sheet MUSICAS não encontrada');
+      return { success: true, data: [], message: 'Nenhuma música cadastrada' };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return { success: true, data: [] };
+    }
+    
+    const headers = data[0];
+    
+    const musicas = data.slice(1).map((row, index) => {
+      const obj = {};
+      headers.forEach((header, i) => {
+        obj[header.toLowerCase()] = row[i];
+      });
+      obj.id = obj.id || (index + 1);
+      
+      const percentualDisponivel = parseFloat(obj.percentual_disponivel) || 0;
+      const acoesVendidas = parseFloat(obj.acoes_vendidas) || 0;
+      const totalAcoes = (percentualDisponivel / 0.01);
+      obj.acoes_disponiveis = totalAcoes - acoesVendidas;
+      obj.percentual_vendido = totalAcoes > 0 ? (acoesVendidas / totalAcoes * 100) : 0;
+      
+      obj.valor_acao = parseFloat(obj.valor_acao) || 0;
+      
+      return obj;
+    }).filter(m => !m.status || m.status === 'ativo');
+    
+    console.log(`✅ Retornando ${musicas.length} músicas`);
+    return {
+      success: true,
+      data: musicas
+    };
+    
+  } catch (error) {
+    console.error('Erro em getMusicas:', error);
+    return {
+      success: false,
+      message: 'Erro ao carregar músicas: ' + error.message,
+      data: []
+    };
+  }
+}
+
+function uploadMusic(params) {
+  console.log('🎶 uploadMusic chamado:', params);
+  
+  if (!params || typeof params !== 'object') {
+    return { success: false, message: 'Parâmetros inválidos' };
+  }
+  
+  const user_id = params.user_id || '';
+  const titulo = (params.titulo || params.musicTitle || '').trim();
+  const artista = (params.artista || params.musicArtist || '').trim();
+  const genero = (params.genero || params.musicGenre || '').trim();
+  const link_youtube = (params.link_youtube || params.musicYoutube || '').trim();
+  const link_capa = (params.link_capa || params.musicCover || '').trim();
+  const valor_acao = parseFloat(params.valor_acao || params.musicPrice || '10');
+  const percentual_disponivel = parseFloat(params.percentual_disponivel || params.musicPercent || '20');
+  
+  if (!titulo || !genero || !link_youtube) {
+    return { success: false, message: 'Preencha título, gênero e link do YouTube' };
+  }
+  
+  if (valor_acao <= 0) {
+    return { success: false, message: 'Valor da ação deve ser positivo' };
+  }
+  
+  if (percentual_disponivel <= 0 || percentual_disponivel > 100) {
+    return { success: false, message: 'Percentual deve estar entre 1 e 100' };
+  }
+  
+  const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+  if (!youtubeRegex.test(link_youtube)) {
+    return { success: false, message: 'Link do YouTube inválido' };
+  }
+  
+  try {
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('MUSICAS');
+    
+    if (!sheet) {
+      return { success: false, message: 'Erro no servidor' };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const tituloIndex = headers.indexOf('TITULO');
+    
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][tituloIndex]).trim().toLowerCase() === titulo.toLowerCase()) {
+        return { success: false, message: 'Música com este título já existe' };
+      }
+    }
+    
+    const lastId = data[data.length - 1][0] || 0;
+    const newId = lastId + 1;
+    
+    const finalCover = link_capa || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMTExNDE4Ii8+PHJlY3QgeD0iMjAiIHk9IjIwIiB3aWR0aD0iMjYwIiBoZWlnaHQ9IjI2MCIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4xIiByeD0iMTAiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IiMwMGZmODgiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPk1JVjwvdGV4dD48dGV4dCB4PSI1MCUiIHk9IjcwJSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzY2NiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIj5TRUxPIE1VU0lDQUw8L3RleHQ+PC9zdmc+';
+    
+    sheet.appendRow([
+      newId,
+      titulo,
+      artista,
+      genero,
+      link_youtube,
+      finalCover,
+      valor_acao,
+      percentual_disponivel,
+      0,
+      'ativo',
+      new Date().toISOString()
+    ]);
+    
+    logEvent('UPLOAD_MUSICA', `Usuário ${user_id} cadastrou música: ${titulo}`);
+    
+    return {
+      success: true,
+      message: 'Música cadastrada com sucesso!',
+      data: { 
+        id: newId, 
+        titulo: titulo,
+        artista: artista,
+        valor_acao: valor_acao,
+        percentual_disponivel: percentual_disponivel
+      }
+    };
+    
+  } catch (error) {
+    console.error('Erro em uploadMusic:', error);
+    return { success: false, message: 'Erro ao cadastrar música: ' + error.message };
+  }
+}
+
+// ========== FUNÇÕES FINANCEIRAS ==========
+function criarSheetTransacoes() {
+  try {
+    const ss = getSpreadsheet();
+    let sheet = ss.getSheetByName('TRANSACOES');
+
+    if (!sheet) {
+      sheet = ss.insertSheet('TRANSACOES');
+      sheet.appendRow([
+        'ID',
+        'USER_ID',
+        'TIPO',
+        'VALOR',
+        'SALDO_ANTES',
+        'SALDO_DEPOIS',
+        'REFERENCIA',
+        'STATUS',
+        'DATA'
+      ]);
+      
+      sheet.getRange(1, 1, 1, 9)
+        .setFontWeight('bold')
+        .setBackground('#1a237e')
+        .setFontColor('#ffffff');
+      
+      sheet.setFrozenRows(1);
+      sheet.autoResizeColumns(1, 9);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Erro ao criar sheet TRANSACOES:', error);
+    return false;
+  }
+}
+
+function registrarTransacao(userId, tipo, valor, saldoAntes, saldoDepois, referencia, status) {
+  try {
+    criarSheetTransacoes();
+    
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('TRANSACOES');
+    
+    const data = sheet.getDataRange().getValues();
+    const lastId = data.length > 1 ? Number(data[data.length - 1][0]) || 0 : 0;
+
+    sheet.appendRow([
+      lastId + 1,
+      userId,
+      tipo,
+      valor,
+      saldoAntes,
+      saldoDepois,
+      referencia || '',
+      status || 'CONFIRMADO',
+      new Date().toISOString()
+    ]);
+    
+    const lastRow = sheet.getLastRow();
+    sheet.getRange(lastRow, 4, 1, 3).setNumberFormat('"R$ "#,##0.00');
+    
+    return true;
+  } catch (error) {
+    console.error('Erro em registrarTransacao:', error);
+    return false;
+  }
+}
+
+function getSaldo(params) {
+  console.log('💰 getSaldo chamado com:', params);
+  
+  if (!params || !params.user_id) {
+    return { success: false, message: 'ID do usuário não fornecido' };
+  }
+  
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('USUARIOS');
+  
+  if (!sheet) {
+    return { success: false, message: 'Erro no servidor' };
+  }
+  
+  try {
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIndex = headers.indexOf('ID');
+    const saldoIndex = headers.indexOf('SALDO');
+    
+    const user_id = params.user_id;
+    
+    console.log('Buscando saldo para user_id:', user_id);
+    
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][idIndex]) === String(user_id)) {
+        const saldo = parseFloat(data[i][saldoIndex]) || 0;
+        console.log('✅ Saldo encontrado:', saldo);
+        return {
+          success: true,
+          data: { 
+            saldo: saldo,
+            saldo_formatado: new Intl.NumberFormat('pt-BR', { 
+              style: 'currency', 
+              currency: 'BRL' 
+            }).format(saldo)
+          }
+        };
+      }
+    }
+    
+    console.log('❌ Usuário não encontrado');
+    return { success: false, message: 'Usuário não encontrado' };
+    
+  } catch (error) {
+    console.error('Erro em getSaldo:', error);
+    return { success: false, message: 'Erro ao buscar saldo: ' + error.message };
+  }
+}
+
+function getResumoPortfolio(params) {
+  console.log('📊 getResumoPortfolio chamado com:', params);
+  
+  if (!params || !params.user_id) {
+    return { success: false, message: 'ID do usuário não fornecido' };
+  }
+  
+  try {
+    const saldoRes = getSaldo(params);
+    if (!saldoRes.success) {
+      return saldoRes;
+    }
+    
+    const saldo = saldoRes.data.saldo;
+    const user_id = params.user_id;
+    
+    const carteiraRes = getCarteira({ user_id: user_id });
+    let patrimonio = 0;
+    let patrimonioDetalhado = [];
+    
+    if (carteiraRes.success && carteiraRes.data) {
+      const musicas = getMusicas();
+      if (musicas.success) {
+        carteiraRes.data.forEach(investimento => {
+          const musica = musicas.data.find(m => m.id == investimento.music_id);
+          if (musica) {
+            const valorAtual = investimento.quantidade * musica.valor_acao;
+            const valorInvestido = investimento.valor_total;
+            const lucro = valorAtual - valorInvestido;
+            const rentabilidade = valorInvestido > 0 ? (lucro / valorInvestido * 100) : 0;
+            
+            patrimonio += valorAtual;
+            
+            patrimonioDetalhado.push({
+              musica_id: investimento.music_id,
+              titulo: musica.titulo || 'Desconhecido',
+              artista: musica.artista || 'Desconhecido',
+              quantidade: investimento.quantidade,
+              valor_investido: valorInvestido,
+              valor_atual: valorAtual,
+              lucro: lucro,
+              rentabilidade_percentual: rentabilidade
+            });
+          }
         });
-        
-        if (result.success && result.data) {
-            state.userBalance = parseFloat(result.data.saldo) || 0;
-            updateBalanceDisplay();
-            
-            if (result.offline) {
-                state.offlineMode = true;
-            }
-        }
-    } catch (error) {
-        console.error('Erro ao carregar saldo:', error);
-    } finally {
-        if (!silent) hideLoading();
+      }
     }
+    
+    const total = saldo + patrimonio;
+    
+    console.log('✅ Resumo portfolio:', { saldo, patrimonio, total });
+    
+    return {
+      success: true,
+      data: {
+        saldo: saldo,
+        patrimonio: patrimonio,
+        total: total,
+        detalhes: patrimonioDetalhado
+      }
+    };
+    
+  } catch (error) {
+    console.error('Erro em getResumoPortfolio:', error);
+    return {
+      success: false,
+      message: 'Erro ao carregar resumo: ' + error.message,
+      data: { saldo: 0, patrimonio: 0, total: 0, detalhes: [] }
+    };
+  }
 }
 
-function updateBalanceDisplay() {
-    const balanceElement = document.getElementById('currentBalance');
-    if (balanceElement) {
-        balanceElement.textContent = formatCurrency(state.userBalance);
-        
-        if (state.offlineMode) {
-            balanceElement.innerHTML = `${formatCurrency(state.userBalance)} <small class="text-warning">(offline)</small>`;
-        }
-    }
-}
-
-// ========== MARKETPLACE ==========
-async function loadMarketplace(forceRefresh = false) {
-    try {
-        const result = await dataManager.fetchWithFallback('get_musicas');
-        
-        if (result.success && result.data) {
-            state.playlist = result.data.filter(music => 
-                music && (music.status || '').toLowerCase() === 'ativo'
-            ) || [];
-            
-            if (result.offline) {
-                state.offlineMode = true;
-            }
-        }
-        
-        renderMarketplace();
-    } catch (error) {
-        console.error('Erro ao carregar marketplace:', error);
-        renderMarketplace();
-    }
-}
-
-function renderMarketplace() {
-    const container = document.getElementById('marketplaceContent');
-    if (!container) return;
+function buyShares(params) {
+  console.log('💳 buyShares chamado com:', params);
+  
+  if (!params || !params.user_id || !params.music_id || !params.quantidade || !params.valor_total) {
+    return { success: false, message: 'Parâmetros incompletos' };
+  }
+  
+  const user_id = params.user_id;
+  const music_id = params.music_id;
+  const quantidadeNum = parseInt(params.quantidade) || 0;
+  const valorTotalNum = parseFloat(params.valor_total) || 0;
+  
+  if (quantidadeNum <= 0) {
+    return { success: false, message: 'Quantidade inválida' };
+  }
+  
+  if (valorTotalNum <= 0) {
+    return { success: false, message: 'Valor inválido' };
+  }
+  
+  const ss = getSpreadsheet();
+  
+  try {
+    const usersSheet = ss.getSheetByName('USUARIOS');
+    const usersData = usersSheet.getDataRange().getValues();
+    const userHeaders = usersData[0];
     
-    if (!state.playlist || state.playlist.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state-actionable">
-                <i class="bi bi-music-note-slash empty-icon"></i>
-                <h5 class="text-muted">Nenhuma música disponível</h5>
-                <p class="text-muted">As músicas serão carregadas em breve</p>
-                <button class="btn-miv mt-3" onclick="loadMarketplace(true)">
-                    <i class="bi bi-arrow-clockwise me-2"></i> Tentar novamente
-                </button>
-            </div>
-        `;
-        return;
+    let userRow = -1;
+    let userSaldo = 0;
+    let userNome = '';
+    let userEmail = '';
+    
+    for (let i = 1; i < usersData.length; i++) {
+      if (String(usersData[i][userHeaders.indexOf('ID')]) === String(user_id)) {
+        userRow = i + 1;
+        userSaldo = parseFloat(usersData[i][userHeaders.indexOf('SALDO')]) || 0;
+        userNome = usersData[i][userHeaders.indexOf('NOME')] || '';
+        userEmail = usersData[i][userHeaders.indexOf('EMAIL')] || '';
+        break;
+      }
     }
     
-    container.innerHTML = state.playlist.map((track, index) => {
-        const percentAvailable = track.percentual_disponivel || 0;
-        const sharesSold = track.acoes_vendidas || 0;
-        const totalShares = (percentAvailable / 0.01) + sharesSold;
-        const availableShares = totalShares - sharesSold;
-        const percentSold = totalShares > 0 ? (sharesSold / totalShares * 100).toFixed(1) : 0;
-        
-        let badgeClass = 'badge-success';
-        if (percentSold >= 80) badgeClass = 'badge-danger';
-        else if (percentSold >= 50) badgeClass = 'badge-warning';
-        
-        return `
-            <div class="music-card" onclick="playTrack(${index})">
-                <div class="position-relative">
-                    <img src="${track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV'}" 
-                         class="music-cover" 
-                         alt="${track.titulo || track.TITULO || 'Música'}"
-                         onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
-                    ${percentSold >= 90 ? `
-                        <div class="position-absolute top-0 end-0 m-2">
-                            <span class="badge ${badgeClass}">Esgotando</span>
-                        </div>
-                    ` : ''}
-                </div>
-                <div class="music-info">
-                    <h6 class="music-title">${track.titulo || track.TITULO || 'Sem título'}</h6>
-                    <p class="music-artist">${track.artista || track.ARTISTA || 'Artista Desconhecido'}</p>
-                    <div class="music-meta">
-                        <span class="music-price">${formatCurrency(track.valor_acao || track.VALOR_ACAO || 0)}</span>
-                        <span class="music-percent ${badgeClass}" 
-                              data-tooltip="${availableShares} de ${totalShares} ações disponíveis">
-                            ${percentSold}% vendido
-                        </span>
-                    </div>
-                    <button class="btn-miv btn-sm w-100 mt-2" onclick="event.stopPropagation(); openInvestModal(${index})">
-                        <i class="bi bi-currency-dollar me-1"></i> Investir
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// ========== SISTEMA DE INVESTIMENTO ==========
-function openInvestModal(trackIndex) {
-    if (trackIndex < 0 || trackIndex >= state.playlist.length) {
-        showToast('Música não encontrada', 'error');
-        return;
+    if (userRow === -1) {
+      return { success: false, message: 'Usuário não encontrado' };
     }
     
-    const track = state.playlist[trackIndex];
-    state.currentInvestTrack = track;
+    if (userSaldo < valorTotalNum) {
+      return {
+        success: false,
+        message: `Saldo insuficiente. Disponível: R$ ${userSaldo.toFixed(2)}`,
+        saldo_disponivel: userSaldo,
+        valor_necessario: valorTotalNum
+      };
+    }
     
-    const percentAvailable = track.percentual_disponivel || 0;
-    const sharesSold = track.acoes_vendidas || 0;
-    const totalShares = (percentAvailable / 0.01);
-    const availableShares = totalShares - sharesSold;
+    const musicSheet = ss.getSheetByName('MUSICAS');
+    const musicData = musicSheet.getDataRange().getValues();
+    const musicHeaders = musicData[0];
     
-    document.getElementById('investTrackTitle').textContent = track.titulo || track.TITULO || 'Título desconhecido';
-    document.getElementById('investTrackArtist').textContent = track.artista || track.ARTISTA || 'Artista desconhecido';
-    document.getElementById('investUnitPrice').textContent = formatCurrency(track.valor_acao || track.VALOR_ACAO || 0);
-    document.getElementById('investAvailableBalance').textContent = formatCurrency(state.userBalance);
-    document.getElementById('sharesAvailable').textContent = `Disponível: ${availableShares} ações`;
+    let musicRow = -1;
+    let musicObj = {};
     
-    const investQuantity = document.getElementById('investQuantity');
-    investQuantity.value = 1;
-    investQuantity.min = 1;
-    investQuantity.max = Math.min(
-        availableShares,
-        Math.floor(state.userBalance / (track.valor_acao || track.VALOR_ACAO || 1))
+    for (let i = 1; i < musicData.length; i++) {
+      if (String(musicData[i][musicHeaders.indexOf('ID')]) === String(music_id)) {
+        musicRow = i + 1;
+        musicHeaders.forEach((header, index) => {
+          musicObj[header.toLowerCase()] = musicData[i][index];
+        });
+        break;
+      }
+    }
+    
+    if (musicRow === -1) {
+      return { success: false, message: 'Música não encontrada' };
+    }
+    
+    if (musicObj.status !== 'ativo') {
+      return { success: false, message: 'Música não disponível para investimento' };
+    }
+    
+    const percentualDisponivel = parseFloat(musicObj.percentual_disponivel) || 0;
+    const acoesVendidas = parseFloat(musicObj.acoes_vendidas) || 0;
+    const totalAcoes = (percentualDisponivel / 0.01);
+    const acoesDisponiveis = totalAcoes - acoesVendidas;
+    
+    if (quantidadeNum > acoesDisponiveis) {
+      return {
+        success: false,
+        message: `Apenas ${acoesDisponiveis} ações disponíveis`,
+        acoes_disponiveis: acoesDisponiveis,
+        acoes_solicitadas: quantidadeNum
+      };
+    }
+    
+    const novoSaldo = userSaldo - valorTotalNum;
+    usersSheet.getRange(userRow, userHeaders.indexOf('SALDO') + 1).setValue(novoSaldo);
+    
+    const novasAcoesVendidas = acoesVendidas + quantidadeNum;
+    musicSheet.getRange(musicRow, musicHeaders.indexOf('ACOES_VENDIDAS') + 1)
+      .setValue(novasAcoesVendidas);
+    
+    registrarTransacao(
+      user_id,
+      'COMPRA_ACOES',
+      -valorTotalNum,
+      userSaldo,
+      novoSaldo,
+      'COMPRA_MUSICA_' + music_id + '_QTD_' + quantidadeNum,
+      'CONFIRMADO'
     );
     
-    updateInvestmentTotal();
-    showModal('investModal');
-}
-
-function adjustQuantity(change) {
-    const quantityInput = document.getElementById('investQuantity');
-    let quantity = parseInt(quantityInput.value) || 1;
-    const max = parseInt(quantityInput.max) || 999;
-    
-    quantity = Math.max(1, Math.min(max, quantity + change));
-    quantityInput.value = quantity;
-    updateInvestmentTotal();
-}
-
-function updateInvestmentTotal() {
-    const quantityInput = document.getElementById('investQuantity');
-    const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
-    const unitPrice = state.currentInvestTrack ? (state.currentInvestTrack.valor_acao || state.currentInvestTrack.VALOR_ACAO || 0) : 0;
-    const total = quantity * unitPrice;
-    
-    document.getElementById('investTotalPrice').textContent = formatCurrency(total);
-    
-    const confirmBtn = document.getElementById('confirmInvestBtn');
-    const availableShares = calculateAvailableShares();
-    
-    if (total <= state.userBalance && quantity > 0 && quantity <= availableShares) {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Confirmar Investimento';
-        confirmBtn.classList.remove('btn-secondary');
-        confirmBtn.classList.add('btn-miv');
-    } else {
-        confirmBtn.disabled = true;
-        confirmBtn.classList.remove('btn-miv');
-        confirmBtn.classList.add('btn-secondary');
-        
-        if (total > state.userBalance) {
-            confirmBtn.textContent = 'Saldo Insuficiente';
-        } else if (quantity > availableShares) {
-            confirmBtn.textContent = 'Ações Indisponíveis';
-        } else {
-            confirmBtn.textContent = 'Quantidade Inválida';
-        }
-    }
-}
-
-function calculateAvailableShares() {
-    if (!state.currentInvestTrack) return 0;
-    const percentAvailable = state.currentInvestTrack.percentual_disponivel || 0;
-    const sharesSold = state.currentInvestTrack.acoes_vendidas || 0;
-    const totalShares = (percentAvailable / 0.01);
-    return totalShares - sharesSold;
-}
-
-async function confirmInvestment() {
-    if (!state.currentInvestTrack || !state.currentUser) {
-        showToast('Erro ao processar investimento', 'error');
-        return;
+    const carteiraSheet = ss.getSheetByName('CARTEIRA');
+    if (!carteiraSheet) {
+      const newSheet = ss.insertSheet('CARTEIRA');
+      newSheet.appendRow(['ID', 'USER_ID', 'MUSIC_ID', 'QUANTIDADE', 'VALOR_PAGO_POR_ACAO', 'VALOR_TOTAL', 'DATA_COMPRA']);
+      newSheet.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#1a237e').setFontColor('#ffffff');
+      newSheet.setFrozenRows(1);
+      newSheet.autoResizeColumns(1, 7);
     }
     
-    const quantityInput = document.getElementById('investQuantity');
-    const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
-    const unitPrice = state.currentInvestTrack.valor_acao || state.currentInvestTrack.VALOR_ACAO || 0;
-    const totalPrice = quantity * unitPrice;
+    const carteiraData = carteiraSheet.getDataRange().getValues();
+    const lastCarteiraId = carteiraData.length > 1 ? carteiraData[carteiraData.length - 1][0] || 0 : 0;
+    const novoCarteiraId = lastCarteiraId + 1;
     
-    if (totalPrice > state.userBalance) {
-        showToast('Saldo insuficiente para esta compra', 'error');
-        return;
+    const valorPorAcao = valorTotalNum / quantidadeNum;
+    
+    carteiraSheet.appendRow([
+      novoCarteiraId,
+      user_id,
+      music_id,
+      quantidadeNum,
+      valorPorAcao,
+      valorTotalNum,
+      new Date().toISOString()
+    ]);
+    
+    const lastRow = carteiraSheet.getLastRow();
+    carteiraSheet.getRange(lastRow, 4, 1, 3).setNumberFormat('0.00');
+    
+    const extratoSheet = ss.getSheetByName('EXTRATO');
+    if (!extratoSheet) {
+      const newSheet = ss.insertSheet('EXTRATO');
+      newSheet.appendRow(['ID', 'USER_ID', 'TIPO', 'DESCRICAO', 'VALOR', 'DATA']);
+      newSheet.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#1a237e').setFontColor('#ffffff');
+      newSheet.setFrozenRows(1);
+      newSheet.autoResizeColumns(1, 6);
     }
     
-    if (quantity <= 0) {
-        showToast('Quantidade inválida', 'error');
-        return;
-    }
+    const extratoData = extratoSheet.getDataRange().getValues();
+    const lastExtratoId = extratoData.length > 1 ? extratoData[extratoData.length - 1][0] || 0 : 0;
+    const novoExtratoId = lastExtratoId + 1;
     
-    const availableShares = calculateAvailableShares();
-    if (quantity > availableShares) {
-        showToast(`Apenas ${availableShares} ações disponíveis`, 'error');
-        return;
-    }
+    extratoSheet.appendRow([
+      novoExtratoId,
+      user_id,
+      'COMPRA_ACOES',
+      `Compra de ${quantidadeNum} ação(ões) de "${musicObj.titulo}" - ${musicObj.artista}`,
+      -valorTotalNum,
+      new Date().toISOString()
+    ]);
     
-    showLoading('Processando investimento...');
+    extratoSheet.getRange(lastExtratoId + 1, 5).setNumberFormat('"R$ "#,##0.00');
+    
+    logEvent('COMPRA', `Usuário ${userNome} (${userEmail}) comprou ${quantidadeNum} ações da música ${music_id} por R$ ${valorTotalNum.toFixed(2)}`);
     
     try {
-        const result = await dataManager.fetchWithFallback('buy', {
-            user_id: state.currentUser.id || state.currentUser.email,
-            music_id: state.currentInvestTrack.id || state.currentInvestTrack.ID,
-            quantidade: quantity.toString(),
-            valor_total: totalPrice.toFixed(2)
+      if (userEmail) {
+        MailApp.sendEmail({
+          to: userEmail,
+          subject: '✅ Confirmação de Investimento - SELO MIV',
+          htmlBody: `
+            <h2>🎵 Investimento Realizado com Sucesso!</h2>
+            <p>Olá ${userNome},</p>
+            <p>Seu investimento foi confirmado:</p>
+            <ul>
+              <li><strong>Música:</strong> ${musicObj.titulo}</li>
+              <li><strong>Artista:</strong> ${musicObj.artista}</li>
+              <li><strong>Ações compradas:</strong> ${quantidadeNum}</li>
+              <li><strong>Valor investido:</strong> R$ ${valorTotalNum.toFixed(2)}</li>
+              <li><strong>Saldo anterior:</strong> R$ ${userSaldo.toFixed(2)}</li>
+              <li><strong>Novo saldo:</strong> R$ ${novoSaldo.toFixed(2)}</li>
+            </ul>
+            <p>Acompanhe seus investimentos na plataforma SELO MIV.</p>
+            <hr>
+            <p><small>Este é um email automático, por favor não responda.</small></p>
+          `
         });
-        
-        if (result.success) {
-            showToast(`Investimento realizado! ${quantity} ação(ões) comprada(s).`, 'success');
-            
-            state.userBalance -= totalPrice;
-            updateBalanceDisplay();
-            
-            await Promise.allSettled([
-                loadPortfolio(true),
-                loadLedger(true),
-                loadMarketplace(true),
-                loadBalance(true)
-            ]);
-            
-            closeModal('investModal');
-        } else {
-            showToast(result.message || 'Erro ao processar investimento', 'error');
-        }
-    } catch (error) {
-        console.error('Erro no investimento:', error);
-        
-        if (state.offlineMode) {
-            state.userBalance -= totalPrice;
-            updateBalanceDisplay();
-            
-            dataManager.saveTransaction('buy', {
-                user_id: state.currentUser.id,
-                music_id: state.currentInvestTrack.id,
-                quantidade: quantity,
-                valor_total: totalPrice
-            });
-            
-            showToast('Investimento registrado localmente. Será sincronizado quando online.', 'warning');
-            closeModal('investModal');
-        } else {
-            showToast('Erro de conexão ao processar investimento', 'error');
-        }
-    } finally {
-        hideLoading();
+      }
+    } catch (emailError) {
+      console.warn('Não foi possível enviar email:', emailError);
     }
-}
-
-// ========== PORTFÓLIO ==========
-async function loadPortfolio(silent = false) {
-    if (!state.currentUser) return;
     
-    if (!silent) showLoading('Carregando portfólio...');
-    
-    try {
-        const result = await dataManager.fetchWithFallback('get_carteira', {
-            user_id: state.currentUser.id || state.currentUser.email
-        });
-        
-        if (result.success) {
-            state.portfolioAssets = result.data || [];
-            renderPortfolio();
-        }
-    } catch (error) {
-        console.error('Erro ao carregar portfólio:', error);
-        renderPortfolio();
-    } finally {
-        if (!silent) hideLoading();
-    }
-}
-
-function renderPortfolio() {
-    const container = document.getElementById('portfolioContent');
-    const countElement = document.getElementById('assetsCount');
-    const portfolioValueElement = document.getElementById('portfolioValue');
-    const updateTimeElement = document.getElementById('portfolioUpdateTime');
-    
-    if (!container) return;
-    
-    let totalValue = 0;
-    let totalInvestment = 0;
-    
-    state.portfolioAssets.forEach(asset => {
-        const music = state.playlist.find(m => m.id === asset.id_musica);
-        const currentPrice = music ? (music.valor_acao || music.VALOR_ACAO || 0) : (asset.valor_pago_por_acao || 0);
-        const purchasePrice = asset.valor_pago_por_acao || 0;
-        const quantity = asset.quantidade_acoes || 0;
-        totalValue += currentPrice * quantity;
-        totalInvestment += purchasePrice * quantity;
+    console.log('✅ Compra realizada com sucesso:', {
+      user_id,
+      user_email: userEmail,
+      music_id,
+      quantidade: quantidadeNum,
+      valor_total: valorTotalNum,
+      novo_saldo: novoSaldo,
+      saldo_anterior: userSaldo
     });
     
-    const totalProfit = totalValue - totalInvestment;
-    const profitPercentage = totalInvestment > 0 ? (totalProfit / totalInvestment * 100).toFixed(2) : 0;
-    
-    if (portfolioValueElement) {
-        portfolioValueElement.textContent = formatCurrency(totalValue);
-        
-        if (totalProfit !== 0) {
-            const profitClass = totalProfit >= 0 ? 'text-success' : 'text-danger';
-            const profitSign = totalProfit >= 0 ? '+' : '';
-            portfolioValueElement.innerHTML = `
-                ${formatCurrency(totalValue)}
-                <small class="${profitClass} d-block fs-6">${profitSign}${formatCurrency(totalProfit)} (${profitPercentage}%)</small>
-            `;
-        }
-    }
-    
-    if (countElement) {
-        countElement.textContent = `${state.portfolioAssets.length} ativo${state.portfolioAssets.length !== 1 ? 's' : ''}`;
-    }
-    
-    if (updateTimeElement) {
-        updateTimeElement.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-    }
-    
-    if (!state.portfolioAssets || state.portfolioAssets.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state-actionable">
-                <i class="bi bi-briefcase empty-icon"></i>
-                <h5 class="text-muted">Nenhum ativo na carteira</h5>
-                <p class="text-muted">Invista em músicas para começar a construir seu portfólio</p>
-                <div class="mt-3">
-                    <button class="btn-miv me-2" onclick="changeSection('marketplace')">
-                        <i class="bi bi-arrow-right me-2"></i> Explorar Marketplace
-                    </button>
-                    <button class="btn btn-outline-success" onclick="openAddBalanceModal()">
-                        <i class="bi bi-plus-circle me-2"></i> Adicionar Saldo
-                    </button>
-                </div>
-                <div class="mt-4 text-start">
-                    <h6>Como começar:</h6>
-                    <ol class="small">
-                        <li>Adicione crédito à sua conta</li>
-                        <li>Explore músicas no Marketplace</li>
-                        <li>Compre ações das suas preferidas</li>
-                        <li>Acompanhe seus investimentos aqui</li>
-                    </ol>
-                </div>
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = state.portfolioAssets.map(asset => {
-        const music = state.playlist.find(m => m.id === asset.id_musica) || {};
-        const currentPrice = music.valor_acao || music.VALOR_ACAO || asset.valor_pago_por_acao || 0;
-        const purchasePrice = asset.valor_pago_por_acao || 0;
-        const quantity = asset.quantidade_acoes || 0;
-        const currentValue = quantity * currentPrice;
-        const purchaseValue = quantity * purchasePrice;
-        const profitLoss = currentValue - purchaseValue;
-        const profitLossPercent = purchaseValue > 0 ? (profitLoss / purchaseValue * 100).toFixed(2) : 0;
-        const purchaseDate = asset.data_compra ? new Date(asset.data_compra) : null;
-        
-        return `
-            <div class="music-card mb-3">
-                <div class="d-flex">
-                    <img src="${music.link_capa || music.LINK_CAPA || 'https://via.placeholder.com/80x80/111418/00ff88?text=MIV'}" 
-                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 0.75rem; margin-right: 1rem;" 
-                         alt="${music.titulo || music.TITULO || 'Música'}"
-                         onerror="this.src='https://via.placeholder.com/80x80/111418/00ff88?text=MIV'">
-                    <div style="flex: 1;">
-                        <h6 class="music-title">${music.titulo || music.TITULO || 'Música não encontrada'}</h6>
-                        <p class="music-artist">${music.artista || music.ARTISTA || 'Artista Desconhecido'}</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <small class="text-muted">Ações:</small>
-                                <div class="fw-bold">${quantity}</div>
-                                ${purchaseDate ? `<small class="text-muted">Compra: ${purchaseDate.toLocaleDateString('pt-BR')}</small>` : ''}
-                            </div>
-                            <div class="text-center">
-                                <small class="text-muted">Valor atual:</small>
-                                <div class="fw-bold">${formatCurrency(currentValue)}</div>
-                            </div>
-                            <div class="text-end">
-                                <small class="text-muted">Rentabilidade:</small>
-                                <div class="fw-bold ${profitLoss >= 0 ? 'text-success' : 'text-danger'}">
-                                    ${profitLoss >= 0 ? '+' : ''}${formatCurrency(profitLoss)}
-                                </div>
-                                <small class="${profitLoss >= 0 ? 'text-success' : 'text-danger'}">
-                                    (${profitLossPercent}%)
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// ========== EXTRATO ==========
-async function loadLedger(forceRefresh = false) {
-    if (!state.currentUser) return;
-    
-    try {
-        const result = await dataManager.fetchWithFallback('get_extrato', {
-            user_id: state.currentUser.id || state.currentUser.email
-        });
-        
-        if (result.success) {
-            state.ledgerData = result.data || [];
-            renderLedger();
-        }
-    } catch (error) {
-        console.error('Erro ao carregar extrato:', error);
-        renderLedger();
-    }
-}
-
-function renderLedger() {
-    const container = document.getElementById('ledgerContent');
-    if (!container) return;
-    
-    if (!state.ledgerData || state.ledgerData.length === 0) {
-        container.innerHTML = `
-            <tr>
-                <td colspan="3" class="text-center py-5">
-                    <div class="empty-state-actionable">
-                        <i class="bi bi-receipt empty-icon"></i>
-                        <h5 class="text-muted">Nenhuma transação encontrada</h5>
-                        <p class="text-muted">Faça seu primeiro investimento para ver transações aqui</p>
-                        <div class="mt-3">
-                            <button class="btn-miv me-2" onclick="changeSection('marketplace')">
-                                <i class="bi bi-currency-dollar me-2"></i> Investir Agora
-                            </button>
-                            <button class="btn btn-outline-success" onclick="openAddBalanceModal()">
-                                <i class="bi bi-plus-circle me-2"></i> Adicionar Saldo
-                            </button>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    const sortedData = [...state.ledgerData].sort((a, b) => {
-        const dateA = new Date(a.data || a.Data || 0);
-        const dateB = new Date(b.data || b.Data || 0);
-        return dateB - dateA;
-    });
-    
-    container.innerHTML = sortedData.map(transaction => {
-        const amount = parseFloat(transaction.valor || transaction.Valor || 0);
-        const type = (transaction.tipo || transaction.Tipo || '').toLowerCase();
-        const description = transaction.descricao || transaction.Descricao || '';
-        const date = transaction.data || transaction.Data || '';
-        
-        let typeClass = 'text-muted';
-        let typeIcon = 'bi-receipt';
-        let typeBadge = 'secondary';
-        
-        if (type.includes('deposito') || type.includes('royalty') || amount > 0) {
-            typeClass = 'text-success';
-            typeIcon = 'bi-plus-circle';
-            typeBadge = 'success';
-        } else if (type.includes('compra') || type.includes('investimento') || amount < 0) {
-            typeClass = 'text-danger';
-            typeIcon = 'bi-currency-dollar';
-            typeBadge = 'danger';
-        } else if (type.includes('venda') || type.includes('receita')) {
-            typeClass = 'text-info';
-            typeIcon = 'bi-arrow-up-right';
-            typeBadge = 'info';
-        }
-        
-        return `
-            <tr>
-                <td>
-                    <small class="text-muted">${formatDate(date)}</small>
-                </td>
-                <td>
-                    <span class="badge bg-${typeBadge} me-2">
-                        <i class="bi ${typeIcon}"></i>
-                    </span>
-                    ${description}
-                </td>
-                <td class="text-end ${typeClass} fw-bold">
-                    ${amount >= 0 ? '+' : ''}${formatCurrency(amount)}
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-function exportExtrato() {
-    if (!state.ledgerData || state.ledgerData.length === 0) {
-        showToast('Nenhuma transação para exportar', 'warning');
-        return;
-    }
-    
-    const csvContent = [
-        ['Data', 'Descrição', 'Valor'],
-        ...state.ledgerData.map(t => [
-            t.data || t.Data || '',
-            t.descricao || t.Descricao || '',
-            t.valor || t.Valor || 0
-        ])
-    ].map(row => row.join(',')).join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `extrato_selomiv_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast('Extrato exportado com sucesso', 'success');
-}
-
-// ========== PAINEL DO ARTISTA ==========
-async function loadArtistData(forceRefresh = false) {
-    if (!state.currentUser || (state.currentUser.tipo !== 'artista' && state.currentUser.tipo !== 'admin')) return;
-    
-    try {
-        const result = await dataManager.fetchWithFallback('get_artist_data', {
-            user_id: state.currentUser.id || state.currentUser.email
-        });
-        
-        if (result.success) {
-            const artistData = result.data || {};
-            
-            document.getElementById('artistMusicCount').textContent = artistData.total_musicas || 0;
-            document.getElementById('artistRoyalties').textContent = formatCurrency(artistData.total_royalties || 0);
-            document.getElementById('artistSharesSold').textContent = artistData.total_acoes_vendidas || 0;
-            
-            const monthlyEarnings = (artistData.total_royalties || 0) * 0.1;
-            document.getElementById('artistMonthlyEarnings').textContent = formatCurrency(monthlyEarnings);
-            
-            renderArtistMusic(artistData.musicas || []);
-        }
-    } catch (error) {
-        console.error('Erro ao carregar dados do artista:', error);
-        renderArtistMusic([]);
-    }
-}
-
-function renderArtistMusic(musics) {
-    const container = document.getElementById('artistMusicContent');
-    if (!container) return;
-    
-    if (!musics || musics.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state-actionable">
-                <i class="bi bi-music-note-beamed empty-icon"></i>
-                <h5 class="text-muted">Nenhuma música cadastrada</h5>
-                <p class="text-muted">Cadastre sua primeira música para começar a vender ações</p>
-                <button class="btn-miv mt-3" onclick="openAddMusicModal()">
-                    <i class="bi bi-plus-circle me-2"></i> Cadastrar Música
-                </button>
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = musics.map(music => {
-        const percentSold = music.percentual_vendido || 0;
-        const earnings = music.arrecadacao_total || 0;
-        const availableShares = calculateAvailableSharesForMusic(music);
-        
-        let badgeClass = 'badge-success';
-        if (percentSold >= 80) badgeClass = 'badge-danger';
-        else if (percentSold >= 50) badgeClass = 'badge-warning';
-        
-        return `
-            <div class="music-card">
-                <img src="${music.link_capa || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV'}" 
-                     class="music-cover" 
-                     alt="${music.titulo}"
-                     onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
-                <div class="music-info">
-                    <h6 class="music-title">${music.titulo}</h6>
-                    <p class="music-artist">${state.currentUser.nome}</p>
-                    <div class="music-meta">
-                        <span class="music-price">${formatCurrency(music.valor_acao)}</span>
-                        <span class="music-percent ${badgeClass}">
-                            ${percentSold.toFixed(1)}% vendido
-                        </span>
-                    </div>
-                    <div class="d-flex gap-2 mt-2">
-                        <button class="btn btn-outline-success btn-sm flex-fill" onclick="editMusic('${music.id}')">
-                            <i class="bi bi-pencil"></i> Editar
-                        </button>
-                    </div>
-                    <div class="mt-2 text-center">
-                        <small class="text-muted">Arrecadado: ${formatCurrency(earnings)} | Disponível: ${availableShares} ações</small>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-function calculateAvailableSharesForMusic(music) {
-    const percentAvailable = music.percentual_disponivel || music.PERCENTUAL_DISPONIVEL || 0;
-    const sharesSold = music.acoes_vendidas || music.ACOES_VENDIDAS || 0;
-    const totalShares = (percentAvailable / 0.01);
-    return Math.max(0, totalShares - sharesSold);
-}
-
-function openAddMusicModal() {
-    if (state.currentUser.tipo !== 'artista' && state.currentUser.tipo !== 'admin') {
-        showToast('Apenas artistas podem cadastrar músicas', 'error');
-        return;
-    }
-    
-    document.getElementById('musicTitle').value = '';
-    document.getElementById('musicGenre').value = '';
-    document.getElementById('musicYoutube').value = '';
-    document.getElementById('musicCover').value = '';
-    document.getElementById('musicPrice').value = '10.00';
-    document.getElementById('musicPercent').value = '20';
-    document.getElementById('musicTerms').checked = false;
-    
-    showModal('addMusicModal');
-}
-
-async function registerMusic() {
-    if (!state.currentUser || (state.currentUser.tipo !== 'artista' && state.currentUser.tipo !== 'admin')) {
-        showToast('Apenas artistas podem cadastrar músicas', 'error');
-        return;
-    }
-    
-    const title = document.getElementById('musicTitle').value.trim();
-    const genre = document.getElementById('musicGenre').value;
-    const youtube = document.getElementById('musicYoutube').value.trim();
-    const cover = document.getElementById('musicCover').value.trim();
-    const price = parseFloat(document.getElementById('musicPrice').value) || 0;
-    const percent = parseFloat(document.getElementById('musicPercent').value) || 0;
-    const terms = document.getElementById('musicTerms').checked;
-    const registerBtn = document.getElementById('registerMusicBtn');
-    
-    if (!title || !genre || !youtube) {
-        showToast('Preencha todos os campos obrigatórios', 'error');
-        return;
-    }
-    
-    if (!terms) {
-        showToast('Aceite os termos para continuar', 'error');
-        return;
-    }
-    
-    if (price <= 0) {
-        showToast('O valor por ação deve ser maior que zero', 'error');
-        return;
-    }
-    
-    if (percent <= 0 || percent > 100) {
-        showToast('O percentual deve estar entre 1% e 100%', 'error');
-        return;
-    }
-    
-    const youtubeId = extractYouTubeId(youtube);
-    if (!youtubeId) {
-        showToast('Link do YouTube inválido', 'error');
-        return;
-    }
-    
-    registerBtn.disabled = true;
-    registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cadastrando...';
-    showLoading('Cadastrando música...');
-    
-    try {
-        const result = await dataManager.fetchWithFallback('uploadMusic', {
-            user_id: state.currentUser.id || state.currentUser.email,
-            titulo: title,
-            artista: state.currentUser.nome,
-            genero: genre,
-            link_youtube: youtube,
-            link_capa: cover,
-            valor_acao: price.toFixed(2),
-            percentual_disponivel: percent.toString(),
-            status: 'ativo'
-        });
-        
-        if (result.success) {
-            showToast('Música cadastrada com sucesso!', 'success');
-            
-            await Promise.allSettled([
-                loadArtistData(true),
-                loadMarketplace(true)
-            ]);
-            
-            closeModal('addMusicModal');
-        } else {
-            showToast(result.message || 'Erro ao cadastrar música', 'error');
-        }
-    } catch (error) {
-        console.error('Erro ao cadastrar música:', error);
-        showToast('Erro de conexão ao cadastrar música', 'error');
-    } finally {
-        registerBtn.disabled = false;
-        registerBtn.innerHTML = '<i class="bi bi-save me-2"></i> Cadastrar Música';
-        hideLoading();
-    }
-}
-
-function editMusic(musicId) {
-    showToast('Funcionalidade em desenvolvimento', 'info');
-}
-
-// ========== SISTEMA DE PAGAMENTO ==========
-function openAddBalanceModal() {
-    if (!state.currentUser) {
-        showToast('Faça login para adicionar saldo', 'error');
-        return;
-    }
-    
-    showModal('addBalanceModal');
-}
-
-function setBalanceAmount(amount) {
-    document.getElementById('balanceAmount').value = amount;
-    validateBalanceAmount();
-}
-
-function validateBalanceAmount() {
-    const amountInput = document.getElementById('balanceAmount');
-    let amount = parseFloat(amountInput.value) || 0;
-    
-    if (amount < 10) {
-        amount = 10;
-        amountInput.value = 10;
-    } else if (amount > 10000) {
-        amount = 10000;
-        amountInput.value = 10000;
-    }
-    
-    return amount;
-}
-
-async function processBalanceAdd() {
-    const amount = validateBalanceAmount();
-    
-    if (amount < 10) {
-        showToast('Valor mínimo: R$ 10,00', 'error');
-        return;
-    }
-    
-    showLoading('Processando pagamento...');
-    
-    try {
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        state.userBalance += amount;
-        updateBalanceDisplay();
-        
-        dataManager.saveTransaction('deposit', {
-            user_id: state.currentUser.id,
-            amount: amount,
-            method: document.querySelector('input[name="paymentMethod"]:checked').id.replace('payment', '')
-        });
-        
-        showToast(`Saldo de ${formatCurrency(amount)} adicionado com sucesso!`, 'success');
-        closeModal('addBalanceModal');
-        
-        loadLedger(true);
-        
-    } catch (error) {
-        console.error('Erro ao processar pagamento:', error);
-        showToast('Erro ao processar pagamento. Tente novamente.', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// ========== PLAYER DE MÚSICA ==========
-let youtubePlayer = null;
-
-function onYouTubeIframeAPIReady() {
-    CONFIG.YOUTUBE_API_LOADED = true;
-    console.log('YouTube API carregada');
-}
-
-function initializeYouTubePlayer(videoId) {
-    if (!videoId || !CONFIG.YOUTUBE_API_LOADED) {
-        document.getElementById('youtubePlayer').innerHTML = `
-            <iframe width="100%" height="100%" 
-                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&showinfo=0&rel=0" 
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-            </iframe>
-        `;
-        return;
-    }
-    
-    try {
-        if (youtubePlayer) {
-            youtubePlayer.destroy();
-        }
-        
-        youtubePlayer = new YT.Player('youtubePlayer', {
-            videoId: videoId,
-            playerVars: {
-                'autoplay': 1,
-                'controls': 1,
-                'modestbranding': 1,
-                'rel': 0,
-                'showinfo': 0
-            },
-            events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange,
-                'onError': onPlayerError
-            }
-        });
-    } catch (error) {
-        console.error('Erro ao inicializar player YouTube:', error);
-        document.getElementById('youtubePlayer').innerHTML = `
-            <iframe width="100%" height="100%" 
-                    src="https://www.youtube.com/embed/${videoId}" 
-                    frameborder="0" 
-                    allowfullscreen>
-            </iframe>
-        `;
-    }
-}
-
-function onPlayerReady(event) {
-    console.log('Player YouTube pronto');
-    event.target.setVolume(state.currentVolume);
-    updateProgressBar();
-    document.getElementById('volumeSlider').addEventListener('input', (e) => {
-        setVolume(e.target.value);
-    });
-}
-
-function onPlayerStateChange(event) {
-    switch(event.data) {
-        case YT.PlayerState.PLAYING:
-            state.isPlaying = true;
-            document.getElementById('playButton').innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-            updateProgressBar();
-            break;
-        case YT.PlayerState.PAUSED:
-            state.isPlaying = false;
-            document.getElementById('playButton').innerHTML = '<i class="bi bi-play-circle-fill"></i>';
-            break;
-        case YT.PlayerState.ENDED:
-            state.isPlaying = false;
-            document.getElementById('playButton').innerHTML = '<i class="bi bi-play-circle-fill"></i>';
-            if (state.isRepeat) {
-                playTrack(state.currentTrackIndex);
-            } else {
-                playNext();
-            }
-            break;
-    }
-}
-
-function onPlayerError(event) {
-    console.error('Erro no player YouTube:', event.data);
-    showToast('Erro ao reproduzir vídeo. Tente outra música.', 'error');
-}
-
-function updateProgressBar() {
-    if (!youtubePlayer || !state.isPlaying) return;
-    
-    try {
-        const currentTime = youtubePlayer.getCurrentTime();
-        const duration = youtubePlayer.getDuration();
-        
-        if (duration > 0) {
-            const percent = (currentTime / duration) * 100;
-            document.getElementById('musicProgress').style.width = `${percent}%`;
-            document.getElementById('currentTime').textContent = formatTime(currentTime);
-            document.getElementById('durationTime').textContent = formatTime(duration);
-        }
-        
-        if (state.isPlaying) {
-            requestAnimationFrame(updateProgressBar);
-        }
-    } catch (error) {
-        console.error('Erro ao atualizar barra de progresso:', error);
-    }
-}
-
-function playTrack(index) {
-    if (index < 0 || index >= state.playlist.length) {
-        showToast('Música não encontrada', 'error');
-        return;
-    }
-    
-    state.currentTrackIndex = index;
-    const track = state.playlist[index];
-    
-    document.getElementById('playerTitle').textContent = track.titulo || track.TITULO || 'Título desconhecido';
-    document.getElementById('playerArtist').textContent = track.artista || track.ARTISTA || 'Artista desconhecido';
-    document.getElementById('playerPrice').textContent = `${formatCurrency(track.valor_acao || track.VALOR_ACAO || 0)} por ação`;
-    
-    const playerAlbumArt = document.getElementById('playerAlbumArt');
-    const coverUrl = track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
-    playerAlbumArt.src = coverUrl;
-    playerAlbumArt.onerror = function() {
-        this.src = 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
+    return {
+      success: true,
+      message: 'Compra realizada com sucesso!',
+      data: {
+        novo_saldo: novoSaldo,
+        saldo_anterior: userSaldo,
+        acoes_compradas: quantidadeNum,
+        valor_investido: valorTotalNum,
+        musica: musicObj.titulo,
+        artista: musicObj.artista
+      }
     };
     
-    document.getElementById('playerBar').style.display = 'block';
-    
-    const youtubeLink = track.link_youtube || track.LINK_YOUTUBE;
-    if (youtubeLink) {
-        const videoId = extractYouTubeId(youtubeLink);
-        if (videoId) {
-            if (CONFIG.YOUTUBE_API_LOADED && typeof YT !== 'undefined') {
-                initializeYouTubePlayer(videoId);
-            } else {
-                const tag = document.createElement('script');
-                tag.src = "https://www.youtube.com/iframe_api";
-                const firstScriptTag = document.getElementsByTagName('script')[0];
-                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-                
-                document.getElementById('youtubePlayer').innerHTML = `
-                    <iframe width="100%" height="100%" 
-                            src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
-                            frameborder="0" 
-                            allowfullscreen>
-                    </iframe>
-                `;
-            }
+  } catch (error) {
+    console.error('Erro em buyShares:', error);
+    return { 
+      success: false, 
+      message: 'Erro ao processar compra: ' + error.message,
+      stack: error.stack 
+    };
+  }
+}
+
+function confirmarDepositoPix(userId, valor, referenciaMP) {
+  console.log('📥 confirmarDepositoPix chamado:', { userId, valor, referenciaMP });
+  
+  if (!userId || !valor || !referenciaMP) {
+    return { success: false, error: 'Parâmetros incompletos' };
+  }
+  
+  const valorNum = parseFloat(valor);
+  if (valorNum <= 0) {
+    return { success: false, error: 'Valor inválido' };
+  }
+  
+  const ss = getSpreadsheet();
+  const usersSheet = ss.getSheetByName('USUARIOS');
+  const data = usersSheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const colId = headers.indexOf('ID');
+  const colSaldo = headers.indexOf('SALDO');
+  const colNome = headers.indexOf('NOME');
+  const colEmail = headers.indexOf('EMAIL');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][colId]) === String(userId)) {
+      const saldoAntes = Number(data[i][colSaldo]) || 0;
+      const saldoDepois = saldoAntes + valorNum;
+      const userName = data[i][colNome] || '';
+      const userEmail = data[i][colEmail] || '';
+
+      usersSheet.getRange(i + 1, colSaldo + 1).setValue(saldoDepois);
+
+      registrarTransacao(
+        userId,
+        'DEPOSITO_CONFIRMADO',
+        valorNum,
+        saldoAntes,
+        saldoDepois,
+        referenciaMP,
+        'CONFIRMADO'
+      );
+
+      const extratoSheet = ss.getSheetByName('EXTRATO');
+      if (extratoSheet) {
+        const extratoData = extratoSheet.getDataRange().getValues();
+        const lastExtratoId = extratoData.length > 1 ? extratoData[extratoData.length - 1][0] || 0 : 0;
+        
+        extratoSheet.appendRow([
+          lastExtratoId + 1,
+          userId,
+          'DEPOSITO',
+          `Depósito via PIX - ${referenciaMP}`,
+          valorNum,
+          new Date().toISOString()
+        ]);
+        
+        extratoSheet.getRange(lastExtratoId + 1, 5).setNumberFormat('"R$ "#,##0.00');
+      }
+
+      try {
+        if (userEmail) {
+          MailApp.sendEmail({
+            to: userEmail,
+            subject: '✅ Depósito Confirmado - SELO MIV',
+            htmlBody: `
+              <h2>💰 Depósito Confirmado!</h2>
+              <p>Olá ${userName},</p>
+              <p>Seu depósito foi confirmado:</p>
+              <ul>
+                <li><strong>Valor depositado:</strong> R$ ${valorNum.toFixed(2)}</li>
+                <li><strong>Saldo anterior:</strong> R$ ${saldoAntes.toFixed(2)}</li>
+                <li><strong>Novo saldo:</strong> R$ ${saldoDepois.toFixed(2)}</li>
+                <li><strong>Referência:</strong> ${referenciaMP}</li>
+                <li><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</li>
+              </ul>
+              <p>Já pode começar a investir em músicas!</p>
+              <hr>
+              <p><small>Este é um email automático, por favor não responda.</small></p>
+            `
+          });
         }
-    }
-    
-    document.getElementById('playButton').innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-    state.isPlaying = true;
-}
+      } catch (emailError) {
+        console.warn('Não foi possível enviar email:', emailError);
+      }
 
-function extractYouTubeId(url) {
-    if (!url) return null;
-    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
-}
+      logEvent('DEPOSITO', `Usuário ${userName} (${userId}) depositou R$ ${valorNum} via PIX`);
 
-function togglePlay() {
-    if (!youtubePlayer) return;
-    
-    if (state.isPlaying) {
-        youtubePlayer.pauseVideo();
-        document.getElementById('playButton').innerHTML = '<i class="bi bi-play-circle-fill"></i>';
-        state.isPlaying = false;
-    } else {
-        youtubePlayer.playVideo();
-        document.getElementById('playButton').innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-        state.isPlaying = true;
-        updateProgressBar();
-    }
-}
-
-function togglePlayerExpansion() {
-    const playerBar = document.getElementById('playerBar');
-    const isExpanded = playerBar.classList.toggle('expanded');
-    
-    if (isExpanded && youtubePlayer) {
-        setTimeout(() => {
-            if (youtubePlayer.getPlayerState) {
-                const state = youtubePlayer.getPlayerState();
-                if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING) {
-                    youtubePlayer.playVideo();
-                }
-            }
-        }, 300);
-    }
-}
-
-function seekMusic(event) {
-    if (!youtubePlayer) return;
-    
-    const progressContainer = document.getElementById('progressContainer');
-    const rect = progressContainer.getBoundingClientRect();
-    const percent = (event.clientX - rect.left) / rect.width;
-    
-    try {
-        const duration = youtubePlayer.getDuration();
-        if (duration) {
-            const seekTime = duration * percent;
-            youtubePlayer.seekTo(seekTime, true);
-            document.getElementById('musicProgress').style.width = `${percent * 100}%`;
+      return { 
+        success: true, 
+        message: 'Depósito confirmado!',
+        data: {
+          saldo_anterior: saldoAntes,
+          saldo_atual: saldoDepois,
+          valor_depositado: valorNum
         }
-    } catch (error) {
-        console.error('Erro ao buscar posição:', error);
+      };
     }
+  }
+
+  return { success: false, error: 'Usuário não encontrado' };
 }
 
-function setVolume(value) {
-    state.currentVolume = parseInt(value);
+function solicitarSaque(userId, valor) {
+  console.log('📤 solicitarSaque chamado:', { userId, valor });
+  
+  if (!userId || !valor) {
+    return { success: false, error: 'Parâmetros incompletos' };
+  }
+  
+  const valorNum = parseFloat(valor);
+  if (valorNum <= 0) {
+    return { success: false, error: 'Valor inválido' };
+  }
+  
+  const ss = getSpreadsheet();
+  const usersSheet = ss.getSheetByName('USUARIOS');
+  const data = usersSheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const colId = headers.indexOf('ID');
+  const colSaldo = headers.indexOf('SALDO');
+  const colNome = headers.indexOf('NOME');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][colId]) === String(userId)) {
+      const saldoAtual = Number(data[i][colSaldo]) || 0;
+      const userName = data[i][colNome] || '';
+
+      if (saldoAtual < valorNum) {
+        return { 
+          success: false, 
+          error: 'Saldo insuficiente',
+          saldo_atual: saldoAtual,
+          valor_solicitado: valorNum
+        };
+      }
+
+      const referenciaSaque = 'SAQUE_' + Date.now() + '_' + userId;
+      
+      registrarTransacao(
+        userId,
+        'SAQUE_SOLICITADO',
+        -valorNum,
+        saldoAtual,
+        saldoAtual,
+        referenciaSaque,
+        'PENDENTE'
+      );
+
+      logEvent('SAQUE_SOLICITADO', `Usuário ${userName} (${userId}) solicitou saque de R$ ${valorNum}`);
+
+      return { 
+        success: true, 
+        message: 'Saque solicitado com sucesso!',
+        data: {
+          referencia: referenciaSaque,
+          valor: valorNum,
+          status: 'PENDENTE',
+          data_solicitacao: new Date().toISOString()
+        }
+      };
+    }
+  }
+
+  return { success: false, error: 'Usuário não encontrado' };
+}
+
+function confirmarSaque(userId, valor, referenciaMP) {
+  console.log('✅ confirmarSaque chamado:', { userId, valor, referenciaMP });
+  
+  if (!userId || !valor || !referenciaMP) {
+    return { success: false, error: 'Parâmetros incompletos' };
+  }
+  
+  const valorNum = parseFloat(valor);
+  if (valorNum <= 0) {
+    return { success: false, error: 'Valor inválido' };
+  }
+  
+  const ss = getSpreadsheet();
+  const usersSheet = ss.getSheetByName('USUARIOS');
+  const data = usersSheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const colId = headers.indexOf('ID');
+  const colSaldo = headers.indexOf('SALDO');
+  const colNome = headers.indexOf('NOME');
+  const colEmail = headers.indexOf('EMAIL');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][colId]) === String(userId)) {
+      const saldoAntes = Number(data[i][colSaldo]) || 0;
+      
+      if (saldoAntes < valorNum) {
+        return { 
+          success: false, 
+          error: 'Saldo insuficiente para confirmar saque',
+          saldo_atual: saldoAntes,
+          valor_saque: valorNum
+        };
+      }
+      
+      const saldoDepois = saldoAntes - valorNum;
+      const userName = data[i][colNome] || '';
+      const userEmail = data[i][colEmail] || '';
+
+      usersSheet.getRange(i + 1, colSaldo + 1).setValue(saldoDepois);
+
+      registrarTransacao(
+        userId,
+        'SAQUE_PAGO',
+        -valorNum,
+        saldoAntes,
+        saldoDepois,
+        referenciaMP,
+        'CONFIRMADO'
+      );
+
+      const extratoSheet = ss.getSheetByName('EXTRATO');
+      if (extratoSheet) {
+        const extratoData = extratoSheet.getDataRange().getValues();
+        const lastExtratoId = extratoData.length > 1 ? extratoData[extratoData.length - 1][0] || 0 : 0;
+        
+        extratoSheet.appendRow([
+          lastExtratoId + 1,
+          userId,
+          'SAQUE',
+          `Saque realizado - ${referenciaMP}`,
+          -valorNum,
+          new Date().toISOString()
+        ]);
+        
+        extratoSheet.getRange(lastExtratoId + 1, 5).setNumberFormat('"R$ "#,##0.00');
+      }
+
+      try {
+        if (userEmail) {
+          MailApp.sendEmail({
+            to: userEmail,
+            subject: '✅ Saque Realizado - SELO MIV',
+            htmlBody: `
+              <h2>💰 Saque Realizado!</h2>
+              <p>Olá ${userName},</p>
+              <p>Seu saque foi processado:</p>
+              <ul>
+                <li><strong>Valor sacado:</strong> R$ ${valorNum.toFixed(2)}</li>
+                <li><strong>Saldo anterior:</strong> R$ ${saldoAntes.toFixed(2)}</li>
+                <li><strong>Novo saldo:</strong> R$ ${saldoDepois.toFixed(2)}</li>
+                <li><strong>Referência:</strong> ${referenciaMP}</li>
+                <li><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</li>
+              </ul>
+              <p>O valor será transferido para sua conta em até 48 horas úteis.</p>
+              <hr>
+              <p><small>Este é um email automático, por favor não responda.</small></p>
+            `
+          });
+        }
+      } catch (emailError) {
+        console.warn('Não foi possível enviar email:', emailError);
+      }
+
+      logEvent('SAQUE_CONFIRMADO', `Usuário ${userName} (${userId}) sacou R$ ${valorNum}`);
+
+      return { 
+        success: true, 
+        message: 'Saque confirmado!',
+        data: {
+          saldo_anterior: saldoAntes,
+          saldo_atual: saldoDepois,
+          valor_sacado: valorNum
+        }
+      };
+    }
+  }
+
+  return { success: false, error: 'Usuário não encontrado' };
+}
+
+function getHistoricoFinanceiro(userId) {
+  console.log('📋 getHistoricoFinanceiro chamado:', userId);
+  
+  if (!userId) {
+    return { success: false, message: 'ID do usuário não fornecido' };
+  }
+  
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('TRANSACOES');
+  
+  if (!sheet) {
+    return { success: true, data: [], message: 'Nenhuma transação encontrada' };
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  const historico = data.slice(1)
+    .filter(row => row[headers.indexOf('USER_ID')].toString() === String(userId))
+    .map(row => {
+      const obj = {};
+      headers.forEach((header, index) => {
+        obj[header.toLowerCase()] = row[index];
+      });
+      
+      if (obj.valor) {
+        obj.valor_formatado = new Intl.NumberFormat('pt-BR', { 
+          style: 'currency', 
+          currency: 'BRL' 
+        }).format(parseFloat(obj.valor));
+      }
+      
+      if (obj.saldo_antes) {
+        obj.saldo_antes_formatado = new Intl.NumberFormat('pt-BR', { 
+          style: 'currency', 
+          currency: 'BRL' 
+        }).format(parseFloat(obj.saldo_antes));
+      }
+      
+      if (obj.saldo_depois) {
+        obj.saldo_depois_formatado = new Intl.NumberFormat('pt-BR', { 
+          style: 'currency', 
+          currency: 'BRL' 
+        }).format(parseFloat(obj.saldo_depois));
+      }
+      
+      return obj;
+    })
+    .sort((a, b) => new Date(b.data) - new Date(a.data));
+  
+  return {
+    success: true,
+    data: historico,
+    total: historico.length,
+    saldo_atual: getSaldoAtual(userId)
+  };
+}
+
+function getSaldoAtual(userId) {
+  try {
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('USUARIOS');
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
     
-    document.getElementById('volumeSlider').value = value;
+    const colId = headers.indexOf('ID');
+    const colSaldo = headers.indexOf('SALDO');
     
-    const volumeIcon = document.getElementById('volumeIcon');
-    if (value == 0) {
-        volumeIcon.className = 'bi bi-volume-mute';
-    } else if (value < 50) {
-        volumeIcon.className = 'bi bi-volume-down';
-    } else {
-        volumeIcon.className = 'bi bi-volume-up';
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][colId]) === String(userId)) {
+        return parseFloat(data[i][colSaldo]) || 0;
+      }
+    }
+    return 0;
+  } catch (error) {
+    return 0;
+  }
+}
+
+// ========== FUNÇÕES DE PORTFÓLIO E EXTRATO ==========
+function getCarteira(params) {
+  console.log('💼 getCarteira chamado com:', params);
+  
+  if (!params || !params.user_id) {
+    return { success: true, data: [] };
+  }
+  
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('CARTEIRA');
+  
+  if (!sheet) {
+    return { success: true, data: [] };
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  const carteira = data.slice(1)
+    .filter(row => row[headers.indexOf('USER_ID')].toString() === String(params.user_id))
+    .map(row => {
+      const obj = {};
+      headers.forEach((header, index) => {
+        obj[header.toLowerCase()] = row[index];
+      });
+      
+      if (obj.valor_pago_por_acao) {
+        obj.valor_pago_por_acao = parseFloat(obj.valor_pago_por_acao) || 0;
+      }
+      
+      if (obj.valor_total) {
+        obj.valor_total = parseFloat(obj.valor_total) || 0;
+      }
+      
+      return obj;
+    });
+  
+  console.log(`✅ Retornando ${carteira.length} itens da carteira`);
+  return {
+    success: true,
+    data: carteira
+  };
+}
+
+function getExtrato(params) {
+  console.log('🧾 getExtrato chamado com:', params);
+  
+  if (!params || !params.user_id) {
+    return { success: true, data: [] };
+  }
+  
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('EXTRATO');
+  
+  if (!sheet) {
+    return { success: true, data: [] };
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  const extrato = data.slice(1)
+    .filter(row => row[headers.indexOf('USER_ID')].toString() === String(params.user_id))
+    .map(row => {
+      const obj = {};
+      headers.forEach((header, index) => {
+        obj[header.toLowerCase()] = row[index];
+      });
+      
+      if (obj.valor) {
+        obj.valor = parseFloat(obj.valor) || 0;
+        obj.valor_formatado = new Intl.NumberFormat('pt-BR', { 
+          style: 'currency', 
+          currency: 'BRL' 
+        }).format(obj.valor);
+      }
+      
+      return obj;
+    })
+    .sort((a, b) => new Date(b.data) - new Date(a.data));
+  
+  console.log(`✅ Retornando ${extrato.length} itens do extrato`);
+  return {
+    success: true,
+    data: extrato
+  };
+}
+
+// ========== FUNÇÕES DE ARTISTA ==========
+function getArtistData(params) {
+  console.log('🎤 getArtistData chamado com:', params);
+  
+  if (!params || !params.user_id) {
+    return { success: false, message: 'ID do usuário não fornecido' };
+  }
+  
+  const ss = getSpreadsheet();
+  
+  const usersSheet = ss.getSheetByName('USUARIOS');
+  const usersData = usersSheet.getDataRange().getValues();
+  const userHeaders = usersData[0];
+  
+  let artistaNome = '';
+  let artistaId = '';
+  let artistaEmail = '';
+  
+  for (let i = 1; i < usersData.length; i++) {
+    if (String(usersData[i][userHeaders.indexOf('ID')]) === String(params.user_id)) {
+      artistaNome = usersData[i][userHeaders.indexOf('NOME')] || '';
+      artistaId = usersData[i][userHeaders.indexOf('ID')] || '';
+      artistaEmail = usersData[i][userHeaders.indexOf('EMAIL')] || '';
+      break;
+    }
+  }
+  
+  if (!artistaNome) {
+    return { success: false, message: 'Artista não encontrado' };
+  }
+  
+  const musicasSheet = ss.getSheetByName('MUSICAS');
+  const musicasData = musicasSheet.getDataRange().getValues();
+  const musicasHeaders = musicasData[0];
+  
+  const artistMusics = musicasData.slice(1)
+    .filter(row => String(row[musicasHeaders.indexOf('ARTISTA')]).trim() === artistaNome)
+    .map(row => {
+      const obj = {};
+      musicasHeaders.forEach((header, index) => {
+        obj[header.toLowerCase()] = row[index];
+      });
+      
+      const percentualDisponivel = parseFloat(obj.percentual_disponivel) || 0;
+      const acoesVendidas = parseFloat(obj.acoes_vendidas) || 0;
+      const valorAcao = parseFloat(obj.valor_acao) || 0;
+      const totalAcoes = (percentualDisponivel / 0.01);
+      
+      obj.percentual_vendido = totalAcoes > 0 ? (acoesVendidas / totalAcoes * 100) : 0;
+      obj.arrecadacao_total = acoesVendidas * valorAcao;
+      obj.acoes_disponiveis = totalAcoes - acoesVendidas;
+      
+      obj.valor_acao_formatado = new Intl.NumberFormat('pt-BR', { 
+        style: 'currency', 
+        currency: 'BRL' 
+      }).format(valorAcao);
+      
+      obj.arrecadacao_total_formatado = new Intl.NumberFormat('pt-BR', { 
+        style: 'currency', 
+        currency: 'BRL' 
+      }).format(obj.arrecadacao_total);
+      
+      return obj;
+    });
+  
+  const totalMusicas = artistMusics.length;
+  const totalRoyalties = artistMusics.reduce((sum, music) => sum + (music.arrecadacao_total || 0), 0);
+  const totalAcoesVendidas = artistMusics.reduce((sum, music) => sum + (parseFloat(music.acoes_vendidas) || 0), 0);
+  
+  const trintaDiasAtras = new Date();
+  trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+  
+  const transacoesSheet = ss.getSheetByName('TRANSACOES');
+  let royaltiesMes = 0;
+  
+  if (transacoesSheet) {
+    const transacoesData = transacoesSheet.getDataRange().getValues();
+    const transacoesHeaders = transacoesData[0];
+    const tipoIndex = transacoesHeaders.indexOf('TIPO');
+    const valorIndex = transacoesHeaders.indexOf('VALOR');
+    const dataIndex = transacoesHeaders.indexOf('DATA');
+    const referenciaIndex = transacoesHeaders.indexOf('REFERENCIA');
+    
+    for (let i = 1; i < transacoesData.length; i++) {
+      const row = transacoesData[i];
+      const tipo = row[tipoIndex];
+      const referencia = row[referenciaIndex] || '';
+      
+      if (tipo === 'COMPRA_ACOES' && referencia.includes('COMPRA_MUSICA_')) {
+        const dataTransacao = new Date(row[dataIndex]);
+        if (dataTransacao >= trintaDiasAtras) {
+          const match = referencia.match(/COMPRA_MUSICA_(\d+)/);
+          if (match) {
+            const musicId = match[1];
+            const musica = artistMusics.find(m => m.id == musicId);
+            if (musica) {
+              royaltiesMes += Math.abs(parseFloat(row[valorIndex]) || 0);
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  console.log(`✅ Dados do artista ${artistaNome}:`, {
+    totalMusicas,
+    totalRoyalties,
+    totalAcoesVendidas,
+    royaltiesMes
+  });
+  
+  return {
+    success: true,
+    data: {
+      artista_id: artistaId,
+      artista: artistaNome,
+      artista_email: artistaEmail,
+      total_musicas: totalMusicas,
+      total_royalties: totalRoyalties,
+      total_royalties_formatado: new Intl.NumberFormat('pt-BR', { 
+        style: 'currency', 
+        currency: 'BRL' 
+      }).format(totalRoyalties),
+      total_acoes_vendidas: totalAcoesVendidas,
+      royalties_mes: royaltiesMes,
+      royalties_mes_formatado: new Intl.NumberFormat('pt-BR', { 
+        style: 'currency', 
+        currency: 'BRL' 
+      }).format(royaltiesMes),
+      musicas: artistMusics
+    }
+  };
+}
+
+// ========== FUNÇÃO DE LOG ==========
+function logEvent(tipo, descricao) {
+  try {
+    const ss = getSpreadsheet();
+    let sheet = ss.getSheetByName('LOG');
+    
+    if (!sheet) {
+      sheet = ss.insertSheet('LOG');
+      sheet.appendRow(['ID', 'TIPO', 'DESCRICAO', 'DATA']);
+      sheet.getRange(1, 1, 1, 4)
+        .setFontWeight('bold')
+        .setBackground('#1a237e')
+        .setFontColor('#ffffff');
+      sheet.setFrozenRows(1);
+      sheet.autoResizeColumns(1, 4);
     }
     
-    if (youtubePlayer && youtubePlayer.setVolume) {
+    const data = sheet.getDataRange().getValues();
+    const lastId = data.length > 1 ? data[data.length - 1][0] || 0 : 0;
+    const newId = lastId + 1;
+    
+    sheet.appendRow([
+      newId,
+      tipo,
+      descricao,
+      new Date().toISOString()
+    ]);
+    
+    console.log(`📝 LOG [${tipo}]: ${descricao}`);
+  } catch (error) {
+    console.error('Erro ao registrar log:', error);
+  }
+}
+
+// ========== FUNÇÕES DE TESTE ==========
+function testAPI() {
+  return {
+    success: true,
+    message: 'API está funcionando!',
+    timestamp: new Date().toISOString(),
+    sheets: ['USUARIOS', 'MUSICAS', 'CARTEIRA', 'EXTRATO', 'TRANSACOES', 'LOG'],
+    version: '2.0.0',
+    url: ScriptApp.getService().getUrl()
+  };
+}
+
+function testLogin() {
+  const testParams = {
+    email: 'admin@miv.com',
+    password: 'admin123'
+  };
+  
+  return handleLogin(testParams);
+}
+
+function testSetup() {
+  try {
+    const ss = getSpreadsheet();
+    const sheets = ss.getSheets();
+    const sheetNames = sheets.map(s => s.getName());
+    
+    return {
+      success: true,
+      sheets: sheetNames,
+      count: sheetNames.length
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// ========== FUNÇÃO DE SETUP ==========
+function setupSpreadsheet() {
+  console.log('🔧 Iniciando setup da planilha...');
+  
+  try {
+    const ss = getSpreadsheet();
+    
+    const sheetsToKeep = ['USUARIOS', 'MUSICAS', 'CARTEIRA', 'EXTRATO', 'TRANSACOES', 'LOG'];
+    const allSheets = ss.getSheets();
+    
+    allSheets.forEach(sheet => {
+      const sheetName = sheet.getName();
+      if (!sheetsToKeep.includes(sheetName)) {
         try {
-            youtubePlayer.setVolume(value);
-        } catch (error) {
-            console.error('Erro ao definir volume:', error);
+          ss.deleteSheet(sheet);
+          console.log(`🗑️ Sheet removida: ${sheetName}`);
+        } catch (e) {
+          console.warn(`⚠️ Não foi possível remover sheet ${sheetName}:`, e.message);
         }
-    }
-}
-
-function toggleShuffle() {
-    state.isShuffle = !state.isShuffle;
-    const icon = document.getElementById('shuffleIcon');
-    const btn = document.getElementById('shuffleBtn');
-    
-    if (state.isShuffle) {
-        icon.style.color = 'var(--neon-green)';
-        btn.style.color = 'var(--neon-green)';
-        showToast('Modo aleatório ativado', 'info');
-    } else {
-        icon.style.color = '';
-        btn.style.color = '';
-        showToast('Modo aleatório desativado', 'info');
-    }
-}
-
-function toggleRepeat() {
-    state.isRepeat = !state.isRepeat;
-    const icon = document.getElementById('repeatIcon');
-    const btn = document.getElementById('repeatBtn');
-    
-    if (state.isRepeat) {
-        icon.style.color = 'var(--neon-green)';
-        btn.style.color = 'var(--neon-green)';
-        showToast('Repetição ativada', 'info');
-    } else {
-        icon.style.color = '';
-        btn.style.color = '';
-        showToast('Repetição desativada', 'info');
-    }
-}
-
-function playNext() {
-    if (state.playlist.length === 0) return;
-    
-    let nextIndex;
-    if (state.isShuffle) {
-        nextIndex = Math.floor(Math.random() * state.playlist.length);
-        while (nextIndex === state.currentTrackIndex && state.playlist.length > 1) {
-            nextIndex = Math.floor(Math.random() * state.playlist.length);
-        }
-    } else {
-        nextIndex = (state.currentTrackIndex + 1) % state.playlist.length;
-    }
-    
-    playTrack(nextIndex);
-}
-
-function playPrevious() {
-    if (state.playlist.length === 0) return;
-    
-    let prevIndex;
-    if (state.isShuffle) {
-        prevIndex = Math.floor(Math.random() * state.playlist.length);
-        while (prevIndex === state.currentTrackIndex && state.playlist.length > 1) {
-            prevIndex = Math.floor(Math.random() * state.playlist.length);
-        }
-    } else {
-        prevIndex = state.currentTrackIndex > 0 ? state.currentTrackIndex - 1 : state.playlist.length - 1;
-    }
-    
-    playTrack(prevIndex);
-}
-
-// ========== NAVEGAÇÃO ==========
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('open');
-}
-
-function changeSection(sectionId, buttonElement = null) {
-    document.querySelectorAll('.section').forEach(section => {
-        section.classList.remove('active');
+      }
     });
     
-    const sectionElement = document.getElementById(`${sectionId}Section`);
-    if (sectionElement) {
-        sectionElement.classList.add('active');
-    }
-    
-    if (buttonElement) {
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        buttonElement.classList.add('active');
-    }
-    
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('onclick')?.includes(sectionId)) {
-            link.classList.add('active');
-        }
-    });
-    
-    if (window.innerWidth < 768) {
-        toggleSidebar();
-    }
-    
-    const titles = {
-        'marketplace': 'Marketplace',
-        'portfolio': 'Portfólio',
-        'ledger': 'Extrato',
-        'artist': 'Painel Artista'
-    };
-    document.title = `SELO MIV | ${titles[sectionId] || 'Fintech Musical'}`;
-}
-
-function logout() {
-    if (confirm('Tem certeza que deseja sair?')) {
-        if (youtubePlayer && state.isPlaying) {
-            youtubePlayer.pauseVideo();
-        }
-        
-        localStorage.removeItem('miv_user');
-        localStorage.removeItem('miv_session');
-        
-        document.getElementById('playerBar').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'none';
-        document.getElementById('authScreen').style.display = 'flex';
-        showLoginForm();
-        
-        state.currentUser = null;
-        state.userBalance = 0;
-        state.playlist = [];
-        state.portfolioAssets = [];
-        state.ledgerData = [];
-        state.currentTrackIndex = -1;
-        state.isPlaying = false;
-        state.offlineMode = false;
-        state.appInitialized = false;
-        
-        showToast('Logout realizado com sucesso', 'success');
-    }
-}
-
-// ========== INICIALIZAÇÃO ==========
-document.addEventListener('DOMContentLoaded', function() {
-    console.log(`SELO MIV v${CONFIG.VERSION} - Inicializando...`);
-    
-    const style = document.createElement('style');
-    style.textContent = `
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    `;
-    document.head.appendChild(style);
-    
-    setTimeout(() => {
-        hideLoading();
-        
-        const savedUser = localStorage.getItem('miv_user');
-        const savedSession = localStorage.getItem('miv_session');
-        
-        if (savedUser && savedSession) {
-            try {
-                state.currentUser = JSON.parse(savedUser);
-                const sessionAge = Date.now() - parseInt(savedSession, 16);
-                if (sessionAge < 24 * 60 * 60 * 1000) {
-                    initializeApp();
-                } else {
-                    localStorage.removeItem('miv_user');
-                    localStorage.removeItem('miv_session');
-                    showToast('Sessão expirada. Faça login novamente.', 'warning');
-                }
-            } catch (e) {
-                console.error('Erro ao restaurar sessão:', e);
-                localStorage.removeItem('miv_user');
-                localStorage.removeItem('miv_session');
-            }
-        }
-    }, 1500);
-    
-    document.getElementById('loginPassword')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') handleLogin();
-    });
-    
-    document.getElementById('registerPassword')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') handleRegister();
-    });
-    
-    document.getElementById('loginEmail')?.addEventListener('input', function(e) {
-        validateEmailField(e.target);
-    });
-    
-    document.getElementById('registerEmail')?.addEventListener('input', function(e) {
-        validateEmailField(e.target);
-    });
-    
-    window.addEventListener('online', () => {
-        if (state.offlineMode) {
-            state.offlineMode = false;
-            showToast('Conexão restaurada. Sincronizando dados...', 'success');
-            dataManager.syncPendingTransactions();
-            loadAllData();
-        }
-    });
-    
-    window.addEventListener('offline', () => {
-        state.offlineMode = true;
-        showToast('Modo offline ativado', 'warning');
-    });
-});
-
-function validateEmailField(field) {
-    const email = field.value.trim();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
-    if (email && !emailRegex.test(email)) {
-        field.classList.add('is-invalid');
-    } else {
-        field.classList.remove('is-invalid');
-    }
-}
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    const sheetsConfig = [
+      {
+        name: 'USUARIOS',
+        headers: ['ID', 'NOME', 'EMAIL', 'SENHA', 'TIPO', 'WORKLINK', 'SALDO', 'ACESSO', 'DATA_CADASTRO'],
+        sampleData: [
+          [1, 'Administrador', 'admin@miv.com', 'admin123', 'admin', '', 10000, 'aprovado', new Date().toISOString()],
+          [2, 'Elzo Henschell', 'elzo@artista.com', 'elzo123', 'artista', 'https://youtube.com/elzo', 5000, 'aprovado', new Date().toISOString()],
+          [3, 'Investidor Teste', 'investidor@teste.com', 'teste123', 'ouvinte', '', 2000, 'aprovado', new Date().toISOString()]
+        ]
+      },
+      {
+        name: 'MUSICAS',
+        headers: ['ID', 'TITULO', 'ARTISTA', 'GENERO', 'LINK_YOUTUBE', 'LINK_CAPA', 'VALOR_ACAO', 'PERCENTUAL_DISPONIVEL', 'ACOES_VENDIDAS', 'STATUS', 'DATA_CADASTRO'],
+        sampleData: [
+          [1, 'EVA', 'Elzo Henschell', 'ROCK', 'https://www.youtube.com/watch?v=bFqLIyxuiMM', 'https://i.ytimg.com/vi/bFqLIyxuiMM/hqdefault.jpg', 15.50, 25, 75, 'ativo', new Date().toISOString()],
+          [2, 'O Máximo', 'Elzo Henschell', 'ROCK', 'https://youtu.be/utoRQzolfqs', 'https://i9.ytimg.com/vi_webp/utoRQzolfqs/mqdefault.webp', 22.00, 40, 60, 'ativo', new Date().toISOString()],
+          [3, 'Som ON', 'Selo MIV', 'INSTRUMENTAL', 'https://youtu.be/O4vSvOLtkuM', 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMTExNDE4Ii8+PHJlY3QgeD0iMjAiIHk9IjIwIiB3aWR0aD0iMjYwIiBoZWlnaHQ9IjI2MCIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4xIiByeD0iMTAiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IiMwMGZmODgiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPk1JVjwvdGV4dD48dGV4dCB4PSI1MCUiIHk9IjcwJSIgdGV4dC1hbmNob3I9Im1pZ
