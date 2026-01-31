@@ -1902,10 +1902,10 @@ function renderMarketplace() {
         return `
             <div class="music-card" onclick="playTrack(${index})">
                 <div class="position-relative">
-                    <img src="${track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV'}" 
+                    <img src="${track.link_capa || track.LINK_CAPA || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'}" 
                          class="music-cover" 
                          alt="${track.titulo || track.TITULO || 'Música'}"
-                         onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
+                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'">
                     ${percentSold >= 90 ? `
                         <div class="position-absolute top-0 end-0 m-2">
                             <span class="badge ${badgeClass}">Esgotando</span>
@@ -2415,10 +2415,10 @@ function renderArtistMusic(musics) {
         
         return `
             <div class="music-card">
-                <img src="${music.link_capa || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV'}" 
+                <img src="${music.link_capa || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'}" 
                      class="music-cover" 
                      alt="${music.titulo}"
-                     onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
+                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'">
                 <div class="music-info">
                     <h6 class="music-title">${music.titulo}</h6>
                     <p class="music-artist">${state.currentUser.nome}</p>
@@ -2830,10 +2830,10 @@ function playTrack(index) {
     document.getElementById('playerPrice').textContent = `${formatCurrency(track.valor_acao || track.VALOR_ACAO || 0)} por ação`;
     
     const playerAlbumArt = document.getElementById('playerAlbumArt');
-    const coverUrl = track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
+    const coverUrl = track.link_capa || track.LINK_CAPA || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+';
     playerAlbumArt.src = coverUrl;
     playerAlbumArt.onerror = function() {
-        this.src = 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
+        this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+';
     };
     
     // Mostra o player
