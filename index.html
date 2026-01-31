@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SELO MIV - Plataforma de Investimento em Música">
     <meta name="theme-color" content="#00ff88">
-    <title>SELO MIV | Fintech Musical</title>
+    <title>SELO MIV | Fintech Musical com Spotify</title>
 
     <!-- Bootstrap 5.3.0 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -15,10 +15,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
     <!-- YouTube Iframe API -->
     <script src="https://www.youtube.com/iframe_api"></script>
+    <!-- Spotify Widget -->
+    <script src="https://open.spotify.com/embed/iframe-api/v1"></script>
 
     <style>
         :root {
             --neon-green: #00ff88;
+            --spotify-green: #1DB954;
             --miv-blue: #0072ff;
             --bg-dark: #07090c;
             --bg-card: #111418;
@@ -148,7 +151,27 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
         }
-        .btn-miv:disabled {
+        .btn-spotify {
+            background: linear-gradient(135deg, var(--spotify-green) 0%, #1ed760 100%);
+            border: none;
+            border-radius: 0.75rem;
+            color: #000;
+            font-weight: 700;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+        }
+        .btn-spotify:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(29, 185, 84, 0.3);
+        }
+        .btn-miv:disabled, .btn-spotify:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
@@ -199,6 +222,14 @@
             border-radius: 1rem;
             font-size: 0.75rem;
             font-weight: 700;
+        }
+        .user-badge.artista {
+            background: #007bff;
+            color: white;
+        }
+        .user-badge.admin {
+            background: #ff3232;
+            color: white;
         }
         .sidebar {
             position: fixed;
@@ -334,6 +365,25 @@
             border-radius: 1rem;
             font-size: 0.75rem;
             font-weight: 600;
+        }
+        .source-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .source-badge.youtube {
+            background: rgba(255, 0, 0, 0.7);
+        }
+        .source-badge.spotify {
+            background: rgba(29, 185, 84, 0.7);
         }
         .player-bar {
             position: fixed;
@@ -691,19 +741,6 @@
             0% { transform: translateX(-100%); }
             100% { transform: translateX(400%); }
         }
-        .music-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .music-card:hover {
-            transform: scale(1.02);
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
-        }
-        .btn-miv {
-            transition: background 0.3s ease;
-        }
-        .btn-miv:active {
-            background: linear-gradient(135deg, #00cc6a 0%, var(--neon-green) 100%);
-        }
         .music-percent::after {
             content: attr(data-tooltip);
             position: absolute;
@@ -724,18 +761,6 @@
         .music-percent:hover::after {
             opacity: 1;
         }
-        .player-bar.expanded {
-            backdrop-filter: blur(15px);
-            background: rgba(7,9,12,0.95);
-        }
-        .progress-bar {
-            background: linear-gradient(to right, var(--neon-green) 0%, #00cc6a 100%);
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
         .badge-success {
             background: rgba(0, 255, 136, 0.2);
             color: var(--neon-green);
@@ -751,6 +776,16 @@
             color: #ff3232;
             border: 1px solid rgba(255, 50, 50, 0.3);
         }
+        .spotify-badge {
+            background: rgba(29, 185, 84, 0.2);
+            color: var(--spotify-green);
+            border: 1px solid rgba(29, 185, 84, 0.3);
+        }
+        .youtube-badge {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff0000;
+            border: 1px solid rgba(255, 0, 0, 0.3);
+        }
         @media (max-width: 768px) {
             .auth-card { padding: 1.5rem; }
             .music-grid { grid-template-columns: 1fr; }
@@ -760,7 +795,7 @@
                 padding-top: env(safe-area-inset-top);
                 height: calc(100vh - env(safe-area-inset-bottom));
             }
-            .control-btn, .btn-miv {
+            .control-btn, .btn-miv, .btn-spotify {
                 min-height: 44px;
                 min-width: 44px;
             }
@@ -1028,19 +1063,19 @@
         <div class="player-content">
             <div class="video-container" id="videoContainer">
                 <div id="youtubePlayer"></div>
+                <div id="spotifyPlayer" style="display: none;"></div>
             </div>
-            <div class="player-info" onclick="togglePlayerExpansion()">
+            <div class="player-info">
                 <img src="https://via.placeholder.com/60x60/111418/00ff88?text=MIV" class="player-album-art" alt="Album Art" id="playerAlbumArt">
                 <div class="player-text">
                     <div class="player-title" id="playerTitle">Título da Música</div>
                     <div class="player-artist" id="playerArtist">Artista</div>
                     <div class="player-price" id="playerPrice">R$ 0,00 por ação</div>
                 </div>
-                <button class="btn-miv btn-sm" onclick="event.stopPropagation(); openInvestModal(state.currentTrackIndex)">
+                <button class="btn-miv btn-sm" onclick="openInvestModal(state.currentTrackIndex)">
                     <i class="bi bi-currency-dollar"></i> Investir
                 </button>
-                <!-- Botão para minimizar/expandir -->
-                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="event.stopPropagation(); togglePlayerExpansion()" id="expandCollapseBtn">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="togglePlayerExpansion()" id="expandCollapseBtn">
                     <i class="bi bi-chevron-up" id="expandCollapseIcon"></i>
                 </button>
             </div>
@@ -1066,6 +1101,9 @@
                 </button>
                 <button class="control-btn" onclick="toggleRepeat()" id="repeatBtn">
                     <i class="bi bi-repeat" id="repeatIcon"></i>
+                </button>
+                <button class="control-btn" onclick="toggleLoop()" id="loopButton">
+                    <i class="bi bi-repeat-1" id="loopIcon"></i>
                 </button>
                 <div class="d-flex align-items-center gap-2 ms-3">
                     <i class="bi bi-volume-up" id="volumeIcon"></i>
@@ -1158,8 +1196,13 @@
                 </select>
             </div>
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Link do YouTube *</label>
-                <input type="url" id="musicYoutube" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
+                <label class="text-muted mb-2 d-block">Link do YouTube (opcional)</label>
+                <input type="url" id="musicYoutube" class="form-control-custom" placeholder="https://youtube.com/watch?v=...">
+            </div>
+            <div class="form-group">
+                <label class="text-muted mb-2 d-block">Link do Spotify (opcional)</label>
+                <input type="url" id="musicSpotify" class="form-control-custom" placeholder="https://open.spotify.com/track/...">
+                <small class="text-muted">Pelo menos um link (YouTube ou Spotify) é necessário</small>
             </div>
             <div class="form-group">
                 <label class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
@@ -1247,10 +1290,9 @@
 // ========== CONFIGURAÇÃO AVANÇADA ==========
 const CONFIG = {
     API_URL: 'https://script.google.com/macros/s/AKfycbyAynhAuQFIAox3A9QC7h9oTSIBpcXg6LkTbzk0e5XV_yY1k_MMyAGV0Z4qoKtVhBw/exec',
-    LOCAL_STORAGE_KEY: 'selo_miv_data',
-    VERSION: '2.0.0',
-    AUTO_REFRESH_INTERVAL: 60000, // 1 minuto
-    DEFAULT_BALANCE: 1000
+    LOCAL_STORAGE_KEY: 'selo_miv_data_v3',
+    VERSION: '3.0.0',
+    AUTO_REFRESH_INTERVAL: 30000
 };
 
 // ========== ESTADO GLOBAL ==========
@@ -1264,218 +1306,14 @@ const state = {
     isPlaying: false,
     currentInvestTrack: null,
     youtubePlayer: null,
+    spotifyPlayer: null,
     currentVolume: 80,
     isShuffle: false,
     isRepeat: false,
+    isLoop: false,
     offlineMode: false,
     appInitialized: false
 };
-
-// ========== SISTEMA DE FALLBACK AVANÇADO ==========
-class DataManager {
-    constructor() {
-        this.offlineData = this.loadOfflineData();
-    }
-
-    loadOfflineData() {
-        try {
-            const data = localStorage.getItem(CONFIG.LOCAL_STORAGE_KEY);
-            return data ? JSON.parse(data) : this.getDefaultData();
-        } catch (e) {
-            console.error('Erro ao carregar dados offline:', e);
-            return this.getDefaultData();
-        }
-    }
-
-    getDefaultData() {
-        return {
-            users: [
-                {
-                    id: 1,
-                    nome: 'Administrador',
-                    email: 'admin@miv.com',
-                    tipo: 'admin',
-                    saldo: 1500,
-                    acesso: 'aprovado',
-                    workLink: ''
-                }
-            ],
-            music: this.getSampleMusic(),
-            portfolio: [],
-            transactions: [],
-            lastUpdated: new Date().toISOString()
-        };
-    }
-
-    getSampleMusic() {
-        return [
-            {
-                id: 1,
-                titulo: "EVA",
-                artista: "Elzo Henschell",
-                genero: "ROCK",
-                link_youtube: "https://www.youtube.com/watch?v=bFqLIyxuiMM",
-                link_capa: "https://i.ytimg.com/vi/bFqLIyxuiMM/hqdefault.jpg",
-                valor_acao: 15.50,
-                percentual_disponivel: 25,
-                acoes_vendidas: 75,
-                status: "ativo",
-                data_cadastro: new Date().toISOString()
-            },
-            {
-                id: 2,
-                titulo: "O Máximo",
-                artista: "Elzo Henschell",
-                genero: "ROCK",
-                link_youtube: "https://youtu.be/utoRQzolfqs",
-                link_capa: "https://i9.ytimg.com/vi_webp/utoRQzolfqs/mqdefault.webp",
-                valor_acao: 22.00,
-                percentual_disponivel: 40,
-                acoes_vendidas: 60,
-                status: "ativo",
-                data_cadastro: new Date().toISOString()
-            },
-            {
-                id: 3,
-                titulo: "Elzo Henschell - Mares (Visualizer)",
-                artista: "Selo MIV",
-                genero: "INSTRUMENTAL",
-                link_youtube: "https://youtu.be/ee_AZk-lq-Y",
-                link_capa: "https://i9.ytimg.com/vi/ee_AZk-lq-Y/mqdefault.jpg?sqp=CJyf5ssG-oaymwEmCMACELQB8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGGUgZShlMA8=&rs=AOn4CLA9vfU6ZmybtOydwdtV2GvhLfx03w",
-                valor_acao: 18.75,
-                percentual_disponivel: 35,
-                acoes_vendidas: 65,
-                status: "ativo",
-                data_cadastro: new Date().toISOString()
-            }
-        ];
-    }
-
-    async fetchWithFallback(action, params = {}) {
-        const maxRetries = 2;
-        let lastError;
-
-        for (let i = 0; i < maxRetries; i++) {
-            try {
-                const formData = new URLSearchParams();
-                formData.append('action', action);
-                Object.keys(params).forEach(key => {
-                    formData.append(key, params[key]);
-                });
-
-                const response = await fetch(CONFIG.API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: formData
-                });
-
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const result = await response.json();
-                
-                if (result.success) {
-                    this.updateLocalCache(action, result.data, params);
-                    return result;
-                } else {
-                    throw new Error(result.message || 'Ação falhou');
-                }
-            } catch (error) {
-                lastError = error;
-                console.warn(`Tentativa ${i + 1} falhou para ${action}:`, error);
-                
-                if (i === maxRetries - 1) {
-                    const localData = this.getLocalData(action, params);
-                    if (localData) {
-                        state.offlineMode = true;
-                        showToast('Modo offline ativado. Dados podem não estar atualizados.', 'warning');
-                        return { success: true, data: localData, offline: true };
-                    }
-                }
-                
-                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-            }
-        }
-
-        throw lastError;
-    }
-
-    updateLocalCache(action, data, params) {
-        const cacheKey = `${action}_${JSON.stringify(params)}`;
-        const cache = {
-            data,
-            timestamp: Date.now(),
-            ttl: 5 * 60 * 1000
-        };
-        localStorage.setItem(`cache_${cacheKey}`, JSON.stringify(cache));
-    }
-
-    getLocalData(action, params) {
-        try {
-            const cacheKey = `${action}_${JSON.stringify(params)}`;
-            const cached = localStorage.getItem(`cache_${cacheKey}`);
-            if (cached) {
-                const { data, timestamp, ttl } = JSON.parse(cached);
-                if (Date.now() - timestamp < ttl) {
-                    return data;
-                }
-            }
-
-            switch(action) {
-                case 'get_musicas':
-                    return this.offlineData.music;
-                case 'get_carteira':
-                    return this.offlineData.portfolio.filter(p => 
-                        p.user_id === (params.user_id || state.currentUser?.id)
-                    );
-                case 'get_extrato':
-                    return this.offlineData.transactions.filter(t => 
-                        t.user_id === (params.user_id || state.currentUser?.id)
-                    );
-                case 'login':
-                    return this.offlineData.users.find(u => 
-                        u.email === params.email && u.password === params.password
-                    );
-                default:
-                    return null;
-            }
-        } catch (e) {
-            console.error('Erro ao obter dados locais:', e);
-            return null;
-        }
-    }
-
-    saveTransaction(type, data) {
-        const transaction = {
-            id: Date.now(),
-            type,
-            data,
-            timestamp: new Date().toISOString(),
-            synced: false
-        };
-        
-        this.offlineData.transactions.push(transaction);
-        localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(this.offlineData));
-        
-        this.syncPendingTransactions();
-    }
-
-    async syncPendingTransactions() {
-        const pending = this.offlineData.transactions.filter(t => !t.synced);
-        
-        for (const transaction of pending) {
-            try {
-                await this.fetchWithFallback(transaction.type, transaction.data);
-                transaction.synced = true;
-            } catch (e) {
-                console.error('Falha ao sincronizar transação:', e);
-            }
-        }
-        
-        localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(this.offlineData));
-    }
-}
-
-const dataManager = new DataManager();
 
 // ========== UTILITÁRIOS ==========
 function showToast(message, type = 'success', duration = 3000) {
@@ -1537,11 +1375,246 @@ function showLoading(message = 'Carregando...') {
 
 function hideLoading() {
     document.getElementById('loadingScreen').style.display = 'none';
+}
+
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value || 0);
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('show');
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+// ========== SISTEMA DE API ==========
+class APIManager {
+    constructor() {
+        this.cache = new Map();
+    }
+
+    async request(action, params = {}) {
+        const cacheKey = `${action}_${JSON.stringify(params)}`;
+        const cached = this.cache.get(cacheKey);
+        
+        if (cached && Date.now() - cached.timestamp < 60000) {
+            return cached.data;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('action', action);
+            
+            Object.keys(params).forEach(key => {
+                if (params[key] !== undefined && params[key] !== null) {
+                    formData.append(key, params[key].toString());
+                }
+            });
+
+            const response = await fetch(CONFIG.API_URL, {
+                method: 'POST',
+                mode: 'cors',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                this.cache.set(cacheKey, {
+                    data: result,
+                    timestamp: Date.now()
+                });
+                return result;
+            } else {
+                throw new Error(result.message || 'Ação falhou');
+            }
+        } catch (error) {
+            console.error(`Erro na requisição ${action}:`, error);
+            throw error;
+        }
+    }
+
+    clearCache() {
+        this.cache.clear();
+    }
+}
+
+const apiManager = new APIManager();
+
+// ========== AUTENTICAÇÃO ==========
+async function handleLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const loginBtn = document.getElementById('loginBtn');
+    
+    if (!email || !password) {
+        showToast('Preencha email e senha', 'error');
+        return;
+    }
+    
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Entrando...';
+    
+    try {
+        const result = await apiManager.request('login', {
+            email: email,
+            password: password
+        });
+        
+        if (result.success && result.data) {
+            state.currentUser = result.data;
+            state.userBalance = result.data.saldo || 0;
+            
+            localStorage.setItem('miv_user', JSON.stringify(result.data));
+            localStorage.setItem('miv_session', Date.now().toString(16));
+            
+            showToast(`Bem-vindo, ${result.data.nome}!`, 'success');
+            initializeApp();
+        } else {
+            showToast(result.message || 'Login falhou', 'error');
+        }
+    } catch (error) {
+        console.error('Erro no login:', error);
+        
+        // Modo offline com conta de teste
+        if (email === 'admin@miv.com' && password === 'admin123') {
+            state.currentUser = {
+                id: 1,
+                nome: 'Administrador (Offline)',
+                email: 'admin@miv.com',
+                tipo: 'admin',
+                saldo: 10000,
+                acesso: 'aprovado'
+            };
+            state.userBalance = 10000;
+            state.offlineMode = true;
+            
+            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+            localStorage.setItem('miv_session', Date.now().toString(16));
+            
+            showToast('Modo offline ativado com conta de teste', 'warning');
+            initializeApp();
+        } else {
+            showToast('Erro de conexão. Tente novamente.', 'error');
+        }
+    } finally {
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
+    }
+}
+
+async function handleRegister() {
+    const nome = document.getElementById('registerName').value.trim();
+    const email = document.getElementById('registerEmail').value.trim();
+    const password = document.getElementById('registerPassword').value;
+    const tipo = document.getElementById('registerType').value;
+    const workLink = document.getElementById('registerLink').value.trim();
+    const registerBtn = document.getElementById('registerBtn');
+    
+    if (!nome || !email || !password || !tipo) {
+        showToast('Preencha todos os campos obrigatórios', 'error');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showToast('Senha deve ter pelo menos 6 caracteres', 'error');
+        return;
+    }
+    
+    if (tipo === 'artista' && !workLink) {
+        showToast('Artistas devem informar link do trabalho', 'error');
+        return;
+    }
+    
+    registerBtn.disabled = true;
+    registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cadastrando...';
+    
+    try {
+        const result = await apiManager.request('register', {
+            nome: nome,
+            email: email,
+            password: password,
+            tipo: tipo,
+            workLink: workLink
+        });
+        
+        if (result.success) {
+            showToast('Conta criada com sucesso! Aguarde aprovação.', 'success');
+            showLoginForm();
+        } else {
+            showToast(result.message || 'Erro ao criar conta', 'error');
+        }
+    } catch (error) {
+        console.error('Erro no registro:', error);
+        showToast('Erro de conexão. Tente novamente.', 'error');
+    } finally {
+        registerBtn.disabled = false;
+        registerBtn.innerHTML = '<i class="bi bi-person-plus"></i> Solicitar Cadastro';
+    }
+}
+
+function showLoginForm() {
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('registerForm').style.display = 'none';
+}
+
+function showRegisterForm() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'block';
+}
+
+function toggleArtistField() {
+    const tipo = document.getElementById('registerType').value;
+    const artistLinkField = document.getElementById('artistLinkField');
+    artistLinkField.style.display = tipo === 'artista' ? 'block' : 'none';
+}
+
+function logout() {
+    state.currentUser = null;
+    state.userBalance = 0;
+    state.playlist = [];
+    state.portfolioAssets = [];
+    state.ledgerData = [];
+    
+    localStorage.removeItem('miv_user');
+    localStorage.removeItem('miv_session');
+    
+    document.getElementById('mainApp').style.display = 'none';
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('playerBar').style.display = 'none';
+    
+    showToast('Logout realizado com sucesso', 'info');
+}
+
+// ========== INICIALIZAÇÃO DO APP ==========
+function initializeApp() {
+    document.getElementById('authScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
     
     updateUserInterface();
+    loadInitialData();
     initializeRealTimeUpdates();
-    loadAllData();
 }
 
 function updateUserInterface() {
@@ -1550,14 +1623,8 @@ function updateUserInterface() {
     const userBadge = document.getElementById('userBadge');
     if (userBadge) {
         const userType = state.currentUser.tipo || 'ouvinte';
-        const badges = {
-            'ouvinte': { text: 'Ouvinte', color: 'var(--neon-green)' },
-            'artista': { text: 'Artista', color: '#007bff' },
-            'admin': { text: 'Admin', color: '#ff3232' }
-        };
-        const badge = badges[userType] || badges.ouvinte;
-        userBadge.textContent = badge.text;
-        userBadge.style.background = badge.color;
+        userBadge.textContent = userType.charAt(0).toUpperCase() + userType.slice(1);
+        userBadge.className = `user-badge ${userType}`;
     }
     
     const artistNavItem = document.getElementById('artistNavItem');
@@ -1569,39 +1636,30 @@ function updateUserInterface() {
     updateBalanceDisplay();
 }
 
-function initializeRealTimeUpdates() {
-    setInterval(() => {
-        if (state.currentUser && !state.offlineMode) {
-            loadBalance(true);
-        }
-    }, CONFIG.AUTO_REFRESH_INTERVAL);
-    
-    setInterval(() => {
-        const updateEl = document.getElementById('portfolioUpdateTime');
-        if (updateEl) {
-            updateEl.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-        }
-    }, 60000);
+function updateBalanceDisplay() {
+    const balanceElement = document.getElementById('currentBalance');
+    if (balanceElement) {
+        balanceElement.textContent = formatCurrency(state.userBalance);
+    }
 }
 
-async function loadAllData() {
+async function loadInitialData() {
     showLoading('Carregando dados...');
     
     try {
         await Promise.allSettled([
-            loadBalance(),
             loadMarketplace(),
             loadPortfolio(),
             loadLedger(),
-            (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin') ? loadArtistData() : Promise.resolve()
+            loadBalance()
         ]);
         
-        showToast('Sistema carregado com sucesso!', 'success');
-        state.appInitialized = true;
-        
-        if (state.offlineMode) {
-            dataManager.syncPendingTransactions();
+        if (state.currentUser && (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin')) {
+            await loadArtistData();
         }
+        
+        showToast('Sistema carregado!', 'success');
+        state.appInitialized = true;
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
         showToast('Alguns dados podem não estar atualizados', 'warning');
@@ -1610,59 +1668,27 @@ async function loadAllData() {
     }
 }
 
-// ========== SISTEMA DE SALDO ==========
-async function loadBalance(silent = false) {
-    if (!state.currentUser) return;
-    
-    if (!silent) showLoading('Carregando saldo...');
-    
-    try {
-        const result = await dataManager.fetchWithFallback('get_saldo', {
-            user_id: state.currentUser.id || state.currentUser.email
-        });
-        
-        if (result.success && result.data) {
-            state.userBalance = parseFloat(result.data.saldo) || 0;
-            updateBalanceDisplay();
-            
-            if (result.offline) {
-                state.offlineMode = true;
-            }
+function initializeRealTimeUpdates() {
+    setInterval(() => {
+        if (state.currentUser && !state.offlineMode) {
+            loadBalance(true);
         }
-    } catch (error) {
-        console.error('Erro ao carregar saldo:', error);
-    } finally {
-        if (!silent) hideLoading();
-    }
-}
-
-function updateBalanceDisplay() {
-    const balanceElement = document.getElementById('currentBalance');
-    if (balanceElement) {
-        balanceElement.textContent = formatCurrency(state.userBalance);
-        
-        if (state.offlineMode) {
-            balanceElement.innerHTML = `${formatCurrency(state.userBalance)} <small class="text-warning">(offline)</small>`;
-        }
-    }
+    }, CONFIG.AUTO_REFRESH_INTERVAL);
 }
 
 // ========== MARKETPLACE ==========
 async function loadMarketplace(forceRefresh = false) {
     try {
-        const result = await dataManager.fetchWithFallback('get_musicas');
+        if (forceRefresh) apiManager.clearCache();
+        
+        const result = await apiManager.request('get_musicas');
         
         if (result.success && result.data) {
             state.playlist = result.data.filter(music => 
-                music && (music.status || '').toLowerCase() === 'ativo'
+                music && (music.status || '').toString().toLowerCase() === 'ativo'
             ) || [];
-            
-            if (result.offline) {
-                state.offlineMode = true;
-            }
+            renderMarketplace();
         }
-        
-        renderMarketplace();
     } catch (error) {
         console.error('Erro ao carregar marketplace:', error);
         renderMarketplace();
@@ -1678,7 +1704,6 @@ function renderMarketplace() {
             <div class="empty-state-actionable">
                 <i class="bi bi-music-note-slash empty-icon"></i>
                 <h5 class="text-muted">Nenhuma música disponível</h5>
-                <p class="text-muted">As músicas serão carregadas em breve</p>
                 <button class="btn-miv mt-3" onclick="loadMarketplace(true)">
                     <i class="bi bi-arrow-clockwise me-2"></i> Tentar novamente
                 </button>
@@ -1698,13 +1723,27 @@ function renderMarketplace() {
         if (percentSold >= 80) badgeClass = 'badge-danger';
         else if (percentSold >= 50) badgeClass = 'badge-warning';
         
+        // Verifica fonte da música
+        const hasYouTube = track.link_youtube && track.link_youtube.trim() !== '';
+        const hasSpotify = track.link_spotify && track.link_spotify.trim() !== '';
+        let sourceBadge = '';
+        
+        if (hasYouTube && hasSpotify) {
+            sourceBadge = '<span class="source-badge"><i class="bi bi-youtube text-danger"></i> <i class="bi bi-spotify text-success"></i></span>';
+        } else if (hasYouTube) {
+            sourceBadge = '<span class="source-badge youtube"><i class="bi bi-youtube"></i> YouTube</span>';
+        } else if (hasSpotify) {
+            sourceBadge = '<span class="source-badge spotify"><i class="bi bi-spotify"></i> Spotify</span>';
+        }
+        
         return `
             <div class="music-card" onclick="playTrack(${index})">
                 <div class="position-relative">
-                    <img src="${track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV'}" 
+                    <img src="${track.link_capa || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV'}" 
                          class="music-cover" 
-                         alt="${track.titulo || track.TITULO || 'Música'}"
+                         alt="${track.titulo || 'Música'}"
                          onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
+                    ${sourceBadge}
                     ${percentSold >= 90 ? `
                         <div class="position-absolute top-0 end-0 m-2">
                             <span class="badge ${badgeClass}">Esgotando</span>
@@ -1712,10 +1751,10 @@ function renderMarketplace() {
                     ` : ''}
                 </div>
                 <div class="music-info">
-                    <h6 class="music-title">${track.titulo || track.TITULO || 'Sem título'}</h6>
-                    <p class="music-artist">${track.artista || track.ARTISTA || 'Artista Desconhecido'}</p>
+                    <h6 class="music-title">${track.titulo || 'Sem título'}</h6>
+                    <p class="music-artist">${track.artista || 'Artista Desconhecido'}</p>
                     <div class="music-meta">
-                        <span class="music-price">${formatCurrency(track.valor_acao || track.VALOR_ACAO || 0)}</span>
+                        <span class="music-price">${formatCurrency(track.valor_acao || 0)}</span>
                         <span class="music-percent ${badgeClass}" 
                               data-tooltip="${availableShares} de ${totalShares} ações disponíveis">
                             ${percentSold}% vendido
@@ -1730,7 +1769,256 @@ function renderMarketplace() {
     }).join('');
 }
 
-// ========== SISTEMA DE INVESTIMENTO ==========
+// ========== PLAYER COM SPOTIFY E YOUTUBE ==========
+function extractYouTubeId(url) {
+    if (!url) return null;
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[7].length === 11) ? match[7] : null;
+}
+
+function extractSpotifyId(url) {
+    if (!url) return null;
+    
+    const patterns = [
+        /spotify\.com\/track\/([a-zA-Z0-9]+)/,
+        /spotify\.com\/embed\/track\/([a-zA-Z0-9]+)/,
+        /open\.spotify\.com\/track\/([a-zA-Z0-9]+)/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    return null;
+}
+
+function playTrack(index) {
+    if (!state.playlist || index < 0 || index >= state.playlist.length) {
+        showToast('Música não encontrada', 'error');
+        return;
+    }
+
+    state.currentTrackIndex = index;
+    const track = state.playlist[index];
+
+    // Atualizar informações do player
+    document.getElementById('playerTitle').textContent = track.titulo || 'Título desconhecido';
+    document.getElementById('playerArtist').textContent = track.artista || 'Artista desconhecido';
+    document.getElementById('playerPrice').textContent = `${formatCurrency(track.valor_acao || 0)} por ação`;
+    
+    const playerAlbumArt = document.getElementById('playerAlbumArt');
+    playerAlbumArt.src = track.link_capa || 'https://via.placeholder.com/60x60/111418/00ff88?text=MIV';
+    playerAlbumArt.onerror = function() {
+        this.src = 'https://via.placeholder.com/60x60/111418/00ff88?text=MIV';
+    };
+
+    // Mostrar player
+    document.getElementById('playerBar').style.display = 'block';
+
+    // Verificar fonte da música
+    const youtubeLink = track.link_youtube;
+    const spotifyLink = track.link_spotify;
+
+    // Esconder ambos os players
+    document.getElementById('youtubePlayer').style.display = 'none';
+    document.getElementById('spotifyPlayer').style.display = 'none';
+
+    // Prioridade: Spotify primeiro, depois YouTube
+    if (spotifyLink) {
+        const spotifyId = extractSpotifyId(spotifyLink);
+        if (spotifyId) {
+            loadSpotifyPlayer(spotifyId);
+        } else if (youtubeLink) {
+            const youtubeId = extractYouTubeId(youtubeLink);
+            if (youtubeId) {
+                loadYouTubePlayer(youtubeId);
+            }
+        }
+    } else if (youtubeLink) {
+        const youtubeId = extractYouTubeId(youtubeLink);
+        if (youtubeId) {
+            loadYouTubePlayer(youtubeId);
+        }
+    } else {
+        showToast('Esta música não tem player disponível', 'warning');
+    }
+
+    // Atualizar botão de play
+    const playButton = document.getElementById('playButton');
+    playButton.innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
+    state.isPlaying = true;
+}
+
+function loadYouTubePlayer(videoId) {
+    const container = document.getElementById('youtubePlayer');
+    container.innerHTML = '';
+    container.style.display = 'block';
+    
+    // Criar iframe do YouTube
+    const iframe = document.createElement('iframe');
+    iframe.id = 'youtubeIframe';
+    iframe.width = '100%';
+    iframe.height = '100%';
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0`;
+    iframe.frameBorder = '0';
+    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+    iframe.allowFullscreen = true;
+    
+    container.appendChild(iframe);
+    state.youtubePlayer = iframe;
+}
+
+function loadSpotifyPlayer(spotifyId) {
+    const container = document.getElementById('spotifyPlayer');
+    container.innerHTML = '';
+    container.style.display = 'block';
+    
+    // Criar iframe do Spotify
+    const iframe = document.createElement('iframe');
+    iframe.id = 'spotifyIframe';
+    iframe.width = '100%';
+    iframe.height = '100%';
+    iframe.src = `https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator&theme=0`;
+    iframe.frameBorder = '0';
+    iframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+    iframe.allowFullscreen = true;
+    iframe.loading = 'lazy';
+    iframe.style.borderRadius = '12px';
+    
+    container.appendChild(iframe);
+    state.spotifyPlayer = iframe;
+}
+
+function togglePlayerExpansion() {
+    const playerBar = document.getElementById('playerBar');
+    const videoContainer = document.getElementById('videoContainer');
+    const expandCollapseIcon = document.getElementById('expandCollapseIcon');
+
+    if (playerBar.classList.contains('expanded')) {
+        playerBar.classList.remove('expanded');
+        videoContainer.style.display = 'none';
+        expandCollapseIcon.className = 'bi bi-chevron-down';
+        document.body.style.overflow = 'auto';
+    } else {
+        playerBar.classList.add('expanded');
+        videoContainer.style.display = 'block';
+        expandCollapseIcon.className = 'bi bi-chevron-up';
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function togglePlay() {
+    const playButton = document.getElementById('playButton');
+    
+    if (state.isPlaying) {
+        // Pausar
+        if (state.youtubePlayer) {
+            // YouTube não pode ser pausado via iframe sem API
+            // Recarrega sem autoplay
+            const src = state.youtubePlayer.src;
+            state.youtubePlayer.src = src.replace('autoplay=1', 'autoplay=0');
+        }
+        playButton.innerHTML = '<i class="bi bi-play-circle-fill"></i>';
+        state.isPlaying = false;
+    } else {
+        // Tocar
+        if (state.youtubePlayer) {
+            const src = state.youtubePlayer.src;
+            state.youtubePlayer.src = src.replace('autoplay=0', 'autoplay=1');
+        }
+        playButton.innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
+        state.isPlaying = true;
+    }
+}
+
+function playPrevious() {
+    if (!state.playlist || state.currentTrackIndex === undefined) return;
+    
+    const newIndex = state.currentTrackIndex > 0 ? state.currentTrackIndex - 1 : state.playlist.length - 1;
+    playTrack(newIndex);
+}
+
+function playNext() {
+    if (!state.playlist || state.currentTrackIndex === undefined) return;
+    
+    const newIndex = state.currentTrackIndex < state.playlist.length - 1 ? state.currentTrackIndex + 1 : 0;
+    playTrack(newIndex);
+}
+
+function toggleShuffle() {
+    const shuffleBtn = document.getElementById('shuffleBtn');
+    const shuffleIcon = document.getElementById('shuffleIcon');
+    
+    state.isShuffle = !state.isShuffle;
+    
+    if (state.isShuffle) {
+        shuffleBtn.classList.add('active');
+        shuffleIcon.style.color = 'var(--neon-green)';
+        showToast('Modo aleatório ativado', 'success');
+    } else {
+        shuffleBtn.classList.remove('active');
+        shuffleIcon.style.color = '';
+        showToast('Modo aleatório desativado', 'info');
+    }
+}
+
+function toggleRepeat() {
+    const repeatBtn = document.getElementById('repeatBtn');
+    const repeatIcon = document.getElementById('repeatIcon');
+    
+    state.isRepeat = !state.isRepeat;
+    
+    if (state.isRepeat) {
+        repeatBtn.classList.add('active');
+        repeatIcon.style.color = 'var(--neon-green)';
+        showToast('Repetição ativada', 'success');
+    } else {
+        repeatBtn.classList.remove('active');
+        repeatIcon.style.color = '';
+        showToast('Repetição desativada', 'info');
+    }
+}
+
+function toggleLoop() {
+    const loopBtn = document.getElementById('loopButton');
+    const loopIcon = document.getElementById('loopIcon');
+    
+    state.isLoop = !state.isLoop;
+    
+    if (state.isLoop) {
+        loopBtn.classList.add('active');
+        loopIcon.style.color = 'var(--neon-green)';
+        showToast('Loop ativado', 'success');
+    } else {
+        loopBtn.classList.remove('active');
+        loopIcon.style.color = '';
+        showToast('Loop desativado', 'info');
+    }
+}
+
+function setVolume(value) {
+    const volumeSlider = document.getElementById('volumeSlider');
+    const volumeIcon = document.getElementById('volumeIcon');
+    
+    state.currentVolume = value;
+    volumeSlider.value = value;
+    
+    // Atualizar ícone do volume
+    if (value >= 66) {
+        volumeIcon.className = 'bi bi-volume-up';
+    } else if (value >= 33) {
+        volumeIcon.className = 'bi bi-volume-down';
+    } else if (value > 0) {
+        volumeIcon.className = 'bi bi-volume-off';
+    } else {
+        volumeIcon.className = 'bi bi-volume-mute';
+    }
+}
+
+// ========== INVESTIMENTOS ==========
 function openInvestModal(trackIndex) {
     if (trackIndex < 0 || trackIndex >= state.playlist.length) {
         showToast('Música não encontrada', 'error');
@@ -1745,9 +2033,9 @@ function openInvestModal(trackIndex) {
     const totalShares = (percentAvailable / 0.01);
     const availableShares = totalShares - sharesSold;
     
-    document.getElementById('investTrackTitle').textContent = track.titulo || track.TITULO || 'Título desconhecido';
-    document.getElementById('investTrackArtist').textContent = track.artista || track.ARTISTA || 'Artista desconhecido';
-    document.getElementById('investUnitPrice').textContent = formatCurrency(track.valor_acao || track.VALOR_ACAO || 0);
+    document.getElementById('investTrackTitle').textContent = track.titulo || 'Título desconhecido';
+    document.getElementById('investTrackArtist').textContent = track.artista || 'Artista desconhecido';
+    document.getElementById('investUnitPrice').textContent = formatCurrency(track.valor_acao || 0);
     document.getElementById('investAvailableBalance').textContent = formatCurrency(state.userBalance);
     document.getElementById('sharesAvailable').textContent = `Disponível: ${availableShares} ações`;
     
@@ -1756,7 +2044,7 @@ function openInvestModal(trackIndex) {
     investQuantity.min = 1;
     investQuantity.max = Math.min(
         availableShares,
-        Math.floor(state.userBalance / (track.valor_acao || track.VALOR_ACAO || 1))
+        Math.floor(state.userBalance / (track.valor_acao || 1))
     );
     
     updateInvestmentTotal();
@@ -1776,7 +2064,7 @@ function adjustQuantity(change) {
 function updateInvestmentTotal() {
     const quantityInput = document.getElementById('investQuantity');
     const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
-    const unitPrice = state.currentInvestTrack ? (state.currentInvestTrack.valor_acao || state.currentInvestTrack.VALOR_ACAO || 0) : 0;
+    const unitPrice = state.currentInvestTrack ? (state.currentInvestTrack.valor_acao || 0) : 0;
     const total = quantity * unitPrice;
     
     document.getElementById('investTotalPrice').textContent = formatCurrency(total);
@@ -1820,7 +2108,7 @@ async function confirmInvestment() {
     
     const quantityInput = document.getElementById('investQuantity');
     const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
-    const unitPrice = state.currentInvestTrack.valor_acao || state.currentInvestTrack.VALOR_ACAO || 0;
+    const unitPrice = state.currentInvestTrack.valor_acao || 0;
     const totalPrice = quantity * unitPrice;
     
     if (totalPrice > state.userBalance) {
@@ -1842,11 +2130,11 @@ async function confirmInvestment() {
     showLoading('Processando investimento...');
     
     try {
-        const result = await dataManager.fetchWithFallback('buy', {
-            user_id: state.currentUser.id || state.currentUser.email,
-            music_id: state.currentInvestTrack.id || state.currentInvestTrack.ID,
-            quantidade: quantity.toString(),
-            valor_total: totalPrice.toFixed(2)
+        const result = await apiManager.request('buy', {
+            user_id: state.currentUser.id,
+            music_id: state.currentInvestTrack.id,
+            quantidade: quantity,
+            valor_total: totalPrice
         });
         
         if (result.success) {
@@ -1868,23 +2156,7 @@ async function confirmInvestment() {
         }
     } catch (error) {
         console.error('Erro no investimento:', error);
-        
-        if (state.offlineMode) {
-            state.userBalance -= totalPrice;
-            updateBalanceDisplay();
-            
-            dataManager.saveTransaction('buy', {
-                user_id: state.currentUser.id,
-                music_id: state.currentInvestTrack.id,
-                quantidade: quantity,
-                valor_total: totalPrice
-            });
-            
-            showToast('Investimento registrado localmente. Será sincronizado quando online.', 'warning');
-            closeModal('investModal');
-        } else {
-            showToast('Erro de conexão ao processar investimento', 'error');
-        }
+        showToast('Erro de conexão ao processar investimento', 'error');
     } finally {
         hideLoading();
     }
@@ -1897,8 +2169,8 @@ async function loadPortfolio(silent = false) {
     if (!silent) showLoading('Carregando portfólio...');
     
     try {
-        const result = await dataManager.fetchWithFallback('get_carteira', {
-            user_id: state.currentUser.id || state.currentUser.email
+        const result = await apiManager.request('get_carteira', {
+            user_id: state.currentUser.id
         });
         
         if (result.success) {
@@ -1917,7 +2189,6 @@ function renderPortfolio() {
     const container = document.getElementById('portfolioContent');
     const countElement = document.getElementById('assetsCount');
     const portfolioValueElement = document.getElementById('portfolioValue');
-    const updateTimeElement = document.getElementById('portfolioUpdateTime');
     
     if (!container) return;
     
@@ -1926,7 +2197,7 @@ function renderPortfolio() {
     
     state.portfolioAssets.forEach(asset => {
         const music = state.playlist.find(m => m.id === asset.id_musica);
-        const currentPrice = music ? (music.valor_acao || music.VALOR_ACAO || 0) : (asset.valor_pago_por_acao || 0);
+        const currentPrice = music ? (music.valor_acao || 0) : (asset.valor_pago_por_acao || 0);
         const purchasePrice = asset.valor_pago_por_acao || 0;
         const quantity = asset.quantidade_acoes || 0;
         totalValue += currentPrice * quantity;
@@ -1953,33 +2224,15 @@ function renderPortfolio() {
         countElement.textContent = `${state.portfolioAssets.length} ativo${state.portfolioAssets.length !== 1 ? 's' : ''}`;
     }
     
-    if (updateTimeElement) {
-        updateTimeElement.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-    }
-    
     if (!state.portfolioAssets || state.portfolioAssets.length === 0) {
         container.innerHTML = `
             <div class="empty-state-actionable">
                 <i class="bi bi-briefcase empty-icon"></i>
                 <h5 class="text-muted">Nenhum ativo na carteira</h5>
                 <p class="text-muted">Invista em músicas para começar a construir seu portfólio</p>
-                <div class="mt-3">
-                    <button class="btn-miv me-2" onclick="changeSection('marketplace')">
-                        <i class="bi bi-arrow-right me-2"></i> Explorar Marketplace
-                    </button>
-                    <button class="btn btn-outline-success" onclick="openAddBalanceModal()">
-                        <i class="bi bi-plus-circle me-2"></i> Adicionar Saldo
-                    </button>
-                </div>
-                <div class="mt-4 text-start">
-                    <h6>Como começar:</h6>
-                    <ol class="small">
-                        <li>Adicione crédito à sua conta</li>
-                        <li>Explore músicas no Marketplace</li>
-                        <li>Compre ações das suas preferidas</li>
-                        <li>Acompanhe seus investimentos aqui</li>
-                    </ol>
-                </div>
+                <button class="btn-miv mt-3" onclick="changeSection('marketplace')">
+                    <i class="bi bi-arrow-right me-2"></i> Explorar Marketplace
+                </button>
             </div>
         `;
         return;
@@ -1987,30 +2240,28 @@ function renderPortfolio() {
     
     container.innerHTML = state.portfolioAssets.map(asset => {
         const music = state.playlist.find(m => m.id === asset.id_musica) || {};
-        const currentPrice = music.valor_acao || music.VALOR_ACAO || asset.valor_pago_por_acao || 0;
+        const currentPrice = music.valor_acao || asset.valor_pago_por_acao || 0;
         const purchasePrice = asset.valor_pago_por_acao || 0;
         const quantity = asset.quantidade_acoes || 0;
         const currentValue = quantity * currentPrice;
         const purchaseValue = quantity * purchasePrice;
         const profitLoss = currentValue - purchaseValue;
         const profitLossPercent = purchaseValue > 0 ? (profitLoss / purchaseValue * 100).toFixed(2) : 0;
-        const purchaseDate = asset.data_compra ? new Date(asset.data_compra) : null;
         
         return `
             <div class="music-card mb-3">
                 <div class="d-flex">
-                    <img src="${music.link_capa || music.LINK_CAPA || 'https://via.placeholder.com/80x80/111418/00ff88?text=MIV'}" 
+                    <img src="${music.link_capa || 'https://via.placeholder.com/80x80/111418/00ff88?text=MIV'}" 
                          style="width: 80px; height: 80px; object-fit: cover; border-radius: 0.75rem; margin-right: 1rem;" 
-                         alt="${music.titulo || music.TITULO || 'Música'}"
+                         alt="${music.titulo || 'Música'}"
                          onerror="this.src='https://via.placeholder.com/80x80/111418/00ff88?text=MIV'">
                     <div style="flex: 1;">
-                        <h6 class="music-title">${music.titulo || music.TITULO || 'Música não encontrada'}</h6>
-                        <p class="music-artist">${music.artista || music.ARTISTA || 'Artista Desconhecido'}</p>
+                        <h6 class="music-title">${music.titulo || 'Música não encontrada'}</h6>
+                        <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <small class="text-muted">Ações:</small>
                                 <div class="fw-bold">${quantity}</div>
-                                ${purchaseDate ? `<small class="text-muted">Compra: ${purchaseDate.toLocaleDateString('pt-BR')}</small>` : ''}
                             </div>
                             <div class="text-center">
                                 <small class="text-muted">Valor atual:</small>
@@ -2038,8 +2289,10 @@ async function loadLedger(forceRefresh = false) {
     if (!state.currentUser) return;
     
     try {
-        const result = await dataManager.fetchWithFallback('get_extrato', {
-            user_id: state.currentUser.id || state.currentUser.email
+        if (forceRefresh) apiManager.clearCache();
+        
+        const result = await apiManager.request('get_extrato', {
+            user_id: state.currentUser.id
         });
         
         if (result.success) {
@@ -2063,15 +2316,9 @@ function renderLedger() {
                     <div class="empty-state-actionable">
                         <i class="bi bi-receipt empty-icon"></i>
                         <h5 class="text-muted">Nenhuma transação encontrada</h5>
-                        <p class="text-muted">Faça seu primeiro investimento para ver transações aqui</p>
-                        <div class="mt-3">
-                            <button class="btn-miv me-2" onclick="changeSection('marketplace')">
-                                <i class="bi bi-currency-dollar me-2"></i> Investir Agora
-                            </button>
-                            <button class="btn btn-outline-success" onclick="openAddBalanceModal()">
-                                <i class="bi bi-plus-circle me-2"></i> Adicionar Saldo
-                            </button>
-                        </div>
+                        <button class="btn-miv mt-3" onclick="changeSection('marketplace')">
+                            <i class="bi bi-currency-dollar me-2"></i> Investir Agora
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -2080,16 +2327,16 @@ function renderLedger() {
     }
     
     const sortedData = [...state.ledgerData].sort((a, b) => {
-        const dateA = new Date(a.data || a.Data || 0);
-        const dateB = new Date(b.data || b.Data || 0);
+        const dateA = new Date(a.data || 0);
+        const dateB = new Date(b.data || 0);
         return dateB - dateA;
     });
     
     container.innerHTML = sortedData.map(transaction => {
-        const amount = parseFloat(transaction.valor || transaction.Valor || 0);
-        const type = (transaction.tipo || transaction.Tipo || '').toLowerCase();
-        const description = transaction.descricao || transaction.Descricao || '';
-        const date = transaction.data || transaction.Data || '';
+        const amount = parseFloat(transaction.valor || 0);
+        const type = (transaction.tipo || '').toLowerCase();
+        const description = transaction.descricao || '';
+        const date = transaction.data || '';
         
         let typeClass = 'text-muted';
         let typeIcon = 'bi-receipt';
@@ -2103,10 +2350,6 @@ function renderLedger() {
             typeClass = 'text-danger';
             typeIcon = 'bi-currency-dollar';
             typeBadge = 'danger';
-        } else if (type.includes('venda') || type.includes('receita')) {
-            typeClass = 'text-info';
-            typeIcon = 'bi-arrow-up-right';
-            typeBadge = 'info';
         }
         
         return `
@@ -2137,9 +2380,9 @@ function exportExtrato() {
     const csvContent = [
         ['Data', 'Descrição', 'Valor'],
         ...state.ledgerData.map(t => [
-            t.data || t.Data || '',
-            t.descricao || t.Descricao || '',
-            t.valor || t.Valor || 0
+            t.data || '',
+            t.descricao || '',
+            t.valor || 0
         ])
     ].map(row => row.join(',')).join('\n');
     
@@ -2163,8 +2406,10 @@ async function loadArtistData(forceRefresh = false) {
     if (!state.currentUser || (state.currentUser.tipo !== 'artista' && state.currentUser.tipo !== 'admin')) return;
     
     try {
-        const result = await dataManager.fetchWithFallback('get_artist_data', {
-            user_id: state.currentUser.id || state.currentUser.email
+        if (forceRefresh) apiManager.clearCache();
+        
+        const result = await apiManager.request('get_artist_data', {
+            user_id: state.currentUser.id
         });
         
         if (result.success) {
@@ -2194,7 +2439,6 @@ function renderArtistMusic(musics) {
             <div class="empty-state-actionable">
                 <i class="bi bi-music-note-beamed empty-icon"></i>
                 <h5 class="text-muted">Nenhuma música cadastrada</h5>
-                <p class="text-muted">Cadastre sua primeira música para começar a vender ações</p>
                 <button class="btn-miv mt-3" onclick="openAddMusicModal()">
                     <i class="bi bi-plus-circle me-2"></i> Cadastrar Música
                 </button>
@@ -2206,7 +2450,6 @@ function renderArtistMusic(musics) {
     container.innerHTML = musics.map(music => {
         const percentSold = music.percentual_vendido || 0;
         const earnings = music.arrecadacao_total || 0;
-        const availableShares = calculateAvailableSharesForMusic(music);
         
         let badgeClass = 'badge-success';
         if (percentSold >= 80) badgeClass = 'badge-danger';
@@ -2227,25 +2470,13 @@ function renderArtistMusic(musics) {
                             ${percentSold.toFixed(1)}% vendido
                         </span>
                     </div>
-                    <div class="d-flex gap-2 mt-2">
-                        <button class="btn btn-outline-success btn-sm flex-fill" onclick="editMusic('${music.id}')">
-                            <i class="bi bi-pencil"></i> Editar
-                        </button>
-                    </div>
                     <div class="mt-2 text-center">
-                        <small class="text-muted">Arrecadado: ${formatCurrency(earnings)} | Disponível: ${availableShares} ações</small>
+                        <small class="text-muted">Arrecadado: ${formatCurrency(earnings)}</small>
                     </div>
                 </div>
             </div>
         `;
     }).join('');
-}
-
-function calculateAvailableSharesForMusic(music) {
-    const percentAvailable = music.percentual_disponivel || music.PERCENTUAL_DISPONIVEL || 0;
-    const sharesSold = music.acoes_vendidas || music.ACOES_VENDIDAS || 0;
-    const totalShares = (percentAvailable / 0.01);
-    return Math.max(0, totalShares - sharesSold);
 }
 
 function openAddMusicModal() {
@@ -2257,6 +2488,7 @@ function openAddMusicModal() {
     document.getElementById('musicTitle').value = '';
     document.getElementById('musicGenre').value = '';
     document.getElementById('musicYoutube').value = '';
+    document.getElementById('musicSpotify').value = '';
     document.getElementById('musicCover').value = '';
     document.getElementById('musicPrice').value = '10.00';
     document.getElementById('musicPercent').value = '20';
@@ -2274,14 +2506,15 @@ async function registerMusic() {
     const title = document.getElementById('musicTitle').value.trim();
     const genre = document.getElementById('musicGenre').value;
     const youtube = document.getElementById('musicYoutube').value.trim();
+    const spotify = document.getElementById('musicSpotify').value.trim();
     const cover = document.getElementById('musicCover').value.trim();
     const price = parseFloat(document.getElementById('musicPrice').value) || 0;
     const percent = parseFloat(document.getElementById('musicPercent').value) || 0;
     const terms = document.getElementById('musicTerms').checked;
     const registerBtn = document.getElementById('registerMusicBtn');
     
-    if (!title || !genre || !youtube) {
-        showToast('Preencha todos os campos obrigatórios', 'error');
+    if (!title || !genre || (!youtube && !spotify)) {
+        showToast('Preencha título, gênero e pelo menos um link (YouTube ou Spotify)', 'error');
         return;
     }
     
@@ -2300,27 +2533,21 @@ async function registerMusic() {
         return;
     }
     
-    const youtubeId = extractYouTubeId(youtube);
-    if (!youtubeId) {
-        showToast('Link do YouTube inválido', 'error');
-        return;
-    }
-    
     registerBtn.disabled = true;
     registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cadastrando...';
     showLoading('Cadastrando música...');
     
     try {
-        const result = await dataManager.fetchWithFallback('uploadMusic', {
-            user_id: state.currentUser.id || state.currentUser.email,
+        const result = await apiManager.request('uploadmusic', {
+            user_id: state.currentUser.id,
             titulo: title,
             artista: state.currentUser.nome,
             genero: genre,
             link_youtube: youtube,
+            link_spotify: spotify,
             link_capa: cover,
-            valor_acao: price.toFixed(2),
-            percentual_disponivel: percent.toString(),
-            status: 'ativo'
+            valor_acao: price,
+            percentual_disponivel: percent
         });
         
         if (result.success) {
@@ -2345,11 +2572,29 @@ async function registerMusic() {
     }
 }
 
-function editMusic(musicId) {
-    showToast('Funcionalidade em desenvolvimento', 'info');
+// ========== SALDO ==========
+async function loadBalance(silent = false) {
+    if (!state.currentUser) return;
+    
+    if (!silent) showLoading('Carregando saldo...');
+    
+    try {
+        const result = await apiManager.request('get_saldo', {
+            user_id: state.currentUser.id
+        });
+        
+        if (result.success && result.data) {
+            state.userBalance = parseFloat(result.data.saldo) || 0;
+            updateBalanceDisplay();
+        }
+    } catch (error) {
+        console.error('Erro ao carregar saldo:', error);
+    } finally {
+        if (!silent) hideLoading();
+    }
 }
 
-// ========== SISTEMA DE PAGAMENTO ==========
+// ========== ADICIONAR SALDO ==========
 function openAddBalanceModal() {
     if (!state.currentUser) {
         showToast('Faça login para adicionar saldo', 'error');
@@ -2390,16 +2635,11 @@ async function processBalanceAdd() {
     showLoading('Processando pagamento...');
     
     try {
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Simulação de pagamento (em produção, integrar com gateway de pagamento)
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         state.userBalance += amount;
         updateBalanceDisplay();
-        
-        dataManager.saveTransaction('deposit', {
-            user_id: state.currentUser.id,
-            amount: amount,
-            method: document.querySelector('input[name="paymentMethod"]:checked').id.replace('payment', '')
-        });
         
         showToast(`Saldo de ${formatCurrency(amount)} adicionado com sucesso!`, 'success');
         closeModal('addBalanceModal');
@@ -2413,490 +2653,66 @@ async function processBalanceAdd() {
         hideLoading();
     }
 }
-// =====================================================
-// PLAYER COM YOUTUBE + SPOTIFY + LOOP
-// COLAR ESTE CÓDIGO NO SEU FRONTEND (Vercel)
-// =====================================================
 
-// =====================================================
-// VARIÁVEIS GLOBAIS DO PLAYER
-// =====================================================
-let youtubePlayer = null;
-let spotifyLoopEnabled = false;
-let globalLoopEnabled = false;
-let loopCheckInterval = null;
-let currentTrack = null;
-
-// =====================================================
-// PATCH: CARREGAR YOUTUBE IFRAME API (SEGURO)
-// =====================================================
-if (!window.YT) {
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    document.head.appendChild(tag);
+// ========== NAVEGAÇÃO ==========
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('open');
 }
 
-// =====================================================
-// FUNÇÕES DE EXTRATOR DE IDs
-// =====================================================
-function extractYouTubeId(url) {
-    if (!url) return null;
-    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[7].length === 11) ? match[7] : null;
-}
-
-function extractSpotifyId(url) {
-    if (!url) return null;
+function changeSection(sectionId) {
+    // Esconder todas as seções
+    document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+    });
     
-    const patterns = [
-        /spotify\.com\/track\/([a-zA-Z0-9]+)/,
-        /spotify\.com\/embed\/track\/([a-zA-Z0-9]+)/,
-        /open\.spotify\.com\/track\/([a-zA-Z0-9]+)/
-    ];
+    // Remover active de todos os botões
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
     
-    for (const pattern of patterns) {
-        const match = url.match(pattern);
-        if (match && match[1]) {
-            return match[1];
-        }
-    }
-    return null;
-}
-
-// =====================================================
-// FUNÇÃO PRINCIPAL: TOCAR MÚSICA (ATUALIZADA)
-// =====================================================
-function playTrack(index) {
-    if (!state || !state.playlist || index < 0 || index >= state.playlist.length) {
-        showToast('Música não encontrada', 'error');
-        return;
-    }
-
-    state.currentTrackIndex = index;
-    currentTrack = state.playlist[index];
-
-    // Atualizar informações do player
-    document.getElementById('playerTitle').textContent =
-        currentTrack.titulo || currentTrack.TITULO || 'Título desconhecido';
-
-    document.getElementById('playerArtist').textContent =
-        currentTrack.artista || currentTrack.ARTISTA || 'Artista desconhecido';
-
-    document.getElementById('playerPrice').textContent =
-        `${formatCurrency(currentTrack.valor_acao || currentTrack.VALOR_ACAO || 0)} por ação`;
-
-    const playerAlbumArt = document.getElementById('playerAlbumArt');
-    const coverUrl =
-        currentTrack.link_capa ||
-        currentTrack.LINK_CAPA ||
-        'https://i9.ytimg.com/vi/ee_AZk-lq-Y/mqdefault.jpg';
-
-    playerAlbumArt.src = coverUrl;
-    playerAlbumArt.onerror = function () {
-        this.src = 'https://via.placeholder.com/300x300?text=SEM+CAPA';
-    };
-
-    // Mostrar player
-    document.getElementById('playerBar').style.display = 'block';
-
-    // Verificar se é YouTube ou Spotify
-    const youtubeLink = currentTrack.link_youtube || currentTrack.LINK_YOUTUBE;
-    const spotifyLink = currentTrack.link_spotify || currentTrack.LINK_SPOTIFY;
-
-    // Esconder ambos os players inicialmente
-    const youtubePlayerEl = document.getElementById('youtubePlayer');
-    const spotifyPlayerEl = document.getElementById('spotifyPlayer');
-    
-    if (youtubePlayerEl) youtubePlayerEl.style.display = 'none';
-    if (spotifyPlayerEl) spotifyPlayerEl.style.display = 'none';
-
-    // Tocar a música na fonte correta
-    if (youtubeLink) {
-        const videoId = extractYouTubeId(youtubeLink);
-        if (videoId) {
-            if (youtubePlayerEl) youtubePlayerEl.style.display = 'block';
-            initializeYouTubePlayer(videoId);
-            setupYouTubeLoop();
-        }
-    } else if (spotifyLink) {
-        const spotifyId = extractSpotifyId(spotifyLink);
-        if (spotifyId) {
-            if (!document.getElementById('spotifyPlayer')) {
-                createSpotifyPlayer(spotifyId);
-            } else {
-                document.getElementById('spotifyPlayer').style.display = 'block';
-                updateSpotifyPlayer(spotifyId);
-            }
-            setupSpotifyLoop();
-        }
-    }
-
-    // Atualizar botão de play
-    const playButton = document.getElementById('playButton');
-    if (playButton) {
-        playButton.innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
+    // Mostrar seção selecionada
+    const section = document.getElementById(sectionId + 'Section');
+    if (section) {
+        section.classList.add('active');
     }
     
-    if (typeof state !== 'undefined') {
-        state.isPlaying = true;
-    }
-
-    // Adicionar botão de loop se não existir
-    if (!document.getElementById('loopButton')) {
-        addLoopButton();
-    }
-}
-
-// =====================================================
-// PLAYER DO YOUTUBE (COM API)
-// =====================================================
-function onYouTubeIframeAPIReady() {
-    console.log('YouTube API carregada');
-}
-
-function initializeYouTubePlayer(videoId) {
-    const container = document.getElementById('youtubePlayer');
-    if (!container || !videoId) return;
-
-    // Fallback: se API não carregou, usa iframe normal
-    if (!window.YT || !YT.Player) {
-        container.innerHTML = `
-            <iframe width="100%" height="100%" 
-                src="https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0" 
-                frameborder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowfullscreen>
-            </iframe>
-        `;
-        registerPlay(videoId);
-        return;
-    }
-
-    // Limpar container
-    container.innerHTML = '<div id="youtubeIframe"></div>';
-
-    // Criar player com API
-    youtubePlayer = new YT.Player('youtubeIframe', {
-        width: '100%',
-        height: '100%',
-        videoId: videoId,
-        playerVars: {
-            autoplay: 1,
-            controls: 1,
-            modestbranding: 1,
-            rel: 0
-        },
-        events: {
-            onReady: (e) => {
-                e.target.playVideo();
-                registerPlay(videoId);
-            },
-            onStateChange: onYouTubePlayerStateChange
+    // Ativar link correspondente
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        if (link.getAttribute('onclick')?.includes(sectionId)) {
+            link.classList.add('active');
         }
     });
-}
-
-function onYouTubePlayerStateChange(event) {
-    // 0 = ENDED (vídeo terminou)
-    if (event.data === 0) {
-        // Repetir se loop está ativado
-        if (globalLoopEnabled && youtubePlayer) {
-            youtubePlayer.seekTo(0);
-            youtubePlayer.playVideo();
-        } 
-        // Próxima música automática (estilo Spotify)
-        else if (!globalLoopEnabled && 
-                 typeof state !== 'undefined' &&
-                 state.playlist &&
-                 state.currentTrackIndex < state.playlist.length - 1) {
-            playTrack(state.currentTrackIndex + 1);
-        }
+    
+    // Fechar sidebar no mobile
+    if (window.innerWidth <= 768) {
+        toggleSidebar();
     }
 }
 
-// =====================================================
-// PLAYER DO SPOTIFY
-// =====================================================
-function createSpotifyPlayer(spotifyId) {
-    const container = document.getElementById('videoContainer');
-    if (!container) return;
-    
-    const spotifyPlayerDiv = document.createElement('div');
-    spotifyPlayerDiv.id = 'spotifyPlayer';
-    spotifyPlayerDiv.style.width = '100%';
-    spotifyPlayerDiv.style.height = '100%';
-    spotifyPlayerDiv.style.display = 'block';
-    spotifyPlayerDiv.style.position = 'relative';
-    
-    spotifyPlayerDiv.innerHTML = `
-        <iframe id="spotifyIframe" 
-            src="https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator&theme=0" 
-            width="100%" 
-            height="100%" 
-            frameborder="0" 
-            allowfullscreen="" 
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-            loading="lazy"
-            style="border-radius: 12px;">
-        </iframe>
-    `;
-    
-    container.appendChild(spotifyPlayerDiv);
-    registerSpotifyPlay(spotifyId);
-}
-
-function updateSpotifyPlayer(spotifyId) {
-    const iframe = document.getElementById('spotifyIframe');
-    if (iframe) {
-        iframe.src = `https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator&theme=0`;
-        registerSpotifyPlay(spotifyId);
-    }
-}
-
-// =====================================================
-// CONTROLE DE LOOP (REPETIÇÃO)
-// =====================================================
-function addLoopButton() {
-    const playerControls = document.querySelector('.player-controls') || 
-                          document.getElementById('playerControls') ||
-                          document.querySelector('.player-buttons');
-    
-    if (!playerControls) return;
-    
-    // Verificar se botão já existe
-    if (document.getElementById('loopButton')) return;
-    
-    const loopButton = document.createElement('button');
-    loopButton.id = 'loopButton';
-    loopButton.className = 'btn btn-sm btn-outline-light ms-2';
-    loopButton.innerHTML = '<i class="bi bi-repeat"></i>';
-    loopButton.title = 'Repetir música (R)';
-    loopButton.onclick = toggleGlobalLoop;
-    
-    playerControls.appendChild(loopButton);
-    
-    // Adicionar atalho de teclado
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'r' || e.key === 'R') {
-            toggleGlobalLoop();
-        }
-    });
-}
-
-function toggleGlobalLoop() {
-    globalLoopEnabled = !globalLoopEnabled;
-    const button = document.getElementById('loopButton');
-    
-    if (!button) return;
-    
-    if (globalLoopEnabled) {
-        button.classList.add('active');
-        button.innerHTML = '<i class="bi bi-repeat-1"></i>';
-        button.title = 'Repetindo (R para desativar)';
-        showToast('🔁 Repetição ativada', 'success');
-        
-        // Configurar verificação de loop
-        setupLoopChecker();
-    } else {
-        button.classList.remove('active');
-        button.innerHTML = '<i class="bi bi-repeat"></i>';
-        button.title = 'Repetir música (R)';
-        showToast('Repetição desativada', 'info');
-        
-        // Parar verificação de loop
-        if (loopCheckInterval) {
-            clearInterval(loopCheckInterval);
-            loopCheckInterval = null;
-        }
-    }
-}
-
-function setupLoopChecker() {
-    // Limpar intervalo anterior se existir
-    if (loopCheckInterval) {
-        clearInterval(loopCheckInterval);
-    }
-    
-    // Configurar verificação para Spotify
-    loopCheckInterval = setInterval(() => {
-        if (globalLoopEnabled) {
-            const spotifyIframe = document.getElementById('spotifyIframe');
-            if (spotifyIframe && spotifyIframe.style.display !== 'none') {
-                // Recarregar iframe do Spotify para repetir
-                spotifyIframe.src = spotifyIframe.src;
-            }
-        }
-    }, 180000); // Verificar a cada 3 minutos (tempo médio de uma música)
-}
-
-function setupYouTubeLoop() {
-    if (youtubePlayer && globalLoopEnabled) {
-        youtubePlayer.addEventListener('onStateChange', (event) => {
-            if (globalLoopEnabled && event.data === 0) {
-                setTimeout(() => {
-                    youtubePlayer.seekTo(0);
-                    youtubePlayer.playVideo();
-                }, 500);
-            }
-        });
-    }
-}
-
-// =====================================================
-// FUNÇÕES DE REGISTRO DE PLAY
-// =====================================================
-function registerPlay(videoId) {
-    console.log(`Play registrada para o vídeo: ${videoId}`);
-    
-    if (typeof localStorage !== 'undefined') {
-        let plays = JSON.parse(localStorage.getItem('miv_plays') || '[]');
-        plays.push({
-            videoId,
-            timestamp: new Date().toISOString(),
-            type: 'youtube'
-        });
-        localStorage.setItem('miv_plays', JSON.stringify(plays));
-    }
-}
-
-function registerSpotifyPlay(spotifyId) {
-    console.log(`Play registrada para o Spotify: ${spotifyId}`);
-    
-    if (typeof localStorage !== 'undefined') {
-        let plays = JSON.parse(localStorage.getItem('miv_plays') || '[]');
-        plays.push({
-            spotifyId,
-            timestamp: new Date().toISOString(),
-            type: 'spotify'
-        });
-        localStorage.setItem('miv_plays', JSON.stringify(plays));
-    }
-}
-
-// =====================================================
-// FUNÇÕES EXISTENTES DO PLAYER (MANTIDAS)
-// =====================================================
-function togglePlayerExpansion() {
-    const playerBar = document.getElementById('playerBar');
-    const videoContainer = document.getElementById('videoContainer');
-    const expandCollapseIcon = document.getElementById('expandCollapseIcon');
-
-    if (!playerBar || !videoContainer || !expandCollapseIcon) return;
-
-    if (playerBar.classList.contains('expanded')) {
-        playerBar.classList.remove('expanded');
-        videoContainer.style.display = 'none';
-        expandCollapseIcon.className = 'bi bi-chevron-down';
-        document.body.style.overflow = 'auto';
-    } else {
-        playerBar.classList.add('expanded');
-        videoContainer.style.display = 'block';
-        expandCollapseIcon.className = 'bi bi-chevron-up';
-        document.body.style.overflow = 'hidden';
-        
-        // Ajustar tamanho dos players quando expandir
-        setTimeout(() => {
-            if (youtubePlayer) {
-                youtubePlayer.setSize('100%', '100%');
-            }
-        }, 100);
-    }
-}
-
-// =====================================================
-// FUNÇÃO DE FALLBACK PARA FORMATAR MOEDA
-// =====================================================
-if (typeof formatCurrency === 'undefined') {
-    function formatCurrency(value) {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value || 0);
-    }
-}
-
-// =====================================================
-// FUNÇÃO DE FALLBACK PARA MOSTRAR TOAST
-// =====================================================
-if (typeof showToast === 'undefined') {
-    function showToast(message, type = 'info') {
-        console.log(`${type.toUpperCase()}: ${message}`);
-        
-        if (typeof document !== 'undefined') {
-            const toast = document.createElement('div');
-            toast.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#17a2b8'};
-                color: white;
-                padding: 12px 20px;
-                border-radius: 4px;
-                z-index: 9999;
-                animation: fadeInOut 3s ease-in-out;
-            `;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
-        }
-    }
-}
-
-// =====================================================
-// INICIALIZAÇÃO AUTOMÁTICA
-// =====================================================
+// ========== INICIALIZAÇÃO ==========
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Player YouTube + Spotify carregado!');
+    console.log('🚀 SELO MIV Inicializando...');
     
-    // Adicionar estilo CSS para o botão de loop ativo
-    const style = document.createElement('style');
-    style.textContent = `
-        #loopButton.active {
-            background-color: #1db954 !important;
-            border-color: #1db954 !important;
-            color: white !important;
-        }
-        #spotifyPlayer {
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        #spotifyIframe {
-            border-radius: 12px;
-        }
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateY(-10px); }
-            10% { opacity: 1; transform: translateY(0); }
-            90% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-10px); }
-        }
-    `;
-    document.head.appendChild(style);
-    
-    // Adicionar botão de loop se o player estiver visível
+    // Verifica sessão salva
     setTimeout(() => {
-        if (document.getElementById('playerBar') && 
-            document.getElementById('playerBar').style.display !== 'none') {
-            addLoopButton();
-        }
-    }, 1000);
-});   
         const savedUser = localStorage.getItem('miv_user');
         const savedSession = localStorage.getItem('miv_session');
         
         if (savedUser && savedSession) {
             try {
-                state.currentUser = JSON.parse(savedUser);
+                const user = JSON.parse(savedUser);
                 const sessionAge = Date.now() - parseInt(savedSession, 16);
+                
                 if (sessionAge < 24 * 60 * 60 * 1000) {
+                    state.currentUser = user;
+                    state.userBalance = user.saldo || 0;
                     initializeApp();
                 } else {
                     localStorage.removeItem('miv_user');
                     localStorage.removeItem('miv_session');
-                    showToast('Sessão expirada. Faça login novamente.', 'warning');
+                    showToast('Sessão expirada. Faça login novamente.', 'info');
                 }
             } catch (e) {
                 console.error('Erro ao restaurar sessão:', e);
@@ -2904,8 +2720,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 localStorage.removeItem('miv_session');
             }
         }
-    }, 1500);
+    }, 1000);
     
+    // Event listeners
     document.getElementById('loginPassword')?.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') handleLogin();
     });
@@ -2914,439 +2731,50 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Enter') handleRegister();
     });
     
-    document.getElementById('loginEmail')?.addEventListener('input', function(e) {
-        validateEmailField(e.target);
-    });
-    
-    document.getElementById('registerEmail')?.addEventListener('input', function(e) {
-        validateEmailField(e.target);
-    });
-    
-    window.addEventListener('online', () => {
-        if (state.offlineMode) {
-            state.offlineMode = false;
-            showToast('Conexão restaurada. Sincronizando dados...', 'success');
-            dataManager.syncPendingTransactions();
-            loadAllData();
+    // Atalhos de teclado
+    document.addEventListener('keydown', function(e) {
+        // Espaço para play/pause
+        if (e.code === 'Space' && !e.target.matches('input, textarea, select')) {
+            e.preventDefault();
+            togglePlay();
         }
-    });
-    
-    window.addEventListener('offline', () => {
-        state.offlineMode = true;
-        showToast('Modo offline ativado', 'warning');
+        // R para loop
+        if (e.code === 'KeyR' && !e.target.matches('input, textarea, select')) {
+            toggleLoop();
+        }
+        // S para shuffle
+        if (e.code === 'KeyS' && !e.target.matches('input, textarea, select')) {
+            toggleShuffle();
+        }
+        // N para próxima
+        if (e.code === 'KeyN' && !e.target.matches('input, textarea, select')) {
+            playNext();
+        }
+        // P para anterior
+        if (e.code === 'KeyP' && !e.target.matches('input, textarea, select')) {
+            playPrevious();
+        }
     });
 });
 
-function validateEmailField(field) {
-    const email = field.value.trim();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
-    if (email && !emailRegex.test(email)) {
-        field.classList.add('is-invalid');
-    } else {
-        field.classList.remove('is-invalid');
-    }
-}
-// =====================================================
-// PLAYER AVANÇADO COM SPOTIFY + LOOP (INTEGRAÇÃO)
-// =====================================================
-
-// Variáveis globais para o player avançado
-let advancedYoutubePlayer = null;
-let globalLoopEnabled = false;
-let spotifyLoopInterval = null;
-
-// Extrair ID do Spotify
-function extractSpotifyId(url) {
-    if (!url) return null;
-    
-    const patterns = [
-        /spotify\.com\/track\/([a-zA-Z0-9]+)/,
-        /spotify\.com\/embed\/track\/([a-zA-Z0-9]+)/,
-        /open\.spotify\.com\/track\/([a-zA-Z0-9]+)/
-    ];
-    
-    for (const pattern of patterns) {
-        const match = url.match(pattern);
-        if (match && match[1]) {
-            return match[1];
+// ========== TESTE DE CONEXÃO ==========
+async function testConnection() {
+    try {
+        const response = await fetch(`${CONFIG.API_URL}?action=test`);
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Conexão com API:', data.message);
+            return true;
         }
+    } catch (error) {
+        console.warn('⚠️ Não foi possível conectar à API');
     }
-    return null;
+    return false;
 }
 
-// Substituir a função playTrack original
-const originalPlayTrack = window.playTrack;
-
-window.playTrack = function(index) {
-    if (!state || !state.playlist || index < 0 || index >= state.playlist.length) {
-        showToast('Música não encontrada', 'error');
-        return;
-    }
-
-    state.currentTrackIndex = index;
-    const track = state.playlist[index];
-
-    // Atualizar informações do player
-    document.getElementById('playerTitle').textContent =
-        track.titulo || track.TITULO || 'Título desconhecido';
-
-    document.getElementById('playerArtist').textContent =
-        track.artista || track.ARTISTA || 'Artista desconhecido';
-
-    document.getElementById('playerPrice').textContent =
-        `${formatCurrency(track.valor_acao || track.VALOR_ACAO || 0)} por ação`;
-
-    const playerAlbumArt = document.getElementById('playerAlbumArt');
-    const coverUrl =
-        track.link_capa ||
-        track.LINK_CAPA ||
-        'https://i9.ytimg.com/vi/ee_AZk-lq-Y/mqdefault.jpg';
-
-    playerAlbumArt.src = coverUrl;
-    playerAlbumArt.onerror = function () {
-        this.src = 'https://via.placeholder.com/300x300?text=SEM+CAPA';
-    };
-
-    // Mostrar player
-    document.getElementById('playerBar').style.display = 'block';
-
-    // Verificar se é YouTube ou Spotify
-    const youtubeLink = track.link_youtube || track.LINK_YOUTUBE;
-    const spotifyLink = track.link_spotify || track.LINK_SPOTIFY;
-
-    // Esconder ambos os players inicialmente
-    const youtubePlayerEl = document.getElementById('youtubePlayer');
-    const spotifyPlayerEl = document.getElementById('spotifyPlayer');
-    
-    if (youtubePlayerEl) youtubePlayerEl.style.display = 'none';
-    if (spotifyPlayerEl) spotifyPlayerEl.style.display = 'none';
-
-    // Tocar a música na fonte correta
-    if (youtubeLink) {
-        const videoId = extractYouTubeId(youtubeLink);
-        if (videoId) {
-            if (youtubePlayerEl) youtubePlayerEl.style.display = 'block';
-            initializeAdvancedYouTubePlayer(videoId);
-        }
-    } else if (spotifyLink) {
-        const spotifyId = extractSpotifyId(spotifyLink);
-        if (spotifyId) {
-            if (!document.getElementById('spotifyPlayer')) {
-                createSpotifyPlayer(spotifyId);
-            } else {
-                document.getElementById('spotifyPlayer').style.display = 'block';
-                updateSpotifyPlayer(spotifyId);
-            }
-        }
-    }
-
-    // Atualizar botão de play
-    const playButton = document.getElementById('playButton');
-    if (playButton) {
-        playButton.innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-    }
-    
-    state.isPlaying = true;
-
-    // Adicionar botão de loop se não existir
-    if (!document.getElementById('loopButton')) {
-        addLoopButton();
-    }
-};
-
-// YouTube Player avançado
-function onYouTubeIframeAPIReady() {
-    console.log('YouTube API carregada (avanzada)');
-}
-
-function initializeAdvancedYouTubePlayer(videoId) {
-    const container = document.getElementById('youtubePlayer');
-    if (!container || !videoId) return;
-
-    // Fallback: se API não carregou, usa iframe normal
-    if (!window.YT || !YT.Player) {
-        container.innerHTML = `
-            <iframe width="100%" height="100%" 
-                src="https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0" 
-                frameborder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowfullscreen>
-            </iframe>
-        `;
-        return;
-    }
-
-    container.innerHTML = '<div id="youtubeIframe"></div>';
-
-    advancedYoutubePlayer = new YT.Player('youtubeIframe', {
-        width: '100%',
-        height: '100%',
-        videoId: videoId,
-        playerVars: {
-            autoplay: 1,
-            controls: 1,
-            modestbranding: 1,
-            rel: 0
-        },
-        events: {
-            onReady: (e) => {
-                e.target.playVideo();
-            },
-            onStateChange: (event) => {
-                // 0 = ENDED (vídeo terminou)
-                if (event.data === 0) {
-                    // Repetir se loop está ativado
-                    if (globalLoopEnabled && advancedYoutubePlayer) {
-                        advancedYoutubePlayer.seekTo(0);
-                        advancedYoutubePlayer.playVideo();
-                    } 
-                    // Próxima música automática
-                    else if (!globalLoopEnabled && 
-                             state.playlist &&
-                             state.currentTrackIndex < state.playlist.length - 1) {
-                        window.playTrack(state.currentTrackIndex + 1);
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Spotify Player
-function createSpotifyPlayer(spotifyId) {
-    const container = document.getElementById('videoContainer');
-    if (!container) return;
-    
-    const spotifyPlayerDiv = document.createElement('div');
-    spotifyPlayerDiv.id = 'spotifyPlayer';
-    spotifyPlayerDiv.style.width = '100%';
-    spotifyPlayerDiv.style.height = '100%';
-    spotifyPlayerDiv.style.display = 'block';
-    spotifyPlayerDiv.style.position = 'relative';
-    
-    spotifyPlayerDiv.innerHTML = `
-        <iframe id="spotifyIframe" 
-            src="https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator&theme=0" 
-            width="100%" 
-            height="100%" 
-            frameborder="0" 
-            allowfullscreen="" 
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-            loading="lazy"
-            style="border-radius: 12px;">
-        </iframe>
-    `;
-    
-    container.appendChild(spotifyPlayerDiv);
-}
-
-function updateSpotifyPlayer(spotifyId) {
-    const iframe = document.getElementById('spotifyIframe');
-    if (iframe) {
-        iframe.src = `https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator&theme=0`;
-    }
-}
-
-// Controle de Loop
-function addLoopButton() {
-    const playerControls = document.querySelector('.player-controls');
-    
-    if (!playerControls) return;
-    
-    if (document.getElementById('loopButton')) return;
-    
-    const loopButton = document.createElement('button');
-    loopButton.id = 'loopButton';
-    loopButton.className = 'btn btn-sm btn-outline-light ms-2';
-    loopButton.innerHTML = '<i class="bi bi-repeat"></i>';
-    loopButton.title = 'Repetir música (R)';
-    loopButton.onclick = toggleGlobalLoop;
-    
-    playerControls.appendChild(loopButton);
-    
-    // Atalho de teclado R para loop
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'r' || e.key === 'R') {
-            toggleGlobalLoop();
-        }
-    });
-}
-
-function toggleGlobalLoop() {
-    globalLoopEnabled = !globalLoopEnabled;
-    const button = document.getElementById('loopButton');
-    
-    if (!button) return;
-    
-    if (globalLoopEnabled) {
-        button.classList.add('active');
-        button.innerHTML = '<i class="bi bi-repeat-1"></i>';
-        button.title = 'Repetindo (R para desativar)';
-        showToast('🔁 Repetição ativada', 'success');
-        
-        // Configurar verificação para Spotify
-        if (spotifyLoopInterval) clearInterval(spotifyLoopInterval);
-        spotifyLoopInterval = setInterval(() => {
-            if (globalLoopEnabled) {
-                const spotifyIframe = document.getElementById('spotifyIframe');
-                if (spotifyIframe && spotifyIframe.style.display !== 'none') {
-                    spotifyIframe.src = spotifyIframe.src;
-                }
-            }
-        }, 180000); // 3 minutos (tempo médio de uma música)
-    } else {
-        button.classList.remove('active');
-        button.innerHTML = '<i class="bi bi-repeat"></i>';
-        button.title = 'Repetir música (R)';
-        showToast('Repetição desativada', 'info');
-        
-        if (spotifyLoopInterval) {
-            clearInterval(spotifyLoopInterval);
-            spotifyLoopInterval = null;
-        }
-    }
-}
-
-// Adicionar estilo CSS para o botão de loop
-document.addEventListener('DOMContentLoaded', function() {
-    const style = document.createElement('style');
-    style.textContent = `
-        #loopButton.active {
-            background-color: #1db954 !important;
-            border-color: #1db954 !important;
-            color: white !important;
-        }
-        #spotifyPlayer {
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        #spotifyIframe {
-            border-radius: 12px;
-        }
-    `;
-    document.head.appendChild(style);
-    
-    // Adicionar botão de loop automaticamente
-    setTimeout(() => {
-        if (!document.getElementById('loopButton') && 
-            document.getElementById('playerBar') && 
-            document.getElementById('playerBar').style.display !== 'none') {
-            addLoopButton();
-        }
-    }, 1000);
-});
-
-// Função para alternar shuffle
-function toggleShuffle() {
-    const shuffleBtn = document.getElementById('shuffleBtn');
-    const shuffleIcon = document.getElementById('shuffleIcon');
-    
-    if (!shuffleBtn || !shuffleIcon) return;
-    
-    if (shuffleBtn.classList.contains('active')) {
-        shuffleBtn.classList.remove('active');
-        shuffleIcon.style.color = '';
-        showToast('Modo aleatório desativado', 'info');
-    } else {
-        shuffleBtn.classList.add('active');
-        shuffleIcon.style.color = 'var(--neon-green)';
-        showToast('Modo aleatório ativado', 'success');
-    }
-}
-
-// Função para tocar anterior
-function playPrevious() {
-    if (!state || !state.playlist || state.currentTrackIndex === undefined) return;
-    
-    const newIndex = state.currentTrackIndex > 0 ? state.currentTrackIndex - 1 : state.playlist.length - 1;
-    window.playTrack(newIndex);
-}
-
-// Função para tocar próxima
-function playNext() {
-    if (!state || !state.playlist || state.currentTrackIndex === undefined) return;
-    
-    const newIndex = state.currentTrackIndex < state.playlist.length - 1 ? state.currentTrackIndex + 1 : 0;
-    window.playTrack(newIndex);
-}
-
-// Função para toggle play/pause
-function togglePlay() {
-    const playButton = document.getElementById('playButton');
-    if (!playButton) return;
-    
-    if (state.isPlaying) {
-        // Pausar
-        if (advancedYoutubePlayer) {
-            advancedYoutubePlayer.pauseVideo();
-        }
-        playButton.innerHTML = '<i class="bi bi-play-circle-fill"></i>';
-        state.isPlaying = false;
-    } else {
-        // Tocar
-        if (advancedYoutubePlayer) {
-            advancedYoutubePlayer.playVideo();
-        }
-        playButton.innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-        state.isPlaying = true;
-    }
-}
-
-// Função para volume
-function setVolume(value) {
-    const volumeSlider = document.getElementById('volumeSlider');
-    const volumeIcon = document.getElementById('volumeIcon');
-    
-    if (!volumeSlider || !volumeIcon) return;
-    
-    state.currentVolume = value;
-    volumeSlider.value = value;
-    
-    if (advancedYoutubePlayer) {
-        advancedYoutubePlayer.setVolume(value);
-    }
-    
-    // Atualizar ícone do volume
-    if (value >= 66) {
-        volumeIcon.className = 'bi bi-volume-up';
-    } else if (value >= 33) {
-        volumeIcon.className = 'bi bi-volume-down';
-    } else if (value > 0) {
-        volumeIcon.className = 'bi bi-volume-off';
-    } else {
-        volumeIcon.className = 'bi bi-volume-mute';
-    }
-}
-
-// Atualizar o togglePlayerExpansion para incluir ajustes
-const originalToggleExpansion = window.togglePlayerExpansion;
-window.togglePlayerExpansion = function() {
-    const playerBar = document.getElementById('playerBar');
-    const videoContainer = document.getElementById('videoContainer');
-    const expandCollapseIcon = document.getElementById('expandCollapseIcon');
-
-    if (!playerBar || !videoContainer || !expandCollapseIcon) return;
-
-    if (playerBar.classList.contains('expanded')) {
-        playerBar.classList.remove('expanded');
-        videoContainer.style.display = 'none';
-        expandCollapseIcon.className = 'bi bi-chevron-down';
-        document.body.style.overflow = 'auto';
-    } else {
-        playerBar.classList.add('expanded');
-        videoContainer.style.display = 'block';
-        expandCollapseIcon.className = 'bi bi-chevron-up';
-        document.body.style.overflow = 'hidden';
-        
-        // Ajustar tamanho dos players quando expandir
-        setTimeout(() => {
-            if (advancedYoutubePlayer) {
-                advancedYoutubePlayer.setSize('100%', '100%');
-            }
-        }, 100);
-    }
-}; </script>
+// Testar conexão ao carregar
+testConnection();
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
