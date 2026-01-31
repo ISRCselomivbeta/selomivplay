@@ -2200,10 +2200,10 @@ function renderPortfolio() {
         return `
             <div class="music-card mb-3">
                 <div class="d-flex">
-                    <img src="${music.link_capa || music.LINK_CAPA || 'https://via.placeholder.com/80x80/111418/00ff88?text=MIV'}" 
+                    <img src="${music.link_capa || music.LINK_CAPA || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'}" 
                          style="width: 80px; height: 80px; object-fit: cover; border-radius: 0.75rem; margin-right: 1rem;" 
                          alt="${music.titulo || music.TITULO || 'Música'}"
-                         onerror="this.src='https://via.placeholder.com/80x80/111418/00ff88?text=MIV'">
+                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'">
                     <div style="flex: 1;">
                         <h6 class="music-title">${music.titulo || music.TITULO || 'Música não encontrada'}</h6>
                         <p class="music-artist">${music.artista || music.ARTISTA || 'Artista Desconhecido'}</p>
