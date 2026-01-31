@@ -2497,6 +2497,8 @@ function openAddMusicModal() {
     showModal('addMusicModal');
 }
 
+// No frontend, atualize a função registerMusic:
+
 async function registerMusic() {
     if (!state.currentUser || (state.currentUser.tipo !== 'artista' && state.currentUser.tipo !== 'admin')) {
         showToast('Apenas artistas podem cadastrar músicas', 'error');
@@ -2512,6 +2514,10 @@ async function registerMusic() {
     const percent = parseFloat(document.getElementById('musicPercent').value) || 0;
     const terms = document.getElementById('musicTerms').checked;
     const registerBtn = document.getElementById('registerMusicBtn');
+    
+    console.log('📝 Dados do formulário:', {
+        title, genre, youtube, spotify, cover, price, percent, terms
+    });
     
     if (!title || !genre || (!youtube && !spotify)) {
         showToast('Preencha título, gênero e pelo menos um link (YouTube ou Spotify)', 'error');
@@ -2539,7 +2545,7 @@ async function registerMusic() {
     
     try {
         const result = await apiManager.request('uploadmusic', {
-            user_id: state.currentUser.id,
+            user_id: state.currentUser.id.toString(), // ← IMPORTANTE: converter para string
             titulo: title,
             artista: state.currentUser.nome,
             genero: genre,
@@ -2549,6 +2555,8 @@ async function registerMusic() {
             valor_acao: price,
             percentual_disponivel: percent
         });
+        
+        console.log('✅ Resposta do servidor:', result);
         
         if (result.success) {
             showToast('Música cadastrada com sucesso!', 'success');
@@ -2564,7 +2572,7 @@ async function registerMusic() {
         }
     } catch (error) {
         console.error('Erro ao cadastrar música:', error);
-        showToast('Erro de conexão ao cadastrar música', 'error');
+        showToast('Erro de conexão: ' + error.message, 'error');
     } finally {
         registerBtn.disabled = false;
         registerBtn.innerHTML = '<i class="bi bi-save me-2"></i> Cadastrar Música';
