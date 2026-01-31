@@ -1030,7 +1030,7 @@
                 <div id="youtubePlayer"></div>
             </div>
             <div class="player-info" onclick="togglePlayerExpansion()">
-                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+" class="player-album-art" alt="Album Art" id="playerAlbumArt">
+                <img src="https://via.placeholder.com/60x60/111418/00ff88?text=MIV" class="player-album-art" alt="Album Art" id="playerAlbumArt">
                 <div class="player-text">
                     <div class="player-title" id="playerTitle">Título da Música</div>
                     <div class="player-artist" id="playerArtist">Artista</div>
@@ -1246,7 +1246,7 @@
 <script>
 // ========== CONFIGURAÇÃO AVANÇADA ==========
 const CONFIG = {
-    API_URL: 'https://script.google.com/macros/s/AKfycbwR5NJB55iTFPditSb9h1lhZuw7lYSk5LmDWFrmmQ-ml5tQE_YjOmWm_bSQr6XastI/exec',
+    API_URL: 'https://script.google.com/macros/s/AKfycbwPHARLeQ-6j6D0dCnOgFQPyA_pzNsvqcJpU7OeTmYWTk3GN01KaT9BdGdpKtuTVXI/exec',
     LOCAL_STORAGE_KEY: 'selo_miv_data',
     VERSION: '2.0.0',
     AUTO_REFRESH_INTERVAL: 60000, // 1 minuto
@@ -1902,10 +1902,10 @@ function renderMarketplace() {
         return `
             <div class="music-card" onclick="playTrack(${index})">
                 <div class="position-relative">
-                    <img src="${track.link_capa || track.LINK_CAPA || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'}" 
+                    <img src="${track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV'}" 
                          class="music-cover" 
                          alt="${track.titulo || track.TITULO || 'Música'}"
-                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'">
+                         onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
                     ${percentSold >= 90 ? `
                         <div class="position-absolute top-0 end-0 m-2">
                             <span class="badge ${badgeClass}">Esgotando</span>
@@ -2200,10 +2200,10 @@ function renderPortfolio() {
         return `
             <div class="music-card mb-3">
                 <div class="d-flex">
-                    <img src="${music.link_capa || music.LINK_CAPA || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'}" 
+                    <img src="${music.link_capa || music.LINK_CAPA || 'https://via.placeholder.com/80x80/111418/00ff88?text=MIV'}" 
                          style="width: 80px; height: 80px; object-fit: cover; border-radius: 0.75rem; margin-right: 1rem;" 
                          alt="${music.titulo || music.TITULO || 'Música'}"
-                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'">
+                         onerror="this.src='https://via.placeholder.com/80x80/111418/00ff88?text=MIV'">
                     <div style="flex: 1;">
                         <h6 class="music-title">${music.titulo || music.TITULO || 'Música não encontrada'}</h6>
                         <p class="music-artist">${music.artista || music.ARTISTA || 'Artista Desconhecido'}</p>
@@ -2415,10 +2415,10 @@ function renderArtistMusic(musics) {
         
         return `
             <div class="music-card">
-                <img src="${music.link_capa || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'}" 
+                <img src="${music.link_capa || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV'}" 
                      class="music-cover" 
                      alt="${music.titulo}"
-                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+'">
+                     onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
                 <div class="music-info">
                     <h6 class="music-title">${music.titulo}</h6>
                     <p class="music-artist">${state.currentUser.nome}</p>
@@ -2830,10 +2830,10 @@ function playTrack(index) {
     document.getElementById('playerPrice').textContent = `${formatCurrency(track.valor_acao || track.VALOR_ACAO || 0)} por ação`;
     
     const playerAlbumArt = document.getElementById('playerAlbumArt');
-    const coverUrl = track.link_capa || track.LINK_CAPA || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+';
+    const coverUrl = track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
     playerAlbumArt.src = coverUrl;
     playerAlbumArt.onerror = function() {
-        this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxMTE0MTgiLz48cGF0aCBkPSJNNzUsMTUwIEE3NSw3NSAwIDEsMSAyMjUsMTUwIEE3NSw3NSAwIDEsMSA3NSwxNTAgWiIgZmlsbD0iIzAwZmY4OCIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEyNSwxMDggTDE3NSwxNTAgTDEyNSwxOTIgWiIgZmlsbD0iIzAwZmY4OCIvPjx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDBmZjg4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5NSVY8L3RleHQ+PC9zdmc+';
+        this.src = 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
     };
     
     // Mostra o player
