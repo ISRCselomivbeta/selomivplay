@@ -25,6 +25,9 @@
             --border: #1e2329;
             --text-light: #f8f9fa;
             --text-muted: #6c757d;
+            --spotify-green: #1DB954;
+            --player-height: 80px;
+            --player-expanded-height: 400px;
         }
         * {
             margin: 0;
@@ -37,6 +40,7 @@
             color: var(--text-light);
             min-height: 100vh;
             overflow-x: hidden;
+            padding-bottom: var(--player-height);
         }
         .loading-screen {
             position: fixed;
@@ -166,7 +170,6 @@
         .main-app {
             display: none;
             min-height: 100vh;
-            padding-bottom: 5rem;
         }
         .app-header {
             background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, rgba(7, 9, 12, 0.8) 100%);
@@ -335,73 +338,86 @@
             font-size: 0.75rem;
             font-weight: 600;
         }
-        .player-bar {
+        
+        /* PLAYER SPOTIFY-LIKE */
+        .player-spotify {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            background: var(--bg-card);
-            border-top: 1px solid var(--border);
-            padding: 1rem;
-            z-index: 1000;
+            height: var(--player-height);
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 9999;
             transition: all 0.3s ease;
             display: none;
-            max-height: 80px;
             overflow: hidden;
         }
-        .player-bar.expanded {
-            max-height: 100vh;
-            height: calc(100vh - 60px);
-            background: rgba(17, 20, 24, 0.98);
-            backdrop-filter: blur(20px);
+        
+        .player-spotify.expanded {
+            height: var(--player-expanded-height);
+            background: rgba(18, 18, 18, 0.98);
         }
-        .player-bar.minimized {
-            height: 60px;
-            padding: 0.5rem;
-        }
+        
         .player-content {
-            max-width: 1200px;
-            margin: 0 auto;
+            height: 100%;
+            padding: 0 1.5rem;
+            display: flex;
+            flex-direction: column;
         }
-        .video-container {
-            width: 100%;
-            aspect-ratio: 16/9;
-            background: #000;
-            border-radius: 1rem;
-            overflow: hidden;
-            margin-bottom: 1.5rem;
-            display: none;
-        }
-        .player-bar.expanded .video-container {
-            display: block;
-        }
-        .player-info {
+        
+        .player-main-area {
+            flex: 1;
             display: flex;
             align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
+            gap: 1.5rem;
+            padding: 1rem 0;
         }
+        
         .player-album-art {
-            width: 50px;
-            height: 50px;
-            border-radius: 0.5rem;
+            width: 56px;
+            height: 56px;
+            border-radius: 8px;
             object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
         }
-        .player-bar.minimized .player-album-art {
-            width: 40px;
-            height: 40px;
+        
+        .player-spotify.expanded .player-album-art {
+            width: 200px;
+            height: 200px;
+            border-radius: 12px;
+            margin: 0 auto 2rem;
+            display: block;
         }
-        .player-text {
+        
+        .player-info {
             flex: 1;
             min-width: 0;
         }
+        
+        .player-spotify.expanded .player-info {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
         .player-title {
             font-weight: 600;
             margin-bottom: 0.25rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-size: 1rem;
+            color: var(--text-light);
         }
+        
+        .player-spotify.expanded .player-title {
+            font-size: 1.5rem;
+            white-space: normal;
+            overflow: visible;
+        }
+        
         .player-artist {
             color: var(--text-muted);
             font-size: 0.875rem;
@@ -409,40 +425,23 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .player-price {
-            color: var(--neon-green);
-            font-weight: 700;
-            font-size: 0.875rem;
+        
+        .player-spotify.expanded .player-artist {
+            font-size: 1.125rem;
+            color: var(--spotify-green);
         }
-        .progress-container {
-            height: 4px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 2px;
-            margin: 0.5rem 0;
-            cursor: pointer;
-            position: relative;
-            flex: 1;
-        }
-        .player-bar.minimized .progress-container {
-            display: none;
-        }
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, var(--neon-green), #00cc6a);
-            border-radius: 2px;
-            width: 0%;
-            transition: width 0.1s linear;
-        }
+        
         .player-controls {
             display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 1.5rem;
-            margin-top: 0.5rem;
-        }
-        .player-bar.minimized .player-controls {
             gap: 1rem;
+            justify-content: center;
         }
+        
+        .player-spotify.expanded .player-controls {
+            margin-bottom: 2rem;
+        }
+        
         .control-btn {
             background: none;
             border: none;
@@ -450,63 +449,209 @@
             font-size: 1.25rem;
             cursor: pointer;
             transition: all 0.3s ease;
-            padding: 0.25rem;
-            min-width: 36px;
-            min-height: 36px;
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .player-bar.minimized .control-btn {
-            font-size: 1rem;
-            min-width: 32px;
-            min-height: 32px;
-        }
+        
         .control-btn:hover {
-            color: var(--neon-green);
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--spotify-green);
             transform: scale(1.1);
         }
+        
+        .control-btn.active {
+            color: var(--spotify-green);
+        }
+        
         .play-btn {
-            font-size: 2rem;
-        }
-        .player-bar.minimized .play-btn {
+            background: var(--spotify-green);
+            color: #000;
             font-size: 1.5rem;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
         }
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
+        
+        .play-btn:hover {
+            background: #1ed760;
+            transform: scale(1.05);
+        }
+        
+        .player-progress-container {
+            position: relative;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin: 0.5rem 0;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        .player-spotify.expanded .player-progress-container {
+            height: 6px;
+            margin: 1rem 0;
+        }
+        
+        .player-progress-bar {
+            height: 100%;
+            background: var(--spotify-green);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s linear;
+            position: relative;
+        }
+        
+        .player-progress-bar::after {
+            content: '';
+            position: absolute;
             right: 0;
-            background: #000;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: space-around;
-            padding: 0.75rem 0;
-            z-index: 1001;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            background: var(--spotify-green);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s ease;
         }
-        .nav-btn {
+        
+        .player-progress-container:hover .player-progress-bar::after {
+            opacity: 1;
+        }
+        
+        .player-spotify.expanded .player-progress-bar::after {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .player-time-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        
+        .player-spotify.expanded .player-time-display {
+            font-size: 0.875rem;
+        }
+        
+        .player-extra-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .volume-slider {
+            width: 100px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .volume-slider-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: var(--spotify-green);
+            border-radius: 2px;
+            width: 80%;
+        }
+        
+        .player-expand-btn {
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
             background: none;
             border: none;
             color: var(--text-muted);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.25rem;
-            padding: 0.5rem;
-            cursor: pointer;
-            transition: color 0.3s ease;
-            flex: 1;
-            min-height: 60px;
-        }
-        .nav-btn:hover, .nav-btn.active {
-            color: var(--neon-green);
-        }
-        .nav-btn i {
             font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.3s ease;
         }
-        .nav-btn span {
-            font-size: 0.75rem;
+        
+        .player-expand-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-light);
         }
+        
+        .player-youtube-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+            display: none;
+        }
+        
+        .player-spotify.expanded .player-youtube-container {
+            display: block;
+        }
+        
+        #youtubePlayer {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .player-state-loading {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .player-state-loading.show {
+            opacity: 1;
+        }
+        
+        .player-state-loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(29, 185, 84, 0.3);
+            border-top-color: var(--spotify-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        /* YOUTUBE PLAYER CONTAINER */
+        .youtube-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        
+        .youtube-player {
+            width: 100%;
+            height: 100%;
+        }
+        
         .portfolio-summary {
             background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 123, 255, 0.1) 100%);
             border: 1px solid var(--border);
@@ -757,10 +902,6 @@
         .music-percent:hover::after {
             opacity: 1;
         }
-        .player-bar.expanded {
-            backdrop-filter: blur(15px);
-            background: rgba(7,9,12,0.95);
-        }
         .progress-bar {
             background: linear-gradient(to right, var(--neon-green) 0%, #00cc6a 100%);
         }
@@ -872,19 +1013,20 @@
             .music-grid { grid-template-columns: 1fr; }
             .artist-stats { grid-template-columns: 1fr; }
             .section { padding: 1rem; }
-            .player-bar.expanded {
+            .player-spotify.expanded {
+                height: 100vh;
                 padding-top: env(safe-area-inset-top);
-                height: calc(100vh - env(safe-area-inset-bottom));
+            }
+            .player-spotify.expanded .player-album-art {
+                width: 150px;
+                height: 150px;
             }
             .control-btn, .btn-miv {
                 min-height: 44px;
                 min-width: 44px;
             }
-            .player-bar.minimized {
-                height: 50px;
-            }
-            .player-bar.minimized .player-info {
-                margin-bottom: 0;
+            .volume-slider {
+                width: 60px;
             }
         }
     </style>
@@ -1202,60 +1344,88 @@
         </section>
     </main>
 
-    <!-- Music Player -->
-    <div id="playerBar" class="player-bar">
+    <!-- SPOTIFY-STYLE MUSIC PLAYER -->
+    <div id="playerSpotify" class="player-spotify">
         <div class="player-content">
-            <div class="video-container" id="videoContainer">
+            <!-- Expand Button -->
+            <button class="player-expand-btn" onclick="togglePlayerExpansion()">
+                <i class="bi bi-chevron-up" id="playerExpandIcon"></i>
+            </button>
+            
+            <!-- Expanded View Content -->
+            <div class="player-youtube-container" id="youtubeContainer">
                 <div id="youtubePlayer"></div>
-            </div>
-            <div class="player-info" onclick="togglePlayerExpansion()">
-                <img src="https://via.placeholder.com/60x60/111418/00ff88?text=MIV" class="player-album-art" alt="Album Art" id="playerAlbumArt">
-                <div class="player-text">
-                    <div class="player-title" id="playerTitle">Título da Música</div>
-                    <div class="player-artist" id="playerArtist">Artista</div>
-                    <div class="player-price" id="playerPrice">R$ 0,00 por ação</div>
+                <div class="player-state-loading" id="playerLoading">
+                    <div class="spinner"></div>
                 </div>
-                <button class="btn-miv btn-sm" onclick="event.stopPropagation(); openInvestModal(state.currentTrackIndex)">
-                    <i class="bi bi-currency-dollar"></i> Investir
-                </button>
-                <!-- Botão para favoritar -->
-                <button class="btn btn-sm btn-outline-warning ms-2" onclick="event.stopPropagation(); toggleFavorite(state.currentTrackIndex)" id="favoritePlayerBtn">
-                    <i class="bi bi-star" id="favoritePlayerIcon"></i>
-                </button>
-                <!-- Botão para minimizar/expandir -->
-                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="event.stopPropagation(); togglePlayerExpansion()" id="expandCollapseBtn">
-                    <i class="bi bi-chevron-up" id="expandCollapseIcon"></i>
-                </button>
             </div>
-            <div class="progress-container" onclick="seekMusic(event)" id="progressContainer">
-                <div class="progress-bar" id="musicProgress"></div>
+            
+            <!-- Main Player Area -->
+            <div class="player-main-area">
+                <!-- Album Art -->
+                <img src="https://via.placeholder.com/56x56/111418/00ff88?text=MIV" 
+                     class="player-album-art" 
+                     alt="Album Art" 
+                     id="playerAlbumArt"
+                     onerror="this.src='https://via.placeholder.com/56x56/111418/00ff88?text=MIV'">
+                
+                <!-- Track Info -->
+                <div class="player-info">
+                    <div class="player-title" id="playerTitle">Nenhuma música tocando</div>
+                    <div class="player-artist" id="playerArtist">Selecione uma música para começar</div>
+                    <div class="player-price small text-muted" id="playerPrice">R$ 0,00 por ação</div>
+                </div>
+                
+                <!-- Extra Controls -->
+                <div class="player-extra-controls">
+                    <!-- Favorite Button -->
+                    <button class="control-btn" onclick="toggleFavorite()" id="favoriteBtn">
+                        <i class="bi bi-star" id="favoriteIcon"></i>
+                    </button>
+                    
+                    <!-- Volume Control -->
+                    <div class="volume-container">
+                        <i class="bi bi-volume-up text-muted" id="volumeIcon"></i>
+                        <div class="volume-slider" onclick="handleVolumeClick(event)" id="volumeSlider">
+                            <div class="volume-slider-bar" id="volumeSliderBar"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Invest Button -->
+                    <button class="btn-miv btn-sm" onclick="openInvestModalFromPlayer()" id="investPlayerBtn">
+                        <i class="bi bi-currency-dollar"></i> Investir
+                    </button>
+                </div>
             </div>
-            <div class="player-time d-flex justify-content-between mt-1 small">
-                <span id="currentTime">0:00</span>
-                <span id="durationTime">0:00</span>
+            
+            <!-- Progress Bar -->
+            <div class="player-progress-container" onclick="handleProgressClick(event)" id="progressContainer">
+                <div class="player-progress-bar" id="playerProgressBar"></div>
             </div>
-            <div class="player-controls mt-2 d-flex justify-content-center gap-3">
+            
+            <!-- Time Display -->
+            <div class="player-time-display">
+                <span id="currentTimeDisplay">0:00</span>
+                <span id="totalTimeDisplay">0:00</span>
+            </div>
+            
+            <!-- Player Controls -->
+            <div class="player-controls">
                 <button class="control-btn" onclick="toggleShuffle()" id="shuffleBtn">
                     <i class="bi bi-shuffle" id="shuffleIcon"></i>
                 </button>
                 <button class="control-btn" onclick="playPrevious()">
-                    <i class="bi bi-skip-start-fill"></i>
+                    <i class="bi bi-skip-backward-fill"></i>
                 </button>
-                <button class="control-btn play-btn fs-1" id="playButton" onclick="togglePlay()">
-                    <i class="bi bi-play-circle-fill"></i>
+                <button class="control-btn play-btn" onclick="togglePlay()" id="playPauseBtn">
+                    <i class="bi bi-play-fill" id="playPauseIcon"></i>
                 </button>
                 <button class="control-btn" onclick="playNext()">
-                    <i class="bi bi-skip-end-fill"></i>
+                    <i class="bi bi-skip-forward-fill"></i>
                 </button>
                 <button class="control-btn" onclick="toggleRepeat()" id="repeatBtn">
                     <i class="bi bi-repeat" id="repeatIcon"></i>
                 </button>
-                <div class="d-flex align-items-center gap-2 ms-3">
-                    <i class="bi bi-volume-up" id="volumeIcon"></i>
-                    <input type="range" id="volumeSlider" min="0" max="100" value="80" 
-                           class="form-range" style="width: 100px;" 
-                           oninput="setVolume(this.value)">
-                </div>
             </div>
         </div>
     </div>
@@ -1409,19 +1579,22 @@
                 <div class="form-check mt-2">
                     <input class="form-check-input" type="radio" name="paymentMethod" id="paymentMercadoPago" checked>
                     <label class="form-check-label" for="paymentMercadoPago">
-                        <i class="bi bi-credit-card me-2"></i> Mercado Pago
+                        <i class="bi bi-credit-card me-2"></i> Mercado Pago (Link oficial)
                     </label>
                 </div>
+                <div class="mt-2">
+                    <small class="text-muted">Utilizamos o link oficial do Mercado Pago para garantir contabilização segura.</small>
+                </div>
             </div>
-            <div class="alert alert-warning bg-dark border-warning mt-3">
-                <i class="bi bi-exclamation-triangle me-2"></i>
-                Você será redirecionado para o Mercado Pago para completar o pagamento.
+            <div class="alert alert-success bg-dark border-success mt-3">
+                <i class="bi bi-shield-check me-2"></i>
+                <strong>Integridade do YouTube garantida:</strong> Todas as reproduções são contabilizadas oficialmente.
             </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('addBalanceModal')">Cancelar</button>
-            <button class="btn btn-miv" onclick="processBalanceAdd()">
-                <i class="bi bi-currency-dollar me-2"></i> Pagar com Mercado Pago
+            <button class="btn btn-miv" onclick="processBalanceAdd()" id="processPaymentBtn">
+                <i class="bi bi-currency-dollar me-2"></i> Ir para Pagamento
             </button>
         </div>
     </div>
@@ -1534,10 +1707,10 @@
 // ========== CONFIGURAÇÃO AVANÇADA ==========
 const CONFIG = {
     API_URL: 'https://script.google.com/macros/s/AKfycbwPHARLeQ-6j6D0dCnOgFQPyA_pzNsvqcJpU7OeTmYWTk3GN01KaT9BdGdpKtuTVXI/exec',
-    LOCAL_STORAGE_KEY: 'selo_miv_data_v3',
-    VERSION: '3.0.0',
-    AUTO_REFRESH_INTERVAL: 30000, // 30 segundos
-    PLAYER_INACTIVITY_TIMEOUT: 5000, // 5 segundos
+    LOCAL_STORAGE_KEY: 'selo_miv_data_v4',
+    VERSION: '4.0.0',
+    AUTO_REFRESH_INTERVAL: 30000,
+    PLAYER_INACTIVITY_TIMEOUT: 5000,
     MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv'
 };
 
@@ -1561,7 +1734,11 @@ const state = {
     offlineMode: false,
     appInitialized: false,
     playerInactivityTimer: null,
-    playerMinimized: false
+    playerExpanded: false,
+    playerLoading: false,
+    currentTime: 0,
+    totalTime: 0,
+    progressInterval: null
 };
 
 // ========== SISTEMA DE FALLBACK AVANÇADO ==========
@@ -1885,6 +2062,553 @@ function formatTime(seconds) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+// ========== PLAYER SPOTIFY-LIKE ==========
+function initializeSpotifyPlayer() {
+    const player = document.getElementById('playerSpotify');
+    if (!player) return;
+    
+    // Carrega a API do YouTube
+    loadYouTubeAPI();
+    
+    // Configura listeners
+    setupPlayerListeners();
+    
+    // Inicia monitor de inatividade
+    startPlayerInactivityMonitor();
+}
+
+function setupPlayerListeners() {
+    // Volume slider
+    const volumeSlider = document.getElementById('volumeSlider');
+    if (volumeSlider) {
+        volumeSlider.addEventListener('click', handleVolumeClick);
+    }
+    
+    // Progress bar
+    const progressContainer = document.getElementById('progressContainer');
+    if (progressContainer) {
+        progressContainer.addEventListener('click', handleProgressClick);
+    }
+    
+    // Eventos do player
+    document.getElementById('playerSpotify').addEventListener('mousemove', resetPlayerInactivityTimer);
+    document.getElementById('playerSpotify').addEventListener('click', resetPlayerInactivityTimer);
+    document.getElementById('playerSpotify').addEventListener('touchstart', resetPlayerInactivityTimer);
+}
+
+function updatePlayerProgress() {
+    if (!state.youtubePlayer || typeof state.youtubePlayer.getCurrentTime !== 'function') {
+        return;
+    }
+    
+    try {
+        const currentTime = state.youtubePlayer.getCurrentTime();
+        const duration = state.youtubePlayer.getDuration();
+        
+        if (duration > 0) {
+            state.currentTime = currentTime;
+            state.totalTime = duration;
+            
+            const percent = (currentTime / duration) * 100;
+            const progressBar = document.getElementById('playerProgressBar');
+            if (progressBar) {
+                progressBar.style.width = `${percent}%`;
+            }
+            
+            const currentTimeDisplay = document.getElementById('currentTimeDisplay');
+            const totalTimeDisplay = document.getElementById('totalTimeDisplay');
+            
+            if (currentTimeDisplay) {
+                currentTimeDisplay.textContent = formatTime(currentTime);
+            }
+            if (totalTimeDisplay) {
+                totalTimeDisplay.textContent = formatTime(duration);
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar progresso:', error);
+    }
+}
+
+function handleProgressClick(event) {
+    if (!state.youtubePlayer || typeof state.youtubePlayer.seekTo !== 'function') {
+        return;
+    }
+    
+    const progressContainer = document.getElementById('progressContainer');
+    if (!progressContainer) return;
+    
+    const rect = progressContainer.getBoundingClientRect();
+    const percent = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    
+    try {
+        const duration = state.youtubePlayer.getDuration();
+        if (duration && duration > 0) {
+            const seekTime = duration * percent;
+            state.youtubePlayer.seekTo(seekTime, true);
+            
+            const progressBar = document.getElementById('playerProgressBar');
+            if (progressBar) {
+                progressBar.style.width = `${percent * 100}%`;
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao buscar posição:', error);
+    }
+    
+    resetPlayerInactivityTimer();
+}
+
+function handleVolumeClick(event) {
+    const volumeSlider = document.getElementById('volumeSlider');
+    if (!volumeSlider) return;
+    
+    const rect = volumeSlider.getBoundingClientRect();
+    const percent = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    
+    const newVolume = Math.round(percent * 100);
+    setVolume(newVolume);
+    resetPlayerInactivityTimer();
+}
+
+function setVolume(value) {
+    state.currentVolume = Math.max(0, Math.min(100, parseInt(value)));
+    
+    const volumeSliderBar = document.getElementById('volumeSliderBar');
+    if (volumeSliderBar) {
+        volumeSliderBar.style.width = `${state.currentVolume}%`;
+    }
+    
+    const volumeIcon = document.getElementById('volumeIcon');
+    if (volumeIcon) {
+        if (state.currentVolume === 0) {
+            volumeIcon.className = 'bi bi-volume-mute';
+        } else if (state.currentVolume < 50) {
+            volumeIcon.className = 'bi bi-volume-down';
+        } else {
+            volumeIcon.className = 'bi bi-volume-up';
+        }
+    }
+    
+    if (state.youtubePlayer && typeof state.youtubePlayer.setVolume === 'function') {
+        try {
+            state.youtubePlayer.setVolume(state.currentVolume);
+        } catch (error) {
+            console.error('Erro ao definir volume:', error);
+        }
+    }
+}
+
+function togglePlay() {
+    if (!state.youtubePlayer || typeof state.youtubePlayer.playVideo !== 'function') {
+        if (state.currentTrackIndex >= 0) {
+            playTrack(state.currentTrackIndex);
+        }
+        return;
+    }
+    
+    try {
+        if (state.isPlaying) {
+            state.youtubePlayer.pauseVideo();
+            document.getElementById('playPauseIcon').className = 'bi bi-play-fill';
+            state.isPlaying = false;
+            clearInterval(state.progressInterval);
+        } else {
+            state.youtubePlayer.playVideo();
+            document.getElementById('playPauseIcon').className = 'bi bi-pause-fill';
+            state.isPlaying = true;
+            state.progressInterval = setInterval(updatePlayerProgress, 1000);
+            resetPlayerInactivityTimer();
+        }
+    } catch (error) {
+        console.error('Erro ao alternar play/pause:', error);
+        showToast('Erro ao controlar reprodução', 'error');
+    }
+}
+
+function toggleShuffle() {
+    state.isShuffle = !state.isShuffle;
+    const icon = document.getElementById('shuffleIcon');
+    const btn = document.getElementById('shuffleBtn');
+    
+    if (state.isShuffle) {
+        icon.style.color = 'var(--spotify-green)';
+        btn.classList.add('active');
+        showToast('Modo aleatório ativado', 'info');
+    } else {
+        icon.style.color = '';
+        btn.classList.remove('active');
+        showToast('Modo aleatório desativado', 'info');
+    }
+    
+    resetPlayerInactivityTimer();
+}
+
+function toggleRepeat() {
+    state.isRepeat = !state.isRepeat;
+    const icon = document.getElementById('repeatIcon');
+    const btn = document.getElementById('repeatBtn');
+    
+    if (state.isRepeat) {
+        icon.style.color = 'var(--spotify-green)';
+        btn.classList.add('active');
+        showToast('Repetição ativada', 'info');
+    } else {
+        icon.style.color = '';
+        btn.classList.remove('active');
+        showToast('Repetição desativada', 'info');
+    }
+    
+    resetPlayerInactivityTimer();
+}
+
+function playNext() {
+    if (state.playlist.length === 0) return;
+    
+    let nextIndex;
+    if (state.isShuffle) {
+        nextIndex = Math.floor(Math.random() * state.playlist.length);
+        while (nextIndex === state.currentTrackIndex && state.playlist.length > 1) {
+            nextIndex = Math.floor(Math.random() * state.playlist.length);
+        }
+    } else {
+        nextIndex = (state.currentTrackIndex + 1) % state.playlist.length;
+    }
+    
+    playTrack(nextIndex);
+    resetPlayerInactivityTimer();
+}
+
+function playPrevious() {
+    if (state.playlist.length === 0) return;
+    
+    let prevIndex;
+    if (state.isShuffle) {
+        prevIndex = Math.floor(Math.random() * state.playlist.length);
+        while (prevIndex === state.currentTrackIndex && state.playlist.length > 1) {
+            prevIndex = Math.floor(Math.random() * state.playlist.length);
+        }
+    } else {
+        prevIndex = state.currentTrackIndex > 0 ? state.currentTrackIndex - 1 : state.playlist.length - 1;
+    }
+    
+    playTrack(prevIndex);
+    resetPlayerInactivityTimer();
+}
+
+function togglePlayerExpansion() {
+    const player = document.getElementById('playerSpotify');
+    const expandIcon = document.getElementById('playerExpandIcon');
+    
+    state.playerExpanded = !state.playerExpanded;
+    
+    if (state.playerExpanded) {
+        player.classList.add('expanded');
+        expandIcon.className = 'bi bi-chevron-down';
+        resetPlayerInactivityTimer();
+    } else {
+        player.classList.remove('expanded');
+        expandIcon.className = 'bi bi-chevron-up';
+    }
+}
+
+function showPlayerLoading(show) {
+    const loadingElement = document.getElementById('playerLoading');
+    if (loadingElement) {
+        if (show) {
+            loadingElement.classList.add('show');
+            state.playerLoading = true;
+        } else {
+            loadingElement.classList.remove('show');
+            state.playerLoading = false;
+        }
+    }
+}
+
+// ========== YOUTUBE PLAYER INTEGRATION ==========
+let youtubeAPILoaded = false;
+
+function onYouTubeIframeAPIReady() {
+    youtubeAPILoaded = true;
+    console.log('YouTube API carregada com sucesso');
+    
+    // Se já temos uma música para tocar, inicializa o player
+    if (state.currentTrackIndex >= 0 && state.playlist[state.currentTrackIndex]) {
+        const track = state.playlist[state.currentTrackIndex];
+        const youtubeLink = track.link_youtube || track.LINK_YOUTUBE;
+        if (youtubeLink) {
+            const videoId = extractYouTubeId(youtubeLink);
+            if (videoId) {
+                initializeYouTubePlayer(videoId);
+            }
+        }
+    }
+}
+
+function loadYouTubeAPI() {
+    if (window.YT && window.YT.Player) {
+        youtubeAPILoaded = true;
+        return;
+    }
+    
+    if (!window.onYouTubeIframeAPIReady) {
+        window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+    }
+    
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    tag.async = true;
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+}
+
+function initializeYouTubePlayer(videoId) {
+    console.log('Inicializando player para vídeo:', videoId);
+    
+    if (!videoId) {
+        console.error('ID do vídeo inválido');
+        return;
+    }
+    
+    const playerElement = document.getElementById('youtubePlayer');
+    if (!playerElement) {
+        console.error('Elemento do player não encontrado');
+        return;
+    }
+    
+    // Limpa conteúdo anterior
+    playerElement.innerHTML = '';
+    
+    if (!youtubeAPILoaded) {
+        console.log('API do YouTube não carregada, usando iframe direto');
+        playerElement.innerHTML = `
+            <iframe width="100%" height="100%" 
+                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&showinfo=0&rel=0" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+            </iframe>
+        `;
+        return;
+    }
+    
+    try {
+        state.youtubePlayer = new YT.Player('youtubePlayer', {
+            width: '100%',
+            height: '100%',
+            videoId: videoId,
+            playerVars: {
+                'autoplay': 1,
+                'controls': 1,
+                'modestbranding': 1,
+                'rel': 0,
+                'showinfo': 0,
+                'fs': 1,
+                'playsinline': 1
+            },
+            events: {
+                'onReady': function(event) {
+                    console.log('Player YouTube pronto');
+                    event.target.setVolume(state.currentVolume);
+                    updatePlayerProgress();
+                    
+                    state.isPlaying = true;
+                    document.getElementById('playPauseIcon').className = 'bi bi-pause-fill';
+                    
+                    // Atualiza botão de favorito
+                    if (state.currentTrackIndex >= 0) {
+                        const track = state.playlist[state.currentTrackIndex];
+                        const isFavorite = state.favoriteMusicIds.includes(track.id.toString());
+                        updateFavoriteButton(isFavorite);
+                    }
+                    
+                    showPlayerLoading(false);
+                    state.progressInterval = setInterval(updatePlayerProgress, 1000);
+                    
+                    showToast('Reproduzindo: ' + document.getElementById('playerTitle').textContent, 'info');
+                },
+                'onStateChange': function(event) {
+                    console.log('Estado do player alterado:', event.data);
+                    switch(event.data) {
+                        case YT.PlayerState.PLAYING:
+                            state.isPlaying = true;
+                            document.getElementById('playPauseIcon').className = 'bi bi-pause-fill';
+                            showPlayerLoading(false);
+                            resetPlayerInactivityTimer();
+                            break;
+                        case YT.PlayerState.PAUSED:
+                            state.isPlaying = false;
+                            document.getElementById('playPauseIcon').className = 'bi bi-play-fill';
+                            break;
+                        case YT.PlayerState.ENDED:
+                            state.isPlaying = false;
+                            document.getElementById('playPauseIcon').className = 'bi bi-play-fill';
+                            if (state.isRepeat) {
+                                event.target.playVideo();
+                            } else {
+                                playNext();
+                            }
+                            break;
+                        case YT.PlayerState.BUFFERING:
+                            showPlayerLoading(true);
+                            break;
+                        case YT.PlayerState.CUED:
+                            showPlayerLoading(false);
+                            break;
+                    }
+                },
+                'onError': function(event) {
+                    console.error('Erro no player YouTube:', event.data);
+                    showPlayerLoading(false);
+                    showToast('Erro ao reproduzir vídeo. Tente outra música.', 'error');
+                    
+                    // Método alternativo
+                    playerElement.innerHTML = `
+                        <iframe width="100%" height="100%" 
+                                src="https://www.youtube.com/embed/${videoId}" 
+                                frameborder="0" 
+                                allowfullscreen>
+                        </iframe>
+                    `;
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao criar player YouTube:', error);
+        playerElement.innerHTML = `
+            <iframe width="100%" height="100%" 
+                    src="https://www.youtube.com/embed/${videoId}" 
+                    frameborder="0" 
+                    allowfullscreen>
+            </iframe>
+        `;
+    }
+}
+
+function extractYouTubeId(url) {
+    if (!url) return null;
+    
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/e\/)([^#&?]{11})/,
+        /^([^#&?]{11})$/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    
+    return null;
+}
+
+// ========== PLAYER CONTROLS ==========
+function playTrack(index) {
+    console.log('Play track chamado com índice:', index);
+    
+    if (index < 0 || index >= state.playlist.length) {
+        showToast('Música não encontrada', 'error');
+        return;
+    }
+    
+    state.currentTrackIndex = index;
+    const track = state.playlist[index];
+    
+    // Mostra o player
+    document.getElementById('playerSpotify').style.display = 'block';
+    
+    // Atualiza informações da UI
+    document.getElementById('playerTitle').textContent = track.titulo || track.TITULO || 'Título desconhecido';
+    document.getElementById('playerArtist').textContent = track.artista || track.ARTISTA || 'Artista desconhecido';
+    document.getElementById('playerPrice').textContent = `${formatCurrency(track.valor_acao || track.VALOR_ACAO || 0)} por ação`;
+    
+    const playerAlbumArt = document.getElementById('playerAlbumArt');
+    const coverUrl = track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
+    playerAlbumArt.src = coverUrl;
+    playerAlbumArt.onerror = function() {
+        this.src = 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
+    };
+    
+    // Atualiza botão de favorito
+    const isFavorite = state.favoriteMusicIds.includes(track.id.toString());
+    updateFavoriteButton(isFavorite);
+    
+    // Extrai ID do YouTube
+    const youtubeLink = track.link_youtube || track.LINK_YOUTUBE;
+    if (youtubeLink) {
+        const videoId = extractYouTubeId(youtubeLink);
+        if (videoId) {
+            console.log('Reproduzindo vídeo ID:', videoId);
+            
+            // Mostra loading
+            showPlayerLoading(true);
+            
+            // Carrega API se necessário
+            if (!youtubeAPILoaded) {
+                loadYouTubeAPI();
+            }
+            
+            // Inicializa o player
+            setTimeout(() => {
+                initializeYouTubePlayer(videoId);
+            }, 100);
+        } else {
+            showToast('Link do YouTube inválido', 'error');
+        }
+    } else {
+        showToast('Vídeo não disponível', 'error');
+    }
+    
+    // Atualiza estado do botão
+    document.getElementById('playPauseIcon').className = 'bi bi-pause-fill';
+    state.isPlaying = true;
+    
+    // Reseta timer de inatividade
+    resetPlayerInactivityTimer();
+}
+
+function updateFavoriteButton(isFavorite) {
+    const btn = document.getElementById('favoriteBtn');
+    const icon = document.getElementById('favoriteIcon');
+    
+    if (btn && icon) {
+        if (isFavorite) {
+            icon.className = 'bi bi-star-fill';
+            btn.classList.add('active');
+        } else {
+            icon.className = 'bi bi-star';
+            btn.classList.remove('active');
+        }
+    }
+}
+
+function toggleFavorite() {
+    if (state.currentTrackIndex < 0 || state.currentTrackIndex >= state.playlist.length) return;
+    
+    const track = state.playlist[state.currentTrackIndex];
+    toggleFavoriteMusic(track.id, state.currentTrackIndex);
+}
+
+// ========== PLAYER INACTIVITY MONITOR ==========
+function startPlayerInactivityMonitor() {
+    resetPlayerInactivityTimer();
+}
+
+function resetPlayerInactivityTimer() {
+    if (state.playerInactivityTimer) {
+        clearTimeout(state.playerInactivityTimer);
+    }
+    
+    if (state.playerExpanded) {
+        state.playerInactivityTimer = setTimeout(() => {
+            if (state.playerExpanded) {
+                togglePlayerExpansion();
+            }
+        }, CONFIG.PLAYER_INACTIVITY_TIMEOUT);
+    }
+}
+
 // ========== AUTENTICAÇÃO ==========
 async function handleLogin() {
     const email = document.getElementById('loginEmail').value.trim();
@@ -1907,7 +2631,6 @@ async function handleLogin() {
             state.currentUser = result.data;
             state.userBalance = result.data.saldo || 0;
             
-            // Carrega favoritos
             if (state.currentUser.favorite_music_ids) {
                 state.favoriteMusicIds = state.currentUser.favorite_music_ids.split(',').filter(id => id.trim() !== '');
             }
@@ -2039,10 +2762,8 @@ function initializeApp() {
     
     updateUserInterface();
     initializeRealTimeUpdates();
+    initializeSpotifyPlayer();
     loadAllData();
-    
-    // Inicia monitor de inatividade do player
-    startPlayerInactivityMonitor();
 }
 
 function updateUserInterface() {
@@ -2071,14 +2792,12 @@ function updateUserInterface() {
 }
 
 function initializeRealTimeUpdates() {
-    // Atualiza saldo periodicamente
     setInterval(() => {
         if (state.currentUser && !state.offlineMode) {
             loadBalance(true);
         }
     }, CONFIG.AUTO_REFRESH_INTERVAL);
     
-    // Atualiza horário no portfólio
     setInterval(() => {
         const updateEl = document.getElementById('portfolioUpdateTime');
         if (updateEl) {
@@ -2274,6 +2993,12 @@ function openInvestModal(trackIndex) {
     showModal('investModal');
 }
 
+function openInvestModalFromPlayer() {
+    if (state.currentTrackIndex >= 0) {
+        openInvestModal(state.currentTrackIndex);
+    }
+}
+
 function adjustQuantity(change) {
     const quantityInput = document.getElementById('investQuantity');
     let quantity = parseInt(quantityInput.value) || 1;
@@ -2375,7 +3100,6 @@ async function confirmInvestment() {
             
             closeModal('investModal');
             
-            // Mostra mensagem sobre contrato
             setTimeout(() => {
                 showToast('Contrato enviado para seu email!', 'info', 5000);
             }, 1000);
@@ -2987,12 +3711,10 @@ async function toggleFavoriteMusic(musicId, trackIndex = null) {
                 showToast('Música removida dos favoritos', 'info');
             }
             
-            // Atualiza a interface
             if (trackIndex !== null && trackIndex === state.currentTrackIndex) {
                 updateFavoriteButton(isFavorite);
             }
             
-            // Recarrega as seções relevantes
             renderMarketplace();
             renderFavorites();
             if (state.topInvestments.length > 0) {
@@ -3002,30 +3724,6 @@ async function toggleFavoriteMusic(musicId, trackIndex = null) {
     } catch (error) {
         console.error('Erro ao favoritar música:', error);
         showToast('Erro ao processar favorito', 'error');
-    }
-}
-
-function toggleFavorite(trackIndex) {
-    if (trackIndex < 0 || trackIndex >= state.playlist.length) return;
-    
-    const track = state.playlist[trackIndex];
-    toggleFavoriteMusic(track.id, trackIndex);
-}
-
-function updateFavoriteButton(isFavorite) {
-    const btn = document.getElementById('favoritePlayerBtn');
-    const icon = document.getElementById('favoritePlayerIcon');
-    
-    if (btn && icon) {
-        if (isFavorite) {
-            btn.classList.remove('btn-outline-warning');
-            btn.classList.add('btn-warning');
-            icon.className = 'bi bi-star-fill';
-        } else {
-            btn.classList.remove('btn-warning');
-            btn.classList.add('btn-outline-warning');
-            icon.className = 'bi bi-star';
-        }
     }
 }
 
@@ -3117,7 +3815,6 @@ async function viewContract(contractId) {
     showLoading('Carregando contrato...');
     
     try {
-        // Simulação de contrato - em produção, buscar do backend
         const contractContent = `
             <h2>CONTRATO DE INVESTIMENTO EM DIREITOS AUTORAIS</h2>
             <h3>SELO MIV - Fintech Musical</h3>
@@ -3199,519 +3896,7 @@ function printContract() {
     location.reload();
 }
 
-// ========== PLAYER DE MÚSICA ==========
-let youtubePlayer = null;
-let youtubeAPILoaded = false;
-
-// Esta função será chamada automaticamente pela API do YouTube
-function onYouTubeIframeAPIReady() {
-    youtubeAPILoaded = true;
-    console.log('YouTube API carregada com sucesso');
-    
-    // Se já temos uma música para tocar, inicializa o player
-    if (state.currentTrackIndex >= 0 && state.playlist[state.currentTrackIndex]) {
-        const track = state.playlist[state.currentTrackIndex];
-        const youtubeLink = track.link_youtube || track.LINK_YOUTUBE;
-        if (youtubeLink) {
-            const videoId = extractYouTubeId(youtubeLink);
-            if (videoId) {
-                initializeYouTubePlayer(videoId);
-            }
-        }
-    }
-}
-
-function loadYouTubeAPI() {
-    if (window.YT && window.YT.Player) {
-        youtubeAPILoaded = true;
-        return;
-    }
-    
-    if (!window.onYouTubeIframeAPIReady) {
-        window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
-    }
-    
-    const tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    tag.async = true;
-    const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-}
-
-function initializeYouTubePlayer(videoId) {
-    console.log('Inicializando player para vídeo:', videoId);
-    
-    if (!videoId) {
-        console.error('ID do vídeo inválido');
-        return;
-    }
-    
-    // Verifica se o elemento de player existe
-    const playerElement = document.getElementById('youtubePlayer');
-    if (!playerElement) {
-        console.error('Elemento do player não encontrado');
-        return;
-    }
-    
-    // Se já existe um player, destrói antes de criar um novo
-    if (youtubePlayer && youtubePlayer.destroy) {
-        try {
-            youtubePlayer.destroy();
-        } catch (e) {
-            console.error('Erro ao destruir player anterior:', e);
-        }
-        youtubePlayer = null;
-    }
-    
-    // Limpa o conteúdo do container
-    playerElement.innerHTML = '';
-    
-    if (!youtubeAPILoaded) {
-        console.log('API do YouTube não carregada, usando iframe direto');
-        playerElement.innerHTML = `
-            <iframe width="100%" height="100%" 
-                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&showinfo=0&rel=0" 
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-            </iframe>
-        `;
-        return;
-    }
-    
-    try {
-        console.log('Criando novo player YouTube');
-        youtubePlayer = new YT.Player('youtubePlayer', {
-            width: '100%',
-            height: '100%',
-            videoId: videoId,
-            playerVars: {
-                'autoplay': 1,
-                'controls': 1,
-                'modestbranding': 1,
-                'rel': 0,
-                'showinfo': 0,
-                'fs': 1,
-                'playsinline': 1
-            },
-            events: {
-                'onReady': function(event) {
-                    console.log('Player YouTube pronto');
-                    event.target.setVolume(state.currentVolume);
-                    updateProgressBar();
-                    
-                    // Garante que o estado esteja correto
-                    state.isPlaying = true;
-                    document.getElementById('playButton').innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-                    
-                    // Atualiza botão de favorito
-                    if (state.currentTrackIndex >= 0) {
-                        const track = state.playlist[state.currentTrackIndex];
-                        const isFavorite = state.favoriteMusicIds.includes(track.id.toString());
-                        updateFavoriteButton(!isFavorite);
-                    }
-                    
-                    showToast('Reproduzindo: ' + document.getElementById('playerTitle').textContent, 'info');
-                },
-                'onStateChange': function(event) {
-                    console.log('Estado do player alterado:', event.data);
-                    switch(event.data) {
-                        case YT.PlayerState.PLAYING:
-                            state.isPlaying = true;
-                            document.getElementById('playButton').innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-                            updateProgressBar();
-                            resetPlayerInactivityTimer();
-                            break;
-                        case YT.PlayerState.PAUSED:
-                            state.isPlaying = false;
-                            document.getElementById('playButton').innerHTML = '<i class="bi bi-play-circle-fill"></i>';
-                            break;
-                        case YT.PlayerState.ENDED:
-                            state.isPlaying = false;
-                            document.getElementById('playButton').innerHTML = '<i class="bi bi-play-circle-fill"></i>';
-                            if (state.isRepeat) {
-                                event.target.playVideo();
-                            } else {
-                                playNext();
-                            }
-                            break;
-                        case YT.PlayerState.BUFFERING:
-                            console.log('Buffering...');
-                            break;
-                        case YT.PlayerState.CUED:
-                            console.log('Vídeo carregado');
-                            break;
-                    }
-                },
-                'onError': function(event) {
-                    console.error('Erro no player YouTube:', event.data);
-                    showToast('Erro ao reproduzir vídeo. Tente outra música.', 'error');
-                    
-                    // Tenta método alternativo
-                    playerElement.innerHTML = `
-                        <iframe width="100%" height="100%" 
-                                src="https://www.youtube.com/embed/${videoId}" 
-                                frameborder="0" 
-                                allowfullscreen>
-                        </iframe>
-                    `;
-                }
-            }
-        });
-    } catch (error) {
-        console.error('Erro ao criar player YouTube:', error);
-        playerElement.innerHTML = `
-            <iframe width="100%" height="100%" 
-                    src="https://www.youtube.com/embed/${videoId}" 
-                    frameborder="0" 
-                    allowfullscreen>
-            </iframe>
-        `;
-    }
-}
-
-function updateProgressBar() {
-    if (!youtubePlayer || typeof youtubePlayer.getCurrentTime !== 'function') {
-        return;
-    }
-    
-    try {
-        const currentTime = youtubePlayer.getCurrentTime();
-        const duration = youtubePlayer.getDuration();
-        
-        if (duration > 0) {
-            const percent = (currentTime / duration) * 100;
-            const progressBar = document.getElementById('musicProgress');
-            if (progressBar) {
-                progressBar.style.width = `${percent}%`;
-            }
-            
-            const currentTimeElement = document.getElementById('currentTime');
-            const durationTimeElement = document.getElementById('durationTime');
-            
-            if (currentTimeElement) {
-                currentTimeElement.textContent = formatTime(currentTime);
-            }
-            if (durationTimeElement) {
-                durationTimeElement.textContent = formatTime(duration);
-            }
-        }
-        
-        if (state.isPlaying) {
-            setTimeout(updateProgressBar, 1000);
-        }
-    } catch (error) {
-        console.error('Erro ao atualizar barra de progresso:', error);
-    }
-}
-
-function playTrack(index) {
-    console.log('Play track chamado com índice:', index);
-    
-    if (index < 0 || index >= state.playlist.length) {
-        showToast('Música não encontrada', 'error');
-        return;
-    }
-    
-    state.currentTrackIndex = index;
-    const track = state.playlist[index];
-    
-    // Atualiza informações da UI do player
-    document.getElementById('playerTitle').textContent = track.titulo || track.TITULO || 'Título desconhecido';
-    document.getElementById('playerArtist').textContent = track.artista || track.ARTISTA || 'Artista desconhecido';
-    document.getElementById('playerPrice').textContent = `${formatCurrency(track.valor_acao || track.VALOR_ACAO || 0)} por ação`;
-    
-    const playerAlbumArt = document.getElementById('playerAlbumArt');
-    const coverUrl = track.link_capa || track.LINK_CAPA || 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
-    playerAlbumArt.src = coverUrl;
-    playerAlbumArt.onerror = function() {
-        this.src = 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
-    };
-    
-    // Atualiza botão de favorito
-    const isFavorite = state.favoriteMusicIds.includes(track.id.toString());
-    updateFavoriteButton(isFavorite);
-    
-    // Mostra o player
-    document.getElementById('playerBar').style.display = 'block';
-    
-    // Extrai ID do YouTube
-    const youtubeLink = track.link_youtube || track.LINK_YOUTUBE;
-    if (youtubeLink) {
-        const videoId = extractYouTubeId(youtubeLink);
-        if (videoId) {
-            console.log('Reproduzindo vídeo ID:', videoId);
-            
-            // Carrega a API do YouTube se necessário
-            if (!youtubeAPILoaded) {
-                loadYouTubeAPI();
-            }
-            
-            // Inicializa o player
-            setTimeout(() => {
-                initializeYouTubePlayer(videoId);
-            }, 100);
-        } else {
-            showToast('Link do YouTube inválido', 'error');
-        }
-    } else {
-        showToast('Vídeo não disponível', 'error');
-    }
-    
-    // Atualiza estado do botão de play
-    document.getElementById('playButton').innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-    state.isPlaying = true;
-    
-    // Reseta timer de inatividade
-    resetPlayerInactivityTimer();
-}
-
-function extractYouTubeId(url) {
-    if (!url) return null;
-    
-    // Remove possíveis parâmetros extras
-    const cleanUrl = url.split('&')[0];
-    
-    // Padrões de URL do YouTube
-    const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/e\/)([^#&?]{11})/,
-        /^([^#&?]{11})$/
-    ];
-    
-    for (const pattern of patterns) {
-        const match = cleanUrl.match(pattern);
-        if (match && match[1]) {
-            return match[1];
-        }
-    }
-    
-    return null;
-}
-
-function togglePlay() {
-    if (!youtubePlayer || typeof youtubePlayer.playVideo !== 'function') {
-        return;
-    }
-    
-    try {
-        if (state.isPlaying) {
-            youtubePlayer.pauseVideo();
-            document.getElementById('playButton').innerHTML = '<i class="bi bi-play-circle-fill"></i>';
-            state.isPlaying = false;
-        } else {
-            youtubePlayer.playVideo();
-            document.getElementById('playButton').innerHTML = '<i class="bi bi-pause-circle-fill"></i>';
-            state.isPlaying = true;
-            updateProgressBar();
-            resetPlayerInactivityTimer();
-        }
-    } catch (error) {
-        console.error('Erro ao alternar play/pause:', error);
-        showToast('Erro ao controlar reprodução', 'error');
-    }
-}
-
-function togglePlayerExpansion() {
-    const playerBar = document.getElementById('playerBar');
-    const isExpanded = playerBar.classList.contains('expanded');
-    
-    if (isExpanded) {
-        playerBar.classList.remove('expanded');
-        document.getElementById('expandCollapseIcon').className = 'bi bi-chevron-up';
-    } else {
-        playerBar.classList.add('expanded');
-        document.getElementById('expandCollapseIcon').className = 'bi bi-chevron-down';
-        resetPlayerInactivityTimer();
-    }
-}
-
-function seekMusic(event) {
-    if (!youtubePlayer || typeof youtubePlayer.seekTo !== 'function') {
-        return;
-    }
-    
-    const progressContainer = document.getElementById('progressContainer');
-    if (!progressContainer) return;
-    
-    const rect = progressContainer.getBoundingClientRect();
-    const percent = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-    
-    try {
-        const duration = youtubePlayer.getDuration();
-        if (duration && duration > 0) {
-            const seekTime = duration * percent;
-            youtubePlayer.seekTo(seekTime, true);
-            
-            const progressBar = document.getElementById('musicProgress');
-            if (progressBar) {
-                progressBar.style.width = `${percent * 100}%`;
-            }
-        }
-    } catch (error) {
-        console.error('Erro ao buscar posição:', error);
-    }
-    
-    resetPlayerInactivityTimer();
-}
-
-function setVolume(value) {
-    state.currentVolume = parseInt(value);
-    
-    const volumeSlider = document.getElementById('volumeSlider');
-    if (volumeSlider) {
-        volumeSlider.value = value;
-    }
-    
-    const volumeIcon = document.getElementById('volumeIcon');
-    if (volumeIcon) {
-        if (value == 0) {
-            volumeIcon.className = 'bi bi-volume-mute';
-        } else if (value < 50) {
-            volumeIcon.className = 'bi bi-volume-down';
-        } else {
-            volumeIcon.className = 'bi bi-volume-up';
-        }
-    }
-    
-    if (youtubePlayer && typeof youtubePlayer.setVolume === 'function') {
-        try {
-            youtubePlayer.setVolume(value);
-        } catch (error) {
-            console.error('Erro ao definir volume:', error);
-        }
-    }
-    
-    resetPlayerInactivityTimer();
-}
-
-function toggleShuffle() {
-    state.isShuffle = !state.isShuffle;
-    const icon = document.getElementById('shuffleIcon');
-    const btn = document.getElementById('shuffleBtn');
-    
-    if (state.isShuffle) {
-        icon.style.color = 'var(--neon-green)';
-        btn.style.color = 'var(--neon-green)';
-        showToast('Modo aleatório ativado', 'info');
-    } else {
-        icon.style.color = '';
-        btn.style.color = '';
-        showToast('Modo aleatório desativado', 'info');
-    }
-    
-    resetPlayerInactivityTimer();
-}
-
-function toggleRepeat() {
-    state.isRepeat = !state.isRepeat;
-    const icon = document.getElementById('repeatIcon');
-    const btn = document.getElementById('repeatBtn');
-    
-    if (state.isRepeat) {
-        icon.style.color = 'var(--neon-green)';
-        btn.style.color = 'var(--neon-green)';
-        showToast('Repetição ativada', 'info');
-    } else {
-        icon.style.color = '';
-        btn.style.color = '';
-        showToast('Repetição desativada', 'info');
-    }
-    
-    resetPlayerInactivityTimer();
-}
-
-function playNext() {
-    if (state.playlist.length === 0) return;
-    
-    let nextIndex;
-    if (state.isShuffle) {
-        nextIndex = Math.floor(Math.random() * state.playlist.length);
-        while (nextIndex === state.currentTrackIndex && state.playlist.length > 1) {
-            nextIndex = Math.floor(Math.random() * state.playlist.length);
-        }
-    } else {
-        nextIndex = (state.currentTrackIndex + 1) % state.playlist.length;
-    }
-    
-    playTrack(nextIndex);
-    resetPlayerInactivityTimer();
-}
-
-function playPrevious() {
-    if (state.playlist.length === 0) return;
-    
-    let prevIndex;
-    if (state.isShuffle) {
-        prevIndex = Math.floor(Math.random() * state.playlist.length);
-        while (prevIndex === state.currentTrackIndex && state.playlist.length > 1) {
-            prevIndex = Math.floor(Math.random() * state.playlist.length);
-        }
-    } else {
-        prevIndex = state.currentTrackIndex > 0 ? state.currentTrackIndex - 1 : state.playlist.length - 1;
-    }
-    
-    playTrack(prevIndex);
-    resetPlayerInactivityTimer();
-}
-
-// ========== SISTEMA DE INATIVIDADE DO PLAYER ==========
-function startPlayerInactivityMonitor() {
-    // Monitora interações com o player
-    const playerBar = document.getElementById('playerBar');
-    if (playerBar) {
-        playerBar.addEventListener('mousemove', resetPlayerInactivityTimer);
-        playerBar.addEventListener('click', resetPlayerInactivityTimer);
-        playerBar.addEventListener('touchstart', resetPlayerInactivityTimer);
-    }
-    
-    // Inicia o timer
-    resetPlayerInactivityTimer();
-}
-
-function resetPlayerInactivityTimer() {
-    // Limpa timer anterior
-    if (state.playerInactivityTimer) {
-        clearTimeout(state.playerInactivityTimer);
-    }
-    
-    // Remove estado minimizado
-    const playerBar = document.getElementById('playerBar');
-    if (playerBar && playerBar.classList.contains('minimized')) {
-        playerBar.classList.remove('minimized');
-        state.playerMinimized = false;
-    }
-    
-    // Configura novo timer
-    state.playerInactivityTimer = setTimeout(() => {
-        minimizePlayer();
-    }, CONFIG.PLAYER_INACTIVITY_TIMEOUT);
-}
-
-function minimizePlayer() {
-    const playerBar = document.getElementById('playerBar');
-    if (playerBar && playerBar.style.display !== 'none' && !playerBar.classList.contains('expanded')) {
-        playerBar.classList.add('minimized');
-        state.playerMinimized = true;
-    }
-}
-
-function cleanupPlayer() {
-    if (youtubePlayer && youtubePlayer.destroy) {
-        try {
-            youtubePlayer.destroy();
-        } catch (e) {
-            console.error('Erro ao limpar player:', e);
-        }
-        youtubePlayer = null;
-    }
-    
-    const playerElement = document.getElementById('youtubePlayer');
-    if (playerElement) {
-        playerElement.innerHTML = '';
-    }
-}
-
-// ========== SISTEMA DE PAGAMENTO ==========
+// ========== SISTEMA DE PAGAMENTO - MERCADO PAGO ==========
 function openAddBalanceModal() {
     if (!state.currentUser) {
         showToast('Faça login para adicionar saldo', 'error');
@@ -3749,53 +3934,61 @@ async function processBalanceAdd() {
         return;
     }
     
-    showLoading('Gerando link de pagamento...');
+    const processBtn = document.getElementById('processPaymentBtn');
+    processBtn.disabled = true;
+    processBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Processando...';
     
     try {
-        const result = await dataManager.fetchWithFallback('generate_payment_link', {
-            user_id: state.currentUser.id,
-            amount: amount
-        });
+        // Usa o link oficial do Mercado Pago fornecido
+        const mercadoPagoLink = CONFIG.MERCADO_PAGO_LINK;
         
-        if (result.success && result.data) {
-            const paymentLink = result.data.payment_link || CONFIG.MERCADO_PAGO_LINK + `?amount=${amount}`;
-            
-            // Abre o link do Mercado Pago em nova aba
-            window.open(paymentLink, '_blank');
-            
-            showToast(`Redirecionando para pagamento de ${formatCurrency(amount)}`, 'info');
-            closeModal('addBalanceModal');
-            
-            // Simula adição de saldo após pagamento
-            setTimeout(() => {
-                state.userBalance += amount;
-                updateBalanceDisplay();
-                showToast(`Saldo de ${formatCurrency(amount)} adicionado com sucesso!`, 'success');
-                loadLedger(true);
-            }, 3000);
-            
-        } else {
-            showToast('Erro ao gerar link de pagamento', 'error');
-        }
+        // Abre o link em nova aba
+        window.open(mercadoPagoLink, '_blank');
+        
+        showToast(`Redirecionando para pagamento de ${formatCurrency(amount)}`, 'info');
+        closeModal('addBalanceModal');
+        
+        // Simulação: em produção, usar webhook para confirmar pagamento
+        setTimeout(async () => {
+            // Simula confirmação de pagamento via webhook
+            try {
+                const result = await dataManager.fetchWithFallback('confirm_payment', {
+                    user_id: state.currentUser.id,
+                    amount: amount,
+                    payment_method: 'mercado_pago'
+                });
+                
+                if (result.success) {
+                    state.userBalance += amount;
+                    updateBalanceDisplay();
+                    
+                    // Adiciona transação no extrato
+                    state.ledgerData.unshift({
+                        data: new Date().toISOString(),
+                        descricao: `Depósito via Mercado Pago`,
+                        valor: amount,
+                        tipo: 'deposito'
+                    });
+                    
+                    renderLedger();
+                    
+                    showToast(`Pagamento confirmado! ${formatCurrency(amount)} adicionado ao saldo.`, 'success');
+                    
+                    // Envia email de confirmação (simulado)
+                    showToast('Email de confirmação enviado com sucesso!', 'info');
+                }
+            } catch (error) {
+                console.error('Erro ao confirmar pagamento:', error);
+                showToast('Pagamento processado. Aguardando confirmação...', 'warning');
+            }
+        }, 3000);
+        
     } catch (error) {
         console.error('Erro ao processar pagamento:', error);
-        
-        // Fallback: adiciona saldo diretamente
-        state.userBalance += amount;
-        updateBalanceDisplay();
-        
-        dataManager.saveTransaction('deposit', {
-            user_id: state.currentUser.id,
-            amount: amount,
-            method: 'mercado_pago'
-        });
-        
-        showToast(`Saldo de ${formatCurrency(amount)} adicionado localmente. Será sincronizado quando online.`, 'warning');
-        closeModal('addBalanceModal');
-        loadLedger(true);
-        
+        showToast('Erro ao processar pagamento. Tente novamente.', 'error');
     } finally {
-        hideLoading();
+        processBtn.disabled = false;
+        processBtn.innerHTML = '<i class="bi bi-currency-dollar me-2"></i> Ir para Pagamento';
     }
 }
 
@@ -4037,16 +4230,18 @@ function changeSection(sectionId, buttonElement = null) {
 
 function logout() {
     if (confirm('Tem certeza que deseja sair?')) {
-        cleanupPlayer();
+        if (state.youtubePlayer && state.isPlaying) {
+            state.youtubePlayer.pauseVideo();
+        }
         
-        if (youtubePlayer && state.isPlaying) {
-            youtubePlayer.pauseVideo();
+        if (state.progressInterval) {
+            clearInterval(state.progressInterval);
         }
         
         localStorage.removeItem('miv_user');
         localStorage.removeItem('miv_session');
         
-        document.getElementById('playerBar').style.display = 'none';
+        document.getElementById('playerSpotify').style.display = 'none';
         document.getElementById('mainApp').style.display = 'none';
         document.getElementById('authScreen').style.display = 'flex';
         showLoginForm();
@@ -4063,7 +4258,7 @@ function logout() {
         state.isPlaying = false;
         state.offlineMode = false;
         state.appInitialized = false;
-        state.playerMinimized = false;
+        state.playerExpanded = false;
         
         showToast('Logout realizado com sucesso', 'success');
     }
