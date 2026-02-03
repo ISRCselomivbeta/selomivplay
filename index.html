@@ -1704,6 +1704,1801 @@
 
 <!-- JavaScript -->
 <script>
+    // ====================================================
+// YOUTUBE CONTROLS ÚNICO - Sistema Completo
+// Copie TODO este código e cole no seu HTML ou Google Script
+// Não apaga nada do que já existe - Só adiciona!
+// ====================================================
+
+(function() {
+    'use strict';
+    
+    console.log('🎵 Iniciando YouTube Controls System...');
+    
+    // ============================================
+    // 1. CONFIGURAÇÃO E VERIFICAÇÃO
+    // ============================================
+    
+    // Evitar instalação duplicada
+    if (window.__YOUTUBE_CONTROLS_INSTALADO) {
+        console.log('✅ Sistema já instalado');
+        return;
+    }
+    
+    window.__YOUTUBE_CONTROLS_INSTALADO = true;
+    window.__YOUTUBE_VERSION = '1.0.0';
+    
+    // Configurações
+    const CONFIG = {
+        debug: true,
+        autoPlay: true,
+        showControls: true,
+        showProgress: true,
+        position: 'bottom-right', // bottom-right, bottom-left, top-right, top-left
+        volume: 80,
+        localStorageKey: 'youtubeControlsState'
+    };
+    
+    // ============================================
+    // 2. CRIAR ELEMENTOS DO PLAYER
+    // ============================================
+    
+    // Criar container do player YouTube (invisível)
+    function criarContainerYouTube() {
+        let container = document.getElementById('youtube-player-global-container');
+        
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'youtube-player-global-container';
+            container.style.cssText = `
+                position: absolute !important;
+                width: 0 !important;
+                height: 0 !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                z-index: -9999 !important;
+            `;
+            document.body.appendChild(container);
+            console.log('✅ Container YouTube criado');
+        }
+        
+        return container;
+    }
+    
+    // Criar controles visuais
+    function criarControlesVisuais() {
+        // Remover controles antigos se existirem
+        const oldControls = document.getElementById('youtube-music-controls-main');
+        if (oldControls) oldControls.remove();
+        
+        // Determinar posição baseada na configuração
+        let positionStyle = '';
+        switch (CONFIG.position) {
+            case 'bottom-left':
+                positionStyle = 'bottom: 20px; left: 20px; right: auto;';
+                break;
+            case 'top-right':
+                positionStyle = 'top: 20px; right: 20px; bottom: auto;';
+                break;
+            case 'top-left':
+                positionStyle = 'top: 20px; left: 20px; bottom: auto; right: auto;';
+                break;
+            default: // bottom-right
+                positionStyle = 'bottom: 20px; right: 20px;';
+        }
+        
+        // HTML dos controles
+        const controlsHTML = `
+            <div id="youtube-music-controls-main" style="
+                ${positionStyle}
+                position: fixed !important;
+                background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(20,20,20,0.98) 100%) !important;
+                color: white !important;
+                padding: 15px 20px !important;
+                border-radius: 20px !important;
+                z-index: 999999 !important;
+                min-width: 350px !important;
+                max-width: 400px !important;
+                border: 2px solid #1DB954 !important;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1) !important;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+                backdrop-filter: blur(15px) !important;
+                -webkit-backdrop-filter: blur(15px) !important;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                overflow: hidden !important;
+            ">
+                <!-- Cabeçalho -->
+                <div style="
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    margin-bottom: 15px !important;
+                    padding-bottom: 10px !important;
+                    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+                ">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="
+                            width: 40px !important;
+                            height: 40px !important;
+                            background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%) !important;
+                            border-radius: 10px !important;
+                            display: flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            font-size: 20px !important;
+                        ">
+                            🎵
+                        </div>
+                        <div>
+                            <div style="
+                                font-weight: 700 !important;
+                                font-size: 16px !important;
+                                color: white !important;
+                            ">
+                                YouTube Music Controls
+                            </div>
+                            <div style="
+                                font-size: 11px !important;
+                                color: rgba(255,255,255,0.6) !important;
+                                margin-top: 2px !important;
+                            ">
+                                v${window.__YOUTUBE_VERSION}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        <button id="yt-controls-minimize" style="
+                            width: 32px !important;
+                            height: 32px !important;
+                            background: rgba(255,255,255,0.1) !important;
+                            border: none !important;
+                            border-radius: 8px !important;
+                            color: white !important;
+                            cursor: pointer !important;
+                            display: flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            font-size: 16px !important;
+                            transition: all 0.2s !important;
+                        " title="Minimizar">
+                            ➖
+                        </button>
+                        <button id="yt-controls-close" style="
+                            width: 32px !important;
+                            height: 32px !important;
+                            background: rgba(255,68,68,0.2) !important;
+                            border: none !important;
+                            border-radius: 8px !important;
+                            color: #ff4444 !important;
+                            cursor: pointer !important;
+                            display: flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            font-size: 16px !important;
+                            transition: all 0.2s !important;
+                        " title="Fechar">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Informações da Música -->
+                <div id="yt-now-playing" style="
+                    margin-bottom: 20px !important;
+                    padding: 15px !important;
+                    background: rgba(255,255,255,0.05) !important;
+                    border-radius: 15px !important;
+                    border-left: 4px solid #1DB954 !important;
+                ">
+                    <div id="yt-current-title" style="
+                        font-weight: 700 !important;
+                        font-size: 16px !important;
+                        color: white !important;
+                        margin-bottom: 5px !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                        line-height: 1.3 !important;
+                    ">
+                        Nenhuma música selecionada
+                    </div>
+                    <div id="yt-current-artist" style="
+                        font-size: 13px !important;
+                        color: rgba(255,255,255,0.7) !important;
+                        margin-bottom: 10px !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                    ">
+                        Clique em uma música para começar
+                    </div>
+                    
+                    <!-- Barra de Progresso -->
+                    <div style="margin-top: 12px;">
+                        <div style="
+                            display: flex !important;
+                            justify-content: space-between !important;
+                            font-size: 11px !important;
+                            color: rgba(255,255,255,0.5) !important;
+                            margin-bottom: 5px !important;
+                        ">
+                            <span id="yt-current-time">0:00</span>
+                            <span id="yt-total-time">0:00</span>
+                        </div>
+                        <div id="yt-progress-bar" style="
+                            height: 4px !important;
+                            background: rgba(255,255,255,0.1) !important;
+                            border-radius: 2px !important;
+                            overflow: hidden !important;
+                            cursor: pointer !important;
+                        ">
+                            <div id="yt-progress-fill" style="
+                                height: 100% !important;
+                                width: 0% !important;
+                                background: linear-gradient(90deg, #1DB954 0%, #1ed760 100%) !important;
+                                border-radius: 2px !important;
+                                transition: width 0.3s !important;
+                            "></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Controles Principais -->
+                <div style="
+                    display: flex !important;
+                    justify-content: center !important;
+                    align-items: center !important;
+                    gap: 15px !important;
+                    margin-bottom: 20px !important;
+                ">
+                    <!-- Botão Anterior -->
+                    <button id="yt-prev-btn" style="
+                        width: 50px !important;
+                        height: 50px !important;
+                        background: rgba(255,255,255,0.08) !important;
+                        border: 2px solid rgba(255,255,255,0.1) !important;
+                        border-radius: 50% !important;
+                        color: white !important;
+                        cursor: pointer !important;
+                        font-size: 20px !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        transition: all 0.2s !important;
+                    " title="Anterior (←)">
+                        ⏮️
+                    </button>
+                    
+                    <!-- Botão Play/Pause -->
+                    <button id="yt-play-btn" style="
+                        width: 70px !important;
+                        height: 70px !important;
+                        background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%) !important;
+                        border: none !important;
+                        border-radius: 50% !important;
+                        color: white !important;
+                        cursor: pointer !important;
+                        font-size: 24px !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        transition: all 0.2s !important;
+                        box-shadow: 0 5px 15px rgba(29,185,84,0.4) !important;
+                    " title="Play/Pause (Space)">
+                        ▶️
+                    </button>
+                    
+                    <!-- Botão Próximo -->
+                    <button id="yt-next-btn" style="
+                        width: 50px !important;
+                        height: 50px !important;
+                        background: rgba(255,255,255,0.08) !important;
+                        border: 2px solid rgba(255,255,255,0.1) !important;
+                        border-radius: 50% !important;
+                        color: white !important;
+                        cursor: pointer !important;
+                        font-size: 20px !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        transition: all 0.2s !important;
+                    " title="Próximo (→)">
+                        ⏭️
+                    </button>
+                </div>
+                
+                <!-- Controles Secundários -->
+                <div style="
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    margin-bottom: 15px !important;
+                ">
+                    <div style="display: flex; gap: 8px;">
+                        <button id="yt-shuffle-btn" style="
+                            padding: 8px 15px !important;
+                            background: rgba(255,255,255,0.05) !important;
+                            border: 1px solid rgba(255,255,255,0.1) !important;
+                            border-radius: 10px !important;
+                            color: rgba(255,255,255,0.7) !important;
+                            cursor: pointer !important;
+                            font-size: 12px !important;
+                            transition: all 0.2s !important;
+                            display: flex !important;
+                            align-items: center !important;
+                            gap: 5px !important;
+                        " title="Embaralhar">
+                            🔀 Embaralhar
+                        </button>
+                        <button id="yt-repeat-btn" style="
+                            padding: 8px 15px !important;
+                            background: rgba(255,255,255,0.05) !important;
+                            border: 1px solid rgba(255,255,255,0.1) !important;
+                            border-radius: 10px !important;
+                            color: rgba(255,255,255,0.7) !important;
+                            cursor: pointer !important;
+                            font-size: 12px !important;
+                            transition: all 0.2s !important;
+                            display: flex !important;
+                            align-items: center !important;
+                            gap: 5px !important;
+                        " title="Repetir">
+                            🔁 Repetir
+                        </button>
+                    </div>
+                    
+                    <div id="yt-queue-info" style="
+                        font-size: 12px !important;
+                        color: rgba(255,255,255,0.6) !important;
+                        background: rgba(255,255,255,0.05) !important;
+                        padding: 6px 12px !important;
+                        border-radius: 10px !important;
+                    ">
+                        <span id="yt-queue-current">0</span>/<span id="yt-queue-total">0</span>
+                    </div>
+                </div>
+                
+                <!-- Volume -->
+                <div style="margin-bottom: 15px;">
+                    <div style="
+                        display: flex !important;
+                        justify-content: space-between !important;
+                        align-items: center !important;
+                        margin-bottom: 8px !important;
+                        font-size: 12px !important;
+                        color: rgba(255,255,255,0.6) !important;
+                    ">
+                        <span>🔈 Volume</span>
+                        <span id="yt-volume-text">80%</span>
+                    </div>
+                    <div id="yt-volume-bar" style="
+                        height: 6px !important;
+                        background: rgba(255,255,255,0.1) !important;
+                        border-radius: 3px !important;
+                        overflow: hidden !important;
+                        cursor: pointer !important;
+                    ">
+                        <div id="yt-volume-fill" style="
+                            height: 100% !important;
+                            width: 80% !important;
+                            background: linear-gradient(90deg, #1DB954 0%, #1ed760 100%) !important;
+                            border-radius: 3px !important;
+                        "></div>
+                    </div>
+                </div>
+                
+                <!-- Rodapé -->
+                <div style="
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    padding-top: 10px !important;
+                    border-top: 1px solid rgba(255,255,255,0.1) !important;
+                    font-size: 10px !important;
+                    color: rgba(255,255,255,0.4) !important;
+                ">
+                    <div>
+                        <button id="yt-show-queue" style="
+                            background: none !important;
+                            border: none !important;
+                            color: #1DB954 !important;
+                            cursor: pointer !important;
+                            font-size: 11px !important;
+                            padding: 4px 8px !important;
+                            border-radius: 4px !important;
+                            transition: all 0.2s !important;
+                        ">
+                            📋 Ver Fila
+                        </button>
+                        <button id="yt-clear-queue" style="
+                            background: none !important;
+                            border: none !important;
+                            color: #ff4444 !important;
+                            cursor: pointer !important;
+                            font-size: 11px !important;
+                            padding: 4px 8px !important;
+                            border-radius: 4px !important;
+                            margin-left: 10px !important;
+                            transition: all 0.2s !important;
+                        ">
+                            🗑️ Limpar
+                        </button>
+                    </div>
+                    <div>YouTube Controls System</div>
+                </div>
+            </div>
+            
+            <!-- Modal da Fila -->
+            <div id="yt-queue-modal" style="
+                display: none !important;
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                background: rgba(0,0,0,0.95) !important;
+                border: 2px solid #1DB954 !important;
+                border-radius: 20px !important;
+                padding: 20px !important;
+                z-index: 1000000 !important;
+                width: 90% !important;
+                max-width: 500px !important;
+                max-height: 70vh !important;
+                overflow: hidden !important;
+                backdrop-filter: blur(20px) !important;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.7) !important;
+            ">
+                <div style="
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    margin-bottom: 20px !important;
+                    padding-bottom: 15px !important;
+                    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+                ">
+                    <h3 style="margin: 0 !important; color: white !important; font-size: 18px !important;">
+                        📋 Fila de Reprodução
+                    </h3>
+                    <button id="yt-close-queue" style="
+                        background: none !important;
+                        border: none !important;
+                        color: white !important;
+                        font-size: 24px !important;
+                        cursor: pointer !important;
+                        padding: 0 !important;
+                        width: 30px !important;
+                        height: 30px !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                    ">
+                        ✕
+                    </button>
+                </div>
+                
+                <div id="yt-queue-items" style="
+                    overflow-y: auto !important;
+                    max-height: 50vh !important;
+                    padding-right: 10px !important;
+                ">
+                    <!-- Itens da fila serão inseridos aqui -->
+                    <div style="
+                        text-align: center !important;
+                        padding: 40px 20px !important;
+                        color: rgba(255,255,255,0.5) !important;
+                        font-size: 14px !important;
+                    ">
+                        Fila vazia. Clique em músicas para adicionar.
+                    </div>
+                </div>
+                
+                <div style="
+                    margin-top: 20px !important;
+                    padding-top: 15px !important;
+                    border-top: 1px solid rgba(255,255,255,0.1) !important;
+                    text-align: center !important;
+                    font-size: 11px !important;
+                    color: rgba(255,255,255,0.4) !important;
+                ">
+                    Clique em uma música para tocar
+                </div>
+            </div>
+            
+            <!-- Overlay do Modal -->
+            <div id="yt-modal-overlay" style="
+                display: none !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: rgba(0,0,0,0.7) !important;
+                z-index: 999999 !important;
+                backdrop-filter: blur(5px) !important;
+            "></div>
+        `;
+        
+        // Inserir no documento
+        document.body.insertAdjacentHTML('beforeend', controlsHTML);
+        
+        // Adicionar estilos dinâmicos para hover
+        const style = document.createElement('style');
+        style.textContent = `
+            #yt-prev-btn:hover, #yt-next-btn:hover {
+                background: rgba(29,185,84,0.2) !important;
+                border-color: #1DB954 !important;
+                transform: scale(1.05) !important;
+            }
+            
+            #yt-play-btn:hover {
+                transform: scale(1.08) !important;
+                box-shadow: 0 8px 20px rgba(29,185,84,0.6) !important;
+            }
+            
+            #yt-shuffle-btn:hover, #yt-repeat-btn:hover {
+                background: rgba(29,185,84,0.1) !important;
+                border-color: #1DB954 !important;
+                color: white !important;
+            }
+            
+            #yt-show-queue:hover, #yt-clear-queue:hover {
+                background: rgba(255,255,255,0.1) !important;
+            }
+            
+            #yt-controls-minimize:hover {
+                background: rgba(255,255,255,0.2) !important;
+            }
+            
+            #yt-controls-close:hover {
+                background: rgba(255,68,68,0.3) !important;
+            }
+            
+            /* Scrollbar personalizada */
+            #yt-queue-items::-webkit-scrollbar {
+                width: 6px !important;
+            }
+            
+            #yt-queue-items::-webkit-scrollbar-track {
+                background: rgba(255,255,255,0.05) !important;
+                border-radius: 3px !important;
+            }
+            
+            #yt-queue-items::-webkit-scrollbar-thumb {
+                background: #1DB954 !important;
+                border-radius: 3px !important;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        console.log('✅ Controles visuais criados');
+    }
+    
+    // ============================================
+    // 3. SISTEMA DE GERENCIAMENTO DO YOUTUBE
+    // ============================================
+    
+    class YouTubeMusicSystem {
+        constructor() {
+            this.queue = [];
+            this.currentIndex = -1;
+            this.isPlaying = false;
+            this.player = null;
+            this.progressInterval = null;
+            this.volume = CONFIG.volume;
+            this.shuffle = false;
+            this.repeat = false; // false, 'one', 'all'
+            this.originalQueueOrder = [];
+            
+            console.log('🎵 YouTubeMusicSystem inicializado');
+            this.carregarEstado();
+        }
+        
+        // Extrair ID do YouTube
+        extrairYouTubeId(url) {
+            if (!url || typeof url !== 'string') {
+                console.warn('URL inválida:', url);
+                return null;
+            }
+            
+            const padroes = [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w\-_]{11})/,
+                /youtube\.com\/v\/([\w\-_]{11})/,
+                /youtube\.com\/watch\?.*v=([\w\-_]{11})/,
+                /youtube\.com\/shorts\/([\w\-_]{11})/
+            ];
+            
+            for (const padrao of padroes) {
+                const match = url.match(padrao);
+                if (match && match[1]) {
+                    return match[1];
+                }
+            }
+            
+            // Se a URL já for apenas um ID
+            if (/^[\w\-_]{11}$/.test(url)) {
+                return url;
+            }
+            
+            console.warn('Não foi possível extrair ID do YouTube:', url);
+            return null;
+        }
+        
+        // Adicionar à fila
+        adicionarNaFila(track, tocarAgora = false) {
+            if (!track || !track.link_youtube) {
+                console.error('Track inválida:', track);
+                return false;
+            }
+            
+            const videoId = this.extrairYouTubeId(track.link_youtube);
+            if (!videoId) return false;
+            
+            const item = {
+                id: Date.now() + Math.random(),
+                track: track,
+                videoId: videoId,
+                titulo: track.titulo_musica || track.titulo || 'Sem título',
+                artista: track.artista || 'Artista desconhecido',
+                duracao: track.duracao || '0:00',
+                adicionadoEm: new Date().toISOString()
+            };
+            
+            this.queue.push(item);
+            this.originalQueueOrder.push(item);
+            
+            console.log(`➕ "${item.titulo}" adicionado à fila`);
+            this.atualizarInterface();
+            
+            if (tocarAgora || this.queue.length === 1) {
+                this.tocarItem(this.queue.length - 1);
+            }
+            
+            this.salvarEstado();
+            return item.id;
+        }
+        
+        // Tocar item específico
+        async tocarItem(indice) {
+            if (indice < 0 || indice >= this.queue.length) {
+                console.error('Índice inválido:', indice);
+                return false;
+            }
+            
+            this.currentIndex = indice;
+            const item = this.queue[indice];
+            
+            console.log(`▶️ Tocando: ${item.titulo} (ID: ${item.videoId})`);
+            
+            // Atualizar interface primeiro
+            this.atualizarInterface();
+            
+            // Parar player atual
+            this.pararPlayerAtual();
+            
+            // Carregar novo vídeo
+            try {
+                await this.carregarVideoYouTube(item.videoId);
+                this.isPlaying = true;
+                this.atualizarInterface();
+                this.iniciarMonitoramentoProgresso();
+                return true;
+            } catch (erro) {
+                console.error('❌ Erro ao carregar vídeo:', erro);
+                // Tentar próximo se falhar
+                setTimeout(() => this.proxima(), 1000);
+                return false;
+            }
+        }
+        
+        // Carregar vídeo do YouTube
+        carregarVideoYouTube(videoId) {
+            return new Promise((resolve, reject) => {
+                // Se a API do YouTube não estiver carregada
+                if (!window.YT || !window.YT.Player) {
+                    this.carregarAPIYouTube().then(() => {
+                        this.criarPlayerYouTube(videoId, resolve, reject);
+                    }).catch(reject);
+                } else {
+                    this.criarPlayerYouTube(videoId, resolve, reject);
+                }
+            });
+        }
+        
+        // Carregar API do YouTube
+        carregarAPIYouTube() {
+            return new Promise((resolve, reject) => {
+                if (window.YT && window.YT.Player) {
+                    resolve();
+                    return;
+                }
+                
+                console.log('📥 Carregando API do YouTube...');
+                
+                // Verificar se já está carregando
+                if (document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+                    const checkInterval = setInterval(() => {
+                        if (window.YT && window.YT.Player) {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 100);
+                    
+                    setTimeout(() => {
+                        clearInterval(checkInterval);
+                        if (!window.YT) reject(new Error('Timeout ao carregar API'));
+                    }, 10000);
+                    return;
+                }
+                
+                // Carregar a API
+                const script = document.createElement('script');
+                script.src = 'https://www.youtube.com/iframe_api';
+                script.async = true;
+                
+                window.onYouTubeIframeAPIReady = () => {
+                    console.log('✅ API do YouTube carregada');
+                    resolve();
+                };
+                
+                script.onerror = () => {
+                    reject(new Error('Falha ao carregar API do YouTube'));
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+        
+        // Criar player do YouTube
+        criarPlayerYouTube(videoId, resolve, reject) {
+            try {
+                // Destruir player anterior
+                if (this.player && this.player.destroy) {
+                    this.player.destroy();
+                }
+                
+                // Garantir que o container existe
+                criarContainerYouTube();
+                
+                // Criar novo player
+                this.player = new YT.Player('youtube-player-global-container', {
+                    height: '0',
+                    width: '0',
+                    videoId: videoId,
+                    playerVars: {
+                        autoplay: CONFIG.autoPlay ? 1 : 0,
+                        controls: 0,
+                        disablekb: 1,
+                        fs: 0,
+                        iv_load_policy: 3,
+                        modestbranding: 1,
+                        rel: 0,
+                        showinfo: 0
+                    },
+                    events: {
+                        'onReady': (evento) => {
+                            console.log('✅ Player do YouTube pronto');
+                            
+                            // Configurar volume
+                            if (evento.target.setVolume) {
+                                evento.target.setVolume(this.volume);
+                            }
+                            
+                            // Tocar se configurado
+                            if (CONFIG.autoPlay) {
+                                evento.target.playVideo();
+                            }
+                            
+                            resolve(evento.target);
+                        },
+                        'onStateChange': (evento) => {
+                            this.processarEstadoPlayer(evento.data);
+                        },
+                        'onError': (erro) => {
+                            console.error('❌ Erro no player:', erro);
+                            reject(erro);
+                        }
+                    }
+                });
+            } catch (erro) {
+                reject(erro);
+            }
+        }
+        
+        // Processar mudanças de estado
+        processarEstadoPlayer(estado) {
+            if (CONFIG.debug) {
+                console.log('Estado do player:', this.nomeEstado(estado));
+            }
+            
+            switch (estado) {
+                case 0: // TERMINOU
+                    if (this.repeat === 'one') {
+                        // Repetir mesma música
+                        this.player.playVideo();
+                    } else {
+                        // Próxima música
+                        this.proxima();
+                    }
+                    break;
+                    
+                case 1: // TOCANDO
+                    this.isPlaying = true;
+                    this.atualizarInterface();
+                    break;
+                    
+                case 2: // PAUSADO
+                    this.isPlaying = false;
+                    this.atualizarInterface();
+                    break;
+                    
+                case 3: // BUFFERING
+                    console.log('⏳ Buffering...');
+                    break;
+                    
+                case 5: // CUED
+                    console.log('📼 Vídeo pronto para tocar');
+                    break;
+            }
+        }
+        
+        // Converter código de estado para nome
+        nomeEstado(codigo) {
+            const estados = {
+                [-1]: 'NÃO INICIADO',
+                [0]: 'TERMINOU',
+                [1]: 'TOCANDO',
+                [2]: 'PAUSADO',
+                [3]: 'BUFFERING',
+                [5]: 'PRONTO'
+            };
+            return estados[codigo] || `DESCONHECIDO (${codigo})`;
+        }
+        
+        // Iniciar monitoramento de progresso
+        iniciarMonitoramentoProgresso() {
+            clearInterval(this.progressInterval);
+            
+            this.progressInterval = setInterval(() => {
+                if (this.player && this.player.getCurrentTime && this.player.getDuration) {
+                    try {
+                        const atual = this.player.getCurrentTime();
+                        const total = this.player.getDuration();
+                        
+                        // Atualizar tempo na interface
+                        const tempoAtualElem = document.getElementById('yt-current-time');
+                        const tempoTotalElem = document.getElementById('yt-total-time');
+                        const progressoElem = document.getElementById('yt-progress-fill');
+                        
+                        if (tempoAtualElem) {
+                            tempoAtualElem.textContent = this.formatarTempo(atual);
+                        }
+                        
+                        if (tempoTotalElem) {
+                            tempoTotalElem.textContent = this.formatarTempo(total);
+                        }
+                        
+                        if (progressoElem && total > 0) {
+                            const percentual = (atual / total) * 100;
+                            progressoElem.style.width = percentual + '%';
+                        }
+                    } catch (e) {
+                        // Ignorar erros temporários
+                    }
+                }
+            }, 1000);
+        }
+        
+        // Formatar tempo (segundos para MM:SS)
+        formatarTempo(segundos) {
+            if (isNaN(segundos) || segundos < 0) return '0:00';
+            
+            const minutos = Math.floor(segundos / 60);
+            const segs = Math.floor(segundos % 60);
+            return `${minutos}:${segs.toString().padStart(2, '0')}`;
+        }
+        
+        // Parar player atual
+        pararPlayerAtual() {
+            if (this.player) {
+                if (this.player.stopVideo) this.player.stopVideo();
+                if (this.player.destroy) {
+                    setTimeout(() => this.player.destroy(), 100);
+                }
+            }
+            clearInterval(this.progressInterval);
+        }
+        
+        // Controles básicos
+        playPause() {
+            if (!this.player) return false;
+            
+            if (this.isPlaying) {
+                this.player.pauseVideo();
+                this.isPlaying = false;
+                console.log('⏸️ Pausado');
+            } else {
+                this.player.playVideo();
+                this.isPlaying = true;
+                console.log('▶️ Retomado');
+            }
+            
+            this.atualizarInterface();
+            return true;
+        }
+        
+        proxima() {
+            if (this.queue.length === 0) return false;
+            
+            let proximoIndice;
+            
+            if (this.shuffle) {
+                // Embaralhar
+                proximoIndice = Math.floor(Math.random() * this.queue.length);
+                while (proximoIndice === this.currentIndex && this.queue.length > 1) {
+                    proximoIndice = Math.floor(Math.random() * this.queue.length);
+                }
+            } else {
+                // Sequencial
+                proximoIndice = (this.currentIndex + 1) % this.queue.length;
+            }
+            
+            return this.tocarItem(proximoIndice);
+        }
+        
+        anterior() {
+            if (this.queue.length === 0) return false;
+            
+            let anteriorIndice;
+            
+            if (this.shuffle) {
+                // Embaralhar (para trás)
+                anteriorIndice = Math.floor(Math.random() * this.queue.length);
+                while (anteriorIndice === this.currentIndex && this.queue.length > 1) {
+                    anteriorIndice = Math.floor(Math.random() * this.queue.length);
+                }
+            } else {
+                // Sequencial
+                anteriorIndice = this.currentIndex - 1;
+                if (anteriorIndice < 0) anteriorIndice = this.queue.length - 1;
+            }
+            
+            return this.tocarItem(anteriorIndice);
+        }
+        
+        alternarEmbaralhar() {
+            this.shuffle = !this.shuffle;
+            
+            if (this.shuffle) {
+                // Embaralhar a fila
+                const atual = this.queue[this.currentIndex];
+                const outros = this.queue.filter((_, i) => i !== this.currentIndex);
+                
+                // Embaralhar outros itens
+                for (let i = outros.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [outros[i], outros[j]] = [outros[j], outros[i]];
+                }
+                
+                this.queue = [atual, ...outros];
+                console.log('🔀 Modo embaralhar ativado');
+            } else {
+                // Restaurar ordem original
+                this.queue = [...this.originalQueueOrder];
+                this.currentIndex = this.queue.findIndex(item => 
+                    this.queue[this.currentIndex] && 
+                    item.id === this.queue[this.currentIndex].id
+                );
+                console.log('🔀 Modo embaralhar desativado');
+            }
+            
+            this.atualizarInterface();
+            return this.shuffle;
+        }
+        
+        alternarRepetir() {
+            const modos = [false, 'one', 'all'];
+            const atualIndice = modos.indexOf(this.repeat);
+            this.repeat = modos[(atualIndice + 1) % modos.length];
+            
+            console.log(`🔁 Modo repetir: ${this.repeat}`);
+            this.atualizarInterface();
+            return this.repeat;
+        }
+        
+        ajustarVolume(novoVolume) {
+            this.volume = Math.max(0, Math.min(100, novoVolume));
+            
+            if (this.player && this.player.setVolume) {
+                this.player.setVolume(this.volume);
+            }
+            
+            document.getElementById('yt-volume-text').textContent = `${this.volume}%`;
+            document.getElementById('yt-volume-fill').style.width = `${this.volume}%`;
+            
+            this.salvarEstado();
+            return this.volume;
+        }
+        
+        // Atualizar interface
+        atualizarInterface() {
+            // Atualizar informações da música atual
+            if (this.currentIndex >= 0 && this.currentIndex < this.queue.length) {
+                const item = this.queue[this.currentIndex];
+                
+                document.getElementById('yt-current-title').textContent = item.titulo;
+                document.getElementById('yt-current-artist').textContent = item.artista;
+                
+                // Botão play/pause
+                const playBtn = document.getElementById('yt-play-btn');
+                if (playBtn) {
+                    playBtn.innerHTML = this.isPlaying ? '⏸️' : '▶️';
+                }
+                
+                // Ícone de repetir
+                const repeatBtn = document.getElementById('yt-repeat-btn');
+                if (repeatBtn) {
+                    let repeatIcon = '🔁';
+                    if (this.repeat === 'one') repeatIcon = '🔂';
+                    else if (this.repeat === 'all') repeatIcon = '🔁';
+                    repeatBtn.innerHTML = `${repeatIcon} ${this.repeat ? 'Repetir' : 'Repetir'}`;
+                }
+                
+                // Ícone de embaralhar
+                const shuffleBtn = document.getElementById('yt-shuffle-btn');
+                if (shuffleBtn) {
+                    shuffleBtn.innerHTML = this.shuffle ? '🔀 Embaralhar' : '🔀 Embaralhar';
+                    shuffleBtn.style.color = this.shuffle ? '#1DB954' : 'rgba(255,255,255,0.7)';
+                }
+                
+                // Contador
+                document.getElementById('yt-queue-current').textContent = this.currentIndex + 1;
+            }
+            
+            // Atualizar totais
+            document.getElementById('yt-queue-total').textContent = this.queue.length;
+            
+            // Habilitar/desabilitar botões
+            const prevBtn = document.getElementById('yt-prev-btn');
+            const nextBtn = document.getElementById('yt-next-btn');
+            const playBtn = document.getElementById('yt-play-btn');
+            
+            if (prevBtn) prevBtn.disabled = this.queue.length === 0;
+            if (nextBtn) nextBtn.disabled = this.queue.length === 0;
+            if (playBtn) playBtn.disabled = this.queue.length === 0;
+            
+            // Atualizar lista da fila
+            this.atualizarListaFila();
+        }
+        
+        // Atualizar lista da fila no modal
+        atualizarListaFila() {
+            const container = document.getElementById('yt-queue-items');
+            if (!container) return;
+            
+            if (this.queue.length === 0) {
+                container.innerHTML = `
+                    <div style="
+                        text-align: center !important;
+                        padding: 40px 20px !important;
+                        color: rgba(255,255,255,0.5) !important;
+                        font-size: 14px !important;
+                    ">
+                        Fila vazia. Clique em músicas para adicionar.
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            this.queue.forEach((item, index) => {
+                const isCurrent = index === this.currentIndex;
+                
+                html += `
+                    <div class="yt-queue-item" data-index="${index}" style="
+                        padding: 12px 15px !important;
+                        margin: 5px 0 !important;
+                        background: ${isCurrent ? 'rgba(29,185,84,0.15)' : 'rgba(255,255,255,0.05)'} !important;
+                        border-radius: 10px !important;
+                        cursor: pointer !important;
+                        border-left: 4px solid ${isCurrent ? '#1DB954' : 'transparent'} !important;
+                        transition: all 0.2s !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        gap: 12px !important;
+                    ">
+                        <div style="
+                            width: 40px !important;
+                            height: 40px !important;
+                            background: ${isCurrent ? 'rgba(29,185,84,0.3)' : 'rgba(255,255,255,0.1)'} !important;
+                            border-radius: 8px !important;
+                            display: flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            font-size: 14px !important;
+                            color: ${isCurrent ? '#1DB954' : 'rgba(255,255,255,0.7)'} !important;
+                        ">
+                            ${index + 1}
+                        </div>
+                        
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="
+                                font-weight: ${isCurrent ? '700' : '500'} !important;
+                                font-size: 14px !important;
+                                color: ${isCurrent ? '#1DB954' : 'white'} !important;
+                                margin-bottom: 3px !important;
+                                white-space: nowrap !important;
+                                overflow: hidden !important;
+                                text-overflow: ellipsis !important;
+                            ">
+                                ${item.titulo}
+                            </div>
+                            <div style="
+                                font-size: 12px !important;
+                                color: rgba(255,255,255,0.6) !important;
+                                white-space: nowrap !important;
+                                overflow: hidden !important;
+                                text-overflow: ellipsis !important;
+                            ">
+                                ${item.artista}
+                            </div>
+                        </div>
+                        
+                        <div style="
+                            font-size: 11px !important;
+                            color: rgba(255,255,255,0.4) !important;
+                            white-space: nowrap !important;
+                        ">
+                            ${item.duracao}
+                        </div>
+                        
+                        <button class="yt-queue-remove" data-index="${index}" style="
+                            background: rgba(255,68,68,0.1) !important;
+                            border: 1px solid rgba(255,68,68,0.2) !important;
+                            border-radius: 6px !important;
+                            color: #ff4444 !important;
+                            cursor: pointer !important;
+                            font-size: 12px !important;
+                            padding: 4px 8px !important;
+                            transition: all 0.2s !important;
+                        ">
+                            Remover
+                        </button>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            
+            // Adicionar eventos aos itens
+            container.querySelectorAll('.yt-queue-item').forEach(item => {
+                const index = parseInt(item.getAttribute('data-index'));
+                
+                item.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('yt-queue-remove')) {
+                        this.tocarItem(index);
+                        this.fecharModalFila();
+                    }
+                });
+                
+                const removeBtn = item.querySelector('.yt-queue-remove');
+                if (removeBtn) {
+                    removeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.removerDaFila(index);
+                    });
+                }
+            });
+        }
+        
+        // Remover da fila
+        removerDaFila(indice) {
+            if (indice < 0 || indice >= this.queue.length) return false;
+            
+            const removido = this.queue.splice(indice, 1)[0];
+            
+            // Ajustar índice atual se necessário
+            if (this.currentIndex === indice) {
+                if (this.queue.length > 0) {
+                    this.tocarItem(Math.min(indice, this.queue.length - 1));
+                } else {
+                    this.currentIndex = -1;
+                    this.pararPlayerAtual();
+                    this.atualizarInterface();
+                }
+            } else if (this.currentIndex > indice) {
+                this.currentIndex--;
+            }
+            
+            // Atualizar ordem original
+            const originalIndex = this.originalQueueOrder.findIndex(item => item.id === removido.id);
+            if (originalIndex !== -1) {
+                this.originalQueueOrder.splice(originalIndex, 1);
+            }
+            
+            console.log(`🗑️ Removido da fila: ${removido.titulo}`);
+            this.atualizarInterface();
+            this.salvarEstado();
+            
+            return true;
+        }
+        
+        // Limpar fila
+        limparFila() {
+            if (this.queue.length === 0) return;
+            
+            console.log(`🗑️ Limpando fila com ${this.queue.length} itens`);
+            
+            this.queue = [];
+            this.originalQueueOrder = [];
+            this.currentIndex = -1;
+            this.isPlaying = false;
+            
+            this.pararPlayerAtual();
+            this.atualizarInterface();
+            
+            document.getElementById('yt-current-title').textContent = 'Nenhuma música selecionada';
+            document.getElementById('yt-current-artist').textContent = 'Clique em uma música para começar';
+            document.getElementById('yt-progress-fill').style.width = '0%';
+            document.getElementById('yt-current-time').textContent = '0:00';
+            document.getElementById('yt-total-time').textContent = '0:00';
+            
+            this.salvarEstado();
+        }
+        
+        // Salvar estado no localStorage
+        salvarEstado() {
+            try {
+                const estado = {
+                    queue: this.queue,
+                    currentIndex: this.currentIndex,
+                    volume: this.volume,
+                    shuffle: this.shuffle,
+                    repeat: this.repeat,
+                    originalQueueOrder: this.originalQueueOrder,
+                    savedAt: new Date().toISOString()
+                };
+                
+                localStorage.setItem(CONFIG.localStorageKey, JSON.stringify(estado));
+                if (CONFIG.debug) console.log('💾 Estado salvo');
+            } catch (e) {
+                console.warn('Não foi possível salvar estado:', e);
+            }
+        }
+        
+        // Carregar estado do localStorage
+        carregarEstado() {
+            try {
+                const salvo = localStorage.getItem(CONFIG.localStorageKey);
+                if (!salvo) return;
+                
+                const estado = JSON.parse(salvo);
+                
+                // Restaurar fila (sem os players)
+                if (estado.queue && Array.isArray(estado.queue)) {
+                    this.queue = estado.queue.map(item => ({
+                        ...item,
+                        // Não tentar restaurar objetos complexos
+                        track: item.track || {}
+                    }));
+                }
+                
+                this.currentIndex = estado.currentIndex || -1;
+                this.volume = estado.volume || CONFIG.volume;
+                this.shuffle = estado.shuffle || false;
+                this.repeat = estado.repeat || false;
+                this.originalQueueOrder = estado.originalQueueOrder || [];
+                
+                console.log('💾 Estado carregado:', this.queue.length, 'itens');
+                
+                // Atualizar interface
+                this.atualizarInterface();
+                this.ajustarVolume(this.volume);
+                
+            } catch (e) {
+                console.warn('Não foi possível carregar estado:', e);
+            }
+        }
+        
+        // Obter música atual
+        getMusicaAtual() {
+            if (this.currentIndex >= 0 && this.currentIndex < this.queue.length) {
+                return this.queue[this.currentIndex].track;
+            }
+            return null;
+        }
+    }
+    
+    // ============================================
+    // 4. INTEGRAÇÃO COM SISTEMA EXISTENTE
+    // ============================================
+    
+    function integrarComSistemaExistente() {
+        console.log('🔗 Integrando com sistema existente...');
+        
+        // Criar instância global
+        window.YoutubeMusicPlayer = new YouTubeMusicSystem();
+        
+        // Monitorar cliques em músicas
+        function monitorarCliquesMusicas() {
+            document.addEventListener('click', function(e) {
+                let alvo = e.target;
+                
+                // Subir na árvore DOM até 5 níveis
+                for (let i = 0; i < 5; i++) {
+                    if (!alvo) break;
+                    
+                    // Verificar se é um elemento de música
+                    const isMusicElement = (
+                        // Verificar atributos
+                        (alvo.onclick && alvo.onclick.toString().includes('playTrack')) ||
+                        (alvo.getAttribute && alvo.getAttribute('onclick') && alvo.getAttribute('onclick').includes('playTrack')) ||
+                        // Verificar classes
+                        (alvo.className && (
+                            typeof alvo.className === 'string' && (
+                                alvo.className.includes('music') ||
+                                alvo.className.includes('track') ||
+                                alvo.className.includes('song') ||
+                                alvo.className.includes('play')
+                            )
+                        )) ||
+                        // Verificar data attributes
+                        (alvo.dataset && (
+                            alvo.dataset.trackId ||
+                            alvo.dataset.musicId ||
+                            alvo.dataset.youtubeId
+                        ))
+                    );
+                    
+                    if (isMusicElement) {
+                        console.log('🎵 Elemento de música detectado:', alvo);
+                        
+                        // Extrair índice da música
+                        let indiceMusica = null;
+                        
+                        // Tentar extrair de onclick
+                        const onclickAttr = alvo.getAttribute('onclick');
+                        if (onclickAttr && onclickAttr.includes('playTrack')) {
+                            const match = onclickAttr.match(/playTrack\((\d+)\)/);
+                            if (match) {
+                                indiceMusica = parseInt(match[1]);
+                            }
+                        }
+                        
+                        // Tentar extrair de data attributes
+                        if (indiceMusica === null && alvo.dataset) {
+                            if (alvo.dataset.index) indiceMusica = parseInt(alvo.dataset.index);
+                            else if (alvo.dataset.trackIndex) indiceMusica = parseInt(alvo.dataset.trackIndex);
+                        }
+                        
+                        // Se encontrou índice, processar
+                        if (indiceMusica !== null && window.state && window.state.playlist) {
+                            setTimeout(() => {
+                                const track = window.state.playlist[indiceMusica];
+                                if (track) {
+                                    console.log(`🎵 Processando track ${indiceMusica}:`, track.titulo_musica);
+                                    
+                                    // Adicionar à fila e tocar
+                                    window.YoutubeMusicPlayer.adicionarNaFila(track, true);
+                                    
+                                    // Manter compatibilidade com sistema antigo
+                                    if (window.state) {
+                                        window.state.currentTrackIndex = indiceMusica;
+                                    }
+                                    
+                                    // Chamar função original se existir
+                                    if (window.playTrack && typeof window.playTrack === 'function') {
+                                        try {
+                                            window.playTrack(indiceMusica);
+                                        } catch (e) {
+                                            console.warn('Função playTrack original gerou erro:', e);
+                                        }
+                                    }
+                                }
+                            }, 50);
+                        }
+                        
+                        break;
+                    }
+                    
+                    alvo = alvo.parentElement;
+                }
+            }, true); // Usar capture phase para pegar todos os cliques
+        }
+        
+        // Sobrescrever playTrack globalmente (se existir)
+        function sobrescreverPlayTrack() {
+            if (window.playTrack && typeof window.playTrack === 'function') {
+                const playTrackOriginal = window.playTrack;
+                
+                window.playTrack = function(index) {
+                    console.log(`🎵 playTrack chamado para índice ${index}`);
+                    
+                    // Executar original primeiro
+                    try {
+                        playTrackOriginal.call(this, index);
+                    } catch (e) {
+                        console.warn('Erro em playTrack original:', e);
+                    }
+                    
+                    // Adicionar ao nosso sistema
+                    if (window.state && window.state.playlist && window.state.playlist[index]) {
+                        const track = window.state.playlist[index];
+                        window.YoutubeMusicPlayer.adicionarNaFila(track, true);
+                        
+                        // Atualizar estado global
+                        if (window.state) {
+                            window.state.currentTrackIndex = index;
+                        }
+                    }
+                };
+                
+                console.log('✅ playTrack sobrescrito com sucesso');
+            }
+        }
+        
+        // Carregar playlist existente
+        function carregarPlaylistExistente() {
+            setTimeout(() => {
+                if (window.state && window.state.playlist && window.state.playlist.length > 0) {
+                    console.log(`📚 Playlist existente detectada: ${window.state.playlist.length} músicas`);
+                    
+                    // Adicionar todas à fila
+                    window.state.playlist.forEach((track, index) => {
+                        window.YoutubeMusicPlayer.adicionarNaFila(track, false);
+                    });
+                    
+                    // Se há uma música atual, tocar
+                    if (window.state.currentTrackIndex !== undefined && 
+                        window.state.currentTrackIndex >= 0 &&
+                        window.state.currentTrackIndex < window.state.playlist.length) {
+                        
+                        setTimeout(() => {
+                            window.YoutubeMusicPlayer.tocarItem(window.state.currentTrackIndex);
+                        }, 1000);
+                    }
+                }
+            }, 2000); // Esperar um pouco mais
+        }
+        
+        // Iniciar todas as integrações
+        monitorarCliquesMusicas();
+        sobrescreverPlayTrack();
+        carregarPlaylistExistente();
+        
+        console.log('✅ Integração completa com sistema existente');
+    }
+    
+    // ============================================
+    // 5. EVENTOS E CONTROLES DA INTERFACE
+    // ============================================
+    
+    function configurarEventosControles() {
+        console.log('🎮 Configurando eventos dos controles...');
+        
+        // Aguardar controles serem renderizados
+        setTimeout(() => {
+            // Botões principais
+            document.getElementById('yt-prev-btn').addEventListener('click', () => {
+                window.YoutubeMusicPlayer.anterior();
+            });
+            
+            document.getElementById('yt-play-btn').addEventListener('click', () => {
+                window.YoutubeMusicPlayer.playPause();
+            });
+            
+            document.getElementById('yt-next-btn').addEventListener('click', () => {
+                window.YoutubeMusicPlayer.proxima();
+            });
+            
+            // Botões secundários
+            document.getElementById('yt-shuffle-btn').addEventListener('click', () => {
+                window.YoutubeMusicPlayer.alternarEmbaralhar();
+            });
+            
+            document.getElementById('yt-repeat-btn').addEventListener('click', () => {
+                window.YoutubeMusicPlayer.alternarRepetir();
+            });
+            
+            // Controles de volume
+            const volumeBar = document.getElementById('yt-volume-bar');
+            if (volumeBar) {
+                volumeBar.addEventListener('click', (e) => {
+                    const rect = volumeBar.getBoundingClientRect();
+                    const percent = (e.clientX - rect.left) / rect.width;
+                    window.YoutubeMusicPlayer.ajustarVolume(Math.round(percent * 100));
+                });
+            }
+            
+            // Barra de progresso
+            const progressBar = document.getElementById('yt-progress-bar');
+            if (progressBar) {
+                progressBar.addEventListener('click', (e) => {
+                    if (window.YoutubeMusicPlayer.player && window.YoutubeMusicPlayer.player.seekTo) {
+                        const rect = progressBar.getBoundingClientRect();
+                        const percent = (e.clientX - rect.left) / rect.width;
+                        
+                        try {
+                            const duration = window.YoutubeMusicPlayer.player.getDuration();
+                            const seekTime = duration * percent;
+                            window.YoutubeMusicPlayer.player.seekTo(seekTime, true);
+                        } catch (err) {
+                            console.warn('Não foi possível buscar no vídeo:', err);
+                        }
+                    }
+                });
+            }
+            
+            // Botões de ação
+            document.getElementById('yt-show-queue').addEventListener('click', mostrarModalFila);
+            document.getElementById('yt-clear-queue').addEventListener('click', () => {
+                if (confirm('Tem certeza que deseja limpar toda a fila de reprodução?')) {
+                    window.YoutubeMusicPlayer.limparFila();
+                }
+            });
+            
+            // Controles da janela
+            document.getElementById('yt-controls-minimize').addEventListener('click', () => {
+                const controls = document.getElementById('youtube-music-controls-main');
+                const isMinimized = controls.style.height === '80px';
+                
+                if (isMinimized) {
+                    // Restaurar
+                    controls.style.height = '';
+                    controls.style.minWidth = '350px';
+                    controls.style.maxWidth = '400px';
+                    controls.style.overflow = '';
+                    document.getElementById('yt-controls-minimize').textContent = '➖';
+                    
+                    // Mostrar conteúdo
+                    controls.querySelectorAll('*').forEach(el => {
+                        el.style.display = '';
+                    });
+                } else {
+                    // Minimizar
+                    controls.style.height = '80px';
+                    controls.style.minWidth = '300px';
+                    controls.style.maxWidth = '300px';
+                    controls.style.overflow = 'hidden';
+                    document.getElementById('yt-controls-minimize').textContent = '➕';
+                    
+                    // Mostrar apenas informações básicas
+                    controls.querySelectorAll('*').forEach(el => {
+                        if (!el.id || !el.id.includes('controls-header')) {
+                            el.style.display = 'none';
+                        }
+                    });
+                    
+                    // Manter header visível
+                    const header = controls.querySelector('[style*="justify-content: space-between"]');
+                    if (header) header.style.display = 'flex';
+                }
+            });
+            
+            document.getElementById('yt-controls-close').addEventListener('click', () => {
+                const controls = document.getElementById('youtube-music-controls-main');
+                controls.style.display = 'none';
+                
+                // Mostrar botão para reabrir
+                const reopenBtn = document.createElement('button');
+                reopenBtn.id = 'yt-reopen-controls';
+                reopenBtn.innerHTML = '🎵';
+                reopenBtn.style.cssText = `
+                    position: fixed !important;
+                    bottom: 20px !important;
+                    right: 20px !important;
+                    width: 60px !important;
+                    height: 60px !important;
+                    background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%) !important;
+                    border: none !important;
+                    border-radius: 50% !important;
+                    color: white !important;
+                    cursor: pointer !important;
+                    font-size: 24px !important;
+                    z-index: 999998 !important;
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important;
+                    transition: all 0.3s !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                `;
+                
+                reopenBtn.addEventListener('click', () => {
+                    controls.style.display = 'block';
+                    reopenBtn.remove();
+                });
+                
+                document.body.appendChild(reopenBtn);
+            });
+            
+            // Modal da fila
+            document.getElementById('yt-close-queue').addEventListener('click', fecharModalFila);
+            document.getElementById('yt-modal-overlay').addEventListener('click', fecharModalFila);
+            
+            // Atalhos de teclado
+            document.addEventListener('keydown', (e) => {
+                // Evitar atalhos em campos de entrada
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                
+                switch (e.key) {
+                    case ' ':
+                        e.preventDefault();
+                        window.YoutubeMusicPlayer.playPause();
+                        break;
+                    case 'ArrowRight':
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            window.YoutubeMusicPlayer.proxima();
+                        }
+                        break;
+                    case 'ArrowLeft':
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            window.YoutubeMusicPlayer.anterior();
+                        }
+                        break;
+                    case 's':
+                    case 'S':
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            window.YoutubeMusicPlayer.alternarEmbaralhar();
+                        }
+                        break;
+                    case 'r':
+                    case 'R':
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            window.YoutubeMusicPlayer.alternarRepetir();
+                        }
+                        break;
+                }
+            });
+            
+            console.log('✅ Eventos dos controles configurados');
+        }, 500);
+    }
+    
+    function mostrarModalFila() {
+        document.getElementById('yt-queue-modal').style.display = 'block';
+        document.getElementById('yt-modal-overlay').style.display = 'block';
+        window.YoutubeMusicPlayer.atualizarListaFila();
+    }
+    
+    function fecharModalFila() {
+        document.getElementById('yt-queue-modal').style.display = 'none';
+        document.getElementById('yt-modal-overlay').style.display = 'none';
+    }
+    
+    // ============================================
+    // 6. INICIALIZAÇÃO DO SISTEMA
+    // ============================================
+    
+    function inicializarSistema() {
+        console.log('🚀 Inicializando sistema de controles do YouTube...');
+        
+        try {
+            // 1. Criar elementos necessários
+            criarContainerYouTube();
+            criarControlesVisuais();
+            
+            // 2. Aguardar um pouco e configurar eventos
+            setTimeout(() => {
+                configurarEventosControles();
+                integrarComSistemaExistente();
+                
+                // 3. Mostrar mensagem de sucesso
+                mostrarMensagemSucesso();
+                
+                console.log('🎉 SISTEMA DE CONTROLES DO YOUTUBE INICIALIZADO COM SUCESSO!');
+                console.log('🎮 Controles disponíveis em: window.YoutubeMusicPlayer');
+                console.log('📋 Métodos disponíveis:');
+                console.log('   - .adicionarNaFila(track, tocarAgora)');
+                console.log('   - .tocarItem(indice)');
+                console.log('   - .playPause()');
+                console.log('   - .proxima()');
+                console.log('   - .anterior()');
+                console.log('   - .alternarEmbaralhar()');
+                console.log('   - .alternarRepetir()');
+                console.log('   - .limparFila()');
+                
+            }, 1000);
+            
+        } catch (erro) {
+            console.error('❌ Erro na inicialização:', erro);
+        }
+    }
+    
+    function mostrarMensagemSucesso() {
+        setTimeout(() => {
+            const msg = document.createElement('div');
+            msg.id = 'yt-success-msg';
+            msg.style.cssText = `
+                position: fixed !important;
+                top: 20px !important;
+                right: 20px !important;
+                background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%) !important;
+                color: white !important;
+                padding: 15px 25px !important;
+                border-radius: 12px !important;
+                z-index: 1000000 !important;
+                box-shadow: 0 10px 30px rgba(29,185,84,0.3) !important;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+                animation: ytSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                max-width: 400px !important;
+                border: 2px solid rgba(255,255,255,0.2) !important;
+                backdrop-filter: blur(10px) !important;
+            `;
+            
+            msg.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+                    <div style="font-size: 28px;">🎉</div>
+                    <div>
+                        <div style="font-weight: 700; font-size: 16px; margin-bottom: 3px;">
+                            YouTube Controls Ativado!
+                        </div>
+                        <div style="font-size: 13px; opacity: 0.9;">
+                            Use os controles na parte inferior
+                        </div>
+                    </div>
+                </div>
+                <div style="font-size: 12px; opacity: 0.8; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
+                    <div>🎮 <strong>Atalhos:</strong> Espaço (Play/Pause), Ctrl+→ (Próxima), Ctrl+← (Anterior)</div>
+                    <div>🎵 Clique em qualquer música para começar</div>
+                </div>
+            `;
+            
+            document.body.appendChild(msg);
+            
+            // Adicionar animação CSS
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes ytSlideIn {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+                @keyframes ytSlideOut {
+                    from {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                    to {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Remover após 8 segundos
+            setTimeout(() => {
+                msg.style.animation = 'ytSlideOut 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                setTimeout(() => msg.remove(), 500);
+            }, 8000);
+        }, 1500);
+    }
+    
+    // ============================================
+    // 7. INICIAR TUDO QUANDO O DOCUMENTO ESTIVER PRONTO
+    // ============================================
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializarSistema);
+    } else {
+        inicializarSistema();
+    }
+    
+})();
+
+// ====================================================
+// FIM DO ARQUIVO ÚNICO
+// Copie TODO o código acima e cole onde necessário
+// ====================================================
 // ========== CONFIGURAÇÃO AVANÇADA ==========
 const CONFIG = {
     API_URL: 'https://script.google.com/macros/s/AKfycbwPHARLeQ-6j6D0dCnOgFQPyA_pzNsvqcJpU7OeTmYWTk3GN01KaT9BdGdpKtuTVXI/exec',
