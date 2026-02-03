@@ -668,6 +668,182 @@
             from { transform: translate(-50%, 20px); opacity: 0; }
             to { transform: translate(-50%, 0); opacity: 1; }
         }
+
+        // ========== YOUTUBE PLAYER FIX ==========
+
+let ytPlayerInstance = null;
+let ytPlayerState = {
+    currentVideoId: null,
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    volume: 80
+};
+
+function initYouTubeAPI() {
+    console.log('Inicializando YouTube API...');
+    
+    if (window.YT && window.YT.Player) {
+        console.log('YouTube API já carregada');
+        return true;
+    }
+    
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    tag.async = true;
+    
+    window.onYouTubeIframeAPIReady = function() {
+        console.log('YouTube API Ready!');
+        initializeYouTubePlayer();
+    };
+    
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    
+    return false;
+}
+
+function initializeYouTubePlayer() {
+    console.log('Inicializando player YouTube...');
+    
+    const container = document.getElementById('youtubePlayer');
+    if (!container) {
+        console.error('Container do YouTube não encontrado');
+        return;
+    }
+    
+    try {
+        ytPlayerInstance = new YT.Player('youtubePlayer', {
+            width: '100%',
+            height: '100%',
+            playerVars: {
+                'autoplay': 0,
+                'controls': 1,
+                'modestbranding': 1,
+                'rel': 0,
+                'showinfo': 0
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange,
+                'onError': onPlayerError
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao criar player YouTube:', error);
+        setupFallbackPlayer();
+    }
+}
+
+// Na função playTrack, substitua por:
+function playTrack(index) {
+    console.log('Play track chamado com índice:', index);
+    
+    if (index < 0 || index >= state.playlist.length) {
+        showToast('Música não encontrada', 'error');
+        return;
+    }
+    
+    state.currentTrackIndex = index;
+    const track = state.playlist[index];
+    
+    document.getElementById('playerSpotify').style.display = 'block';
+    
+    updatePlayerTrackInfo(track);
+    
+    const youtubeLink = track.link_youtube || track.LINK_YOUTUBE;
+    if (youtubeLink) {
+        const videoId = extractYouTubeId(youtubeLink);
+        if (videoId) {
+            console.log('Carregando vídeo ID:', videoId);
+            loadYouTubeVideo(videoId);
+        } else {
+            showToast('Link do YouTube inválido', 'error');
+        }
+    } else {
+        showToast('Vídeo não disponível', 'error');
+    }
+    
+    updatePlayPauseButton(true);
+}
+
+function loadYouTubeVideo(videoId, startAt = 0) {
+    console.log('Carregando vídeo:', videoId);
+    
+    if (!videoId) {
+        showToast('ID do vídeo inválido', 'error');
+        return;
+    }
+    
+    ytPlayerState.currentVideoId = videoId;
+    showPlayerLoading(true);
+    
+    if (ytPlayerInstance && ytPlayerInstance.loadVideoById) {
+        try {
+            ytPlayerInstance.loadVideoById({
+                videoId: videoId,
+                startSeconds: startAt
+            });
+        } catch (error) {
+            console.error('Erro ao carregar vídeo via API:', error);
+            loadVideoFallback(videoId);
+        }
+    } else {
+        loadVideoFallback(videoId);
+    }
+    
+    updatePlayerInterface();
+}
+
+function onPlayerReady(event) {
+    console.log('Player YouTube pronto');
+    ytPlayerInstance = event.target;
+    
+    event.target.setVolume(ytPlayerState.volume);
+    
+    setupProgressTracking();
+    showPlayerLoading(false);
+}
+
+function onPlayerStateChange(event) {
+    console.log('Estado do player alterado:', event.data);
+    
+    switch(event.data) {
+        case YT.PlayerState.PLAYING:
+            ytPlayerState.isPlaying = true;
+            updatePlayPauseButton(true);
+            showPlayerLoading(false);
+            startProgressTracking();
+            resetPlayerInactivityTimer();
+            break;
+            
+        case YT.PlayerState.PAUSED:
+            ytPlayerState.isPlaying = false;
+            updatePlayPauseButton(false);
+            stopProgressTracking();
+            break;
+            
+        case YT.PlayerState.ENDED:
+            ytPlayerState.isPlaying = false;
+            updatePlayPauseButton(false);
+            stopProgressTracking();
+            
+            if (state.isRepeat) {
+                playCurrentTrack();
+            } else {
+                playNext();
+            }
+            break;
+            
+        case YT.PlayerState.BUFFERING:
+            showPlayerLoading(true);
+            break;
+            
+        case YT.PlayerState.CUED:
+            showPlayerLoading(false);
+            break;
+    }
+}
         
         /* YOUTUBE PLAYER CONTAINER */
         .youtube-container {
