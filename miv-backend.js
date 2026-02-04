@@ -1,110 +1,24 @@
-/*********************************
- * CONFIGURAÇÃO
- *********************************/
-const MIV_API_URL = 'https://script.google.com/macros/s/AKfycbzF31lrSN6b2V6AT38VU2qzsRhOO8yiXIkdhknMqm6GVD5v4UgTmwDceKT5MqMe8nA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzF31lrSN6b2V6AT38VU2qzsRhOO8yiXIkdhknMqm6GVD5v4UgTmwDceKT5MqMe8nA/exec';
 
-/*********************************
- * ESTADO GLOBAL
- *********************************/
-let MIV_TOKEN = localStorage.getItem('miv_token') || null;
-
-/*********************************
- * UTIL
- *********************************/
-async function mivPost(action, payload = {}) {
-  const res = await fetch(MIV_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action,
-      token: MIV_TOKEN,
-      ...payload
-    })
-  });
-  return res.json();
+function iniciarApp() {
+  console.log('App iniciado com sucesso');
+  document.body.classList.remove('loading');
 }
 
-/*********************************
- * AUTH
- *********************************/
-async function mivRegister(nome, email, senha) {
-  const r = await mivPost('register', { nome, email, senha });
-  return r.success;
-}
+// BOOT SEGURO
+window.addEventListener('load', async () => {
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
 
-async function mivLogin(email, senha) {
-  const r = await mivPost('login', { email, senha });
-  if (r.token) {
-    MIV_TOKEN = r.token;
-    localStorage.setItem('miv_token', r.token);
-    return true;
-  }
-  return false;
-}
-
-function mivLogout() {
-  localStorage.removeItem('miv_token');
-  MIV_TOKEN = null;
-  location.reload();
-}
-
-/*********************************
- * PLAYER – CONTABILIZA PLAY ≥30s
- *********************************/
-let playTimer = null;
-let playSeconds = 0;
-let currentTrackId = null;
-
-function mivStartPlay(trackId) {
-  currentTrackId = trackId;
-  playSeconds = 0;
-
-  clearInterval(playTimer);
-  playTimer = setInterval(() => {
-    playSeconds++;
-
-    if (playSeconds === 30) {
-      mivPost('play', {
-        track_id: currentTrackId,
-        segundos: playSeconds
-      });
+    if (data.status === 'online') {
+      iniciarApp();
+    } else {
+      console.warn('API respondeu diferente:', data);
+      iniciarApp(); // libera mesmo assim
     }
-  }, 1000);
-}
-
-function mivStopPlay() {
-  clearInterval(playTimer);
-  playTimer = null;
-  playSeconds = 0;
-}
-
-/*********************************
- * SALDO / TRANSAÇÃO
- *********************************/
-async function mivRegistrarPagamento(valor, status = 'approved') {
-  return await mivPost('transacao', {
-    valor,
-    status,
-    origem: 'mercado_pago'
-  });
-}
-
-/*********************************
- * INTEGRAÇÃO COM SEU INDEX
- *********************************
- * Chame essas funções nos pontos
- * onde hoje existe simulação
- *********************************/
-
-// EXEMPLO:
-// ao dar play real:
-// mivStartPlay('track_123');
-
-// ao pausar:
-// mivStopPlay();
-
-// ao confirmar pagamento:
-// mivRegistrarPagamento(100);
-
-// ao logar:
-// await mivLogin(email, senha);
+  } catch (e) {
+    console.error('Erro ao conectar API:', e);
+    iniciarApp(); // NUNCA trava o site
+  }
+});
