@@ -4792,5 +4792,12 @@ window.exportExtrato = exportExtrato;
 console.log('SELO MIV v5.0.0 carregado com sucesso!');
 </script>
     <script src="/miv-backend.js"></script>
+<script>
+  window.addEventListener('load', () => {
+    document.body.classList.remove('loading');
+    document.body.style.display = 'block';
+    console.log('FORCE LOAD OK');
+  });
+</script>
 </body>
 </html>
