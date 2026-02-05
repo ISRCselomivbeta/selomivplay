@@ -3325,6 +3325,21 @@ function extractYouTubeId(url) {
 }
 
 // ========== PLAYER CONTROLS ==========
+    async function registrarPlay(trackId, segundos, youtubeVideoId) {
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      action: 'play',
+      token: usuario.token,
+      track_id: trackId,
+      segundos: segundos,
+      youtube_video_id: youtubeVideoId,
+      ip: await getIP()
+    })
+  });
+  
+  return response.json();
 function playTrack(index) {
     console.log('Play track chamado com índice:', index);
     
