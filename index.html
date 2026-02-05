@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -3325,21 +3326,6 @@ function extractYouTubeId(url) {
 }
 
 // ========== PLAYER CONTROLS ==========
-    async function registrarPlay(trackId, segundos, youtubeVideoId) {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      action: 'play',
-      token: usuario.token,
-      track_id: trackId,
-      segundos: segundos,
-      youtube_video_id: youtubeVideoId,
-      ip: await getIP()
-    })
-  });
-  
-  return response.json();
 function playTrack(index) {
     console.log('Play track chamado com índice:', index);
     
@@ -3561,9 +3547,9 @@ async function handleRegister() {
         const result = await dataManager.fetchWithFallback('register', {
             nome: name,
             email: email,
-            senha: password,
+            password: password,
             tipo: type,
-            link_trabalho: link
+            workLink: link
         });
 
         if (result.success) {
@@ -3704,10 +3690,12 @@ async function loadBalance(silent = false) {
     if (!silent) showLoading('Carregando saldo...');
     
     try {
-        const result = await dataManager.fetchWithFallback('saldo');
+        const result = await dataManager.fetchWithFallback('get_saldo', {
+            user_id: state.currentUser.id || state.currentUser.email
+        });
         
         if (result.success && result.data) {
-            state.userBalance = parseFloat(result.data.saldo_atual) || 0;
+            state.userBalance = parseFloat(result.data.saldo) || 0;
             updateBalanceDisplay();
             
             if (result.offline) {
@@ -3735,7 +3723,7 @@ function updateBalanceDisplay() {
 // ========== MARKETPLACE ==========
 async function loadMarketplace(forceRefresh = false) {
     try {
-        const result = await dataManager.fetchWithFallback('get_marketplace');
+        const result = await dataManager.fetchWithFallback('get_musicas');
         
         if (result.success && result.data) {
             state.playlist = result.data.filter(music => 
@@ -3939,13 +3927,11 @@ async function confirmInvestment() {
     showLoading('Processando investimento...');
     
     try {
-        const result = await dataManager.fetchWithFallback('play', {
-            track_id: state.currentInvestTrack.id || state.currentInvestTrack.ID,
-            segundos: 0,
-            token: localStorage.getItem('miv_token'),
-            investimento: true,
-            quantidade: quantity,
-            valor_total: totalPrice
+        const result = await dataManager.fetchWithFallback('buy', {
+            user_id: state.currentUser.id || state.currentUser.email,
+            music_id: state.currentInvestTrack.id || state.currentInvestTrack.ID,
+            quantidade: quantity.toString(),
+            valor_total: totalPrice.toFixed(2)
         });
         
         if (result.success) {
@@ -3976,10 +3962,9 @@ async function confirmInvestment() {
             state.userBalance -= totalPrice;
             updateBalanceDisplay();
             
-            dataManager.saveTransaction('play', {
-                track_id: state.currentInvestTrack.id,
-                segundos: 0,
-                investimento: true,
+            dataManager.saveTransaction('buy', {
+                user_id: state.currentUser.id,
+                music_id: state.currentInvestTrack.id,
                 quantidade: quantity,
                 valor_total: totalPrice
             });
@@ -4679,35 +4664,55 @@ async function viewContract(contractId) {
     showLoading('Carregando contrato...');
     
     try {
-        const result = await dataManager.fetchWithFallback('contrato_pdf', {
-            token: localStorage.getItem('miv_token'),
-            track_id: state.currentInvestTrack?.id
-        });
+        const contractContent = `
+            <h2>CONTRATO DE INVESTIMENTO EM DIREITOS AUTORAIS</h2>
+            <h3>SELO MIV - Fintech Musical</h3>
+            <hr>
+            
+            <p><strong>CONTRATO Nº:</strong> ${contractId}</p>
+            <p><strong>DATA:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+            <p><strong>HORA:</strong> ${new Date().toLocaleTimeString('pt-BR')}</p>
+            
+            <h4>1. DADOS DAS PARTES</h4>
+            <p><strong>INVESTIDOR:</strong> ${state.currentUser?.nome || 'Não informado'}</p>
+            <p><strong>CPF/CNPJ:</strong> A definir</p>
+            <p><strong>EMAIL:</strong> ${state.currentUser?.email || 'Não informado'}</p>
+            
+            <h4>2. OBJETO DO CONTRATO</h4>
+            <p>Este contrato tem por objeto a aquisição de direitos de participação nos rendimentos autorais da obra musical especificada abaixo.</p>
+            
+            <h4>3. ESPECIFICAÇÕES DA OBRA</h4>
+            <p><strong>TÍTULO:</strong> ${state.currentInvestTrack?.titulo || 'Não especificado'}</p>
+            <p><strong>ARTISTA:</strong> ${state.currentInvestTrack?.artista || 'Não especificado'}</p>
+            <p><strong>VALOR POR AÇÃO:</strong> ${formatCurrency(state.currentInvestTrack?.valor_acao || 0)}</p>
+            <p><strong>QUANTIDADE DE AÇÕES:</strong> ${document.getElementById('investQuantity')?.value || 1}</p>
+            <p><strong>VALOR TOTAL:</strong> ${document.getElementById('investTotalPrice')?.textContent || 'R$ 0,00'}</p>
+            
+            <h4>4. DIREITOS E OBRIGAÇÕES</h4>
+            <p>4.1. O investidor adquire direitos de participação nos rendimentos autorais da obra.</p>
+            <p>4.2. A participação será proporcional ao número de ações adquiridas.</p>
+            <p>4.3. Os rendimentos serão distribuídos mensalmente conforme uso da obra.</p>
+            
+            <h4>5. VIGÊNCIA</h4>
+            <p>Este contrato tem vigência de 5 (cinco) anos, renovável automaticamente.</p>
+            
+            <h4>6. ASSINATURAS</h4>
+            <br><br><br>
+            <p>_________________________________________</p>
+            <p>${state.currentUser?.nome || 'Investidor'}</p>
+            <p>Investidor</p>
+            <br><br>
+            <p>_________________________________________</p>
+            <p>SELO MIV Fintech Musical</p>
+            <p>CNPJ: 12.345.678/0001-99</p>
+            
+            <hr>
+            <p><small>Contrato gerado automaticamente pelo sistema SELO MIV em ${new Date().toLocaleString('pt-BR')}</small></p>
+        `;
         
-        if (result.success) {
-            document.getElementById('contractContent').innerHTML = `
-                <h2>CONTRATO DE INVESTIMENTO EM DIREITOS AUTORAIS</h2>
-                <h3>SELO MIV - Fintech Musical</h3>
-                <hr>
-                <p><strong>CONTRATO Nº:</strong> ${contractId}</p>
-                <p><strong>DATA:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-                <p><strong>HASH:</strong> ${result.hash || contractId}</p>
-                <hr>
-                <p><strong>INVESTIDOR:</strong> ${state.currentUser?.nome || 'Não informado'}</p>
-                <p><strong>EMAIL:</strong> ${state.currentUser?.email || 'Não informado'}</p>
-                <hr>
-                <p><strong>OBRA:</strong> ${state.currentInvestTrack?.titulo || 'Não especificado'}</p>
-                <p><strong>ARTISTA:</strong> ${state.currentInvestTrack?.artista || 'Não especificado'}</p>
-                <p><strong>VALOR:</strong> ${formatCurrency(state.currentInvestTrack?.valor_acao || 0)} por ação</p>
-                <hr>
-                <p><strong>URL DO CONTRATO:</strong> <a href="${result.contrato_url || '#'}" target="_blank">${result.contrato_url || 'N/A'}</a></p>
-                <hr>
-                <p><small>Contrato gerado automaticamente pelo sistema SELO MIV em ${new Date().toLocaleString('pt-BR')}</small></p>
-            `;
-            showModal('contractModal');
-        } else {
-            showToast('Erro ao carregar contrato', 'error');
-        }
+        document.getElementById('contractContent').innerHTML = contractContent;
+        showModal('contractModal');
+        
     } catch (error) {
         console.error('Erro ao carregar contrato:', error);
         showToast('Erro ao carregar contrato', 'error');
@@ -4783,20 +4788,23 @@ async function processBalanceAdd() {
     processBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Processando...';
     
     try {
-        // Abre o link do Mercado Pago em nova aba
+        // Registrar pagamento pendente
+        const paymentId = PaymentManager.addPendingPayment(amount, 'mercado_pago', {
+            user: state.currentUser.id,
+            userEmail: state.currentUser.email
+        });
+        
+        // Usar o link oficial do Mercado Pago fornecido
         const mercadoPagoLink = CONFIG.MERCADO_PAGO_LINK;
         
+        // Abre o link em nova aba
         window.open(mercadoPagoLink, '_blank');
         
         showToast(`Redirecionando para pagamento de ${formatCurrency(amount)}`, 'info');
         closeModal('addBalanceModal');
         
-        // Simula processamento do pagamento
-        setTimeout(() => {
-            state.userBalance += amount;
-            updateBalanceDisplay();
-            showToast(`Pagamento confirmado! ${formatCurrency(amount)} adicionado ao saldo.`, 'success');
-        }, 3000);
+        // Mostrar notificação de pagamento pendente
+        showToast('Pagamento em processamento. Você receberá uma notificação quando for confirmado.', 'info', 5000);
         
     } catch (error) {
         console.error('Erro ao processar pagamento:', error);
@@ -4960,10 +4968,16 @@ async function registerMusic() {
     showLoading('Cadastrando música...');
     
     try {
-        const result = await dataManager.fetchWithFallback('tokenizar_isrc', {
-            token: localStorage.getItem('miv_token'),
-            track_id: `TRK_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            percentual: percent
+        const result = await dataManager.fetchWithFallback('uploadMusic', {
+            user_id: state.currentUser.id || state.currentUser.email,
+            titulo: title,
+            artista: state.currentUser.nome,
+            genero: genre,
+            link_youtube: youtube,
+            link_capa: cover,
+            valor_acao: price.toFixed(2),
+            percentual_disponivel: percent.toString(),
+            status: 'ativo'
         });
         
         if (result.success) {
@@ -5090,7 +5104,6 @@ function logout() {
         
         localStorage.removeItem('miv_user');
         localStorage.removeItem('miv_session');
-        localStorage.removeItem('miv_token');
         
         document.getElementById('playerSpotify').style.display = 'none';
         document.getElementById('mainApp').style.display = 'none';
@@ -5135,9 +5148,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const savedUser = localStorage.getItem('miv_user');
         const savedSession = localStorage.getItem('miv_session');
-        const savedToken = localStorage.getItem('miv_token');
         
-        if (savedUser && savedSession && savedToken) {
+        if (savedUser && savedSession) {
             try {
                 state.currentUser = JSON.parse(savedUser);
                 const sessionAge = Date.now() - parseInt(savedSession, 16);
@@ -5146,14 +5158,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     localStorage.removeItem('miv_user');
                     localStorage.removeItem('miv_session');
-                    localStorage.removeItem('miv_token');
                     showToast('Sessão expirada. Faça login novamente.', 'warning');
                 }
             } catch (e) {
                 console.error('Erro ao restaurar sessão:', e);
                 localStorage.removeItem('miv_user');
                 localStorage.removeItem('miv_session');
-                localStorage.removeItem('miv_token');
             }
         }
     }, 1500);
@@ -5198,10 +5208,9 @@ function validateEmailField(field) {
     } else {
         field.classList.remove('is-invalid');
     }
-
 }
 </script>
-<script src="/miv-backend.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
