@@ -1645,81 +1645,47 @@
     </main>
 
     <!-- SPOTIFY-STYLE MUSIC PLAYER -->
-    <div id="playerSpotify" class="player-spotify">
-        <div class="player-content">
-            <!-- Expand Button -->
-            <button class="player-expand-btn" onclick="togglePlayerExpansion()">
-                <i class="bi bi-chevron-up" id="playerExpandIcon"></i>
-            </button>
-            
-            <!-- Expanded View Content -->
-            <div class="player-youtube-container" id="youtubeContainer">
-                <div id="youtubePlayer"></div>
-                <div class="player-state-loading" id="playerLoading">
-                    <div class="spinner"></div>
-                </div>
-            </div>
-            
-            <!-- Main Player Area -->
-            <div class="player-main-area">
-                <!-- Album Art -->
+    <!-- Substituir a partir desta linha -->
+
+<!-- NOVO PLAYER MIV -->
+<div id="playerSpotify" class="player-miv">
+    <!-- Player Bar (barra inferior fixa) -->
+    <div class="player-bar">
+        <!-- Área da música atual -->
+        <div class="player-track-info">
+            <div class="track-image-container">
                 <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Crect width='56' height='56' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='12' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
-                     class="player-album-art" 
+                     class="track-image" 
                      alt="Album Art" 
                      id="playerAlbumArt">
-                
-                <!-- Track Info -->
-                <div class="player-info">
-                    <div class="player-title" id="playerTitle">Nenhuma música tocando</div>
-                    <div class="player-artist" id="playerArtist">Selecione uma música para começar</div>
-                    <div class="player-price small text-muted" id="playerPrice">R$ 0,00 por ação</div>
-                </div>
-                
-                <!-- Extra Controls -->
-                <div class="player-extra-controls">
-                    <!-- Favorite Button -->
-                    <button class="control-btn" onclick="toggleFavorite()" id="favoriteBtn">
-                        <i class="bi bi-star" id="favoriteIcon"></i>
-                    </button>
-                    
-                    <!-- Volume Control -->
-                    <div class="volume-container">
-                        <i class="bi bi-volume-up text-muted" id="volumeIcon"></i>
-                        <div class="volume-slider" onclick="handleVolumeClick(event)" id="volumeSlider">
-                            <div class="volume-slider-bar" id="volumeSliderBar"></div>
-                        </div>
-                    </div>
-                    
-                    <!-- Invest Button -->
-                    <button class="btn-miv btn-sm" onclick="openInvestModalFromPlayer()" id="investPlayerBtn">
-                        <i class="bi bi-currency-dollar"></i> Investir
-                    </button>
+                <div class="track-image-overlay" onclick="togglePlay()" id="trackImageOverlay">
+                    <i class="bi bi-play-fill" id="trackOverlayIcon"></i>
                 </div>
             </div>
             
-            <!-- Progress Bar -->
-            <div class="player-progress-container" onclick="handleProgressClick(event)" id="progressContainer">
-                <div class="player-progress-bar" id="playerProgressBar"></div>
+            <div class="track-details">
+                <div class="track-title" id="playerTitle">Nenhuma música tocando</div>
+                <div class="track-artist" id="playerArtist">Selecione uma música para começar</div>
             </div>
             
-            <!-- Time Display -->
-            <div class="player-time-display">
-                <span id="currentTimeDisplay">0:00</span>
-                <span id="totalTimeDisplay">0:00</span>
+            <div class="track-actions">
+                <button class="player-btn favorite-btn" onclick="toggleFavorite()" id="favoriteBtn" title="Favoritar">
+                    <i class="bi bi-star" id="favoriteIcon"></i>
+                </button>
+                <button class="player-btn" onclick="openInvestModalFromPlayer()" title="Investir">
+                    <i class="bi bi-currency-dollar"></i>
+                </button>
             </div>
-            
-            <!-- Player Controls -->
-            <div class="player-controls">
-                <button class="control-btn" onclick="toggleShuffle()" id="shuffleBtn" title="Aleatório">
+        </div>
+        
+        <!-- Controles centrais -->
+        <div class="player-controls-center">
+            <div class="control-buttons">
+                <button class="control-btn shuffle-btn" onclick="toggleShuffle()" id="shuffleBtn" title="Aleatório">
                     <i class="bi bi-shuffle" id="shuffleIcon"></i>
                 </button>
                 
-                <!-- 10 segundos para trás -->
-                <button class="control-btn" onclick="skipBackward()" title="Voltar 10s">
-                    <i class="bi bi-skip-backward"></i>
-                </button>
-                
-                <button class="control-btn" onclick="playPrevious()" title="Anterior">
+                <button class="control-btn prev-btn" onclick="playPrevious()" title="Anterior">
                     <i class="bi bi-skip-backward-fill"></i>
                 </button>
                 
@@ -1727,23 +1693,222 @@
                     <i class="bi bi-play-fill" id="playPauseIcon"></i>
                 </button>
                 
-                <button class="control-btn" onclick="playNext()" title="Próxima">
+                <button class="control-btn next-btn" onclick="playNext()" title="Próxima">
                     <i class="bi bi-skip-forward-fill"></i>
                 </button>
                 
-                <!-- 10 segundos para frente -->
-                <button class="control-btn" onclick="skipForward()" title="Avançar 10s">
-                    <i class="bi bi-skip-forward"></i>
-                </button>
-                
-                <button class="control-btn" onclick="toggleRepeat()" id="repeatBtn" title="Repetir">
+                <button class="control-btn repeat-btn" onclick="toggleRepeat()" id="repeatBtn" title="Repetir">
                     <i class="bi bi-repeat" id="repeatIcon"></i>
                 </button>
-                
-                <!-- Tela Cheia -->
-                <button class="control-btn" onclick="toggleFullscreen()" title="Tela Cheia" id="fullscreenBtn">
-                    <i class="bi bi-fullscreen" id="fullscreenIcon"></i>
+            </div>
+            
+            <div class="progress-container">
+                <span class="time-current" id="currentTimeDisplay">0:00</span>
+                <div class="progress-bar" onclick="handleProgressClick(event)" id="progressContainer">
+                    <div class="progress-fill" id="playerProgressBar"></div>
+                    <div class="progress-handle" id="progressHandle"></div>
+                </div>
+                <span class="time-total" id="totalTimeDisplay">0:00</span>
+            </div>
+        </div>
+        
+        <!-- Controles direito -->
+        <div class="player-controls-right">
+            <button class="player-btn queue-btn" onclick="toggleQueue()" title="Fila de reprodução">
+                <i class="bi bi-music-note-list"></i>
+            </button>
+            
+            <div class="volume-container">
+                <button class="player-btn volume-btn" onclick="toggleMute()" title="Volume" id="volumeBtn">
+                    <i class="bi bi-volume-up" id="volumeIcon"></i>
                 </button>
+                <div class="volume-slider-container">
+                    <div class="volume-slider" onclick="handleVolumeClick(event)" id="volumeSlider">
+                        <div class="volume-slider-fill" id="volumeSliderBar"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="player-btn expand-btn" onclick="togglePlayerExpansion()" title="Expandir player">
+                <i class="bi bi-arrows-angle-expand" id="expandIcon"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Player Expandido (modal overlay) -->
+    <div class="player-expanded" id="playerExpanded">
+        <div class="expanded-header">
+            <div class="expanded-track-info">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='48' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
+                     class="expanded-album-art" 
+                     alt="Album Art" 
+                     id="expandedAlbumArt">
+                
+                <div class="expanded-details">
+                    <div class="expanded-type">TOCANDO DO SELO MIV</div>
+                    <h1 class="expanded-title" id="expandedTitle">Nenhuma música tocando</h1>
+                    <div class="expanded-artist" id="expandedArtist">Selecione uma música para começar</div>
+                    
+                    <div class="expanded-meta">
+                        <span class="meta-item">
+                            <i class="bi bi-music-note-beamed"></i>
+                            <span id="expandedGenre">Música</span>
+                        </span>
+                        <span class="meta-item">
+                            <i class="bi bi-calendar"></i>
+                            <span id="expandedYear">2024</span>
+                        </span>
+                        <span class="meta-item">
+                            <i class="bi bi-clock"></i>
+                            <span id="expandedDuration">0:00</span>
+                        </span>
+                    </div>
+                    
+                    <div class="expanded-actions">
+                        <button class="miv-btn play-large-btn" onclick="togglePlay()">
+                            <i class="bi bi-play-fill" id="expandedPlayIcon"></i>
+                            <span id="expandedPlayText">Reproduzir</span>
+                        </button>
+                        
+                        <button class="action-btn favorite-large-btn" onclick="toggleFavorite()" id="expandedFavoriteBtn">
+                            <i class="bi bi-star" id="expandedFavoriteIcon"></i>
+                        </button>
+                        
+                        <button class="action-btn" onclick="openInvestModalFromPlayer()" title="Investir">
+                            <i class="bi bi-currency-dollar"></i>
+                            <span>Investir</span>
+                        </button>
+                        
+                        <button class="action-btn" onclick="shareTrack()" title="Compartilhar">
+                            <i class="bi bi-share"></i>
+                        </button>
+                        
+                        <button class="action-btn more-btn">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="close-expanded" onclick="togglePlayerExpansion()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        
+        <div class="expanded-content">
+            <!-- YouTube Container -->
+            <div class="youtube-container-expanded" id="youtubeContainerExpanded">
+                <div id="youtubePlayerExpanded"></div>
+                <div class="player-loading" id="playerLoadingExpanded">
+                    <div class="loading-spinner"></div>
+                    <span>Carregando vídeo...</span>
+                </div>
+            </div>
+            
+            <!-- Informações da Música -->
+            <div class="track-info-section">
+                <h3 class="section-title">
+                    <i class="bi bi-info-circle"></i>
+                    Sobre esta música
+                </h3>
+                
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <i class="bi bi-cash-coin"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Valor por ação</div>
+                            <div class="info-value" id="expandedPrice">R$ 0,00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <i class="bi bi-percent"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Disponível para investimento</div>
+                            <div class="info-value" id="expandedAvailable">0%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Retorno estimado</div>
+                            <div class="info-value text-success" id="expandedReturn">0%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Investidores</div>
+                            <div class="info-value" id="expandedInvestors">0</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="invest-cta">
+                    <h4>Invista nesta música e participe dos royalties!</h4>
+                    <p>Cada ação dá direito a uma porcentagem dos rendimentos autorais.</p>
+                    <button class="miv-btn invest-large-btn" onclick="openInvestModalFromPlayer()">
+                        <i class="bi bi-currency-dollar"></i>
+                        Investir Agora
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Controles expandidos -->
+            <div class="expanded-controls">
+                <div class="expanded-controls-top">
+                    <button class="control-btn" onclick="toggleShuffle()" id="expandedShuffleBtn">
+                        <i class="bi bi-shuffle" id="expandedShuffleIcon"></i>
+                        Aleatório
+                    </button>
+                    
+                    <button class="control-btn" onclick="toggleRepeat()" id="expandedRepeatBtn">
+                        <i class="bi bi-repeat" id="expandedRepeatIcon"></i>
+                        Repetir
+                    </button>
+                    
+                    <div class="queue-info">
+                        <i class="bi bi-music-note-list"></i>
+                        <span>Na fila: <strong id="queueCount">0</strong> músicas</span>
+                    </div>
+                </div>
+                
+                <div class="expanded-progress-container">
+                    <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
+                        <div class="expanded-progress-fill" id="expandedProgressBar"></div>
+                    </div>
+                    <div class="expanded-time-display">
+                        <span id="expandedCurrentTime">0:00</span>
+                        <span id="expandedTotalTime">0:00</span>
+                    </div>
+                </div>
+                
+                <div class="expanded-controls-bottom">
+                    <button class="control-btn prev-large-btn" onclick="playPrevious()">
+                        <i class="bi bi-skip-backward-fill"></i>
+                        Anterior
+                    </button>
+                    
+                    <button class="control-btn play-large-btn-expanded" onclick="togglePlay()" id="expandedPlayPauseBtn">
+                        <i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i>
+                        <span id="expandedPlayPauseText">Pausar</span>
+                    </button>
+                    
+                    <button class="control-btn next-large-btn" onclick="playNext()">
+                        <i class="bi bi-skip-forward-fill"></i>
+                        Próxima
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -2166,7 +2331,6 @@
         </div>
     </div>
 </div>
-
 <!-- JavaScript -->
 <script>
 // ========== CONFIGURAÇÃO AVANÇADA ==========
