@@ -2171,11 +2171,8 @@
 <script>
 // ========== CONFIGURAÇÃO AVANÇADA ==========
 const CONFIG = {
-    // Opção 1: Backend em produção
+    // GOOGLE APPS SCRIPT PARA PRODUÇÃO
     API_URL: 'https://script.google.com/macros/s/AKfycbz4DWw-4AHgPVDBmikubvnW3i8oJTFR9mHoMtSMRITOPX_pv_J3hkZXyjJV_4cl75I/exec',
-    
-    // Opção 2: JSON Server local para desenvolvimento
-    // API_URL: 'http://localhost:3001',
     
     LOCAL_STORAGE_KEY: 'selo_miv_data_v5',
     EXTERNAL_STORAGE_KEY: 'selo_miv_external_v1',
@@ -2183,8 +2180,8 @@ const CONFIG = {
     AUTO_REFRESH_INTERVAL: 30000,
     PLAYER_INACTIVITY_TIMEOUT: 5000,
     MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
-    EXTERNAL_TARGET_SALES: 1000000, // 1 milhão em vendas
-    SPECULATION_FEE: 0.0099 // 0,99% de taxa de especulação
+    EXTERNAL_TARGET_SALES: 1000000,
+    SPECULATION_FEE: 0.0099
 };
 
 // ========== ESTADO GLOBAL ==========
@@ -2569,7 +2566,11 @@ class DataManager {
     }
 
     isDemoAction(action, params) {
-        return true; // Sempre usar modo demo para este exemplo
+        const demoActions = ['login', 'get_musicas', 'get_external_musicas', 'get_carteira', 
+                           'get_extrato', 'get_saldo', 'buy', 'buy_external', 'toggle_favorite',
+                           'get_top_investments', 'register', 'upload_music', 'suggest_external_music'];
+        
+        return demoActions.includes(action) || state.offlineMode;
     }
 
     getDemoResponse(action, params) {
@@ -2642,7 +2643,6 @@ class DataManager {
                 };
                 
             case 'buy':
-                // Simular compra bem-sucedida
                 const newTransaction = {
                     id: 'trans_' + Date.now(),
                     user_id: params.user_id,
@@ -2673,7 +2673,6 @@ class DataManager {
                 };
                 
             case 'buy_external':
-                // Simular compra externa bem-sucedida
                 const externalTransaction = {
                     id: 'trans_external_' + Date.now(),
                     user_id: params.user_id,
@@ -2692,14 +2691,12 @@ class DataManager {
                 
                 DEMO_DATA.transactions.push(externalTransaction);
                 
-                // Atualizar vendas atuais
                 const externalMusic = DEMO_DATA.external_music.find(m => m.id === params.external_id);
                 if (externalMusic) {
                     const valorTotal = parseFloat(params.valor_total);
                     externalMusic.vendas_atuais = (externalMusic.vendas_atuais || 0) + valorTotal;
                     externalMusic.acoes_vendidas = (externalMusic.acoes_vendidas || 0) + parseInt(params.quantidade);
                     
-                    // Verificar se atingiu a meta
                     if (externalMusic.vendas_atuais >= CONFIG.EXTERNAL_TARGET_SALES) {
                         externalMusic.status = 'meta_atingida';
                     }
@@ -2872,7 +2869,7 @@ class DataManager {
             const cache = {
                 data,
                 timestamp: Date.now(),
-                ttl: 5 * 60 * 1000 // 5 minutos
+                ttl: 5 * 60 * 1000
             };
             localStorage.setItem(`cache_${cacheKey}`, JSON.stringify(cache));
         } catch (e) {
@@ -3132,7 +3129,6 @@ function toggleFullscreen() {
     }
 }
 
-// Adicionar evento para detectar mudanças no modo de tela cheia
 document.addEventListener('fullscreenchange', handleFullscreenChange);
 document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
 document.addEventListener('msfullscreenchange', handleFullscreenChange);
@@ -3233,7 +3229,7 @@ function playExternalTrack(index) {
         return;
     }
     
-    state.currentTrackIndex = index + 1000; // Offset para não conflitar com playlist principal
+    state.currentTrackIndex = index + 1000;
     const track = state.externalPlaylist[index];
     
     const player = document.getElementById('playerSpotify');
@@ -3581,7 +3577,6 @@ async function handleLogin() {
         console.error('Erro no login:', error);
         showToast('Erro de conexão. Usando modo de demonstração.', 'warning');
         
-        // Modo de demonstração automático
         state.currentUser = DEMO_DATA.users[0];
         state.userBalance = 1500;
         state.favoriteMusicIds = ['demo_music_1', 'demo_music_2', 'demo_music_3'];
@@ -3685,6 +3680,7 @@ function initializeApp() {
     initializeSpotifyPlayer();
     loadAllData();
 }
+    
 
 function updateUserInterface() {
     if (!state.currentUser) return;
@@ -4455,7 +4451,7 @@ async function loadExternalPortfolio(silent = false) {
         
         if (result.success) {
             state.externalInvestments = Array.isArray(result.data) ? result.data : [];
-            renderPortfolio(); // Mesclar com portfólio principal
+            renderPortfolio();
         }
     } catch (error) {
         console.error('Erro ao carregar portfólio externo:', error);
@@ -4477,7 +4473,6 @@ function renderPortfolio() {
     let externalValue = 0;
     let externalInvestment = 0;
     
-    // Calcular valores das músicas do SELO MIV
     state.portfolioAssets.forEach(asset => {
         const music = state.playlist.find(m => m.id === asset.music_id);
         const currentPrice = music ? (music.valor_acao || 0) : (asset.valor_pago_por_acao || 0);
@@ -4487,7 +4482,6 @@ function renderPortfolio() {
         totalInvestment += purchasePrice * quantity;
     });
     
-    // Calcular valores das músicas externas
     state.externalInvestments.forEach(asset => {
         const music = state.externalPlaylist.find(m => m.id === asset.external_id);
         const currentPrice = music ? (music.valor_acao || 0) : (asset.valor_pago_por_acao || 0);
@@ -4496,7 +4490,6 @@ function renderPortfolio() {
         externalValue += currentPrice * quantity;
         externalInvestment += purchasePrice * quantity;
         
-        // Se a música externa virou do SELO MIV, adicionar ao valor total
         if (music && music.status === 'aprovado') {
             totalValue += currentPrice * quantity;
             totalInvestment += purchasePrice * quantity;
@@ -4556,7 +4549,6 @@ function renderPortfolio() {
         return;
     }
     
-    // Combinar e ordenar ativos por data de compra (mais recente primeiro)
     const allAssetsSorted = [...allAssets].sort((a, b) => {
         const dateA = new Date(a.data_compra || 0);
         const dateB = new Date(b.data_compra || 0);
@@ -4697,6 +4689,7 @@ function renderLedger() {
                     </div>
                 </td>
             </tr>
+            </table>
         `;
         return;
     }
