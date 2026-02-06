@@ -1574,7 +1574,7 @@
     <div class="loading-content">
         <div class="loading-spinner"></div>
         <h4 class="text-success mb-2">SELO MIV</h4>
-        <p class="text-muted" id="loadingMessage">Inicializando plataforma...</p>
+        <p class="text-muted" id="loadingMessage">Conectando ao servidor...</p>
         <div class="progress-loading">
             <div class="progress-loading-bar"></div>
         </div>
@@ -1610,11 +1610,6 @@
             <p class="text-center text-muted">
                 Novo por aqui? <a href="javascript:void(0)" class="auth-link" onclick="showRegisterForm()">Criar conta</a>
             </p>
-            <div class="text-center mt-3">
-                <small class="text-muted">
-                    <i class="bi bi-info-circle me-1"></i> Conta de teste: admin@miv.com / admin123
-                </small>
-            </div>
         </div>
 
         <!-- Register Form -->
@@ -2599,10 +2594,7 @@
 const CONFIG = {
     // GOOGLE APPS SCRIPT PARA PRODUÇÃO
     API_URL: 'https://script.google.com/macros/s/AKfycbx83dOJQxMf6HeK7YzOh16it_m6iPm4hmuD-KPU-IbkSJCj4TNzCEF5e1aRIP033cs/exec',
-    
-    // ADICIONE ESTA LINHA:
     DEFAULT_ACTION: 'status',
-    
     LOCAL_STORAGE_KEY: 'selo_miv_data_v5',
     EXTERNAL_STORAGE_KEY: 'selo_miv_external_v1',
     VERSION: '5.0.0',
@@ -2633,8 +2625,6 @@ const state = {
     currentVolume: 80,
     isShuffle: false,
     isRepeat: false,
-    offlineMode: false,
-    appInitialized: false,
     playerInactivityTimer: null,
     playerExpanded: false,
     playerLoading: false,
@@ -2644,135 +2634,6 @@ const state = {
     youtubeAPILoaded: false,
     externalMusicQueue: [],
     lastVolume: 80
-};
-
-// ========== DADOS DE DEMONSTRAÇÃO ==========
-const DEMO_DATA = {
-    users: [
-        {
-            id: 'demo_user_1',
-            nome: 'Administrador',
-            email: 'admin@miv.com',
-            tipo: 'admin',
-            saldo: 1500,
-            acesso: 'aprovado',
-            favorite_music_ids: 'demo_music_1,demo_music_2,demo_music_3',
-            playlists: '',
-            total_investido: 1500,
-            criado_em: new Date().toISOString()
-        }
-    ],
-    music: [
-        {
-            id: 'demo_music_1',
-            titulo: "Cigarra",
-            artista: "Elzo Henschell",
-            genero: "ROCK",
-            link_youtube: "https://www.youtube.com/watch?v=BICMazy6NUg",
-            link_capa: "https://i.ytimg.com/vi/BICMazy6NUg/hqdefault.jpg",
-            valor_acao: 18.50,
-            percentual_disponivel: 30,
-            acoes_vendidas: 70,
-            status: "ativo",
-            data_cadastro: new Date().toISOString(),
-            total_investidores: 42,
-            rentabilidade_media: 22.50,
-            visualizacoes: 12500,
-            royalties_acumulados: 1250.00
-        },
-        {
-            id: 'demo_music_2',
-            titulo: "O Máximo",
-            artista: "Elzo Henschell",
-            genero: "ROCK",
-            link_youtube: "https://youtu.be/Ue1FxZjUxXQ",
-            link_capa: "https://i.ytimg.com/vi/Ue1FxZjUxXQ/hqdefault.jpg",
-            valor_acao: 22.00,
-            percentual_disponivel: 25,
-            acoes_vendidas: 75,
-            status: "ativo",
-            data_cadastro: new Date().toISOString(),
-            total_investidores: 38,
-            rentabilidade_media: 28.00,
-            visualizacoes: 9800,
-            royalties_acumulados: 980.00
-        },
-        {
-            id: 'demo_music_3',
-            titulo: "Voo - Ao vivo no Centro Artístico Maluly",
-            artista: "Elzo Henschell",
-            genero: "ROCK",
-            link_youtube: "https://www.youtube.com/watch?v=BReZWIAGDv0",
-            link_capa: "https://i.ytimg.com/an_webp/BReZWIAGDv0/mqdefault_6s.webp",
-            valor_acao: 25.00,
-            percentual_disponivel: 40,
-            acoes_vendidas: 60,
-            status: "ativo",
-            data_cadastro: new Date().toISOString(),
-            total_investidores: 35,
-            rentabilidade_media: 32.00,
-            visualizacoes: 15200,
-            royalties_acumulados: 1520.00
-        }
-    ],
-    external_music: [
-        {
-            id: 'external_demo_1',
-            titulo: "Bohemian Rhapsody",
-            artista: "Queen",
-            link_youtube: "https://www.youtube.com/watch?v=fJ9rUzIMcZQ",
-            valor_acao: 50.00,
-            percentual_disponivel: 20,
-            acoes_vendidas: 150,
-            total_acoes: 1000,
-            vendas_atuais: 750000,
-            status: "aguardando",
-            data_sugestao: new Date().toISOString(),
-            sugerido_por: "demo_user_1",
-            mensagem_artista: "Clássico atemporal com potencial gigante",
-            total_investidores: 89,
-            rentabilidade_estimada: 35.00
-        },
-        {
-            id: 'external_demo_2',
-            artista: "Billie Eilish",
-            titulo: "Bad Guy",
-            link_youtube: "https://www.youtube.com/watch?v=DyDfgMOUjCI",
-            valor_acao: 35.00,
-            percentual_disponivel: 25,
-            acoes_vendidas: 200,
-            total_acoes: 800,
-            vendas_atuais: 500000,
-            status: "aguardando",
-            data_sugestao: new Date().toISOString(),
-            sugerido_por: "demo_user_1",
-            mensagem_artista: "Sucesso global com apelo comercial enorme",
-            total_investidores: 67,
-            rentabilidade_estimada: 28.00
-        },
-        {
-            id: 'external_demo_3',
-            titulo: "Blinding Lights",
-            artista: "The Weeknd",
-            link_youtube: "https://www.youtube.com/watch?v=4NRXx6U8ABQ",
-            valor_acao: 40.00,
-            percentual_disponivel: 30,
-            acoes_vendidas: 180,
-            total_acoes: 600,
-            vendas_atuais: 900000,
-            status: "aguardando",
-            data_sugestao: new Date().toISOString(),
-            sugerido_por: "demo_user_1",
-            mensagem_artista: "Recorde de streams no Spotify, potencial enorme",
-            total_investidores: 92,
-            rentabilidade_estimada: 32.00
-        }
-    ],
-    portfolio: [],
-    external_portfolio: [],
-    transactions: [],
-    playlists: [],
-    lastUpdated: new Date().toISOString()
 };
 
 // ========== UTILITÁRIOS ==========
@@ -2910,422 +2771,61 @@ function formatTime(seconds) {
 // ========== GESTÃO DE DADOS ==========
 class DataManager {
     constructor() {
-        this.offlineData = this.loadOfflineData();
-        this.externalData = this.loadExternalData();
+        this.localData = this.loadLocalData();
     }
 
-    loadOfflineData() {
+    loadLocalData() {
         try {
             const data = localStorage.getItem(CONFIG.LOCAL_STORAGE_KEY);
-            return data ? JSON.parse(data) : DEMO_DATA;
+            return data ? JSON.parse(data) : null;
         } catch (e) {
-            console.error('Erro ao carregar dados offline:', e);
-            return DEMO_DATA;
-        }
-    }
-
-    loadExternalData() {
-        try {
-            const data = localStorage.getItem(CONFIG.EXTERNAL_STORAGE_KEY);
-            return data ? JSON.parse(data) : DEMO_DATA;
-        } catch (e) {
-            console.error('Erro ao carregar dados externos:', e);
-            return DEMO_DATA;
-        }
-    }
-
-    async fetchWithFallback(action, params = {}) {
-        const maxRetries = 2;
-        let lastError;
-
-        for (let i = 0; i < maxRetries; i++) {
-            try {
-                console.log(`Tentativa ${i + 1} para: ${action}`, params);
-                
-                const actionToUse = action || 'status';
-                
-                if (this.isDemoAction(actionToUse, params)) {
-                    return this.getDemoResponse(actionToUse, params);
-                }
-                
-                const formData = new URLSearchParams();
-                formData.append('action', actionToUse);
-                Object.keys(params).forEach(key => {
-                    if (params[key] !== undefined && params[key] !== null) {
-                        formData.append(key, params[key]);
-                    }
-                });
-
-                const response = await fetch(CONFIG.API_URL, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'Accept': 'application/json'
-                    },
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const result = await response.json();
-                
-                if (result.success) {
-                    this.updateLocalCache(actionToUse, result.data || result, params);
-                    return result;
-                } else {
-                    if (result.error === 'ACTION_NOT_FOUND') {
-                        console.log('API retornou ACTION_NOT_FOUND, usando modo demo');
-                        return this.getDemoResponse(actionToUse, params);
-                    }
-                    throw new Error(result.message || 'Ação falhou');
-                }
-            } catch (error) {
-                lastError = error;
-                console.warn(`Tentativa ${i + 1} falhou:`, error);
-                
-                if (i === maxRetries - 1) {
-                    const localData = this.getLocalData(action, params);
-                    if (localData) {
-                        state.offlineMode = true;
-                        console.log('Usando dados offline para:', action);
-                        return { success: true, data: localData, offline: true };
-                    }
-                }
-                
-                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-            }
-        }
-
-        console.log('Todas tentativas falharam, usando modo demo');
-        return this.getDemoResponse(action || 'status', params);
-    }
-
-    isDemoAction(action, params) {
-        return state.offlineMode || 
-               action.includes('demo') || 
-               action === 'status' ||
-               (params.email === 'admin@miv.com' && params.password === 'admin123');
-    }
-
-    getDemoResponse(action, params) {
-        console.log('Modo demonstração para:', action);
-        
-        switch(action) {
-            case 'login':
-                if (params.email === 'admin@miv.com' && params.password === 'admin123') {
-                    const user = DEMO_DATA.users[0];
-                    return {
-                        success: true,
-                        data: user,
-                        token: 'demo_token_' + Date.now(),
-                        message: 'Login bem-sucedido (modo demo)'
-                    };
-                }
-                return {
-                    success: false,
-                    error: 'CREDENCIAIS_INVALIDAS',
-                    message: 'Email ou senha incorretos'
-                };
-                
-            case 'get_musicas':
-                return {
-                    success: true,
-                    data: DEMO_DATA.music,
-                    total: DEMO_DATA.music.length,
-                    message: 'Músicas carregadas (modo demo)'
-                };
-                
-            case 'get_external_musicas':
-                return {
-                    success: true,
-                    data: DEMO_DATA.external_music,
-                    total: DEMO_DATA.external_music.length,
-                    message: 'Músicas externas carregadas (modo demo)'
-                };
-                
-            case 'get_carteira':
-                return {
-                    success: true,
-                    data: DEMO_DATA.portfolio,
-                    message: 'Carteira carregada (modo demo)'
-                };
-                
-            case 'get_external_carteira':
-                return {
-                    success: true,
-                    data: DEMO_DATA.external_portfolio,
-                    message: 'Carteira externa carregada (modo demo)'
-                };
-                
-            case 'get_extrato':
-                return {
-                    success: true,
-                    data: DEMO_DATA.transactions,
-                    message: 'Extrato carregado (modo demo)'
-                };
-                
-            case 'get_saldo':
-                return {
-                    success: true,
-                    data: {
-                        user_id: params.user_id || 'demo_user_1',
-                        saldo_disponivel: 1500,
-                        saldo_bloqueado: 0,
-                        ultima_atualizacao: new Date().toISOString()
-                    },
-                    message: 'Saldo carregado (modo demo)'
-                };
-                
-            case 'buy':
-                const newTransaction = {
-                    id: 'trans_' + Date.now(),
-                    user_id: params.user_id,
-                    tipo: 'INVESTIMENTO',
-                    valor: -parseFloat(params.valor_total),
-                    descricao: `Compra de ${params.quantidade} ações`,
-                    referencia: `CONTRATO-${Date.now()}`,
-                    data: new Date().toISOString(),
-                    status: 'concluido',
-                    detalhes: JSON.stringify({
-                        music_id: params.music_id,
-                        quantidade: params.quantidade
-                    })
-                };
-                
-                DEMO_DATA.transactions.push(newTransaction);
-                this.saveOfflineData();
-                
-                return {
-                    success: true,
-                    message: 'Investimento realizado com sucesso (modo demo)',
-                    data: {
-                        investimento_id: 'invest_' + Date.now(),
-                        contrato_id: `CONTRATO-${Date.now()}`,
-                        quantidade: params.quantidade,
-                        valor_total: params.valor_total
-                    }
-                };
-                
-            case 'buy_external':
-                const externalTransaction = {
-                    id: 'trans_external_' + Date.now(),
-                    user_id: params.user_id,
-                    tipo: 'INVESTIMENTO_EXTERNO',
-                    valor: -parseFloat(params.valor_total),
-                    descricao: `Investimento antecipado em ${params.quantidade} ações externas`,
-                    referencia: `CONTRATO-EXTERNAL-${Date.now()}`,
-                    data: new Date().toISOString(),
-                    status: 'concluido',
-                    detalhes: JSON.stringify({
-                        external_id: params.external_id,
-                        quantidade: params.quantidade,
-                        status: 'aguardando'
-                    })
-                };
-                
-                DEMO_DATA.transactions.push(externalTransaction);
-                
-                const externalMusic = DEMO_DATA.external_music.find(m => m.id === params.external_id);
-                if (externalMusic) {
-                    const valorTotal = parseFloat(params.valor_total);
-                    externalMusic.vendas_atuais = (externalMusic.vendas_atuais || 0) + valorTotal;
-                    externalMusic.acoes_vendidas = (externalMusic.acoes_vendidas || 0) + parseInt(params.quantidade);
-                    
-                    if (externalMusic.vendas_atuais >= CONFIG.EXTERNAL_TARGET_SALES) {
-                        externalMusic.status = 'meta_atingida';
-                    }
-                }
-                
-                this.saveExternalData();
-                this.saveOfflineData();
-                
-                return {
-                    success: true,
-                    message: 'Investimento externo realizado com sucesso (modo demo)',
-                    data: {
-                        investimento_id: 'invest_external_' + Date.now(),
-                        contrato_id: `CONTRATO-EXTERNAL-${Date.now()}`,
-                        quantidade: params.quantidade,
-                        valor_total: params.valor_total,
-                        status: 'aguardando'
-                    }
-                };
-                
-            case 'toggle_favorite':
-                const userId = params.user_id || 'demo_user_1';
-                const musicId = params.music_id;
-                const actionType = params.action;
-                
-                if (actionType === 'add') {
-                    if (!DEMO_DATA.users[0].favorite_music_ids.includes(musicId)) {
-                        DEMO_DATA.users[0].favorite_music_ids += (DEMO_DATA.users[0].favorite_music_ids ? ',' : '') + musicId;
-                    }
-                } else {
-                    DEMO_DATA.users[0].favorite_music_ids = DEMO_DATA.users[0].favorite_music_ids
-                        .split(',')
-                        .filter(id => id !== musicId)
-                        .join(',');
-                }
-                
-                this.saveOfflineData();
-                
-                return {
-                    success: true,
-                    message: `Favorito ${actionType === 'add' ? 'adicionado' : 'removido'} (modo demo)`,
-                    data: { is_favorite: actionType === 'add' }
-                };
-                
-            case 'get_top_investments':
-                const musicWithScores = DEMO_DATA.music.map((music, index) => ({
-                    ...music,
-                    investment_score: 85 - (index * 5),
-                    recommendation: ['Excelente', 'Bom', 'Moderado'][index % 3],
-                    percentual_vendido: ((music.acoes_vendidas / (music.percentual_disponivel / 0.01)) * 100).toFixed(1)
-                }));
-                
-                return {
-                    success: true,
-                    data: musicWithScores,
-                    message: 'Top investments gerado (modo demo)'
-                };
-                
-            case 'register':
-                return {
-                    success: true,
-                    message: 'Conta criada com sucesso! Aguarde aprovação. (modo demo)',
-                    token: 'new_user_token_' + Date.now(),
-                    user: {
-                        id: 'new_user_' + Date.now(),
-                        nome: params.nome,
-                        email: params.email,
-                        tipo: params.tipo || 'investidor',
-                        saldo: 0,
-                        criado_em: new Date().toISOString()
-                    }
-                };
-                
-            case 'upload_music':
-                const newMusic = {
-                    id: 'new_music_' + Date.now(),
-                    ...params,
-                    acoes_vendidas: 0,
-                    status: 'ativo',
-                    data_cadastro: new Date().toISOString(),
-                    visualizacoes: 0,
-                    royalties_acumulados: 0
-                };
-                
-                DEMO_DATA.music.push(newMusic);
-                this.saveOfflineData();
-                
-                return {
-                    success: true,
-                    message: 'Música cadastrada com sucesso (modo demo)',
-                    data: newMusic
-                };
-                
-            case 'suggest_external_music':
-                const newExternalMusic = {
-                    id: 'external_' + Date.now(),
-                    titulo: params.titulo,
-                    artista: params.artista,
-                    link_youtube: params.link_youtube,
-                    valor_acao: parseFloat(params.valor_acao),
-                    percentual_disponivel: parseFloat(params.percentual_disponivel),
-                    acoes_vendidas: 0,
-                    total_acoes: (parseFloat(params.percentual_disponivel) / 0.01),
-                    vendas_atuais: 0,
-                    status: 'aguardando',
-                    data_sugestao: new Date().toISOString(),
-                    sugerido_por: params.user_id || 'demo_user_1',
-                    mensagem_artista: params.mensagem || '',
-                    total_investidores: 0,
-                    rentabilidade_estimada: (parseFloat(params.valor_acao) * 0.15).toFixed(2)
-                };
-                
-                DEMO_DATA.external_music.push(newExternalMusic);
-                this.saveExternalData();
-                
-                return {
-                    success: true,
-                    message: 'Música externa sugerida com sucesso! (modo demo)',
-                    data: newExternalMusic
-                };
-                
-            default:
-                return {
-                    success: false,
-                    error: 'ACTION_NOT_FOUND',
-                    message: `Ação '${action}' não suportada em modo demo`
-                };
-        }
-    }
-
-    getLocalData(action, params) {
-        try {
-            switch(action) {
-                case 'get_musicas':
-                    return DEMO_DATA.music.filter(m => m.status === 'ativo');
-                case 'get_external_musicas':
-                    return DEMO_DATA.external_music.filter(m => m.status === 'aguardando' || m.status === 'meta_atingida');
-                case 'get_carteira':
-                    return DEMO_DATA.portfolio.filter(p => 
-                        p.user_id === (params.user_id || state.currentUser?.id)
-                    );
-                case 'get_external_carteira':
-                    return DEMO_DATA.external_portfolio.filter(p => 
-                        p.user_id === (params.user_id || state.currentUser?.id)
-                    );
-                case 'get_extrato':
-                    return DEMO_DATA.transactions.filter(t => 
-                        t.user_id === (params.user_id || state.currentUser?.id)
-                    );
-                case 'login':
-                    const user = DEMO_DATA.users.find(u => 
-                        u.email === params.email
-                    );
-                    if (user && params.password === 'admin123') {
-                        return user;
-                    }
-                    return null;
-                default:
-                    return null;
-            }
-        } catch (e) {
-            console.error('Erro ao obter dados locais:', e);
+            console.error('Erro ao carregar dados locais:', e);
             return null;
         }
     }
 
-    updateLocalCache(action, data, params) {
+    async fetchData(action, params = {}) {
         try {
-            const cacheKey = `${action}_${JSON.stringify(params)}`;
-            const cache = {
-                data,
-                timestamp: Date.now(),
-                ttl: 5 * 60 * 1000
+            console.log(`Executando ação: ${action}`, params);
+            
+            const formData = new URLSearchParams();
+            formData.append('action', action);
+            Object.keys(params).forEach(key => {
+                if (params[key] !== undefined && params[key] !== null) {
+                    formData.append(key, params[key]);
+                }
+            });
+
+            const response = await fetch(CONFIG.API_URL, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                return result;
+            } else {
+                throw new Error(result.message || 'Ação falhou');
+            }
+        } catch (error) {
+            console.error(`Erro na ação ${action}:`, error);
+            
+            showToast(`Erro de conexão: ${error.message}`, 'error');
+            
+            return {
+                success: false,
+                error: 'CONNECTION_ERROR',
+                message: 'Erro de conexão com o servidor. Tente novamente.'
             };
-            localStorage.setItem(`cache_${cacheKey}`, JSON.stringify(cache));
-        } catch (e) {
-            console.error('Erro ao atualizar cache:', e);
-        }
-    }
-
-    saveOfflineData() {
-        try {
-            localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(DEMO_DATA));
-        } catch (e) {
-            console.error('Erro ao salvar dados offline:', e);
-        }
-    }
-
-    saveExternalData() {
-        try {
-            localStorage.setItem(CONFIG.EXTERNAL_STORAGE_KEY, JSON.stringify(DEMO_DATA));
-        } catch (e) {
-            console.error('Erro ao salvar dados externos:', e);
         }
     }
 }
@@ -4184,7 +3684,7 @@ async function handleLogin() {
     showLoading('Autenticando...');
 
     try {
-        const result = await dataManager.fetchWithFallback('login', { email, password });
+        const result = await dataManager.fetchData('login', { email, password });
 
         if (result.success && result.data) {
             state.currentUser = result.data;
@@ -4208,14 +3708,7 @@ async function handleLogin() {
         }
     } catch (error) {
         console.error('Erro no login:', error);
-        showToast('Erro de conexão. Usando modo de demonstração.', 'warning');
-        
-        state.currentUser = DEMO_DATA.users[0];
-        state.userBalance = 1500;
-        state.favoriteMusicIds = ['demo_music_1', 'demo_music_2', 'demo_music_3'];
-        
-        localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-        initializeApp();
+        showToast('Erro de conexão com o servidor', 'error');
     } finally {
         loginBtn.disabled = false;
         loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
@@ -4270,7 +3763,7 @@ async function handleRegister() {
     showLoading('Criando conta...');
 
     try {
-        const result = await dataManager.fetchWithFallback('register', {
+        const result = await dataManager.fetchData('register', {
             nome: name,
             email: email,
             senha: password,
@@ -4365,7 +3858,6 @@ async function loadAllData() {
         }
         
         showToast('Sistema carregado com sucesso!', 'success');
-        state.appInitialized = true;
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
         showToast('Alguns dados podem não estar atualizados', 'warning');
@@ -4381,7 +3873,7 @@ async function loadBalance(silent = false) {
     if (!silent) showLoading('Carregando saldo...');
     
     try {
-        const result = await dataManager.fetchWithFallback('get_saldo', {
+        const result = await dataManager.fetchData('get_saldo', {
             user_id: state.currentUser.id || state.currentUser.email
         });
         
@@ -4399,16 +3891,12 @@ async function loadBalance(silent = false) {
 // ========== MARKETPLACE ==========
 async function loadMarketplace(forceRefresh = false) {
     try {
-        const result = await dataManager.fetchWithFallback('get_musicas');
+        const result = await dataManager.fetchData('get_musicas');
         
         if (result.success && result.data) {
             state.playlist = Array.isArray(result.data) ? result.data.filter(music => 
                 music && (music.status || '').toLowerCase() === 'ativo'
             ) : [];
-            
-            if (result.offline) {
-                state.offlineMode = true;
-            }
         }
         
         renderMarketplace();
@@ -4451,7 +3939,7 @@ function renderMarketplace() {
         return `
             <div class="music-card" onclick="playTrack(${index})">
                 <div class="position-relative">
-                    <img src="${track.link_capa || 'data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25\" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'}" 
+                    <img src="${track.link_capa || 'data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'}" 
                          class="music-cover" 
                          alt="${track.titulo || 'Música'}"
                          onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25\" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'">
@@ -4488,7 +3976,7 @@ function renderMarketplace() {
 // ========== BOLSA EXTERNA ==========
 async function loadExternalMarketplace(forceRefresh = false) {
     try {
-        const result = await dataManager.fetchWithFallback('get_external_musicas');
+        const result = await dataManager.fetchData('get_external_musicas');
         
         if (result.success && result.data) {
             state.externalPlaylist = Array.isArray(result.data) ? result.data.filter(music => 
@@ -4540,7 +4028,7 @@ function renderExternalMarketplace() {
         return `
             <div class="music-card external-investment-card" onclick="playExternalTrack(${index})">
                 <div class="position-relative">
-                    <img src="data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25\" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial" font-size=\"24\" fill=\"%23ff6b6b\"%3EEXT%3C/text%3E%3C/svg%3E" 
+                    <img src="data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial" font-size=\"24\" fill=\"%23ff6b6b\"%3EEXT%3C/text%3E%3C/svg%3E" 
                          class="music-cover" 
                          alt="${track.titulo || 'Música Externa'}">
                     <div class="external-music-badge">🌐 BOLSA EXTERNA</div>
@@ -4650,7 +4138,7 @@ async function submitExternalMusic() {
     showLoading('Enviando sugestão...');
     
     try {
-        const result = await dataManager.fetchWithFallback('suggest_external_music', {
+        const result = await dataManager.fetchData('suggest_external_music', {
             user_id: state.currentUser.id,
             link_youtube: youtubeLink,
             titulo: title,
@@ -4691,7 +4179,7 @@ function openExternalInvestModal(trackIndex) {
     const totalShares = track.total_acoes || (percentAvailable / 0.01);
     const availableShares = Math.max(0, totalShares - sharesSold);
     const currentSales = track.vendas_atuais || 0;
-        const progressPercent = Math.min(100, (currentSales / CONFIG.EXTERNAL_TARGET_SALES) * 100);
+    const progressPercent = Math.min(100, (currentSales / CONFIG.EXTERNAL_TARGET_SALES) * 100);
     
     document.getElementById('investExternalTitle').textContent = track.titulo || 'Sem título';
     document.getElementById('investExternalArtist').textContent = track.artista || 'Artista Desconhecido';
@@ -4760,7 +4248,7 @@ async function confirmExternalInvestment() {
     showLoading('Processando investimento externo...');
     
     try {
-        const result = await dataManager.fetchWithFallback('buy_external', {
+        const result = await dataManager.fetchData('buy_external', {
             user_id: state.currentUser.id,
             external_id: state.currentExternalTrack.id,
             quantidade: quantity,
@@ -4774,25 +4262,6 @@ async function confirmExternalInvestment() {
             
             const contractId = result.data.contrato_id || `EXTERNAL-${Date.now()}`;
             const contractUrl = generateExternalContract(state.currentExternalTrack, quantity, total, contractId);
-            
-            DEMO_DATA.transactions.push({
-                id: 'trans_external_' + Date.now(),
-                user_id: state.currentUser.id,
-                tipo: 'INVESTIMENTO_EXTERNO',
-                valor: -total,
-                descricao: `Investimento antecipado em ${quantity} ações de "${state.currentExternalTrack.titulo}"`,
-                referencia: contractId,
-                data: new Date().toISOString(),
-                status: 'concluido',
-                detalhes: JSON.stringify({
-                    external_id: state.currentExternalTrack.id,
-                    quantidade: quantity,
-                    valor_unitario: unitPrice,
-                    status: 'aguardando'
-                })
-            });
-            
-            dataManager.saveOfflineData();
             
             closeModal('investExternalModal');
             
@@ -4885,7 +4354,7 @@ async function loadPortfolio(silent = false) {
     if (!silent) showLoading('Carregando portfólio...');
     
     try {
-        const result = await dataManager.fetchWithFallback('get_carteira', {
+        const result = await dataManager.fetchData('get_carteira', {
             user_id: state.currentUser.id
         });
         
@@ -4910,7 +4379,7 @@ async function loadExternalPortfolio(silent = false) {
     if (!silent) showLoading('Carregando portfólio externo...');
     
     try {
-        const result = await dataManager.fetchWithFallback('get_external_carteira', {
+        const result = await dataManager.fetchData('get_external_carteira', {
             user_id: state.currentUser.id
         });
         
@@ -4982,7 +4451,7 @@ function renderPortfolio() {
         </div>
         <div class="music-grid">
             ${state.portfolioAssets.map((asset, index) => {
-                const music = DEMO_DATA.music.find(m => m.id === asset.music_id) || {};
+                const music = state.playlist.find(m => m.id === asset.music_id) || {};
                 const appreciation = asset.rentabilidade_media || 0;
                 const currentValue = (asset.valor_total || 0) * (1 + appreciation / 100);
                 const profit = currentValue - (asset.valor_total || 0);
@@ -4990,7 +4459,7 @@ function renderPortfolio() {
                 
                 return `
                     <div class="music-card">
-                        <img src="${music.link_capa || 'data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25\" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'}" 
+                        <img src="${music.link_capa || 'data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'}" 
                              class="music-cover" 
                              alt="${music.titulo || 'Música'}"
                              onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25\" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'">
@@ -5041,7 +4510,7 @@ async function loadLedger(forceRefresh = false) {
     if (forceRefresh) showLoading('Atualizando extrato...');
     
     try {
-        const result = await dataManager.fetchWithFallback('get_extrato', {
+        const result = await dataManager.fetchData('get_extrato', {
             user_id: state.currentUser.id
         });
         
@@ -5093,12 +4562,12 @@ function renderLedger() {
         try {
             const parsedDetails = JSON.parse(transaction.detalhes || '{}');
             if (parsedDetails.music_id) {
-                const music = DEMO_DATA.music.find(m => m.id === parsedDetails.music_id);
+                const music = state.playlist.find(m => m.id === parsedDetails.music_id);
                 if (music) {
                     detalhes = ` | ${music.titulo}`;
                 }
             } else if (parsedDetails.external_id) {
-                const external = DEMO_DATA.external_music.find(m => m.id === parsedDetails.external_id);
+                const external = state.externalPlaylist.find(m => m.id === parsedDetails.external_id);
                 if (external) {
                     detalhes = ` | ${external.titulo} (Externo)`;
                 }
@@ -5174,7 +4643,7 @@ function viewContract(reference) {
         try {
             const details = JSON.parse(transaction.detalhes || '{}');
             const externalId = details.external_id;
-            const externalTrack = DEMO_DATA.external_music.find(m => m.id === externalId);
+            const externalTrack = state.externalPlaylist.find(m => m.id === externalId);
             
             if (externalTrack) {
                 contractContent = generateExternalContract(
@@ -5191,7 +4660,7 @@ function viewContract(reference) {
         try {
             const details = JSON.parse(transaction.detalhes || '{}');
             const musicId = details.music_id;
-            const music = DEMO_DATA.music.find(m => m.id === musicId);
+            const music = state.playlist.find(m => m.id === musicId);
             
             if (music) {
                 contractContent = generateContract(music, details.quantidade || 1, reference);
@@ -5256,7 +4725,7 @@ function exportExtrato() {
 // ========== MELHORES INVESTIMENTOS ==========
 async function loadTopInvestments(forceRefresh = false) {
     try {
-        const result = await dataManager.fetchWithFallback('get_top_investments');
+        const result = await dataManager.fetchData('get_top_investments');
         
         if (result.success && result.data) {
             state.topInvestments = Array.isArray(result.data) ? result.data : [];
@@ -5356,7 +4825,7 @@ async function loadUserPlaylists() {
     if (!state.currentUser) return;
     
     try {
-        const result = await dataManager.fetchWithFallback('get_playlists', {
+        const result = await dataManager.fetchData('get_playlists', {
             user_id: state.currentUser.id
         });
         
@@ -5474,7 +4943,7 @@ async function createPlaylist() {
     createBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
     
     try {
-        const result = await dataManager.fetchWithFallback('create_playlist', {
+        const result = await dataManager.fetchData('create_playlist', {
             user_id: state.currentUser.id,
             nome: playlistName,
             publica: isPublic
@@ -5517,7 +4986,7 @@ async function toggleFavoriteMusic(musicId, trackIndex = null) {
     const action = isFavorite ? 'remove' : 'add';
     
     try {
-        const result = await dataManager.fetchWithFallback('toggle_favorite', {
+        const result = await dataManager.fetchData('toggle_favorite', {
             user_id: state.currentUser.id,
             music_id: musicId,
             action: action
@@ -5571,28 +5040,18 @@ async function loadArtistData(forceRefresh = false) {
     if (forceRefresh) showLoading('Carregando dados do artista...');
     
     try {
-        const artistMusic = state.playlist.filter(music => 
-            music.artista && state.currentUser.nome && 
-            music.artista.toLowerCase().includes(state.currentUser.nome.toLowerCase())
-        );
+        const result = await dataManager.fetchData('get_artist_data', {
+            user_id: state.currentUser.id
+        });
         
-        const royaltiesTotal = artistMusic.reduce((sum, music) => 
-            sum + (music.royalties_acumulados || 0), 0);
-        
-        const sharesSold = artistMusic.reduce((sum, music) => 
-            sum + (music.acoes_vendidas || 0), 0);
-        
-        const monthlyEarnings = artistMusic.reduce((sum, music) => {
-            const monthly = (music.royalties_acumulados || 0) / 12;
-            return sum + monthly;
-        }, 0);
-        
-        document.getElementById('artistMusicCount').textContent = artistMusic.length;
-        document.getElementById('artistRoyalties').textContent = formatCurrency(royaltiesTotal);
-        document.getElementById('artistSharesSold').textContent = sharesSold;
-        document.getElementById('artistMonthlyEarnings').textContent = formatCurrency(monthlyEarnings);
-        
-        renderArtistMusic(artistMusic);
+        if (result.success && result.data) {
+            document.getElementById('artistMusicCount').textContent = result.data.total_musicas || 0;
+            document.getElementById('artistRoyalties').textContent = formatCurrency(result.data.total_royalties || 0);
+            document.getElementById('artistSharesSold').textContent = result.data.total_shares_sold || 0;
+            document.getElementById('artistMonthlyEarnings').textContent = formatCurrency(result.data.monthly_earnings || 0);
+            
+            renderArtistMusic(result.data.musics || []);
+        }
     } catch (error) {
         console.error('Erro ao carregar dados do artista:', error);
     } finally {
@@ -5720,7 +5179,7 @@ async function registerMusic() {
     showLoading('Cadastrando música...');
     
     try {
-        const result = await dataManager.fetchWithFallback('upload_music', {
+        const result = await dataManager.fetchData('upload_music', {
             user_id: state.currentUser.id,
             titulo: title,
             artista: state.currentUser.nome,
@@ -5734,27 +5193,6 @@ async function registerMusic() {
         if (result.success) {
             showToast('Música cadastrada com sucesso!', 'success');
             closeModal('addMusicModal');
-            
-            const newMusic = {
-                id: 'new_music_' + Date.now(),
-                titulo: title,
-                artista: state.currentUser.nome,
-                genero: genre,
-                link_youtube: youtube,
-                link_capa: cover,
-                valor_acao: price,
-                percentual_disponivel: percent,
-                acoes_vendidas: 0,
-                status: 'ativo',
-                data_cadastro: new Date().toISOString(),
-                total_investidores: 0,
-                rentabilidade_media: 0,
-                visualizacoes: 0,
-                royalties_acumulados: 0
-            };
-            
-            DEMO_DATA.music.push(newMusic);
-            dataManager.saveOfflineData();
             
             loadMarketplace(true);
             loadArtistData(true);
@@ -5856,7 +5294,7 @@ async function confirmInvestment() {
     showLoading('Processando investimento...');
     
     try {
-        const result = await dataManager.fetchWithFallback('buy', {
+        const result = await dataManager.fetchData('buy', {
             user_id: state.currentUser.id,
             music_id: state.currentInvestTrack.id,
             quantidade: quantity,
@@ -5870,24 +5308,6 @@ async function confirmInvestment() {
             
             const contractId = result.data.contrato_id || `CONTRATO-${Date.now()}`;
             const contractUrl = generateContract(state.currentInvestTrack, quantity, total, contractId);
-            
-            DEMO_DATA.transactions.push({
-                id: 'trans_' + Date.now(),
-                user_id: state.currentUser.id,
-                tipo: 'INVESTIMENTO',
-                valor: -total,
-                descricao: `Compra de ${quantity} ações de "${state.currentInvestTrack.titulo}"`,
-                referencia: contractId,
-                data: new Date().toISOString(),
-                status: 'concluido',
-                detalhes: JSON.stringify({
-                    music_id: state.currentInvestTrack.id,
-                    quantidade: quantity,
-                    valor_unitario: unitPrice
-                })
-            });
-            
-            dataManager.saveOfflineData();
             
             closeModal('investModal');
             
@@ -6040,20 +5460,6 @@ function processBalanceAdd() {
         state.userBalance += amount;
         updateBalanceDisplay();
         
-        const transactionId = 'trans_' + Date.now();
-        DEMO_DATA.transactions.push({
-            id: transactionId,
-            user_id: state.currentUser.id,
-            tipo: 'DEPOSITO',
-            valor: amount,
-            descricao: `Adição de saldo via Mercado Pago`,
-            referencia: `MP-${Date.now()}`,
-            data: new Date().toISOString(),
-            status: 'concluido'
-        });
-        
-        dataManager.saveOfflineData();
-        
         closeModal('addBalanceModal');
         
         showToast(`Saldo de ${formatCurrency(amount)} adicionado com sucesso!`, 'success');
@@ -6065,7 +5471,7 @@ function processBalanceAdd() {
         processBtn.innerHTML = '<i class="bi bi-currency-dollar me-2"></i> Ir para Pagamento';
         hideLoading();
         
-        const mercadoPagoLink = `${CONFIG.MERCADO_PAGO_LINK}?amount=${amount}&description=SELO+MIV+Saldo&reference=${transactionId}`;
+        const mercadoPagoLink = `${CONFIG.MERCADO_PAGO_LINK}?amount=${amount}&description=SELO+MIV+Saldo&reference=${Date.now()}`;
         window.open(mercadoPagoLink, '_blank');
     }, 2000);
 }
@@ -6134,7 +5540,7 @@ async function requestWithdrawal() {
     showLoading('Solicitando saque...');
     
     try {
-        const result = await dataManager.fetchWithFallback('request_withdrawal', {
+        const result = await dataManager.fetchData('request_withdrawal', {
             user_id: state.currentUser.id,
             valor: amount,
             metodo: method,
@@ -6144,20 +5550,6 @@ async function requestWithdrawal() {
         if (result.success) {
             state.userBalance -= amount;
             updateBalanceDisplay();
-            
-            const withdrawalId = result.data.withdrawal_id || 'SAQUE-' + Date.now();
-            DEMO_DATA.transactions.push({
-                id: withdrawalId,
-                user_id: state.currentUser.id,
-                tipo: 'SAQUE',
-                valor: -amount,
-                descricao: `Solicitação de saque via ${method}`,
-                referencia: withdrawalId,
-                data: new Date().toISOString(),
-                status: 'pendente'
-            });
-            
-            dataManager.saveOfflineData();
             
             closeModal('withdrawalModal');
             
@@ -6270,8 +5662,6 @@ function logout() {
         state.favoriteMusicIds = [];
         state.currentTrackIndex = -1;
         state.isPlaying = false;
-        state.offlineMode = false;
-        state.appInitialized = false;
         
         localStorage.removeItem('miv_user');
         localStorage.removeItem('miv_session');
