@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbxzAdN3bSQO-z_g2BhV7RPXEOvy5OJuFoJs6tXsyD0SYL5gOii8fomdffK1eQlq-Lo/exec ';
+const API_URL = 'https://script.google.com/macros/s/AKfycbx83dOJQxMf6HeK7YzOh16it_m6iPm4hmuD-KPU-IbkSJCj4TNzCEF5e1aRIP033cs/exec';
 
 function iniciarApp() {
   console.log('App iniciado com sucesso');
