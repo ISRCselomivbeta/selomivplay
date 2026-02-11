@@ -3091,7 +3091,54 @@ function renderMarketplace() {
         </div>`;
     }).join('');
 }
-
+// ========== PLAY EXTERNAL TRACK ==========
+function playExternalTrack(index) {
+    console.log('Reproduzindo faixa externa:', index);
+    
+    if (index < 0 || index >= state.externalPlaylist.length) {
+        showToast('Música não encontrada', 'error');
+        return;
+    }
+    
+    state.currentTrackIndex = index + 1000;
+    const track = state.externalPlaylist[index];
+    
+    const player = document.getElementById('playerSpotify');
+    if (player) player.style.display = 'flex';
+    
+    const playerTitle = document.getElementById('playerTitle');
+    const playerArtist = document.getElementById('playerArtist');
+    const playerAlbumArt = document.getElementById('playerAlbumArt');
+    
+    if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
+    if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
+    
+    if (playerAlbumArt) {
+        playerAlbumArt.src = PLACEHOLDERS.EXT_56;
+    }
+    
+    const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+    updateFavoriteButton(isFavorite);
+    
+    if (track.link_youtube) {
+        const videoId = extractYouTubeId(track.link_youtube);
+        if (videoId) {
+            if (state.youtubeAPILoaded && window.YT) {
+                initializeYouTubePlayer(videoId);
+            } else {
+                loadYouTubeAPI();
+                setTimeout(() => initializeYouTubePlayer(videoId), 1000);
+            }
+        }
+    }
+    
+    state.isPlaying = true;
+    updatePlayerIcons();
+    
+    if (document.getElementById('playerExpanded')?.classList.contains('show')) {
+        updateExpandedPlayer();
+    }
+}
     function renderExternalMarketplace() {
         const container = document.getElementById('externalContent');
         if (!container) return;
@@ -3457,22 +3504,39 @@ function updateExpandedPlayer() {
     function toggleRepeat() { state.isRepeat = !state.isRepeat; updateRepeatButton(); showToast(state.isRepeat ? 'Repetição ativada' : 'Repetição desativada', 'info'); }
     function updateRepeatButton() { const btn = document.getElementById('repeatBtn'); if (btn) btn.classList.toggle('active', state.isRepeat); }
     function toggleMute() { state.currentVolume = state.currentVolume > 0 ? 0 : (state.lastVolume || 80); setVolume(state.currentVolume); }
-    function setVolume(v) { 
-        state.currentVolume = Math.max(0, Math.min(100, parseInt(v))); 
-        document.getElementById('volumeSliderBar').style.width = `${state.currentVolume}%`; 
-        updateVolumeIcon(); 
-        if (state.youtubePlayer?.setVolume) state.youtubePlayer.setVolume(state.currentVolume); 
+    // ========== SET VOLUME ==========
+function setVolume(value) {
+    state.currentVolume = Math.max(0, Math.min(100, parseInt(value)));
+    
+    const volumeBar = document.getElementById('volumeSliderBar');
+    if (volumeBar) volumeBar.style.width = `${state.currentVolume}%`;
+    
+    updateVolumeIcon();
+    
+    if (state.youtubePlayer && typeof state.youtubePlayer.setVolume === 'function') {
+        try {
+            state.youtubePlayer.setVolume(state.currentVolume);
+        } catch (error) {
+            console.error('Erro ao definir volume:', error);
+        }
     }
+}
     function updateVolumeIcon() { 
         const icon = document.getElementById('volumeIcon'); 
         if (state.currentVolume === 0) icon.className = 'bi bi-volume-mute'; 
         else if (state.currentVolume < 50) icon.className = 'bi bi-volume-down'; 
         else icon.className = 'bi bi-volume-up'; 
     }
-    function handleVolumeClick(e) { 
-        const rect = document.getElementById('volumeSlider').getBoundingClientRect(); 
-        setVolume(Math.round(((e.clientX - rect.left) / rect.width) * 100)); 
-    }
+    // ========== HANDLE VOLUME CLICK ==========
+function handleVolumeClick(event) {
+    const volumeSlider = document.getElementById('volumeSlider');
+    if (!volumeSlider) return;
+    
+    const rect = volumeSlider.getBoundingClientRect();
+    const percent = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    
+    setVolume(Math.round(percent * 100));
+}
     function togglePlayerExpansion() { 
         const el = document.getElementById('playerExpanded'); 
         el.classList.toggle('show'); 
@@ -3492,6 +3556,7 @@ function updateExpandedPlayer() {
     }
 
     // ========== MODAL FUNCTIONS ==========
+    
     function showModal(modalId) { 
         const modal = document.getElementById(modalId); 
         if (modal) { modal.classList.add('show'); document.body.style.overflow = 'hidden'; } 
@@ -3562,6 +3627,40 @@ function updateExpandedPlayer() {
             hideLoading();
         }
     }
+
+    // ========== UPDATE INVESTMENT TOTAL ==========
+function updateInvestmentTotal() {
+    if (!state.currentInvestTrack) return;
+    
+    const quantity = parseInt(document.getElementById('investQuantity')?.value) || 1;
+    const unitPrice = state.currentInvestTrack.valor_acao || 0;
+    const total = quantity * unitPrice;
+    
+    const totalEl = document.getElementById('investTotalPrice');
+    if (totalEl) totalEl.textContent = formatCurrency(total);
+    
+    const confirmBtn = document.getElementById('confirmInvestBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = total > state.userBalance;
+    }
+}
+
+// ========== UPDATE EXTERNAL INVESTMENT TOTAL ==========
+function updateExternalInvestmentTotal() {
+    if (!state.currentExternalTrack) return;
+    
+    const quantity = parseInt(document.getElementById('investExternalQuantity')?.value) || 1;
+    const unitPrice = state.currentExternalTrack.valor_acao || 0;
+    const total = quantity * unitPrice;
+    
+    const totalEl = document.getElementById('investExternalTotalPrice');
+    if (totalEl) totalEl.textContent = formatCurrency(total);
+    
+    const confirmBtn = document.getElementById('confirmExternalInvestBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = total > state.userBalance;
+    }
+}
 
     function openInvestExternalModal(trackIndex) {
         if (trackIndex < 0 || trackIndex >= state.externalPlaylist.length) { showToast('Música não encontrada', 'error'); return; }
