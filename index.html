@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -2786,49 +2785,51 @@ class DataManager {
     }
 
     async fetchData(action, params = {}) {
-    try {
-        console.log(`Executando ação: ${action}`, params);
-        
-        // CRIAR OBJETO JSON COM ACTION + PARAMS
-        const requestBody = {
-            action: action,
-            ...params
-        };
+        try {
+            console.log(`Executando ação: ${action}`, params);
+            
+            const requestBody = {
+                action: action,
+                ...params
+            };
 
-        const response = await fetch(CONFIG.API_URL, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
+            const response = await fetch(CONFIG.API_URL, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                return result;
+            } else {
+                throw new Error(result.message || 'Ação falhou');
+            }
+        } catch (error) {
+            console.error(`Erro na ação ${action}:`, error);
+            showToast(`Erro de conexão: ${error.message}`, 'error');
+            
+            return {
+                success: false,
+                error: 'CONNECTION_ERROR',
+                message: 'Erro de conexão com o servidor. Tente novamente.'
+            };
         }
+    }
+}
 
-        const result = await response.json();
-        
-        if (result.success) {
-            return result;
-        } else {
-            throw new Error(result.message || 'Ação falhou');
-        };
-    } catch (error) {
-        console.error(`Erro na ação ${action}:`, error);
-        showToast(`Erro de conexão: ${error.message}`, 'error');
-        
-        return {
-            success: false,
-            error: 'CONNECTION_ERROR',
-            message: 'Erro de conexão com o servidor. Tente novamente.'
-        };
-    } // ← FECHA O CATCH
-} // ← FECHA O MÉTODO fetchData
-} // ← FECHA A CLASSE DataManager! ← ISSO ESTÁ FALTANDO!
+// ========== INSTANCIA A CLASSE LOGO APÓS SUA DECLARAÇÃO ==========
+const dataManager = new DataManager();
 
-// ========== YOUTUBE PLAYER ========== ← AGORA SIM, FORA DA CLASSE!
+// ========== YOUTUBE PLAYER ==========
 function loadYouTubeAPI() {
     if (window.YT && window.YT.Player) {
         state.youtubeAPILoaded = true;
