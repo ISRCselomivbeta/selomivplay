@@ -2678,7 +2678,7 @@
     // ========== CONFIGURAÇÃO AVANÇADA ==========
     const CONFIG = {
         // 🔴 COLE A URL DO SEU GOOGLE APPS SCRIPT AQUI:
-        API_URL: 'https://script.google.com/macros/s/AKfycbzary8pXafHTVG4rZD8lBuvHUIqDrYBNH9jp9b47P3Kpuzw0cada3HcB8uBHuSrkk0/exec',
+        API_URL: 'https://script.google.com/macros/s/AKfycbwdSjoiYpUkf2jSfa0QYdP1j0O9He4_oGB0OPG647M6-mteby3Ighrlus16fRY-6-k/exec',
         DEFAULT_ACTION: 'status',
         LOCAL_STORAGE_KEY: 'selo_miv_data_v5',
         EXTERNAL_STORAGE_KEY: 'selo_miv_external_v1',
@@ -4438,15 +4438,6 @@ async function handleLogin() {
         hideLoading();
     }
 }
-        } catch (error) {
-            console.error('Erro no login:', error);
-            showToast('Erro de conexão com o servidor', 'error');
-            loginBtn.disabled = false;
-            loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
-            hideLoading();
-        }
-    }
-
     function showRegisterForm() {
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('registerForm').style.display = 'block';
