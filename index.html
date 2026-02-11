@@ -2737,57 +2737,71 @@
 
     // ========== FUNÇÃO PRINCIPAL DE COMUNICAÇÃO COM GAS ==========
 async function callGasAPI(action, params = {}) {
-    try {
-        console.log(`🌐 Chamando API: ${action}`, params);
-        
-        // Construir URL
-        const url = new URL(CONFIG.API_URL);
-        url.searchParams.append('action', action);
-        
-        // Adicionar parâmetros
-        Object.keys(params).forEach(key => {
-            if (params[key] !== undefined && params[key] !== null) {
-                url.searchParams.append(key, params[key]);
-            }
-        });
-        
-        // Adicionar timestamp para cache bust
-        url.searchParams.append('_', Date.now());
-        
-        console.log('📡 URL:', url.toString());
-        
-        // Fazer requisição
-        const response = await fetch(url.toString(), {
-            method: 'GET',
-            mode: 'cors', // ✅ MUDADO DE no-cors PARA cors
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+    return new Promise((resolve, reject) => {
+        try {
+            console.log(`🌐 Chamando API: ${action}`, params);
+            
+            // GERAR NOME ÚNICO PARA O CALLBACK
+            const callbackName = 'jsonp_callback_' + Date.now();
+            
+            // CONSTRUIR URL
+            let url = CONFIG.API_URL;
+            url += '?action=' + encodeURIComponent(action);
+            url += '&callback=' + encodeURIComponent(callbackName);
+            url += '&_=' + Date.now();
+            
+            Object.keys(params).forEach(key => {
+                if (params[key] !== undefined && params[key] !== null) {
+                    url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+                }
+            });
+            
+            console.log('📡 URL:', url);
+            
+            // CRIAR FUNÇÃO CALLBACK GLOBAL
+            window[callbackName] = function(response) {
+                console.log(`✅ Resposta de ${action}:`, response);
+                delete window[callbackName];
+                document.head.removeChild(script);
+                resolve(response);
+            };
+            
+            // CRIAR SCRIPT TAG PARA FAZER A REQUISIÇÃO
+            const script = document.createElement('script');
+            script.src = url;
+            script.onerror = function(error) {
+                console.error(`❌ Erro na requisição ${action}:`, error);
+                delete window[callbackName];
+                document.head.removeChild(script);
+                
+                // ✅ FALLBACK: Admin master funciona offline
+                if (action === 'login' && 
+                    params.email === 'selomiv@gmail.com' && 
+                    params.password === 'selomiv123') {
+                    resolve({
+                        success: true,
+                        message: 'Login ADMIN realizado (offline)',
+                        data: {
+                            id: 'admin_master',
+                            nome: 'Administrador Master',
+                            email: params.email,
+                            tipo: 'admin',
+                            saldo: 1000000,
+                            favorite_music_ids: ''
+                        }
+                    });
+                } else {
+                    reject(error);
+                }
+            };
+            
+            document.head.appendChild(script);
+            
+        } catch (error) {
+            console.error(`❌ Erro na API ${action}:`, error);
+            reject(error);
         }
-        
-        const data = await response.json();
-        console.log(`✅ Resposta de ${action}:`, data);
-        
-        return data;
-        
-    } catch (error) {
-        console.error(`❌ Erro na API ${action}:`, error);
-        
-        // Se estiver em desenvolvimento, usar mock
-        if (CONFIG.DEV_MODE) {
-            console.log('📦 Usando mock data');
-            return getMockData(action, params);
-        }
-        
-        return { 
-            success: false, 
-            message: 'Erro de conexão: ' + error.message
-        };
-    }
+    });
 }
 
     // ========== DADOS MOCKADOS PARA DESENVOLVIMENTO ==========
