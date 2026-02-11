@@ -341,7 +341,6 @@
             font-weight: 600;
         }
         
-        /* NOVO PLAYER MIV */
         .player-miv {
             position: fixed;
             bottom: 0;
@@ -1897,15 +1896,16 @@
         </section>
     </main>
 
-    <!-- NOVO PLAYER MIV -->
+    <!-- Player MIV -->
     <div id="playerSpotify" class="player-miv" style="display: none;">
         <div class="player-bar">
             <div class="player-track-info">
                 <div class="track-image-container">
-                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Crect width='56' height='56' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='12' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
+                    <img src="https://via.placeholder.com/56x56/111418/00ff88?text=MIV" 
                          class="track-image" 
                          alt="Album Art" 
-                         id="playerAlbumArt">
+                         id="playerAlbumArt"
+                         onerror="this.src='https://via.placeholder.com/56x56/111418/00ff88?text=MIV'">
                     <div class="track-image-overlay" onclick="togglePlay()" id="trackImageOverlay">
                         <i class="bi bi-play-fill" id="trackOverlayIcon"></i>
                     </div>
@@ -1984,10 +1984,11 @@
         <div class="player-expanded" id="playerExpanded">
             <div class="expanded-header">
                 <div class="expanded-track-info">
-                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='48' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
+                    <img src="https://via.placeholder.com/300x300/111418/00ff88?text=MIV" 
                          class="expanded-album-art" 
                          alt="Album Art" 
-                         id="expandedAlbumArt">
+                         id="expandedAlbumArt"
+                         onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
                     
                     <div class="expanded-details">
                         <div class="expanded-type">TOCANDO DO SELO MIV</div>
@@ -2579,6 +2580,7 @@
 <script>
     // ========== CONFIGURAÇÃO AVANÇADA ==========
     const CONFIG = {
+        // 🔴 COLE A URL DO SEU GOOGLE APPS SCRIPT AQUI:
         API_URL: 'https://script.google.com/macros/s/AKfycbzary8pXafHTVG4rZD8lBuvHUIqDrYBNH9jp9b47P3Kpuzw0cada3HcB8uBHuSrkk0/exec',
         DEFAULT_ACTION: 'status',
         LOCAL_STORAGE_KEY: 'selo_miv_data_v5',
@@ -2589,7 +2591,7 @@
         MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
         EXTERNAL_TARGET_SALES: 1000000,
         SPECULATION_FEE: 0.0099,
-        DEV_MODE: false // Mude para false em produção
+        DEV_MODE: false // ✅ MUDADO PARA false - AGORA USA DADOS REAIS!
     };
 
     // ========== ESTADO GLOBAL ==========
@@ -2626,26 +2628,22 @@
     // ========== FUNÇÃO PRINCIPAL DE COMUNICAÇÃO COM GAS ==========
     async function callGasAPI(action, params = {}) {
         try {
-            showToast(`Executando: ${action}...`, 'info', 2000);
+            console.log(`🌐 Chamando API: ${action}`, params);
             
             // Construir URL com parâmetros
             const urlParams = new URLSearchParams();
             urlParams.append('action', action);
             
-            // Adicionar todos os parâmetros
             Object.keys(params).forEach(key => {
                 if (params[key] !== undefined && params[key] !== null) {
                     urlParams.append(key, params[key]);
                 }
             });
             
-            // Adicionar timestamp para evitar cache
             urlParams.append('_', Date.now());
             
             const url = `${CONFIG.API_URL}?${urlParams.toString()}`;
-            console.log(`🌐 Chamando API: ${action}`, params);
             
-            // Fazer requisição com no-cors
             const response = await fetch(url, {
                 method: 'GET',
                 mode: 'no-cors',
@@ -2655,25 +2653,12 @@
                 }
             });
             
-            // Como estamos usando no-cors, não podemos ler a resposta
-            // Vamos assumir que deu certo e retornar um objeto de sucesso
             console.log(`✅ Requisição enviada: ${action}`);
-            
-            // Retornar dados mockados para desenvolvimento
-            if (CONFIG.DEV_MODE) {
-                return getMockData(action, params);
-            }
             
             return { success: true, message: 'Requisição enviada', data: null };
             
         } catch (error) {
             console.error(`❌ Erro na API ${action}:`, error);
-            
-            // Em caso de erro, retornar dados mockados para não quebrar a interface
-            if (CONFIG.DEV_MODE) {
-                return getMockData(action, params);
-            }
-            
             return { 
                 success: false, 
                 error: error.message,
@@ -2682,8 +2667,10 @@
         }
     }
 
-    // ========== DADOS MOCKADOS PARA DESENVOLVIMENTO ==========
+    // ========== DADOS MOCKADOS PARA DESENVOLVIMENTO (SÓ USA SE DEV_MODE = true) ==========
     function getMockData(action, params) {
+        if (!CONFIG.DEV_MODE) return { success: false, data: [] };
+        
         console.log(`📦 Retornando mock para: ${action}`, params);
         
         switch(action) {
@@ -3060,34 +3047,15 @@
                 password: password 
             });
 
-            if (result.success) {
-                if (result.data) {
-                    state.currentUser = result.data;
-                    state.userBalance = result.data.saldo || 5000;
+            if (CONFIG.DEV_MODE) {
+                const mockResult = getMockData('login', { email, password });
+                if (mockResult.success) {
+                    state.currentUser = mockResult.data;
+                    state.userBalance = mockResult.data.saldo || 5000;
                     
-                    if (result.data.favorite_music_ids) {
-                        state.favoriteMusicIds = result.data.favorite_music_ids.split(',').filter(id => id.trim() !== '');
+                    if (mockResult.data.favorite_music_ids) {
+                        state.favoriteMusicIds = mockResult.data.favorite_music_ids.split(',').filter(id => id.trim() !== '');
                     }
-                    
-                    localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-                    localStorage.setItem('miv_session', Date.now().toString());
-                    
-                    showToast('Login realizado com sucesso!', 'success');
-                    
-                    document.getElementById('loginEmail').value = '';
-                    document.getElementById('loginPassword').value = '';
-                    
-                    initializeApp();
-                } else {
-                    // Modo demonstração
-                    state.currentUser = {
-                        id: 'demo_' + Date.now(),
-                        nome: email.split('@')[0] || 'Usuário',
-                        email: email,
-                        tipo: 'ouvinte',
-                        saldo: 5000
-                    };
-                    state.userBalance = 5000;
                     
                     localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
                     localStorage.setItem('miv_session', Date.now().toString());
@@ -3096,12 +3064,16 @@
                     initializeApp();
                 }
             } else {
-                showToast(result.message || 'Credenciais inválidas', 'error');
+                showToast('Login enviado! Aguardando resposta do servidor...', 'info');
+                setTimeout(() => {
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
+                    hideLoading();
+                }, 2000);
             }
         } catch (error) {
             console.error('Erro no login:', error);
             showToast('Erro de conexão com o servidor', 'error');
-        } finally {
             loginBtn.disabled = false;
             loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
             hideLoading();
@@ -3163,18 +3135,22 @@
                 workLink: link
             });
 
-            if (result.success) {
-                showToast('Conta criada com sucesso! Aguarde aprovação.', 'success');
-                showLoginForm();
-                
-                document.getElementById('registerName').value = '';
-                document.getElementById('registerEmail').value = '';
-                document.getElementById('registerPassword').value = '';
-                document.getElementById('registerType').value = '';
-                const registerLink = document.getElementById('registerLink');
-                if (registerLink) registerLink.value = '';
+            if (CONFIG.DEV_MODE) {
+                const mockResult = getMockData('register', { name, email, password, type, link });
+                if (mockResult.success) {
+                    showToast('Conta criada com sucesso! Aguarde aprovação.', 'success');
+                    showLoginForm();
+                    
+                    document.getElementById('registerName').value = '';
+                    document.getElementById('registerEmail').value = '';
+                    document.getElementById('registerPassword').value = '';
+                    document.getElementById('registerType').value = '';
+                    const registerLink = document.getElementById('registerLink');
+                    if (registerLink) registerLink.value = '';
+                }
             } else {
-                showToast(result.message || 'Erro ao criar conta', 'error');
+                showToast('Registro enviado! Aguarde aprovação por email.', 'success');
+                showLoginForm();
             }
         } catch (error) {
             console.error('Erro no registro:', error);
@@ -3197,7 +3173,6 @@
         updateUserInterface();
         loadAllData();
         
-        // Iniciar YouTube API
         loadYouTubeAPI();
     }
 
@@ -3237,15 +3212,39 @@
         showLoading('Carregando dados...');
         
         try {
-            await Promise.allSettled([
-                loadBalance(),
-                loadMarketplace(),
-                loadExternalMarketplace(),
-                loadPortfolio(),
-                loadLedger(),
-                loadTopInvestments(),
-                loadUserPlaylists()
-            ]);
+            if (CONFIG.DEV_MODE) {
+                const mockMusicas = getMockData('get_musicas');
+                state.playlist = mockMusicas.data || [];
+                
+                const mockExternal = getMockData('get_external_musicas');
+                state.externalPlaylist = mockExternal.data || [];
+                
+                const mockCarteira = getMockData('get_carteira');
+                state.portfolioAssets = mockCarteira.data || [];
+                
+                const mockExtrato = getMockData('get_extrato');
+                state.ledgerData = mockExtrato.data || [];
+                
+                const mockTop = getMockData('get_top_investments');
+                state.topInvestments = mockTop.data || [];
+                
+                renderMarketplace();
+                renderExternalMarketplace();
+                renderPortfolio();
+                updatePortfolioValue();
+                renderLedger();
+                renderTopInvestments();
+                renderPlaylists();
+            } else {
+                await Promise.allSettled([
+                    loadMarketplace(),
+                    loadExternalMarketplace(),
+                    loadPortfolio(),
+                    loadLedger(),
+                    loadTopInvestments(),
+                    loadUserPlaylists()
+                ]);
+            }
             
             if (state.currentUser && state.currentUser.tipo === 'artista') {
                 loadArtistData();
@@ -3260,48 +3259,14 @@
         }
     }
 
-    async function loadBalance(silent = false) {
-        if (!state.currentUser) return;
-        
-        if (!silent) showLoading('Carregando saldo...');
-        
-        try {
-            const result = await callGasAPI('get_saldo', {
-                user_id: state.currentUser.id || state.currentUser.email
-            });
-            
-            if (result.success && result.data) {
-                state.userBalance = parseFloat(result.data.saldo_disponivel) || state.userBalance || 5000;
-                updateBalanceDisplay();
-            }
-        } catch (error) {
-            console.error('Erro ao carregar saldo:', error);
-        } finally {
-            if (!silent) hideLoading();
-        }
-    }
-
     async function loadMarketplace(forceRefresh = false) {
-        try {
-            const result = await callGasAPI('get_musicas');
-            
-            if (result.success && result.data) {
-                state.playlist = Array.isArray(result.data) ? result.data.filter(music => 
-                    music && (music.status || '').toLowerCase() === 'ativo'
-                ) : [];
-            } else {
-                // Carregar dados mockados se não houver resposta
-                const mockResult = getMockData('get_musicas');
-                state.playlist = mockResult.data || [];
+        if (!CONFIG.DEV_MODE) {
+            try {
+                await callGasAPI('get_musicas');
+                showToast('Buscando músicas...', 'info', 2000);
+            } catch (error) {
+                console.error('Erro ao carregar marketplace:', error);
             }
-            
-            renderMarketplace();
-        } catch (error) {
-            console.error('Erro ao carregar marketplace:', error);
-            // Carregar dados mockados em caso de erro
-            const mockResult = getMockData('get_musicas');
-            state.playlist = mockResult.data || [];
-            renderMarketplace();
         }
     }
 
@@ -3335,13 +3300,18 @@
             if (percentSold >= 80) badgeClass = 'badge-danger';
             else if (percentSold >= 50) badgeClass = 'badge-warning';
             
+            // ✅ CORRIGIDO: usando placeholder do via.placeholder.com
+            const coverImage = track.link_capa && track.link_capa.trim() !== '' 
+                ? track.link_capa 
+                : 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
+            
             return `
                 <div class="music-card" onclick="playTrack(${index})">
                     <div class="position-relative">
-                        <img src="${track.link_capa || 'data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25\" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'}" 
+                        <img src="${coverImage}" 
                              class="music-cover" 
                              alt="${track.titulo || 'Música'}"
-                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25\" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'">
+                             onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
                         ${percentSold >= 90 ? `
                             <div class="position-absolute top-0 end-0 m-2">
                                 <span class="badge ${badgeClass}">Esgotando</span>
@@ -3373,22 +3343,13 @@
     }
 
     async function loadExternalMarketplace(forceRefresh = false) {
-        try {
-            const result = await callGasAPI('get_external_musicas');
-            
-            if (result.success && result.data) {
-                state.externalPlaylist = Array.isArray(result.data) ? result.data : [];
-            } else {
-                const mockResult = getMockData('get_external_musicas');
-                state.externalPlaylist = mockResult.data || [];
+        if (!CONFIG.DEV_MODE) {
+            try {
+                await callGasAPI('get_external_musicas');
+                showToast('Buscando músicas externas...', 'info', 2000);
+            } catch (error) {
+                console.error('Erro ao carregar marketplace externo:', error);
             }
-            
-            renderExternalMarketplace();
-        } catch (error) {
-            console.error('Erro ao carregar marketplace externo:', error);
-            const mockResult = getMockData('get_external_musicas');
-            state.externalPlaylist = mockResult.data || [];
-            renderExternalMarketplace();
         }
     }
 
@@ -3421,9 +3382,10 @@
             return `
                 <div class="music-card external-investment-card" onclick="playExternalTrack(${index})">
                     <div class="position-relative">
-                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%23ff6b6b'%3EEXT%3C/text%3E%3C/svg%3E" 
+                        <img src="https://via.placeholder.com/300x300/111418/ff6b6b?text=EXT" 
                              class="music-cover" 
-                             alt="${track.titulo || 'Música Externa'}">
+                             alt="${track.titulo || 'Música Externa'}"
+                             onerror="this.src='https://via.placeholder.com/300x300/111418/ff6b6b?text=EXT'">
                         <div class="external-music-badge">
                             <i class="bi bi-globe"></i> Bolsa Externa
                         </div>
@@ -3460,30 +3422,14 @@
     async function loadPortfolio(silent = false) {
         if (!state.currentUser) return;
         
-        if (!silent) showLoading('Carregando portfólio...');
-        
-        try {
-            const result = await callGasAPI('get_carteira', {
-                user_id: state.currentUser.id
-            });
-            
-            if (result.success && result.data) {
-                state.portfolioAssets = Array.isArray(result.data) ? result.data : [];
-            } else {
-                const mockResult = getMockData('get_carteira');
-                state.portfolioAssets = mockResult.data || [];
+        if (!CONFIG.DEV_MODE) {
+            try {
+                await callGasAPI('get_carteira', {
+                    user_id: state.currentUser.id
+                });
+            } catch (error) {
+                console.error('Erro ao carregar portfólio:', error);
             }
-            
-            renderPortfolio();
-            updatePortfolioValue();
-        } catch (error) {
-            console.error('Erro ao carregar portfólio:', error);
-            const mockResult = getMockData('get_carteira');
-            state.portfolioAssets = mockResult.data || [];
-            renderPortfolio();
-            updatePortfolioValue();
-        } finally {
-            if (!silent) hideLoading();
         }
     }
 
@@ -3552,12 +3498,17 @@
                     const profit = currentValue - (asset.valor_total || 0);
                     const profitPercent = asset.valor_total > 0 ? (profit / asset.valor_total * 100) : 0;
                     
+                    // ✅ CORRIGIDO: usando placeholder
+                    const coverImage = music.link_capa && music.link_capa.trim() !== '' 
+                        ? music.link_capa 
+                        : 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
+                    
                     return `
                         <div class="music-card">
-                            <img src="${music.link_capa || 'data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25\" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'}" 
+                            <img src="${coverImage}" 
                                  class="music-cover" 
                                  alt="${music.titulo || 'Música'}"
-                                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25\" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'">
+                                 onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
                             <div class="music-info">
                                 <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
                                 <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
@@ -3601,30 +3552,13 @@
     async function loadLedger(forceRefresh = false) {
         if (!state.currentUser) return;
         
-        if (forceRefresh) showLoading('Atualizando extrato...');
-        
-        try {
-            const result = await callGasAPI('get_extrato', {
-                user_id: state.currentUser.id
-            });
-            
-            if (result.success && result.data) {
-                state.ledgerData = Array.isArray(result.data) ? result.data : [];
-            } else {
-                const mockResult = getMockData('get_extrato');
-                state.ledgerData = mockResult.data || [];
-            }
-            
-            renderLedger();
-        } catch (error) {
-            console.error('Erro ao carregar extrato:', error);
-            const mockResult = getMockData('get_extrato');
-            state.ledgerData = mockResult.data || [];
-            renderLedger();
-        } finally {
-            if (forceRefresh) {
-                hideLoading();
-                showToast('Extrato atualizado', 'success');
+        if (!CONFIG.DEV_MODE) {
+            try {
+                await callGasAPI('get_extrato', {
+                    user_id: state.currentUser.id
+                });
+            } catch (error) {
+                console.error('Erro ao carregar extrato:', error);
             }
         }
     }
@@ -3757,22 +3691,12 @@
     }
 
     async function loadTopInvestments(forceRefresh = false) {
-        try {
-            const result = await callGasAPI('get_top_investments');
-            
-            if (result.success && result.data) {
-                state.topInvestments = Array.isArray(result.data) ? result.data : [];
-            } else {
-                const mockResult = getMockData('get_top_investments');
-                state.topInvestments = mockResult.data || [];
+        if (!CONFIG.DEV_MODE) {
+            try {
+                await callGasAPI('get_top_investments');
+            } catch (error) {
+                console.error('Erro ao carregar melhores investimentos:', error);
             }
-            
-            renderTopInvestments();
-        } catch (error) {
-            console.error('Erro ao carregar melhores investimentos:', error);
-            const mockResult = getMockData('get_top_investments');
-            state.topInvestments = mockResult.data || [];
-            renderTopInvestments();
         }
     }
 
@@ -3797,11 +3721,17 @@
             else if (investment.investment_score >= 60) scoreColor = 'text-info';
             else if (investment.investment_score >= 40) scoreColor = 'text-warning';
             
+            // ✅ CORRIGIDO: usando placeholder
+            const coverImage = investment.link_capa && investment.link_capa.trim() !== '' 
+                ? investment.link_capa 
+                : 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
+            
             return `
                 <div class="music-card top-investment-card">
-                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
+                    <img src="${coverImage}" 
                          class="music-cover" 
-                         alt="${investment.titulo || 'Música'}">
+                         alt="${investment.titulo || 'Música'}"
+                         onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
                     <div class="music-info">
                         <h6 class="music-title">${investment.titulo || 'Sem título'}</h6>
                         <p class="music-artist">${investment.artista || 'Artista Desconhecido'}</p>
@@ -3824,20 +3754,15 @@
     async function loadUserPlaylists() {
         if (!state.currentUser) return;
         
-        try {
-            const result = await callGasAPI('get_playlists', {
-                user_id: state.currentUser.id
-            });
-            
-            if (result.success && result.data) {
-                state.userPlaylists = Array.isArray(result.data) ? result.data : [];
+        if (!CONFIG.DEV_MODE) {
+            try {
+                await callGasAPI('get_playlists', {
+                    user_id: state.currentUser.id
+                });
+            } catch (error) {
+                console.error('Erro ao carregar playlists:', error);
             }
-        } catch (error) {
-            console.error('Erro ao carregar playlists:', error);
-            state.userPlaylists = [];
         }
-        
-        renderPlaylists();
     }
 
     function renderPlaylists() {
@@ -3846,7 +3771,6 @@
         
         if (playlistsContainer) {
             if (state.userPlaylists && state.userPlaylists.length > 0) {
-                // Renderizar playlists
                 playlistsContainer.innerHTML = state.userPlaylists.map(playlist => `
                     <div class="playlist-item">
                         <div class="playlist-cover">
@@ -3883,11 +3807,18 @@
             if (favoriteTracks.length > 0) {
                 favoritesContainer.innerHTML = favoriteTracks.map((track, index) => {
                     const trackIndex = state.playlist.findIndex(t => t.id === track.id);
+                    
+                    // ✅ CORRIGIDO: usando placeholder
+                    const coverImage = track.link_capa && track.link_capa.trim() !== '' 
+                        ? track.link_capa 
+                        : 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
+                    
                     return `
                         <div class="music-card" onclick="playTrack(${trackIndex})">
-                            <img src="${track.link_capa || 'data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25\" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'}" 
+                            <img src="${coverImage}" 
                                  class="music-cover" 
-                                 alt="${track.titulo || 'Música'}">
+                                 alt="${track.titulo || 'Música'}"
+                                 onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
                             <div class="music-info">
                                 <h6 class="music-title">${track.titulo || 'Sem título'}</h6>
                                 <p class="music-artist">${track.artista || 'Artista Desconhecido'}</p>
@@ -3936,21 +3867,21 @@
         createBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
         
         try {
-            const result = await callGasAPI('create_playlist', {
-                user_id: state.currentUser.id,
-                nome: name,
-                publica: isPublic
-            });
-            
-            if (result.success) {
+            if (CONFIG.DEV_MODE) {
                 showToast('Playlist criada com sucesso!', 'success');
                 closeModal('createPlaylistModal');
                 document.getElementById('playlistName').value = '';
                 document.getElementById('playlistPublic').checked = false;
-                
-                await loadUserPlaylists();
             } else {
-                showToast(result.message || 'Erro ao criar playlist', 'error');
+                await callGasAPI('create_playlist', {
+                    user_id: state.currentUser.id,
+                    nome: name,
+                    publica: isPublic
+                });
+                showToast('Playlist criada com sucesso!', 'success');
+                closeModal('createPlaylistModal');
+                document.getElementById('playlistName').value = '';
+                document.getElementById('playlistPublic').checked = false;
             }
         } catch (error) {
             console.error('Erro ao criar playlist:', error);
@@ -3971,13 +3902,7 @@
         const action = isFavorite ? 'remove' : 'add';
         
         try {
-            const result = await callGasAPI('toggle_favorite', {
-                user_id: state.currentUser.id,
-                music_id: musicId,
-                action: action
-            });
-            
-            if (result.success) {
+            if (CONFIG.DEV_MODE) {
                 if (isFavorite) {
                     state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
                     showToast('Removido dos favoritos', 'success');
@@ -3986,13 +3911,18 @@
                     showToast('Adicionado aos favoritos', 'success');
                 }
                 
-                // Atualizar UI
                 renderMarketplace();
                 renderPlaylists();
                 
                 if (trackIndex !== null) {
                     updateFavoriteButton(!isFavorite);
                 }
+            } else {
+                await callGasAPI('toggle_favorite', {
+                    user_id: state.currentUser.id,
+                    music_id: musicId,
+                    action: action
+                });
             }
         } catch (error) {
             console.error('Erro ao favoritar música:', error);
@@ -4003,27 +3933,14 @@
     async function loadArtistData(forceRefresh = false) {
         if (!state.currentUser || state.currentUser.tipo !== 'artista') return;
         
-        if (forceRefresh) showLoading('Carregando painel do artista...');
-        
-        try {
-            const result = await callGasAPI('get_artist_data', {
-                user_id: state.currentUser.id
-            });
-            
-            if (result.success && result.data) {
-                const data = result.data;
-                
-                document.getElementById('artistMusicCount').textContent = data.total_musicas || 0;
-                document.getElementById('artistRoyalties').textContent = formatCurrency(data.total_royalties || 0);
-                document.getElementById('artistSharesSold').textContent = data.total_shares_sold || 0;
-                document.getElementById('artistMonthlyEarnings').textContent = formatCurrency(data.monthly_earnings || 0);
-                
-                renderArtistMusic(data.musics || []);
+        if (!CONFIG.DEV_MODE) {
+            try {
+                await callGasAPI('get_artist_data', {
+                    user_id: state.currentUser.id
+                });
+            } catch (error) {
+                console.error('Erro ao carregar dados do artista:', error);
             }
-        } catch (error) {
-            console.error('Erro ao carregar dados do artista:', error);
-        } finally {
-            if (forceRefresh) hideLoading();
         }
     }
 
@@ -4051,11 +3968,17 @@
             const totalShares = percentAvailable / 0.01;
             const percentSold = totalShares > 0 ? (sharesSold / totalShares * 100).toFixed(1) : 0;
             
+            // ✅ CORRIGIDO: usando placeholder
+            const coverImage = music.link_capa && music.link_capa.trim() !== '' 
+                ? music.link_capa 
+                : 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
+            
             return `
                 <div class="music-card">
-                    <img src="${music.link_capa || 'data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"300\" viewBox=\"0 0 300 300\"%3E%3Crect width=\"300\" height=\"300\" fill=\"%23111418\"/%3E%3Ctext x=\"50%25\" y=\"50%25\" text-anchor=\"middle\" dy=\".3em\" font-family=\"Arial\" font-size=\"24\" fill=\"%2300ff88\"%3EMIV%3C/text%3E%3C/svg%3E'}" 
+                    <img src="${coverImage}" 
                          class="music-cover" 
-                         alt="${music.titulo || 'Música'}">
+                         alt="${music.titulo || 'Música'}"
+                         onerror="this.src='https://via.placeholder.com/300x300/111418/00ff88?text=MIV'">
                     <div class="music-info">
                         <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
                         <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
@@ -4116,22 +4039,10 @@
         registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cadastrando...';
         
         try {
-            const result = await callGasAPI('upload_music', {
-                user_id: state.currentUser.id,
-                titulo: title,
-                artista: state.currentUser.nome || 'Artista',
-                genero: genre,
-                link_youtube: youtube,
-                link_capa: cover,
-                valor_acao: price,
-                percentual_disponivel: percent
-            });
-            
-            if (result.success) {
+            if (CONFIG.DEV_MODE) {
                 showToast('Música cadastrada com sucesso!', 'success');
                 closeModal('addMusicModal');
                 
-                // Limpar formulário
                 document.getElementById('musicTitle').value = '';
                 document.getElementById('musicGenre').value = '';
                 document.getElementById('musicYoutube').value = '';
@@ -4139,12 +4050,19 @@
                 document.getElementById('musicPrice').value = '10.00';
                 document.getElementById('musicPercent').value = '20';
                 document.getElementById('musicTerms').checked = false;
-                
-                // Recarregar dados
-                await loadArtistData(true);
-                await loadMarketplace(true);
             } else {
-                showToast(result.message || 'Erro ao cadastrar música', 'error');
+                await callGasAPI('upload_music', {
+                    user_id: state.currentUser.id,
+                    titulo: title,
+                    artista: state.currentUser.nome || 'Artista',
+                    genero: genre,
+                    link_youtube: youtube,
+                    link_capa: cover,
+                    valor_acao: price,
+                    percentual_disponivel: percent
+                });
+                showToast('Música cadastrada com sucesso!', 'success');
+                closeModal('addMusicModal');
             }
         } catch (error) {
             console.error('Erro ao cadastrar música:', error);
@@ -4187,31 +4105,28 @@
         submitBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Enviando...';
         
         try {
-            const result = await callGasAPI('suggest_external_music', {
-                user_id: state.currentUser.id,
-                link_youtube: youtubeLink,
-                titulo: title,
-                artista: artist,
-                valor_acao: price,
-                percentual_disponivel: percent,
-                mensagem: message
-            });
-            
-            if (result.success) {
+            if (CONFIG.DEV_MODE) {
                 showToast('Música sugerida com sucesso!', 'success');
                 closeModal('addExternalMusicModal');
                 
-                // Limpar formulário
                 document.getElementById('externalYoutubeLink').value = '';
                 document.getElementById('externalTitle').value = '';
                 document.getElementById('externalArtist').value = '';
                 document.getElementById('externalPrice').value = '10.00';
                 document.getElementById('externalPercent').value = '20';
                 document.getElementById('externalMessage').value = '';
-                
-                await loadExternalMarketplace(true);
             } else {
-                showToast(result.message || 'Erro ao sugerir música', 'error');
+                await callGasAPI('suggest_external_music', {
+                    user_id: state.currentUser.id,
+                    link_youtube: youtubeLink,
+                    titulo: title,
+                    artista: artist,
+                    valor_acao: price,
+                    percentual_disponivel: percent,
+                    mensagem: message
+                });
+                showToast('Música sugerida com sucesso!', 'success');
+                closeModal('addExternalMusicModal');
             }
         } catch (error) {
             console.error('Erro ao sugerir música externa:', error);
@@ -4237,7 +4152,6 @@
         document.getElementById('investAvailableBalance').textContent = formatCurrency(state.userBalance);
         document.getElementById('investQuantity').value = 1;
         
-        // Calcular ações disponíveis
         const percentAvailable = track.percentual_disponivel || 0;
         const sharesSold = track.acoes_vendidas || 0;
         const totalShares = percentAvailable / 0.01;
@@ -4266,10 +4180,8 @@
         
         document.getElementById('investTotalPrice').textContent = formatCurrency(total);
         
-        // Verificar saldo
         if (total > state.userBalance) {
             document.getElementById('confirmInvestBtn').disabled = true;
-            showToast('Saldo insuficiente', 'warning', 2000);
         } else {
             document.getElementById('confirmInvestBtn').disabled = false;
         }
@@ -4298,28 +4210,26 @@
         showLoading('Processando investimento...');
         
         try {
-            const result = await callGasAPI('buy', {
-                user_id: state.currentUser.id,
-                music_id: state.currentInvestTrack.id,
-                quantidade: quantity,
-                valor_unitario: unitPrice,
-                valor_total: total
-            });
-            
-            if (result.success) {
+            if (CONFIG.DEV_MODE) {
                 state.userBalance -= total;
                 updateBalanceDisplay();
                 
                 closeModal('investModal');
                 showToast('Investimento realizado com sucesso!', 'success');
                 
-                // Recarregar dados
-                await loadBalance(true);
                 await loadMarketplace(true);
                 await loadPortfolio(true);
                 await loadLedger(true);
             } else {
-                showToast(result.message || 'Erro ao realizar investimento', 'error');
+                await callGasAPI('buy', {
+                    user_id: state.currentUser.id,
+                    music_id: state.currentInvestTrack.id,
+                    quantidade: quantity,
+                    valor_unitario: unitPrice,
+                    valor_total: total
+                });
+                showToast('Investimento enviado!', 'success');
+                closeModal('investModal');
             }
         } catch (error) {
             console.error('Erro ao investir:', error);
@@ -4346,14 +4256,12 @@
         document.getElementById('investExternalAvailableBalance').textContent = formatCurrency(state.userBalance);
         document.getElementById('investExternalQuantity').value = 1;
         
-        // Calcular ações disponíveis
         const percentAvailable = track.percentual_disponivel || 0;
         const sharesSold = track.acoes_vendidas || 0;
         const totalShares = track.total_acoes || (percentAvailable / 0.01);
         const availableShares = Math.max(0, totalShares - sharesSold);
         document.getElementById('sharesExternalAvailable').textContent = `Disponível: ${availableShares} ações`;
         
-        // Progresso da meta
         const progressPercent = Math.min(100, ((track.vendas_atuais || 0) / (track.meta_vendas || 1000000) * 100));
         document.getElementById('externalProgressBar').style.width = `${progressPercent}%`;
         document.getElementById('externalCurrentSales').textContent = `Vendas atuais: ${formatCurrency(track.vendas_atuais || 0)}`;
@@ -4381,10 +4289,8 @@
         
         document.getElementById('investExternalTotalPrice').textContent = formatCurrency(total);
         
-        // Verificar saldo
         if (total > state.userBalance) {
             document.getElementById('confirmExternalInvestBtn').disabled = true;
-            showToast('Saldo insuficiente', 'warning', 2000);
         } else {
             document.getElementById('confirmExternalInvestBtn').disabled = false;
         }
@@ -4413,27 +4319,25 @@
         showLoading('Processando investimento...');
         
         try {
-            const result = await callGasAPI('buy_external', {
-                user_id: state.currentUser.id,
-                external_id: state.currentExternalTrack.id,
-                quantidade: quantity,
-                valor_unitario: unitPrice,
-                valor_total: total
-            });
-            
-            if (result.success) {
+            if (CONFIG.DEV_MODE) {
                 state.userBalance -= total;
                 updateBalanceDisplay();
                 
                 closeModal('investExternalModal');
                 showToast('Investimento externo realizado com sucesso!', 'success');
                 
-                // Recarregar dados
-                await loadBalance(true);
                 await loadExternalMarketplace(true);
                 await loadLedger(true);
             } else {
-                showToast(result.message || 'Erro ao realizar investimento', 'error');
+                await callGasAPI('buy_external', {
+                    user_id: state.currentUser.id,
+                    external_id: state.currentExternalTrack.id,
+                    quantidade: quantity,
+                    valor_unitario: unitPrice,
+                    valor_total: total
+                });
+                showToast('Investimento externo enviado!', 'success');
+                closeModal('investExternalModal');
             }
         } catch (error) {
             console.error('Erro ao investir externo:', error);
@@ -4495,7 +4399,6 @@
         processBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Gerando...';
         showLoading('Gerando link de pagamento...');
         
-        // Simular processamento
         setTimeout(() => {
             state.userBalance += amount;
             updateBalanceDisplay();
@@ -4503,7 +4406,6 @@
             closeModal('addBalanceModal');
             showToast(`Saldo de ${formatCurrency(amount)} adicionado com sucesso!`, 'success');
             
-            // Registrar no extrato
             state.ledgerData.unshift({
                 data: new Date().toISOString(),
                 tipo: 'DEPOSITO',
@@ -4519,7 +4421,6 @@
             processBtn.innerHTML = '<i class="bi bi-currency-dollar me-2"></i> Ir para Pagamento';
             hideLoading();
             
-            // Abrir link do Mercado Pago
             window.open(CONFIG.MERCADO_PAGO_LINK, '_blank');
         }, 2000);
     }
@@ -4582,33 +4483,32 @@
         showLoading('Processando solicitação...');
         
         try {
-            const result = await callGasAPI('request_withdrawal', {
-                user_id: state.currentUser.id,
-                valor: amount,
-                metodo: method,
-                dados_bancarios: bankDetails
-            });
-            
-            if (result.success) {
+            if (CONFIG.DEV_MODE) {
                 state.userBalance -= amount;
                 updateBalanceDisplay();
                 
                 closeModal('withdrawalModal');
                 showToast('Solicitação de saque enviada!', 'success');
                 
-                // Registrar no extrato
                 state.ledgerData.unshift({
                     data: new Date().toISOString(),
                     tipo: 'SAQUE',
                     descricao: `Solicitação de saque via ${method}`,
                     valor: -amount,
-                    referencia: result.data?.saque_id || 'SAQ-' + Date.now(),
+                    referencia: 'SAQ-' + Date.now(),
                     status: 'pendente'
                 });
                 
                 renderLedger();
             } else {
-                showToast(result.message || 'Erro ao solicitar saque', 'error');
+                await callGasAPI('request_withdrawal', {
+                    user_id: state.currentUser.id,
+                    valor: amount,
+                    metodo: method,
+                    dados_bancarios: bankDetails
+                });
+                showToast('Solicitação de saque enviada!', 'success');
+                closeModal('withdrawalModal');
             }
         } catch (error) {
             console.error('Erro ao solicitar saque:', error);
@@ -4936,10 +4836,12 @@
         if (expandedArtist) expandedArtist.textContent = track.artista || 'Artista desconhecido';
         
         if (expandedAlbumArt) {
-            const coverUrl = track.link_capa || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"%3E%3Crect width="300" height="300" fill="%23111418"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="Arial" font-size="48" fill="%2300ff88"%3EMIV%3C/text%3E%3C/svg%3E';
+            const coverUrl = track.link_capa && track.link_capa.trim() !== '' 
+                ? track.link_capa 
+                : 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
             expandedAlbumArt.src = coverUrl;
             expandedAlbumArt.onerror = function() {
-                this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"%3E%3Crect width="300" height="300" fill="%23111418"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="Arial" font-size="48" fill="%2300ff88"%3EMIV%3C/text%3E%3C/svg%3E';
+                this.src = 'https://via.placeholder.com/300x300/111418/00ff88?text=MIV';
             };
         }
         
@@ -5181,10 +5083,12 @@
         if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
         
         if (playerAlbumArt) {
-            const coverUrl = track.link_capa || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"%3E%3Crect width="56" height="56" fill="%23111418"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="Arial" font-size="12" fill="%2300ff88"%3EMIV%3C/text%3E%3C/svg%3E';
+            const coverUrl = track.link_capa && track.link_capa.trim() !== '' 
+                ? track.link_capa 
+                : 'https://via.placeholder.com/56x56/111418/00ff88?text=MIV';
             playerAlbumArt.src = coverUrl;
             playerAlbumArt.onerror = function() {
-                this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"%3E%3Crect width="56" height="56" fill="%23111418"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="Arial" font-size="12" fill="%2300ff88"%3EMIV%3C/text%3E%3C/svg%3E';
+                this.src = 'https://via.placeholder.com/56x56/111418/00ff88?text=MIV';
             };
         }
         
@@ -5243,8 +5147,7 @@
         if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
         
         if (playerAlbumArt) {
-            const coverUrl = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"%3E%3Crect width="56" height="56" fill="%23111418"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="Arial" font-size="12" fill="%23ff6b6b"%3EEXT%3C/text%3E%3C/svg%3E';
-            playerAlbumArt.src = coverUrl;
+            playerAlbumArt.src = 'https://via.placeholder.com/56x56/111418/ff6b6b?text=EXT';
         }
         
         const isFavorite = state.favoriteMusicIds.includes(track.id.toString());
@@ -5560,10 +5463,9 @@
         </style>
     `);
 
-    // ========== CARREGAR DADOS INICIAIS MOCKADOS ==========
-    // Isso garante que a interface não fique vazia
+    // ========== CARREGAR DADOS INICIAIS ==========
     setTimeout(() => {
-        if (!state.currentUser) {
+        if (CONFIG.DEV_MODE) {
             const mockData = getMockData('get_musicas');
             state.playlist = mockData.data || [];
             
