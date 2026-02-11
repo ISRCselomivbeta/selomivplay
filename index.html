@@ -2814,7 +2814,7 @@ class DataManager {
             return result;
         } else {
             throw new Error(result.message || 'Ação falhou');
-        }
+        };
     } catch (error) {
         console.error(`Erro na ação ${action}:`, error);
         showToast(`Erro de conexão: ${error.message}`, 'error');
@@ -2825,8 +2825,10 @@ class DataManager {
             message: 'Erro de conexão com o servidor. Tente novamente.'
         };
     } // ← FECHA O CATCH
-}
-// ========== YOUTUBE PLAYER ==========
+} // ← FECHA O MÉTODO fetchData
+} // ← FECHA A CLASSE DataManager! ← ISSO ESTÁ FALTANDO!
+
+// ========== YOUTUBE PLAYER ========== ← AGORA SIM, FORA DA CLASSE!
 function loadYouTubeAPI() {
     if (window.YT && window.YT.Player) {
         state.youtubeAPILoaded = true;
