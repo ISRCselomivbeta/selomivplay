@@ -2714,7 +2714,6 @@
         currentInvestTrack: null,
         currentExternalTrack: null
     };
-// ========== FUNÇÃO DE API COM POST REAL ==========
 // ========== FUNÇÃO DE API COM JSONP (SEM CORS!) ==========
 async function callAPI(action, data = {}) {
     return new Promise((resolve) => {
@@ -3035,27 +3034,63 @@ function getFallbackData(action, data) {
     }
 
     // ========== RENDER FUNCTIONS ==========
-    function renderMarketplace() {
-        const container = document.getElementById('marketplaceContent');
-        if (!container) return;
-        if (!state.playlist?.length) {
-            container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-music-note-slash empty-icon"></i><h5 class="text-muted">Nenhuma música disponível</h5><p class="text-muted">As músicas serão carregadas em breve</p><button class="btn-miv mt-3" onclick="loadMarketplace(true)"><i class="bi bi-arrow-clockwise me-2"></i> Tentar novamente</button></div>';
-            return;
-        }
-        container.innerHTML = state.playlist.map((track, index) => {
-            const isFavorite = state.favoriteMusicIds?.includes(track.id.toString());
-            const percentAvailable = track.percentual_disponivel || 0;
-            const sharesSold = track.acoes_vendidas || 0;
-            const totalShares = (percentAvailable / 0.01) + sharesSold;
-            const availableShares = Math.max(0, totalShares - sharesSold);
-            const percentSold = totalShares > 0 ? (sharesSold / totalShares * 100).toFixed(1) : 0;
-            let badgeClass = 'badge-success';
-            if (percentSold >= 80) badgeClass = 'badge-danger';
-            else if (percentSold >= 50) badgeClass = 'badge-warning';
-            const coverImage = track.link_capa?.trim() ? track.link_capa : PLACEHOLDERS.MIV_300;
-            return `<div class="music-card" onclick="playTrack(${index})"><div class="position-relative"><img src="${coverImage}" class="music-cover" alt="${track.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">${percentSold >= 90 ? `<div class="position-absolute top-0 end-0 m-2"><span class="badge ${badgeClass}">Esgotando</span></div>` : ''}<div class="position-absolute top-0 start-0 m-2"><button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${index})"><i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}"></i></button></div></div><div class="music-info"><h6 class="music-title">${track.titulo || 'Sem título'}</h6><p class="music-artist">${track.artista || 'Artista Desconhecido'}</p><div class="music-meta"><span class="music-price">${formatCurrency(track.valor_acao || 0)}</span><span class="music-percent ${badgeClass}" data-tooltip="${availableShares} de ${totalShares} ações disponíveis">${percentSold}% vendido</span></div><button class="btn-miv btn-sm w-100 mt-2" onclick="event.stopPropagation(); openInvestModal(${index})"><i class="bi bi-currency-dollar me-1"></i> Investir</button></div></div>`;
-        }).join('');
+  // ========== RENDER MARKETPLACE CORRIGIDO ==========
+function renderMarketplace() {
+    const container = document.getElementById('marketplaceContent');
+    if (!container) return;
+    
+    if (!state.playlist || state.playlist.length === 0) {
+        container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-music-note-slash empty-icon"></i><h5 class="text-muted">Nenhuma música disponível</h5><p class="text-muted">As músicas serão carregadas em breve</p><button class="btn-miv mt-3" onclick="loadMarketplace(true)"><i class="bi bi-arrow-clockwise me-2"></i> Tentar novamente</button></div>';
+        return;
     }
+    
+    container.innerHTML = state.playlist.map((track, index) => {
+        // ✅ CORREÇÃO: Verificar se link_capa existe e é string
+        let coverImage = PLACEHOLDERS.MIV_300;
+        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
+            coverImage = track.link_capa.trim();
+        }
+        
+        const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+        const percentAvailable = track.percentual_disponivel || 0;
+        const sharesSold = track.acoes_vendidas || 0;
+        const totalShares = (percentAvailable / 0.01) + sharesSold;
+        const availableShares = Math.max(0, totalShares - sharesSold);
+        const percentSold = totalShares > 0 ? ((sharesSold / totalShares) * 100).toFixed(1) : 0;
+        
+        let badgeClass = 'badge-success';
+        if (percentSold >= 80) badgeClass = 'badge-danger';
+        else if (percentSold >= 50) badgeClass = 'badge-warning';
+        
+        return `<div class="music-card" onclick="playTrack(${index})">
+            <div class="position-relative">
+                <img src="${coverImage}" 
+                     class="music-cover" 
+                     alt="${track.titulo || 'Música'}" 
+                     onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                ${percentSold >= 90 ? `<div class="position-absolute top-0 end-0 m-2"><span class="badge ${badgeClass}">Esgotando</span></div>` : ''}
+                <div class="position-absolute top-0 start-0 m-2">
+                    <button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${index})">
+                        <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="music-info">
+                <h6 class="music-title">${track.titulo || 'Sem título'}</h6>
+                <p class="music-artist">${track.artista || 'Artista Desconhecido'}</p>
+                <div class="music-meta">
+                    <span class="music-price">${formatCurrency(track.valor_acao || 0)}</span>
+                    <span class="music-percent ${badgeClass}" data-tooltip="${availableShares} de ${totalShares} ações disponíveis">
+                        ${percentSold}% vendido
+                    </span>
+                </div>
+                <button class="btn-miv btn-sm w-100 mt-2" onclick="event.stopPropagation(); openInvestModal(${index})">
+                    <i class="bi bi-currency-dollar me-1"></i> Investir
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
 
     function renderExternalMarketplace() {
         const container = document.getElementById('externalContent');
@@ -3173,79 +3208,121 @@ function getFallbackData(action, data) {
     }
 
     // ========== PLAYER FUNCTIONS ==========
-    function playTrack(index) {
-        if (index < 0 || index >= state.playlist.length) { showToast('Música não encontrada', 'error'); return; }
-        state.currentTrackIndex = index;
-        const track = state.playlist[index];
-        document.getElementById('playerSpotify').style.display = 'flex';
-        document.getElementById('playerTitle').textContent = track.titulo || 'Título desconhecido';
-        document.getElementById('playerArtist').textContent = track.artista || 'Artista desconhecido';
-        const playerAlbumArt = document.getElementById('playerAlbumArt');
-        if (playerAlbumArt) {
-            playerAlbumArt.src = track.link_capa?.trim() ? track.link_capa : PLACEHOLDERS.MIV_56;
-            playerAlbumArt.onerror = () => playerAlbumArt.src = PLACEHOLDERS.MIV_56;
-        }
-        updateFavoriteButton(state.favoriteMusicIds?.includes(track.id.toString()));
-        if (track.link_youtube) {
-            const videoId = extractYouTubeId(track.link_youtube);
-            if (videoId) {
-                if (state.youtubeAPILoaded) initializeYouTubePlayer(videoId);
-                else { loadYouTubeAPI(); setTimeout(() => initializeYouTubePlayer(videoId), 1000); }
-            } else showToast('Link do YouTube inválido', 'error');
-        }
-        state.isPlaying = true;
-        updatePlayerIcons();
-        if (document.getElementById('playerExpanded')?.classList.contains('show')) updateExpandedPlayer();
+  // ========== PLAY TRACK CORRIGIDO ==========
+function playTrack(index) {
+    if (index < 0 || index >= state.playlist.length) {
+        showToast('Música não encontrada', 'error');
+        return;
     }
-
-    function playExternalTrack(index) {
-        if (index < 0 || index >= state.externalPlaylist.length) { showToast('Música não encontrada', 'error'); return; }
-        state.currentTrackIndex = index + 1000;
-        const track = state.externalPlaylist[index];
-        document.getElementById('playerSpotify').style.display = 'flex';
-        document.getElementById('playerTitle').textContent = track.titulo || 'Título desconhecido';
-        document.getElementById('playerArtist').textContent = track.artista || 'Artista desconhecido';
-        const playerAlbumArt = document.getElementById('playerAlbumArt');
-        if (playerAlbumArt) playerAlbumArt.src = PLACEHOLDERS.EXT_56;
-        updateFavoriteButton(state.favoriteMusicIds?.includes(track.id.toString()));
-        if (track.link_youtube) {
-            const videoId = extractYouTubeId(track.link_youtube);
-            if (videoId) {
-                if (state.youtubeAPILoaded) initializeYouTubePlayer(videoId);
-                else { loadYouTubeAPI(); setTimeout(() => initializeYouTubePlayer(videoId), 1000); }
+    
+    state.currentTrackIndex = index;
+    const track = state.playlist[index];
+    
+    const player = document.getElementById('playerSpotify');
+    if (player) player.style.display = 'flex';
+    
+    const playerTitle = document.getElementById('playerTitle');
+    const playerArtist = document.getElementById('playerArtist');
+    const playerAlbumArt = document.getElementById('playerAlbumArt');
+    
+    if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
+    if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
+    
+    // ✅ CORREÇÃO: Verificar se link_capa existe e é string
+    if (playerAlbumArt) {
+        let coverUrl = PLACEHOLDERS.MIV_56;
+        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
+            coverUrl = track.link_capa.trim();
+        }
+        playerAlbumArt.src = coverUrl;
+        playerAlbumArt.onerror = function() {
+            this.src = PLACEHOLDERS.MIV_56;
+        };
+    }
+    
+    const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+    updateFavoriteButton(isFavorite);
+    
+    if (track.link_youtube) {
+        const videoId = extractYouTubeId(track.link_youtube);
+        if (videoId) {
+            if (state.youtubeAPILoaded && window.YT) {
+                initializeYouTubePlayer(videoId);
+            } else {
+                loadYouTubeAPI();
+                setTimeout(() => initializeYouTubePlayer(videoId), 1000);
             }
         }
-        state.isPlaying = true;
-        updatePlayerIcons();
-        if (document.getElementById('playerExpanded')?.classList.contains('show')) updateExpandedPlayer();
     }
+    
+    state.isPlaying = true;
+    updatePlayerIcons();
+    
+    if (document.getElementById('playerExpanded')?.classList.contains('show')) {
+        updateExpandedPlayer();
+    }
+}
 
-    function updateExpandedPlayer() {
-        if (state.currentTrackIndex < 0) return;
-        let track = state.currentTrackIndex >= 1000 ? state.externalPlaylist[state.currentTrackIndex - 1000] : state.playlist[state.currentTrackIndex];
-        if (!track) return;
-        document.getElementById('expandedTitle').textContent = track.titulo || 'Título desconhecido';
-        document.getElementById('expandedArtist').textContent = track.artista || 'Artista desconhecido';
-        const expandedAlbumArt = document.getElementById('expandedAlbumArt');
-        if (expandedAlbumArt) {
-            expandedAlbumArt.src = track.link_capa?.trim() ? track.link_capa : PLACEHOLDERS.MIV_300;
-            expandedAlbumArt.onerror = () => expandedAlbumArt.src = PLACEHOLDERS.MIV_300;
+// ========== UPDATE EXPANDED PLAYER CORRIGIDO ==========
+function updateExpandedPlayer() {
+    if (state.currentTrackIndex < 0) return;
+    
+    let track;
+    if (state.currentTrackIndex >= 1000) {
+        const externalIndex = state.currentTrackIndex - 1000;
+        if (externalIndex >= 0 && externalIndex < state.externalPlaylist.length) {
+            track = state.externalPlaylist[externalIndex];
         }
-        document.getElementById('expandedPrice').textContent = formatCurrency(track.valor_acao || 0);
-        const sharesSold = track.acoes_vendidas || 0;
-        const totalShares = (track.percentual_disponivel || 0) / 0.01 + sharesSold;
-        document.getElementById('expandedAvailable').textContent = totalShares > 0 ? ((sharesSold / totalShares * 100).toFixed(1) + '%') : '0%';
-        document.getElementById('expandedReturn').textContent = (track.rentabilidade_media || 0) + '%';
-        document.getElementById('expandedInvestors').textContent = track.total_investidores || 0;
-        document.getElementById('expandedGenre').textContent = track.genero || 'Música';
-        const isFavorite = state.favoriteMusicIds?.includes(track.id.toString());
-        const btn = document.getElementById('expandedFavoriteBtn');
-        const icon = document.getElementById('expandedFavoriteIcon');
-        if (btn && icon) {
-            btn.classList.toggle('active', isFavorite);
-            icon.className = isFavorite ? 'bi bi-star-fill' : 'bi bi-star';
-        }
+    } else if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
+        track = state.playlist[state.currentTrackIndex];
     }
+    
+    if (!track) return;
+    
+    const expandedTitle = document.getElementById('expandedTitle');
+    const expandedArtist = document.getElementById('expandedArtist');
+    const expandedAlbumArt = document.getElementById('expandedAlbumArt');
+    const expandedPrice = document.getElementById('expandedPrice');
+    const expandedAvailable = document.getElementById('expandedAvailable');
+    const expandedReturn = document.getElementById('expandedReturn');
+    const expandedInvestors = document.getElementById('expandedInvestors');
+    const expandedGenre = document.getElementById('expandedGenre');
+    const expandedFavoriteBtn = document.getElementById('expandedFavoriteBtn');
+    const expandedFavoriteIcon = document.getElementById('expandedFavoriteIcon');
+    
+    if (expandedTitle) expandedTitle.textContent = track.titulo || 'Título desconhecido';
+    if (expandedArtist) expandedArtist.textContent = track.artista || 'Artista desconhecido';
+    
+    // ✅ CORREÇÃO: Verificar se link_capa existe e é string
+    if (expandedAlbumArt) {
+        let coverUrl = PLACEHOLDERS.MIV_300;
+        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
+            coverUrl = track.link_capa.trim();
+        }
+        expandedAlbumArt.src = coverUrl;
+        expandedAlbumArt.onerror = function() {
+            this.src = PLACEHOLDERS.MIV_300;
+        };
+    }
+    
+    if (expandedPrice) expandedPrice.textContent = formatCurrency(track.valor_acao || 0);
+    
+    const percentAvailable = track.percentual_disponivel || 0;
+    const sharesSold = track.acoes_vendidas || 0;
+    const totalShares = (percentAvailable / 0.01) + sharesSold;
+    const percentSold = totalShares > 0 ? ((sharesSold / totalShares) * 100).toFixed(1) : 0;
+    
+    if (expandedAvailable) expandedAvailable.textContent = `${percentSold}%`;
+    if (expandedReturn) expandedReturn.textContent = `${track.rentabilidade_media || 0}%`;
+    if (expandedInvestors) expandedInvestors.textContent = track.total_investidores || 0;
+    if (expandedGenre) expandedGenre.textContent = track.genero || 'Música';
+    
+    const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+    if (expandedFavoriteBtn && expandedFavoriteIcon) {
+        expandedFavoriteBtn.classList.toggle('active', isFavorite);
+        expandedFavoriteIcon.className = isFavorite ? 'bi bi-star-fill' : 'bi bi-star';
+    }
+}
 
     // ========== YOUTUBE PLAYER ==========
     function loadYouTubeAPI() {
