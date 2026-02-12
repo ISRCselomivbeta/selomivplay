@@ -3437,9 +3437,8 @@ function getFallbackData(action, data) {
         }
     }
 
-    // ========== RENDER FUNCTIONS ==========
-  // ========== RENDER MARKETPLACE CORRIGIDO ==========
 // ========== RENDER MARKETPLACE - VERSÃO 100% SEGURA ==========
+// ========== RENDER MARKETPLACE - VERSÃO ÚNICA E CORRETA ==========
 function renderMarketplace() {
     const container = document.getElementById('marketplaceContent');
     if (!container) return;
@@ -3458,12 +3457,10 @@ function renderMarketplace() {
             
             // ✅ CAPA - TRATAMENTO SUPER SEGURO
             let coverImage = PLACEHOLDERS.MIV_300;
-            if (track.link_capa) {
-                if (typeof track.link_capa === 'string') {
-                    const capa = track.link_capa.trim();
-                    if (capa.startsWith('http://') || capa.startsWith('https://')) {
-                        coverImage = capa;
-                    }
+            if (track.link_capa && typeof track.link_capa === 'string') {
+                const capa = track.link_capa.trim();
+                if (capa.startsWith('http://') || capa.startsWith('https://')) {
+                    coverImage = capa;
                 }
             }
             
@@ -3485,7 +3482,6 @@ function renderMarketplace() {
             
             const isFavorite = state.favoriteMusicIds?.includes(trackId) || false;
             
-            // ✅ CONSTRUÇÃO SEGURA DO HTML
             html += `<div class="music-card" onclick="playTrack(${i})">
                 <div class="position-relative">
                     <img src="${coverImage}" 
@@ -3518,27 +3514,11 @@ function renderMarketplace() {
         container.innerHTML = html;
         
     } catch (error) {
-        console.error('Erro ao renderizar:', error);
-        container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-exclamation-triangle empty-icon">
-            </i><h5 class="text-muted">Erro ao carregar</h5><button class="btn-miv mt-3" onclick="loadMarketplace(true)">
-            <i class="bi bi-arrow-clockwise me-2"></i> Recarregar</button></div>';
+        console.error('Erro ao renderizar marketplace:', error);
+        container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-exclamation-triangle empty-icon"></i><h5 class="text-muted">
+            Erro ao carregar</h5><button class="btn-miv mt-3" onclick="loadMarketplace(true)"><i class="bi bi-arrow-clockwise me-2"></i> Recarregar</button></div>';
+
     }
-}
-            <div class="music-info">
-                <h6 class="music-title">${track.titulo || 'Sem título'}</h6>
-                <p class="music-artist">${track.artista || 'Artista Desconhecido'}</p>
-                <div class="music-meta">
-                    <span class="music-price">${formatCurrency(track.valor_acao || 0)}</span>
-                    <span class="music-percent ${badgeClass}" data-tooltip="${availableShares} de ${totalShares} ações disponíveis">
-                        ${percentSold}% vendido
-                    </span>
-                </div>
-                <button class="btn-miv btn-sm w-100 mt-2" onclick="event.stopPropagation(); openInvestModal(${index})">
-                    <i class="bi bi-currency-dollar me-1"></i> Investir
-                </button>
-            </div>
-        </div>`;
-    }).join('');
 }
 // ========== PLAY EXTERNAL TRACK ==========
 function playExternalTrack(index) {
