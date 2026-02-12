@@ -223,101 +223,7 @@
             font-size: 0.75rem;
             margin-bottom: 0.25rem;
         }
-         /* ========== PLAYER EXPANDIDO - TELA CHEIA ========== */
-/* ========== PLAYER EXPANDIDO - TELA CHEIA (ÚNICA VERSÃO) ========== */
-.player-expanded {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 999999 !important;
-    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    display: none !important;
-}
-
-.player-expanded.show {
-    display: block !important;
-}
-
-.player-expanded.show ~ .player-miv {
-    display: none !important;
-}
-
-.expanded-header {
-    padding: 2rem !important;
-    max-width: 1200px !important;
-    margin: 0 auto !important;
-    display: flex !important;
-    justify-content: space-between !important;
-}
-
-.expanded-track-info {
-    display: flex !important;
-    gap: 2rem !important;
-    align-items: flex-start !important;
-    flex-wrap: wrap !important;
-}
-
-.expanded-album-art {
-    width: 280px !important;
-    height: 280px !important;
-    border-radius: 12px !important;
-    object-fit: cover !important;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
-}
-
-.expanded-details {
-    flex: 1 !important;
-    min-width: 280px !important;
-}
-
-.expanded-title {
-    font-size: 3rem !important;
-    font-weight: 700 !important;
-    color: #fff !important;
-    margin-bottom: 0.5rem !important;
-}
-
-.expanded-artist {
-    font-size: 1.5rem !important;
-    color: #b3b3b3 !important;
-    margin-bottom: 1rem !important;
-}
-
-.expanded-content {
-    max-width: 1200px !important;
-    margin: 0 auto !important;
-    padding: 2rem !important;
-}
-
-.youtube-container-expanded {
-    width: 100% !important;
-    aspect-ratio: 16/9 !important;
-    border-radius: 12px !important;
-    overflow: hidden !important;
-    margin-bottom: 2rem !important;
-}
-
-@media (max-width: 768px) {
-    .expanded-track-info {
-        flex-direction: column !important;
-        align-items: center !important;
-        text-align: center !important;
-    }
-    .expanded-album-art {
-        width: 200px !important;
-        height: 200px !important;
-    }
-    .expanded-title {
-        font-size: 2rem !important;
-    }
-}
-        
+   
         /* Sidebar */
         .sidebar {
             position: fixed;
@@ -777,507 +683,6 @@
             border-radius: 2px;
             width: 80%;
         }
-
-        /* Player Expanded */
-        .player-expanded {
-            position: fixed;
-            inset: 0;
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-            z-index: 10000;
-            display: none;
-            overflow-y: auto;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .player-expanded.show {
-            display: block;
-        }
-
-        .expanded-header {
-            padding: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, transparent 100%);
-        }
-
-        .expanded-track-info {
-            display: flex;
-            gap: 2rem;
-            max-width: 1200px;
-            width: 100%;
-        }
-
-        .expanded-album-art {
-            width: 300px;
-            height: 300px;
-            border-radius: 12px;
-            object-fit: cover;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-            flex-shrink: 0;
-        }
-
-        .expanded-details {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .expanded-type {
-            font-size: 0.875rem;
-            color: var(--neon-green);
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .expanded-title {
-            font-size: 3.5rem;
-            font-weight: 700;
-            color: var(--text-light);
-            margin: 0 0 1rem 0;
-            line-height: 1.1;
-        }
-
-        .expanded-artist {
-            font-size: 1.5rem;
-            color: var(--text-muted);
-            margin-bottom: 2rem;
-        }
-
-        .expanded-meta {
-            display: flex;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-muted);
-            font-size: 0.875rem;
-        }
-
-        .meta-item i {
-            color: var(--neon-green);
-        }
-
-        .expanded-actions {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .play-large-btn {
-            background: linear-gradient(135deg, var(--neon-green) 0%, #00cc6a 100%);
-            border: none;
-            border-radius: 2rem;
-            color: #000;
-            font-weight: 700;
-            padding: 0.875rem 2rem;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .play-large-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
-        }
-
-        .play-large-btn {
-            padding: 1rem 3rem;
-            font-size: 1.125rem;
-        }
-
-        .action-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            color: var(--text-light);
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .action-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: scale(1.05);
-        }
-
-        .favorite-large-btn.active {
-            background: rgba(255, 193, 7, 0.2);
-            border-color: #ffc107;
-            color: #ffc107;
-        }
-
-        .close-expanded {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            border-radius: 50%;
-            color: var(--text-light);
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            flex-shrink: 0;
-        }
-
-        .close-expanded:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: rotate(90deg);
-        }
-
-        .expanded-content {
-            padding: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .youtube-container-expanded {
-            width: 100%;
-            aspect-ratio: 16/9;
-            background: #000;
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 3rem;
-            position: relative;
-        }
-
-        #youtubePlayerExpanded {
-            width: 100%;
-            height: 100%;
-        }
-
-        .player-loading {
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-light);
-            gap: 1rem;
-        }
-
-        .track-info-section {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 2rem;
-            margin-bottom: 3rem;
-        }
-
-        .section-title {
-            font-size: 1.5rem;
-            color: var(--text-light);
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .section-title i {
-            color: var(--neon-green);
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .info-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            transition: transform 0.3s ease;
-        }
-
-        .info-card:hover {
-            transform: translateY(-5px);
-            background: rgba(0, 255, 136, 0.1);
-        }
-
-        .info-icon {
-            width: 48px;
-            height: 48px;
-            background: rgba(0, 255, 136, 0.1);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .info-icon i {
-            font-size: 1.5rem;
-            color: var(--neon-green);
-        }
-
-        .info-content {
-            flex: 1;
-        }
-
-        .info-label {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-            margin-bottom: 0.25rem;
-        }
-
-        .info-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-light);
-        }
-
-        .invest-cta {
-            text-align: center;
-            padding: 2rem;
-            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 114, 255, 0.1) 100%);
-            border-radius: 12px;
-            border: 1px solid rgba(0, 255, 136, 0.3);
-        }
-
-        .invest-cta h4 {
-            font-size: 1.5rem;
-            color: var(--text-light);
-            margin-bottom: 1rem;
-        }
-
-        .invest-cta p {
-            color: var(--text-muted);
-            margin-bottom: 1.5rem;
-        }
-
-        .invest-large-btn {
-            padding: 1rem 2.5rem;
-            font-size: 1.125rem;
-        }
-
-        .expanded-controls {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 2rem;
-        }
-
-        .expanded-controls-top {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .expanded-controls-top .control-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 2rem;
-            padding: 0.75rem 1.5rem;
-            width: auto;
-            height: auto;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .expanded-controls-top .control-btn.active {
-            background: rgba(0, 255, 136, 0.2);
-            color: var(--neon-green);
-        }
-
-        .queue-info {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-muted);
-        }
-
-        .queue-info i {
-            color: var(--neon-green);
-        }
-
-        .expanded-progress-container {
-            margin-bottom: 2rem;
-        }
-
-        .expanded-progress-bar {
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            cursor: pointer;
-            margin-bottom: 0.5rem;
-        }
-
-        .expanded-progress-fill {
-            height: 100%;
-            background: var(--neon-green);
-            border-radius: 3px;
-            width: 0%;
-            transition: width 0.1s linear;
-        }
-
-        .expanded-time-display {
-            display: flex;
-            justify-content: space-between;
-            color: var(--text-muted);
-            font-size: 0.875rem;
-        }
-
-        .expanded-controls-bottom {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 2rem;
-        }
-
-        .expanded-controls-bottom .control-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 2rem;
-            padding: 1rem 2rem;
-            font-size: 1rem;
-            width: auto;
-            height: auto;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .expanded-controls-bottom .control-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-
-        .play-large-btn-expanded {
-            background: var(--neon-green) !important;
-            color: #000 !important;
-            padding: 1.25rem 3rem !important;
-            font-size: 1.125rem !important;
-            font-weight: 700 !important;
-        }
-
-        .play-large-btn-expanded:hover {
-            background: #00cc6a !important;
-            transform: scale(1.05) !important;
-        }
-
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .expanded-title {
-                font-size: 2.5rem;
-            }
-            
-            .expanded-album-art {
-                width: 200px;
-                height: 200px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .player-bar {
-                flex-direction: column;
-                height: auto;
-                padding: 1rem 0;
-                gap: 1rem;
-            }
-            
-            .player-track-info,
-            .player-controls-center,
-            .player-controls-right {
-                width: 100%;
-                justify-content: center;
-            }
-            
-            .player-track-info {
-                order: 1;
-            }
-            
-            .player-controls-center {
-                order: 2;
-            }
-            
-            .player-controls-right {
-                order: 3;
-            }
-            
-            .expanded-track-info {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-            }
-            
-            .expanded-album-art {
-                width: 200px;
-                height: 200px;
-            }
-            
-            .expanded-title {
-                font-size: 2rem;
-            }
-            
-            .expanded-meta {
-                justify-content: center;
-                flex-wrap: wrap;
-                gap: 1rem;
-            }
-            
-            .expanded-actions {
-                justify-content: center;
-            }
-            
-            .player-miv {
-                height: auto;
-                min-height: var(--player-height);
-                padding: 0.5rem 1rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .player-miv {
-                padding: 0 1rem;
-            }
-            
-            .expanded-title {
-                font-size: 1.75rem;
-            }
-            
-            .expanded-album-art {
-                width: 150px;
-                height: 150px;
-            }
-            
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .expanded-controls-top {
-                flex-direction: column;
-                gap: 1rem;
-            }
-            
-            .queue-info {
-                margin-left: 0;
-            }
-        }
         
         /* Portfolio */
         .portfolio-summary {
@@ -1734,6 +1139,9 @@
         .spin {
             animation: spin 1s linear infinite;
         }
+
+        
+        
 /* ========== PLAYER EXPANDIDO - TELA CHEIA (VERSÃO ÚNICA) ========== */
 .player-expanded {
     position: fixed !important;
@@ -1749,16 +1157,6 @@
     overflow-x: hidden !important;
     display: none !important;
 }
-
-.player-expanded.show {
-    display: block !important;
-}
-
-/* Esconder player inferior quando expandido */
-.player-expanded.show ~ .player-miv {
-    display: none !important;
-}
-
 /* HEADER */
 .expanded-header {
     padding: 2rem !important;
@@ -2182,8 +1580,16 @@
                 </div>
                 <h1 class="expanded-title" id="expandedTitle">Nenhuma música tocando</h1>
                 <div class="expanded-artist" id="expandedArtist">Selecione uma música para começar</div>
-                <div class="expanded-meta" id="expandedMeta"></div>
-                <div class="expanded-actions">
+<div class="expanded-meta" id="expandedMeta">
+    <span class="meta-item">
+        <i class="bi bi-music-note-beamed"></i>
+        <span id="expandedGenre">Música</span>
+    </span>
+    <span class="meta-item">
+        <i class="bi bi-calendar"></i>
+        <span id="expandedYear">2024</span>
+    </span>
+</div>                <div class="expanded-actions">
                     <button class="miv-btn play-large-btn" onclick="togglePlay()">
                         <i class="bi bi-play-fill" id="expandedPlayIcon"></i>
                         <span id="expandedPlayText">Reproduzir</span>
@@ -2215,8 +1621,36 @@
         <!-- INFORMAÇÕES DA MÚSICA -->
         <div class="track-info-section">
             <h3 class="section-title"><i class="bi bi-info-circle"></i> Sobre esta música</h3>
-            <div class="info-grid" id="expandedInfoGrid"></div>
-            <div class="invest-cta">
+<div class="info-grid" id="expandedInfoGrid">
+    <div class="info-card">
+        <div class="info-icon"><i class="bi bi-cash-coin"></i></div>
+        <div class="info-content">
+            <div class="info-label">Valor por ação</div>
+            <div class="info-value" id="expandedPrice">R$ 0,00</div>
+        </div>
+    </div>
+    <div class="info-card">
+        <div class="info-icon"><i class="bi bi-percent"></i></div>
+        <div class="info-content">
+            <div class="info-label">Disponível</div>
+            <div class="info-value" id="expandedAvailable">0%</div>
+        </div>
+    </div>
+    <div class="info-card">
+        <div class="info-icon"><i class="bi bi-graph-up-arrow"></i></div>
+        <div class="info-content">
+            <div class="info-label">Retorno</div>
+            <div class="info-value text-success" id="expandedReturn">0%</div>
+        </div>
+    </div>
+    <div class="info-card">
+        <div class="info-icon"><i class="bi bi-people"></i></div>
+        <div class="info-content">
+            <div class="info-label">Investidores</div>
+            <div class="info-value" id="expandedInvestors">0</div>
+        </div>
+    </div>
+</div>            <div class="invest-cta">
                 <h4>Invista nesta música e participe dos royalties!</h4>
                 <p>Cada ação dá direito a uma porcentagem dos rendimentos autorais.</p>
                 <button class="miv-btn invest-large-btn" onclick="openInvestModalFromPlayer()">
