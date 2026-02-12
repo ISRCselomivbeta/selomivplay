@@ -223,7 +223,22 @@
             font-size: 0.75rem;
             margin-bottom: 0.25rem;
         }
-   
+        
+        .saldo-display h4 {
+            color: var(--neon-green);
+            font-weight: 700;
+            margin-bottom: 0;
+        }
+        
+        .user-badge {
+            background: var(--neon-green);
+            color: #000;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        
         /* Sidebar */
         .sidebar {
             position: fixed;
@@ -683,6 +698,507 @@
             border-radius: 2px;
             width: 80%;
         }
+
+        /* Player Expanded */
+        .player-expanded {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            z-index: 10000;
+            display: none;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .player-expanded.show {
+            display: block;
+        }
+
+        .expanded-header {
+            padding: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, transparent 100%);
+        }
+
+        .expanded-track-info {
+            display: flex;
+            gap: 2rem;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .expanded-album-art {
+            width: 300px;
+            height: 300px;
+            border-radius: 12px;
+            object-fit: cover;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            flex-shrink: 0;
+        }
+
+        .expanded-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .expanded-type {
+            font-size: 0.875rem;
+            color: var(--neon-green);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .expanded-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--text-light);
+            margin: 0 0 1rem 0;
+            line-height: 1.1;
+        }
+
+        .expanded-artist {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .expanded-meta {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .meta-item i {
+            color: var(--neon-green);
+        }
+
+        .expanded-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .play-large-btn {
+            background: linear-gradient(135deg, var(--neon-green) 0%, #00cc6a 100%);
+            border: none;
+            border-radius: 2rem;
+            color: #000;
+            font-weight: 700;
+            padding: 0.875rem 2rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .play-large-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .play-large-btn {
+            padding: 1rem 3rem;
+            font-size: 1.125rem;
+        }
+
+        .action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            color: var(--text-light);
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .favorite-large-btn.active {
+            background: rgba(255, 193, 7, 0.2);
+            border-color: #ffc107;
+            color: #ffc107;
+        }
+
+        .close-expanded {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: var(--text-light);
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .close-expanded:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+
+        .expanded-content {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .youtube-container-expanded {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        #youtubePlayerExpanded {
+            width: 100%;
+            height: 100%;
+        }
+
+        .player-loading {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            gap: 1rem;
+        }
+
+        .track-info-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-title i {
+            color: var(--neon-green);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-5px);
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .info-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .info-icon i {
+            font-size: 1.5rem;
+            color: var(--neon-green);
+        }
+
+        .info-content {
+            flex: 1;
+        }
+
+        .info-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-light);
+        }
+
+        .invest-cta {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 114, 255, 0.1) 100%);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .invest-cta h4 {
+            font-size: 1.5rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+
+        .invest-cta p {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .invest-large-btn {
+            padding: 1rem 2.5rem;
+            font-size: 1.125rem;
+        }
+
+        .expanded-controls {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 2rem;
+        }
+
+        .expanded-controls-top {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .expanded-controls-top .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2rem;
+            padding: 0.75rem 1.5rem;
+            width: auto;
+            height: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .expanded-controls-top .control-btn.active {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--neon-green);
+        }
+
+        .queue-info {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        .queue-info i {
+            color: var(--neon-green);
+        }
+
+        .expanded-progress-container {
+            margin-bottom: 2rem;
+        }
+
+        .expanded-progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+        }
+
+        .expanded-progress-fill {
+            height: 100%;
+            background: var(--neon-green);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .expanded-time-display {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .expanded-controls-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+        }
+
+        .expanded-controls-bottom .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2rem;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            width: auto;
+            height: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .expanded-controls-bottom .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .play-large-btn-expanded {
+            background: var(--neon-green) !important;
+            color: #000 !important;
+            padding: 1.25rem 3rem !important;
+            font-size: 1.125rem !important;
+            font-weight: 700 !important;
+        }
+
+        .play-large-btn-expanded:hover {
+            background: #00cc6a !important;
+            transform: scale(1.05) !important;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .expanded-title {
+                font-size: 2.5rem;
+            }
+            
+            .expanded-album-art {
+                width: 200px;
+                height: 200px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .player-bar {
+                flex-direction: column;
+                height: auto;
+                padding: 1rem 0;
+                gap: 1rem;
+            }
+            
+            .player-track-info,
+            .player-controls-center,
+            .player-controls-right {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .player-track-info {
+                order: 1;
+            }
+            
+            .player-controls-center {
+                order: 2;
+            }
+            
+            .player-controls-right {
+                order: 3;
+            }
+            
+            .expanded-track-info {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            
+            .expanded-album-art {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .expanded-title {
+                font-size: 2rem;
+            }
+            
+            .expanded-meta {
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            
+            .expanded-actions {
+                justify-content: center;
+            }
+            
+            .player-miv {
+                height: auto;
+                min-height: var(--player-height);
+                padding: 0.5rem 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .player-miv {
+                padding: 0 1rem;
+            }
+            
+            .expanded-title {
+                font-size: 1.75rem;
+            }
+            
+            .expanded-album-art {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .expanded-controls-top {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .queue-info {
+                margin-left: 0;
+            }
+        }
         
         /* Portfolio */
         .portfolio-summary {
@@ -1139,9 +1655,6 @@
         .spin {
             animation: spin 1s linear infinite;
         }
-
-        
-        
 /* ========== PLAYER EXPANDIDO - TELA CHEIA (VERSÃO ÚNICA) ========== */
 .player-expanded {
     position: fixed !important;
@@ -1157,6 +1670,16 @@
     overflow-x: hidden !important;
     display: none !important;
 }
+
+.player-expanded.show {
+    display: block !important;
+}
+
+/* Esconder player inferior quando expandido */
+.player-expanded.show ~ .player-miv {
+    display: none !important;
+}
+
 /* HEADER */
 .expanded-header {
     padding: 2rem !important;
@@ -1488,215 +2011,267 @@
     </main>
 
     <!-- Player MIV -->
-<!-- PLAYER MIV - BARRA INFERIOR -->
-<div id="playerSpotify" class="player-miv" style="display: none;">
-    <div class="player-bar">
-        <!-- INFO DA FAIXA -->
-        <div class="player-track-info">
-            <div class="track-image-container">
-                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Crect width='56' height='56' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='14' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
-                     class="track-image" 
-                     alt="Album Art" 
-                     id="playerAlbumArt">
-                <div class="track-image-overlay" onclick="togglePlay()" id="trackImageOverlay">
-                    <i class="bi bi-play-fill" id="trackOverlayIcon"></i>
+    <div id="playerSpotify" class="player-miv" style="display: none;">
+        <div class="player-bar">
+            <div class="player-track-info">
+                <div class="track-image-container">
+<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Crect width='56' height='56' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='14' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
+     class="track-image" 
+     alt="Album Art" 
+     id="playerAlbumArt"
+     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'56\' height=\'56\' viewBox=\'0 0 56 56\'%3E%3Crect width=\'56\' height=\'56\' fill=\'%23111418\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'14\' fill=\'%2300ff88\'%3EMIV%3C/text%3E%3C/svg%3E'">                    <div class="track-image-overlay" onclick="togglePlay()" id="trackImageOverlay">
+                        <i class="bi bi-play-fill" id="trackOverlayIcon"></i>
+                    </div>
+                </div>
+                
+                <div class="track-details">
+                    <div class="track-title" id="playerTitle">Nenhuma música tocando</div>
+                    <div class="track-artist" id="playerArtist">Selecione uma música para começar</div>
+                </div>
+                
+                <div class="track-actions">
+                    <button class="player-btn favorite-btn" onclick="toggleFavorite()" id="favoriteBtn" title="Favoritar">
+                        <i class="bi bi-star" id="favoriteIcon"></i>
+                    </button>
+                    <button class="player-btn" onclick="openInvestModalFromPlayer()" title="Investir">
+                        <i class="bi bi-currency-dollar"></i>
+                    </button>
                 </div>
             </div>
-            <div class="track-details">
-                <div class="track-title" id="playerTitle">Nenhuma música tocando</div>
-                <div class="track-artist" id="playerArtist">Selecione uma música para começar</div>
+            
+            <div class="player-controls-center">
+                <div class="control-buttons">
+                    <button class="control-btn shuffle-btn" onclick="toggleShuffle()" id="shuffleBtn" title="Aleatório">
+                        <i class="bi bi-shuffle" id="shuffleIcon"></i>
+                    </button>
+                    
+                    <button class="control-btn prev-btn" onclick="playPrevious()" title="Anterior">
+                        <i class="bi bi-skip-backward-fill"></i>
+                    </button>
+                    
+                    <button class="control-btn play-btn" onclick="togglePlay()" id="playPauseBtn" title="Play/Pause">
+                        <i class="bi bi-play-fill" id="playPauseIcon"></i>
+                    </button>
+                    
+                    <button class="control-btn next-btn" onclick="playNext()" title="Próxima">
+                        <i class="bi bi-skip-forward-fill"></i>
+                    </button>
+                    
+                    <button class="control-btn repeat-btn" onclick="toggleRepeat()" id="repeatBtn" title="Repetir">
+                        <i class="bi bi-repeat" id="repeatIcon"></i>
+                    </button>
+                </div>
+                
+                <div class="progress-container">
+                    <span class="time-current" id="currentTimeDisplay">0:00</span>
+                    <div class="progress-bar" onclick="handleProgressClick(event)" id="progressContainer">
+                        <div class="progress-fill" id="playerProgressBar"></div>
+                        <div class="progress-handle" id="progressHandle"></div>
+                    </div>
+                    <span class="time-total" id="totalTimeDisplay">0:00</span>
+                </div>
             </div>
-            <div class="track-actions">
-                <button class="player-btn favorite-btn" onclick="toggleFavorite()" id="favoriteBtn" title="Favoritar">
-                    <i class="bi bi-star" id="favoriteIcon"></i>
+            
+            <div class="player-controls-right">
+                <button class="player-btn queue-btn" onclick="toggleQueue()" title="Fila de reprodução">
+                    <i class="bi bi-music-note-list"></i>
                 </button>
-                <button class="player-btn" onclick="openInvestModalFromPlayer()" title="Investir">
-                    <i class="bi bi-currency-dollar"></i>
+                
+                <div class="volume-container">
+                    <button class="player-btn volume-btn" onclick="toggleMute()" title="Volume" id="volumeBtn">
+                        <i class="bi bi-volume-up" id="volumeIcon"></i>
+                    </button>
+                    <div class="volume-slider-container">
+                        <div class="volume-slider" onclick="handleVolumeClick(event)" id="volumeSlider">
+                            <div class="volume-slider-fill" id="volumeSliderBar"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="player-btn expand-btn" onclick="togglePlayerExpansion()" title="Expandir player">
+                    <i class="bi bi-arrows-angle-expand" id="expandIcon"></i>
                 </button>
             </div>
         </div>
-
-        <!-- CONTROLES CENTRAIS -->
-        <div class="player-controls-center">
-            <div class="control-buttons">
-                <button class="control-btn shuffle-btn" onclick="toggleShuffle()" id="shuffleBtn" title="Aleatório">
-                    <i class="bi bi-shuffle" id="shuffleIcon"></i>
-                </button>
-                <button class="control-btn prev-btn" onclick="playPrevious()" title="Anterior">
-                    <i class="bi bi-skip-backward-fill"></i>
-                </button>
-                <button class="control-btn play-btn" onclick="togglePlay()" id="playPauseBtn" title="Play/Pause">
-                    <i class="bi bi-play-fill" id="playPauseIcon"></i>
-                </button>
-                <button class="control-btn next-btn" onclick="playNext()" title="Próxima">
-                    <i class="bi bi-skip-forward-fill"></i>
-                </button>
-                <button class="control-btn repeat-btn" onclick="toggleRepeat()" id="repeatBtn" title="Repetir">
-                    <i class="bi bi-repeat" id="repeatIcon"></i>
-                </button>
-            </div>
-            <div class="progress-container">
-                <span class="time-current" id="currentTimeDisplay">0:00</span>
-                <div class="progress-bar" onclick="handleProgressClick(event)" id="progressContainer">
-                    <div class="progress-fill" id="playerProgressBar"></div>
+        
+        <div class="player-expanded" id="playerExpanded">
+            <div class="expanded-header">
+                <div class="expanded-track-info">
+<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
+     class="expanded-album-art" 
+     alt="Album Art" 
+     id="expandedAlbumArt"
+     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\' viewBox=\'0 0 300 300\'%3E%3Crect width=\'300\' height=\'300\' fill=\'%23111418\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'24\' fill=\'%2300ff88\'%3EMIV%3C/text%3E%3C/svg%3E'">
+                    
+                    <div class="expanded-details">
+                        <div class="expanded-type">TOCANDO DO SELO MIV</div>
+                        <h1 class="expanded-title" id="expandedTitle">Nenhuma música tocando</h1>
+                        <div class="expanded-artist" id="expandedArtist">Selecione uma música para começar</div>
+                        
+                        <div class="expanded-meta">
+                            <span class="meta-item">
+                                <i class="bi bi-music-note-beamed"></i>
+                                <span id="expandedGenre">Música</span>
+                            </span>
+                            <span class="meta-item">
+                                <i class="bi bi-calendar"></i>
+                                <span id="expandedYear">2024</span>
+                            </span>
+                            <span class="meta-item">
+                                <i class="bi bi-clock"></i>
+                                <span id="expandedDuration">0:00</span>
+                            </span>
+                        </div>
+                        
+                        <div class="expanded-actions">
+                            <button class="miv-btn play-large-btn" onclick="togglePlay()">
+                                <i class="bi bi-play-fill" id="expandedPlayIcon"></i>
+                                <span id="expandedPlayText">Reproduzir</span>
+                            </button>
+                            
+                            <button class="action-btn favorite-large-btn" onclick="toggleFavorite()" id="expandedFavoriteBtn">
+                                <i class="bi bi-star" id="expandedFavoriteIcon"></i>
+                            </button>
+                            
+                            <button class="action-btn" onclick="openInvestModalFromPlayer()" title="Investir">
+                                <i class="bi bi-currency-dollar"></i>
+                                <span>Investir</span>
+                            </button>
+                            
+                            <button class="action-btn" onclick="shareTrack()" title="Compartilhar">
+                                <i class="bi bi-share"></i>
+                            </button>
+                            
+                            <button class="action-btn more-btn">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <span class="time-total" id="totalTimeDisplay">0:00</span>
-            </div>
-        </div>
-
-        <!-- CONTROLES DIREITOS -->
-        <div class="player-controls-right">
-            <button class="player-btn queue-btn" onclick="toggleQueue()" title="Fila de reprodução">
-                <i class="bi bi-music-note-list"></i>
-            </button>
-            <div class="volume-container">
-                <button class="player-btn volume-btn" onclick="toggleMute()" title="Volume" id="volumeBtn">
-                    <i class="bi bi-volume-up" id="volumeIcon"></i>
+                
+                <button class="close-expanded" onclick="togglePlayerExpansion()">
+                    <i class="bi bi-x-lg"></i>
                 </button>
-                <div class="volume-slider-container">
-                    <div class="volume-slider" onclick="handleVolumeClick(event)" id="volumeSlider">
-                        <div class="volume-slider-fill" id="volumeSliderBar"></div>
+            </div>
+            
+            <div class="expanded-content">
+                <div class="youtube-container-expanded" id="youtubeContainerExpanded">
+                    <div id="youtubePlayerExpanded"></div>
+                    <div class="player-loading" id="playerLoadingExpanded">
+                        <div class="loading-spinner"></div>
+                        <span>Carregando vídeo...</span>
+                    </div>
+                </div>
+                
+                <div class="track-info-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-info-circle"></i>
+                        Sobre esta música
+                    </h3>
+                    
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-cash-coin"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Valor por ação</div>
+                                <div class="info-value" id="expandedPrice">R$ 0,00</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-percent"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Disponível para investimento</div>
+                                <div class="info-value" id="expandedAvailable">0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-graph-up-arrow"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Retorno estimado</div>
+                                <div class="info-value text-success" id="expandedReturn">0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Investidores</div>
+                                <div class="info-value" id="expandedInvestors">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="invest-cta">
+                        <h4>Invista nesta música e participe dos royalties!</h4>
+                        <p>Cada ação dá direito a uma porcentagem dos rendimentos autorais.</p>
+                        <button class="miv-btn invest-large-btn" onclick="openInvestModalFromPlayer()">
+                            <i class="bi bi-currency-dollar"></i>
+                            Investir Agora
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="expanded-controls">
+                    <div class="expanded-controls-top">
+                        <button class="control-btn" onclick="toggleShuffle()" id="expandedShuffleBtn">
+                            <i class="bi bi-shuffle" id="expandedShuffleIcon"></i>
+                            Aleatório
+                        </button>
+                        
+                        <button class="control-btn" onclick="toggleRepeat()" id="expandedRepeatBtn">
+                            <i class="bi bi-repeat" id="expandedRepeatIcon"></i>
+                            Repetir
+                        </button>
+                        
+                        <div class="queue-info">
+                            <i class="bi bi-music-note-list"></i>
+                            <span>Na fila: <strong id="queueCount">0</strong> músicas</span>
+                        </div>
+                    </div>
+                    
+                    <div class="expanded-progress-container">
+                        <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
+                            <div class="expanded-progress-fill" id="expandedProgressBar"></div>
+                        </div>
+                        <div class="expanded-time-display">
+                            <span id="expandedCurrentTime">0:00</span>
+                            <span id="expandedTotalTime">0:00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="expanded-controls-bottom">
+                        <button class="control-btn prev-large-btn" onclick="playPrevious()">
+                            <i class="bi bi-skip-backward-fill"></i>
+                            Anterior
+                        </button>
+                        
+                        <button class="control-btn play-large-btn-expanded" onclick="togglePlay()" id="expandedPlayPauseBtn">
+                            <i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i>
+                            <span id="expandedPlayPauseText">Pausar</span>
+                        </button>
+                        
+                        <button class="control-btn next-large-btn" onclick="playNext()">
+                            <i class="bi bi-skip-forward-fill"></i>
+                            Próxima
+                        </button>
                     </div>
                 </div>
             </div>
-            <button class="player-btn expand-btn" onclick="togglePlayerExpansion()" title="Expandir player">
-                <i class="bi bi-arrows-angle-expand" id="expandIcon"></i>
-            </button>
         </div>
     </div>
-</div> <!-- ✅ FIM DO PLAYER INFERIOR -->
+</div>
 
-<!-- PLAYER EXPANDIDO - TELA CHEIA INDEPENDENTE -->
-<div id="playerExpanded" class="player-expanded">
-    <div class="expanded-header">
-        <div class="expanded-track-info">
-            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
-                 class="expanded-album-art" 
-                 alt="Album Art" 
-                 id="expandedAlbumArt">
-            <div class="expanded-details">
-                <div class="expanded-type">
-                    <span id="expandedType">SELO MIV</span>
-                </div>
-                <h1 class="expanded-title" id="expandedTitle">Nenhuma música tocando</h1>
-                <div class="expanded-artist" id="expandedArtist">Selecione uma música para começar</div>
-<div class="expanded-meta" id="expandedMeta">
-    <span class="meta-item">
-        <i class="bi bi-music-note-beamed"></i>
-        <span id="expandedGenre">Música</span>
-    </span>
-    <span class="meta-item">
-        <i class="bi bi-calendar"></i>
-        <span id="expandedYear">2024</span>
-    </span>
-</div>                <div class="expanded-actions">
-                    <button class="miv-btn play-large-btn" onclick="togglePlay()">
-                        <i class="bi bi-play-fill" id="expandedPlayIcon"></i>
-                        <span id="expandedPlayText">Reproduzir</span>
-                    </button>
-                    <button class="action-btn favorite-large-btn" onclick="toggleFavorite()" id="expandedFavoriteBtn">
-                        <i class="bi bi-star" id="expandedFavoriteIcon"></i>
-                    </button>
-                    <button class="action-btn" onclick="openInvestModalFromPlayer()">
-                        <i class="bi bi-currency-dollar"></i> Investir
-                    </button>
-                </div>
-            </div>
-        </div>
-        <button class="close-expanded" onclick="togglePlayerExpansion()">
-            <i class="bi bi-x-lg"></i>
-        </button>
-    </div>
-
-    <div class="expanded-content">
-        <!-- CONTAINER DO YOUTUBE -->
-        <div class="youtube-container-expanded" id="youtubeContainerExpanded">
-            <div id="youtubePlayerExpanded"></div>
-            <div class="player-loading" id="playerLoadingExpanded">
-                <div class="loading-spinner"></div>
-                <span>Carregando vídeo...</span>
-            </div>
-        </div>
-
-        <!-- INFORMAÇÕES DA MÚSICA -->
-        <div class="track-info-section">
-            <h3 class="section-title"><i class="bi bi-info-circle"></i> Sobre esta música</h3>
-<div class="info-grid" id="expandedInfoGrid">
-    <div class="info-card">
-        <div class="info-icon"><i class="bi bi-cash-coin"></i></div>
-        <div class="info-content">
-            <div class="info-label">Valor por ação</div>
-            <div class="info-value" id="expandedPrice">R$ 0,00</div>
-        </div>
-    </div>
-    <div class="info-card">
-        <div class="info-icon"><i class="bi bi-percent"></i></div>
-        <div class="info-content">
-            <div class="info-label">Disponível</div>
-            <div class="info-value" id="expandedAvailable">0%</div>
-        </div>
-    </div>
-    <div class="info-card">
-        <div class="info-icon"><i class="bi bi-graph-up-arrow"></i></div>
-        <div class="info-content">
-            <div class="info-label">Retorno</div>
-            <div class="info-value text-success" id="expandedReturn">0%</div>
-        </div>
-    </div>
-    <div class="info-card">
-        <div class="info-icon"><i class="bi bi-people"></i></div>
-        <div class="info-content">
-            <div class="info-label">Investidores</div>
-            <div class="info-value" id="expandedInvestors">0</div>
-        </div>
-    </div>
-</div>            <div class="invest-cta">
-                <h4>Invista nesta música e participe dos royalties!</h4>
-                <p>Cada ação dá direito a uma porcentagem dos rendimentos autorais.</p>
-                <button class="miv-btn invest-large-btn" onclick="openInvestModalFromPlayer()">
-                    <i class="bi bi-currency-dollar"></i> Investir Agora
-                </button>
-            </div>
-        </div>
-
-        <!-- CONTROLES EXPANDIDOS -->
-        <div class="expanded-controls">
-            <div class="expanded-controls-top">
-                <button class="control-btn" onclick="toggleShuffle()" id="expandedShuffleBtn">
-                    <i class="bi bi-shuffle"></i> Aleatório
-                </button>
-                <button class="control-btn" onclick="toggleRepeat()" id="expandedRepeatBtn">
-                    <i class="bi bi-repeat"></i> Repetir
-                </button>
-                <div class="queue-info">
-                    <i class="bi bi-music-note-list"></i>
-                    <span>Na fila: <strong id="queueCount">0</strong> músicas</span>
-                </div>
-            </div>
-            <div class="expanded-progress-container">
-                <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
-                    <div class="expanded-progress-fill" id="expandedProgressBar"></div>
-                </div>
-                <div class="expanded-time-display">
-                    <span id="expandedCurrentTime">0:00</span>
-                    <span id="expandedTotalTime">0:00</span>
-                </div>
-            </div>
-            <div class="expanded-controls-bottom">
-                <button class="control-btn prev-large-btn" onclick="playPrevious()">
-                    <i class="bi bi-skip-backward-fill"></i> Anterior
-                </button>
-                <button class="control-btn play-large-btn-expanded" onclick="togglePlay()" id="expandedPlayPauseBtn">
-                    <i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i>
-                    <span id="expandedPlayPauseText">Pausar</span>
-                </button>
-                <button class="control-btn next-large-btn" onclick="playNext()">
-                    <i class="bi bi-skip-forward-fill"></i> Próxima
-                </button>
-            </div>
-        </div>
-    </div>
-</div> <!-- ✅ FIM DO PLAYER EXPANDIDO --><!-- Invest Modal -->
+<!-- Invest Modal -->
 <div id="investModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
@@ -2475,6 +3050,7 @@ function getFallbackData(action, data) {
     }
 
 // ========== RENDER MARKETPLACE - VERSÃO ÚNICA E CORRETA ==========
+// ========== RENDER MARKETPLACE - VERSÃO ÚNICA E CORRETA ==========
 function renderMarketplace() {
     const container = document.getElementById('marketplaceContent');
     if (!container) return;
@@ -2491,6 +3067,7 @@ function renderMarketplace() {
             const track = state.playlist[i];
             if (!track) continue;
             
+            // ✅ CAPA - TRATAMENTO SUPER SEGURO
             let coverImage = PLACEHOLDERS.MIV_300;
             if (track.link_capa && typeof track.link_capa === 'string') {
                 const capa = track.link_capa.trim();
@@ -2499,6 +3076,7 @@ function renderMarketplace() {
                 }
             }
             
+            // ✅ DADOS COM FALLBACK
             const trackId = String(track.id || `track_${i}`);
             const trackTitle = String(track.titulo || 'Sem título').replace(/[<>"']/g, '');
             const trackArtist = String(track.artista || 'Artista Desconhecido').replace(/[<>"']/g, '');
@@ -2549,7 +3127,8 @@ function renderMarketplace() {
         
     } catch (error) {
         console.error('Erro ao renderizar marketplace:', error);
-        container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-exclamation-triangle empty-icon"></i><h5 class="text-muted">Erro ao carregar músicas</h5><button class="btn-miv mt-3" onclick="loadMarketplace(true)"><i class="bi bi-arrow-clockwise me-2"></i> Recarregar</button></div>';
+        container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-exclamation-triangle empty-icon"></i><h5 class="text-muted">
+            Erro ao carregar músicas</h5><button class="btn-miv mt-3" onclick="loadMarketplace(true)"><i class="bi bi-arrow-clockwise me-2"></i> Recarregar</button></div>';
     }
 }
 // ========== PLAY EXTERNAL TRACK ==========
@@ -3011,26 +3590,48 @@ function handleVolumeClick(event) {
     
     setVolume(Math.round(percent * 100));
 }
-// ========== TOGGLE PLAYER EXPANSION ==========
-function togglePlayerExpansion() {
-    const playerExpanded = document.getElementById('playerExpanded');
-    if (!playerExpanded) return;
+// ========== TOGGLE PLAYER EXPANSION CORRIGIDO ==========
+// ========== TOGGLE PLAYER EXPANSION - TELA CHEIA COM SCROLL ==========
+function togglePlayerExpansion() { 
+    const el = document.getElementById('playerExpanded'); 
+    if (!el) return;
     
-    playerExpanded.classList.toggle('show');
+    // ABRE/FECHA O PLAYER
+    el.classList.toggle('show'); 
     
+    // MUDA O ÍCONE
     const expandIcon = document.getElementById('expandIcon');
     if (expandIcon) {
-        expandIcon.className = playerExpanded.classList.contains('show') 
+        expandIcon.className = el.classList.contains('show') 
             ? 'bi bi-arrows-angle-contract' 
-            : 'bi bi-arrows-angle-expand';
+            : 'bi bi-arrows-angle-expand'; 
     }
     
-    if (playerExpanded.classList.contains('show')) {
-        updateExpandedPlayer();
-        setTimeout(() => playerExpanded.scrollTop = 0, 50);
+    // SE ABRIU, CARREGA TUDO
+    if (el.classList.contains('show')) { 
+        // ATUALIZA INFORMAÇÕES
+        updateExpandedPlayer(); 
+        
+        // CARREGA O VÍDEO
+        loadYouTubeAPIForExpanded();
+        
+        // FORÇA O SCROLL PARA O TOPO
+        setTimeout(() => {
+            el.scrollTop = 0;
+            
+            // GARANTE QUE O VÍDEO CARREGUE
+            const track = state.currentTrackIndex >= 0 
+                ? state.playlist[state.currentTrackIndex] 
+                : null;
+            if (track && track.link_youtube) {
+                const videoId = extractYouTubeId(track.link_youtube);
+                if (videoId) initializeYouTubePlayer(videoId);
+            }
+        }, 50);
     }
     
-    document.body.style.overflow = playerExpanded.classList.contains('show') ? 'hidden' : 'auto';
+    // TRAVA/DESTRAVA O SCROLL DO BODY
+    document.body.style.overflow = el.classList.contains('show') ? 'hidden' : 'auto'; 
 }
 
 // ========== FECHAR O PLAYER ==========
@@ -3082,22 +3683,13 @@ function loadYouTubeAPIForExpanded() {
         showModal('investModal');
     }
 
-  // ========== UPDATE INVESTMENT TOTAL ==========
-function updateInvestmentTotal() {
-    if (!state.currentInvestTrack) return;
-    
-    const quantity = parseInt(document.getElementById('investQuantity')?.value) || 1;
-    const unitPrice = state.currentInvestTrack.valor_acao || 0;
-    const total = quantity * unitPrice;
-    
-    const totalEl = document.getElementById('investTotalPrice');
-    if (totalEl) totalEl.textContent = formatCurrency(total);
-    
-    const confirmBtn = document.getElementById('confirmInvestBtn');
-    if (confirmBtn) {
-        confirmBtn.disabled = total > state.userBalance;
+    function updateInvestmentTotal() {
+        if (!state.currentInvestTrack) return;
+        const qty = parseInt(document.getElementById('investQuantity').value) || 1;
+        const total = qty * (state.currentInvestTrack.valor_acao || 0);
+        document.getElementById('investTotalPrice').textContent = formatCurrency(total);
+        document.getElementById('confirmInvestBtn').disabled = total > state.userBalance;
     }
-}
 
     function adjustQuantity(amount) { 
         const input = document.getElementById('investQuantity'); 
@@ -3137,6 +3729,40 @@ function updateInvestmentTotal() {
             hideLoading();
         }
     }
+
+    // ========== UPDATE INVESTMENT TOTAL ==========
+function updateInvestmentTotal() {
+    if (!state.currentInvestTrack) return;
+    
+    const quantity = parseInt(document.getElementById('investQuantity')?.value) || 1;
+    const unitPrice = state.currentInvestTrack.valor_acao || 0;
+    const total = quantity * unitPrice;
+    
+    const totalEl = document.getElementById('investTotalPrice');
+    if (totalEl) totalEl.textContent = formatCurrency(total);
+    
+    const confirmBtn = document.getElementById('confirmInvestBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = total > state.userBalance;
+    }
+}
+
+// ========== UPDATE EXTERNAL INVESTMENT TOTAL ==========
+function updateExternalInvestmentTotal() {
+    if (!state.currentExternalTrack) return;
+    
+    const quantity = parseInt(document.getElementById('investExternalQuantity')?.value) || 1;
+    const unitPrice = state.currentExternalTrack.valor_acao || 0;
+    const total = quantity * unitPrice;
+    
+    const totalEl = document.getElementById('investExternalTotalPrice');
+    if (totalEl) totalEl.textContent = formatCurrency(total);
+    
+    const confirmBtn = document.getElementById('confirmExternalInvestBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = total > state.userBalance;
+    }
+}
 
     function openInvestExternalModal(trackIndex) {
         if (trackIndex < 0 || trackIndex >= state.externalPlaylist.length) { showToast('Música não encontrada', 'error'); return; }
