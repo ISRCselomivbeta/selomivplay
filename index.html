@@ -1655,104 +1655,88 @@
         .spin {
             animation: spin 1s linear infinite;
         }
-/* ========== PLAYER EXPANDIDO - TELA CHEIA (VERSÃO ÚNICA) ========== */
-.player-expanded {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 999999 !important;
-    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    display: none !important;
-}
+    </style>
+</head>
+    <!-- TODO O CONTEÚDO DO SEU BODY AQUI - MANTÉM IGUAL -->
+    <!-- (Copie todo o body do seu arquivo atual) -->
+<body>
 
-.player-expanded.show {
-    display: block !important;
-}
+<!-- Loading Screen -->
+<div id="loadingScreen" class="loading-screen">
+    <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <h4 class="text-success mb-2">SELO MIV</h4>
+        <p class="text-muted" id="loadingMessage">Conectando ao servidor...</p>
+        <div class="progress-loading">
+            <div class="progress-loading-bar"></div>
+        </div>
+    </div>
+</div>
 
-/* Esconder player inferior quando expandido */
-.player-expanded.show ~ .player-miv {
-    display: none !important;
-}
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
 
-/* HEADER */
-.expanded-header {
-    padding: 2rem !important;
-    max-width: 1200px !important;
-    margin: 0 auto !important;
-    display: flex !important;
-    justify-content: space-between !important;
-}
+<!-- Authentication Screen -->
+<div id="authScreen" class="auth-screen">
+    <div class="auth-card">
+        <div class="logo-header">
+            <div class="logo-icon">
+                <i class="bi bi-shield-lock"></i>
+            </div>
+            <h2 class="text-white mb-2">SELO MIV</h2>
+            <p class="text-muted">Plataforma de Investimento em Música</p>
+        </div>
 
-.expanded-track-info {
-    display: flex !important;
-    gap: 2rem !important;
-    align-items: flex-start !important;
-    flex-wrap: wrap !important;
-}
+        <!-- Login Form -->
+        <div id="loginForm">
+            <div id="loginMessage" class="alert d-none"></div>
+            <div class="form-group">
+                <input type="email" id="loginEmail" class="form-control-custom" placeholder="E-mail" required>
+            </div>
+            <div class="form-group">
+                <input type="password" id="loginPassword" class="form-control-custom" placeholder="Senha" required>
+            </div>
+            <button class="btn-miv mb-3" onclick="handleLogin()" id="loginBtn">
+                <i class="bi bi-box-arrow-in-right"></i> Entrar
+            </button>
+            <p class="text-center text-muted">
+                Novo por aqui? <a href="javascript:void(0)" class="auth-link" onclick="showRegisterForm()">Criar conta</a>
+            </p>
+        </div>
 
-.expanded-album-art {
-    width: 280px !important;
-    height: 280px !important;
-    border-radius: 12px !important;
-    object-fit: cover !important;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
-}
+        <!-- Register Form -->
+        <div id="registerForm" style="display: none;">
+            <div id="registerMessage" class="alert d-none"></div>
+            <div class="form-group">
+                <input type="text" id="registerName" class="form-control-custom" placeholder="Nome completo" required>
+            </div>
+            <div class="form-group">
+                <input type="email" id="registerEmail" class="form-control-custom" placeholder="E-mail" required>
+            </div>
+            <div class="form-group">
+                <input type="password" id="registerPassword" class="form-control-custom" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
+            </div>
+            <div class="form-group">
+                <select id="registerType" class="form-control-custom" onchange="toggleArtistField()">
+                    <option value="">Selecione seu perfil...</option>
+                    <option value="ouvinte">🎧 Ouvinte/Investidor</option>
+                    <option value="artista">🎤 Artista</option>
+                </select>
+            </div>
+            <div class="form-group" id="artistLinkField" style="display: none;">
+                <input type="url" id="registerLink" class="form-control-custom" placeholder="Link do seu trabalho (YouTube, Spotify, etc.)">
+                <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
+            </div>
+            <button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn">
+                <i class="bi bi-person-plus"></i> Solicitar Cadastro
+            </button>
+            <p class="text-center text-muted">
+                Já tem conta? <a href="javascript:void(0)" class="auth-link" onclick="showLoginForm()">Fazer login</a>
+            </p>
+        </div>
+    </div>
+</div>
 
-.expanded-details {
-    flex: 1 !important;
-    min-width: 280px !important;
-}
-
-.expanded-title {
-    font-size: 3rem !important;
-    font-weight: 700 !important;
-    color: #fff !important;
-    margin-bottom: 0.5rem !important;
-}
-
-.expanded-artist {
-    font-size: 1.5rem !important;
-    color: #b3b3b3 !important;
-    margin-bottom: 1rem !important;
-}
-
-/* CONTEÚDO */
-.expanded-content {
-    max-width: 1200px !important;
-    margin: 0 auto !important;
-    padding: 2rem !important;
-}
-
-/* VÍDEO */
-.youtube-container-expanded {
-    width: 100% !important;
-    aspect-ratio: 16/9 !important;
-    border-radius: 12px !important;
-    overflow: hidden !important;
-    margin-bottom: 2rem !important;
-}
-
-/* RESPONSIVIDADE */
-@media (max-width: 768px) {
-    .expanded-track-info {
-        flex-direction: column !important;
-        align-items: center !important;
-        text-align: center !important;
-    }
-    .expanded-album-art {
-        width: 200px !important;
-        height: 200px !important;
-    }
-    .expanded-title {
-        font-size: 2rem !important;
-    }
-}
 <!-- Main Application -->
 <div id="mainApp" class="main-app">
     <!-- Sidebar -->
@@ -3049,8 +3033,8 @@ function getFallbackData(action, data) {
         }
     }
 
-// ========== RENDER MARKETPLACE - VERSÃO ÚNICA E CORRETA ==========
-// ========== RENDER MARKETPLACE - VERSÃO ÚNICA E CORRETA ==========
+    // ========== RENDER FUNCTIONS ==========
+  // ========== RENDER MARKETPLACE CORRIGIDO ==========
 function renderMarketplace() {
     const container = document.getElementById('marketplaceContent');
     if (!container) return;
@@ -3060,76 +3044,52 @@ function renderMarketplace() {
         return;
     }
     
-    try {
-        let html = '';
-        
-        for (let i = 0; i < state.playlist.length; i++) {
-            const track = state.playlist[i];
-            if (!track) continue;
-            
-            // ✅ CAPA - TRATAMENTO SUPER SEGURO
-            let coverImage = PLACEHOLDERS.MIV_300;
-            if (track.link_capa && typeof track.link_capa === 'string') {
-                const capa = track.link_capa.trim();
-                if (capa.startsWith('http://') || capa.startsWith('https://')) {
-                    coverImage = capa;
-                }
-            }
-            
-            // ✅ DADOS COM FALLBACK
-            const trackId = String(track.id || `track_${i}`);
-            const trackTitle = String(track.titulo || 'Sem título').replace(/[<>"']/g, '');
-            const trackArtist = String(track.artista || 'Artista Desconhecido').replace(/[<>"']/g, '');
-            const trackPrice = Number(track.valor_acao) || 0;
-            const percentAvailable = Number(track.percentual_disponivel) || 0;
-            const sharesSold = Number(track.acoes_vendidas) || 0;
-            
-            const totalShares = (percentAvailable / 0.01) + sharesSold;
-            const availableShares = Math.max(0, totalShares - sharesSold);
-            const percentSold = totalShares > 0 ? ((sharesSold / totalShares) * 100).toFixed(1) : 0;
-            
-            let badgeClass = 'badge-success';
-            if (percentSold >= 80) badgeClass = 'badge-danger';
-            else if (percentSold >= 50) badgeClass = 'badge-warning';
-            
-            const isFavorite = state.favoriteMusicIds?.includes(trackId) || false;
-            
-            html += `<div class="music-card" onclick="playTrack(${i})">
-                <div class="position-relative">
-                    <img src="${coverImage}" 
-                         class="music-cover" 
-                         alt="${trackTitle}" 
-                         onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                    ${percentSold >= 90 ? `<div class="position-absolute top-0 end-0 m-2"><span class="badge ${badgeClass}">Esgotando</span></div>` : ''}
-                    <div class="position-absolute top-0 start-0 m-2">
-                        <button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavoriteMusic('${trackId}', ${i})">
-                            <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="music-info">
-                    <h6 class="music-title">${trackTitle}</h6>
-                    <p class="music-artist">${trackArtist}</p>
-                    <div class="music-meta">
-                        <span class="music-price">${formatCurrency(trackPrice)}</span>
-                        <span class="music-percent ${badgeClass}" data-tooltip="${availableShares} de ${totalShares} ações">
-                            ${percentSold}% vendido
-                        </span>
-                    </div>
-                    <button class="btn-miv btn-sm w-100 mt-2" onclick="event.stopPropagation(); openInvestModal(${i})">
-                        <i class="bi bi-currency-dollar me-1"></i> Investir
-                    </button>
-                </div>
-            </div>`;
+    container.innerHTML = state.playlist.map((track, index) => {
+        // ✅ CORREÇÃO: Verificar se link_capa existe e é string
+        let coverImage = PLACEHOLDERS.MIV_300;
+        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
+            coverImage = track.link_capa.trim();
         }
         
-        container.innerHTML = html;
+        const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+        const percentAvailable = track.percentual_disponivel || 0;
+        const sharesSold = track.acoes_vendidas || 0;
+        const totalShares = (percentAvailable / 0.01) + sharesSold;
+        const availableShares = Math.max(0, totalShares - sharesSold);
+        const percentSold = totalShares > 0 ? ((sharesSold / totalShares) * 100).toFixed(1) : 0;
         
-    } catch (error) {
-        console.error('Erro ao renderizar marketplace:', error);
-        container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-exclamation-triangle empty-icon"></i><h5 class="text-muted">
-            Erro ao carregar músicas</h5><button class="btn-miv mt-3" onclick="loadMarketplace(true)"><i class="bi bi-arrow-clockwise me-2"></i> Recarregar</button></div>';
-    }
+        let badgeClass = 'badge-success';
+        if (percentSold >= 80) badgeClass = 'badge-danger';
+        else if (percentSold >= 50) badgeClass = 'badge-warning';
+        
+        return `<div class="music-card" onclick="playTrack(${index})">
+            <div class="position-relative">
+                <img src="${coverImage}" 
+                     class="music-cover" 
+                     alt="${track.titulo || 'Música'}" 
+                     onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                ${percentSold >= 90 ? `<div class="position-absolute top-0 end-0 m-2"><span class="badge ${badgeClass}">Esgotando</span></div>` : ''}
+                <div class="position-absolute top-0 start-0 m-2">
+                    <button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${index})">
+                        <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="music-info">
+                <h6 class="music-title">${track.titulo || 'Sem título'}</h6>
+                <p class="music-artist">${track.artista || 'Artista Desconhecido'}</p>
+                <div class="music-meta">
+                    <span class="music-price">${formatCurrency(track.valor_acao || 0)}</span>
+                    <span class="music-percent ${badgeClass}" data-tooltip="${availableShares} de ${totalShares} ações disponíveis">
+                        ${percentSold}% vendido
+                    </span>
+                </div>
+                <button class="btn-miv btn-sm w-100 mt-2" onclick="event.stopPropagation(); openInvestModal(${index})">
+                    <i class="bi bi-currency-dollar me-1"></i> Investir
+                </button>
+            </div>
+        </div>`;
+    }).join('');
 }
 // ========== PLAY EXTERNAL TRACK ==========
 function playExternalTrack(index) {
@@ -3293,6 +3253,8 @@ function playExternalTrack(index) {
             return `<div class="music-card"><img src="${coverImage}" class="music-cover" alt="${m.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'"><div class="music-info"><h6 class="music-title">${m.titulo || 'Sem título'}</h6><p class="music-artist">${m.artista || 'Artista Desconhecido'}</p><div class="music-meta"><span class="music-price">${formatCurrency(m.valor_acao || 0)}</span><span class="badge badge-info">${percentSold}% vendido</span></div><div class="d-flex justify-content-between mt-2"><small class="text-muted">Royalties: ${formatCurrency(m.royalties_acumulados || 0)}</small><small class="text-success">+${m.rentabilidade_media || 0}% retorno</small></div></div></div>`;
         }).join('');
     }
+
+    // ========== PLAYER FUNCTIONS ==========
   // ========== PLAY TRACK CORRIGIDO ==========
 function playTrack(index) {
     if (index < 0 || index >= state.playlist.length) {
@@ -3349,75 +3311,60 @@ function playTrack(index) {
 }
 
 // ========== UPDATE EXPANDED PLAYER CORRIGIDO ==========
-// ========== UPDATE EXPANDED PLAYER COMPLETO ==========
 function updateExpandedPlayer() {
-    if (state.currentTrackIndex < 0) {
-        // Se não houver música, mostrar placeholder
-        document.getElementById('expandedTitle').textContent = 'Nenhuma música tocando';
-        document.getElementById('expandedArtist').textContent = 'Selecione uma música para começar';
-        document.getElementById('expandedAlbumArt').src = PLACEHOLDERS.MIV_300;
-        document.getElementById('expandedPrice').textContent = formatCurrency(0);
-        document.getElementById('expandedAvailable').textContent = '0%';
-        document.getElementById('expandedReturn').textContent = '0%';
-        document.getElementById('expandedInvestors').textContent = '0';
-        document.getElementById('expandedGenre').textContent = 'Música';
-        return;
-    }
+    if (state.currentTrackIndex < 0) return;
     
     let track;
     if (state.currentTrackIndex >= 1000) {
         const externalIndex = state.currentTrackIndex - 1000;
         if (externalIndex >= 0 && externalIndex < state.externalPlaylist.length) {
             track = state.externalPlaylist[externalIndex];
-            document.getElementById('expandedType').textContent = 'BOLSA EXTERNA';
         }
     } else if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
         track = state.playlist[state.currentTrackIndex];
-        document.getElementById('expandedType').textContent = 'SELO MIV';
     }
     
     if (!track) return;
     
-    // Título e Artista
-    document.getElementById('expandedTitle').textContent = track.titulo || 'Título desconhecido';
-    document.getElementById('expandedArtist').textContent = track.artista || 'Artista desconhecido';
-    
-    // Capa
+    const expandedTitle = document.getElementById('expandedTitle');
+    const expandedArtist = document.getElementById('expandedArtist');
     const expandedAlbumArt = document.getElementById('expandedAlbumArt');
+    const expandedPrice = document.getElementById('expandedPrice');
+    const expandedAvailable = document.getElementById('expandedAvailable');
+    const expandedReturn = document.getElementById('expandedReturn');
+    const expandedInvestors = document.getElementById('expandedInvestors');
+    const expandedGenre = document.getElementById('expandedGenre');
+    const expandedFavoriteBtn = document.getElementById('expandedFavoriteBtn');
+    const expandedFavoriteIcon = document.getElementById('expandedFavoriteIcon');
+    
+    if (expandedTitle) expandedTitle.textContent = track.titulo || 'Título desconhecido';
+    if (expandedArtist) expandedArtist.textContent = track.artista || 'Artista desconhecido';
+    
+    // ✅ CORREÇÃO: Verificar se link_capa existe e é string
     if (expandedAlbumArt) {
         let coverUrl = PLACEHOLDERS.MIV_300;
         if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
             coverUrl = track.link_capa.trim();
-        } else if (state.currentTrackIndex >= 1000) {
-            coverUrl = PLACEHOLDERS.EXT_300;
         }
         expandedAlbumArt.src = coverUrl;
         expandedAlbumArt.onerror = function() {
-            this.src = state.currentTrackIndex >= 1000 ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300;
+            this.src = PLACEHOLDERS.MIV_300;
         };
     }
     
-    // Informações de investimento
-    document.getElementById('expandedPrice').textContent = formatCurrency(track.valor_acao || 0);
+    if (expandedPrice) expandedPrice.textContent = formatCurrency(track.valor_acao || 0);
     
     const percentAvailable = track.percentual_disponivel || 0;
     const sharesSold = track.acoes_vendidas || 0;
     const totalShares = (percentAvailable / 0.01) + sharesSold;
     const percentSold = totalShares > 0 ? ((sharesSold / totalShares) * 100).toFixed(1) : 0;
     
-    document.getElementById('expandedAvailable').textContent = `${percentSold}%`;
-    document.getElementById('expandedReturn').textContent = `${track.rentabilidade_media || 0}%`;
-    document.getElementById('expandedInvestors').textContent = track.total_investidores || 0;
-    document.getElementById('expandedGenre').textContent = track.genero || 'Música';
+    if (expandedAvailable) expandedAvailable.textContent = `${percentSold}%`;
+    if (expandedReturn) expandedReturn.textContent = `${track.rentabilidade_media || 0}%`;
+    if (expandedInvestors) expandedInvestors.textContent = track.total_investidores || 0;
+    if (expandedGenre) expandedGenre.textContent = track.genero || 'Música';
     
-    // Ano (pegar do timestamp ou usar 2024)
-    const year = track.created_at ? new Date(track.created_at).getFullYear() : 2024;
-    document.getElementById('expandedYear').textContent = year;
-    
-    // Favorito
     const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
-    const expandedFavoriteBtn = document.getElementById('expandedFavoriteBtn');
-    const expandedFavoriteIcon = document.getElementById('expandedFavoriteIcon');
     if (expandedFavoriteBtn && expandedFavoriteIcon) {
         expandedFavoriteBtn.classList.toggle('active', isFavorite);
         expandedFavoriteIcon.className = isFavorite ? 'bi bi-star-fill' : 'bi bi-star';
@@ -3590,64 +3537,15 @@ function handleVolumeClick(event) {
     
     setVolume(Math.round(percent * 100));
 }
-// ========== TOGGLE PLAYER EXPANSION CORRIGIDO ==========
-// ========== TOGGLE PLAYER EXPANSION - TELA CHEIA COM SCROLL ==========
-function togglePlayerExpansion() { 
-    const el = document.getElementById('playerExpanded'); 
-    if (!el) return;
-    
-    // ABRE/FECHA O PLAYER
-    el.classList.toggle('show'); 
-    
-    // MUDA O ÍCONE
-    const expandIcon = document.getElementById('expandIcon');
-    if (expandIcon) {
-        expandIcon.className = el.classList.contains('show') 
-            ? 'bi bi-arrows-angle-contract' 
-            : 'bi bi-arrows-angle-expand'; 
+    function togglePlayerExpansion() { 
+        const el = document.getElementById('playerExpanded'); 
+        el.classList.toggle('show'); 
+        document.getElementById('expandIcon').className = el.classList.contains('show') ? 'bi bi-arrows-angle-contract' : 'bi bi-arrows-angle-expand'; 
+        if (el.classList.contains('show')) { updateExpandedPlayer(); loadYouTubeAPIForExpanded(); } 
+        document.body.style.overflow = el.classList.contains('show') ? 'hidden' : 'auto'; 
     }
-    
-    // SE ABRIU, CARREGA TUDO
-    if (el.classList.contains('show')) { 
-        // ATUALIZA INFORMAÇÕES
-        updateExpandedPlayer(); 
-        
-        // CARREGA O VÍDEO
-        loadYouTubeAPIForExpanded();
-        
-        // FORÇA O SCROLL PARA O TOPO
-        setTimeout(() => {
-            el.scrollTop = 0;
-            
-            // GARANTE QUE O VÍDEO CARREGUE
-            const track = state.currentTrackIndex >= 0 
-                ? state.playlist[state.currentTrackIndex] 
-                : null;
-            if (track && track.link_youtube) {
-                const videoId = extractYouTubeId(track.link_youtube);
-                if (videoId) initializeYouTubePlayer(videoId);
-            }
-        }, 50);
-    }
-    
-    // TRAVA/DESTRAVA O SCROLL DO BODY
-    document.body.style.overflow = el.classList.contains('show') ? 'hidden' : 'auto'; 
-}
-
-// ========== FECHAR O PLAYER ==========
-function closePlayerExpanded() {
-    const el = document.getElementById('playerExpanded');
-    if (el) {
-        el.classList.remove('show');
-        document.getElementById('expandIcon').className = 'bi bi-arrows-angle-expand';
-        document.body.style.overflow = 'auto';
-    }
-}
-function loadYouTubeAPIForExpanded() {
-    if (!state.youtubeAPILoaded) {
-        loadYouTubeAPI();
-    }
-}    function toggleQueue() { showToast('Fila de reprodução em desenvolvimento', 'info'); }
+    function loadYouTubeAPIForExpanded() { if (!state.youtubeAPILoaded) loadYouTubeAPI(); }
+    function toggleQueue() { showToast('Fila de reprodução em desenvolvimento', 'info'); }
     function shareTrack() { 
         if (state.currentTrackIndex < 0) { showToast('Nenhuma música tocando', 'error'); return; }
         let track = state.currentTrackIndex >= 1000 ? state.externalPlaylist[state.currentTrackIndex - 1000] : state.playlist[state.currentTrackIndex];
