@@ -2059,6 +2059,38 @@
         width: 100% !important;
     }
 }        
+
+        /* ========== CORREÇÃO SIMPLES - PLAYER EXPANDIDO EM TELA CHEIA ========== */
+.player-expanded {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 999999 !important;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%) !important;
+    overflow-y: auto !important;
+}
+
+/* Esconder o player inferior quando expandido */
+.player-expanded.show ~ .player-miv {
+    display: none !important;
+}
+
+/* Ajustar conteúdo */
+.expanded-content {
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+    padding: 2rem !important;
+}
+
+/* Garantir que o vídeo fique visível */
+.youtube-container-expanded {
+    width: 100% !important;
+    aspect-ratio: 16/9 !important;
+    margin-bottom: 2rem !important;
+}
+        
     </style>
 </head>
     <!-- TODO O CONTEÚDO DO SEU BODY AQUI - MANTÉM IGUAL -->
