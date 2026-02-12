@@ -1655,8 +1655,7 @@
         .spin {
             animation: spin 1s linear infinite;
         }
-/* ========== CORREÇÃO PLAYER EXPANDIDO ========== */
-/* ========== PLAYER EXPANDIDO - TELA CHEIA COM SCROLL ========== */
+/* ========== PLAYER EXPANDIDO - TELA CHEIA (VERSÃO ÚNICA) ========== */
 .player-expanded {
     position: fixed !important;
     top: 0 !important;
@@ -1665,41 +1664,42 @@
     bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    z-index: 99999 !important;
+    z-index: 999999 !important;
     background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%) !important;
-    overflow-y: auto !important;  /* 👈 ISSO FAZ O SCROLL FUNCIONAR! */
+    overflow-y: auto !important;
     overflow-x: hidden !important;
     display: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
 }
 
 .player-expanded.show {
-    display: block !important;  /* 👈 MOSTRA O PLAYER */
+    display: block !important;
 }
 
-/* HEADER COM CAPA E INFOS */
+/* Esconder player inferior quando expandido */
+.player-expanded.show ~ .player-miv {
+    display: none !important;
+}
+
+/* HEADER */
 .expanded-header {
-    padding: 2rem 2rem 1rem 2rem !important;
-    width: 100% !important;
-    max-width: 1400px !important;
+    padding: 2rem !important;
+    max-width: 1200px !important;
     margin: 0 auto !important;
-    background: linear-gradient(180deg, rgba(0,255,136,0.1) 0%, transparent 100%) !important;
+    display: flex !important;
+    justify-content: space-between !important;
 }
 
 .expanded-track-info {
     display: flex !important;
-    gap: 3rem !important;
+    gap: 2rem !important;
     align-items: flex-start !important;
-    width: 100% !important;
-    flex-wrap: wrap !important;  /* 👈 ADAPTA EM TELAS PEQUENAS */
+    flex-wrap: wrap !important;
 }
 
 .expanded-album-art {
-    width: 300px !important;
-    height: 300px !important;
-    flex-shrink: 0 !important;
-    border-radius: 16px !important;
+    width: 280px !important;
+    height: 280px !important;
+    border-radius: 12px !important;
     object-fit: cover !important;
     box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
 }
@@ -1709,470 +1709,50 @@
     min-width: 280px !important;
 }
 
-.expanded-type {
-    font-size: 0.9rem !important;
-    color: var(--neon-green) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 2px !important;
-    font-weight: 600 !important;
-    margin-bottom: 0.5rem !important;
-}
-
 .expanded-title {
-    font-size: 3.5rem !important;
+    font-size: 3rem !important;
     font-weight: 700 !important;
-    line-height: 1.1 !important;
-    margin-bottom: 0.5rem !important;
     color: #fff !important;
-    word-break: break-word !important;
+    margin-bottom: 0.5rem !important;
 }
 
 .expanded-artist {
     font-size: 1.5rem !important;
     color: #b3b3b3 !important;
-    margin-bottom: 1.5rem !important;
+    margin-bottom: 1rem !important;
 }
 
-.expanded-meta {
-    display: flex !important;
-    gap: 2rem !important;
-    margin-bottom: 2rem !important;
-    flex-wrap: wrap !important;
-}
-
-.meta-item {
-    display: flex !important;
-    align-items: center !important;
-    gap: 0.5rem !important;
-    color: #b3b3b3 !important;
-    font-size: 0.95rem !important;
-}
-
-.meta-item i {
-    color: var(--neon-green) !important;
-}
-
-.expanded-actions {
-    display: flex !important;
-    align-items: center !important;
-    gap: 1rem !important;
-    flex-wrap: wrap !important;
-}
-
-.play-large-btn {
-    background: var(--neon-green) !important;
-    color: #000 !important;
-    border: none !important;
-    border-radius: 2rem !important;
-    padding: 1rem 2.5rem !important;
-    font-size: 1.1rem !important;
-    font-weight: 700 !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 0.5rem !important;
-    transition: all 0.3s ease !important;
-}
-
-.play-large-btn:hover {
-    transform: scale(1.05) !important;
-    box-shadow: 0 10px 20px rgba(0,255,136,0.3) !important;
-}
-
-.action-btn {
-    width: 48px !important;
-    height: 48px !important;
-    border-radius: 50% !important;
-    background: rgba(255,255,255,0.1) !important;
-    border: 1px solid rgba(255,255,255,0.2) !important;
-    color: #fff !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 1.2rem !important;
-    transition: all 0.3s ease !important;
-}
-
-.action-btn:hover {
-    background: rgba(255,255,255,0.2) !important;
-    transform: scale(1.1) !important;
-}
-
-.close-expanded {
-    width: 48px !important;
-    height: 48px !important;
-    border-radius: 50% !important;
-    background: rgba(255,255,255,0.1) !important;
-    border: none !important;
-    color: #fff !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 1.5rem !important;
-    cursor: pointer !important;
-    flex-shrink: 0 !important;
-}
-
-.close-expanded:hover {
-    background: rgba(255,255,255,0.2) !important;
-    transform: rotate(90deg) !important;
-}
-
-/* CONTEÚDO DO PLAYER - SCROLL VAI DESCER AQUI! */
-.expanded-content {
-    max-width: 1400px !important;
-    margin: 0 auto !important;
-    padding: 2rem !important;
-    width: 100% !important;
-}
-
-/* VÍDEO DO YOUTUBE */
-.youtube-container-expanded {
-    width: 100% !important;
-    aspect-ratio: 16/9 !important;
-    background: #000 !important;
-    border-radius: 16px !important;
-    overflow: hidden !important;
-    margin-bottom: 2rem !important;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
-}
-
-#youtubePlayerExpanded {
-    width: 100% !important;
-    height: 100% !important;
-}
-
-/* SEÇÃO DE INFORMAÇÕES */
-.track-info-section {
-    background: rgba(255,255,255,0.05) !important;
-    border-radius: 16px !important;
-    padding: 2rem !important;
-    margin-bottom: 2rem !important;
-}
-
-.info-grid {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
-    gap: 1.5rem !important;
-    margin-top: 1.5rem !important;
-}
-
-.info-card {
-    background: rgba(255,255,255,0.03) !important;
-    border-radius: 12px !important;
-    padding: 1.5rem !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 1rem !important;
-    transition: all 0.3s ease !important;
-}
-
-.info-card:hover {
-    background: rgba(0,255,136,0.1) !important;
-    transform: translateY(-2px) !important;
-}
-
-.info-icon {
-    width: 48px !important;
-    height: 48px !important;
-    background: rgba(0,255,136,0.1) !important;
-    border-radius: 12px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    flex-shrink: 0 !important;
-}
-
-.info-icon i {
-    font-size: 1.5rem !important;
-    color: var(--neon-green) !important;
-}
-
-.info-label {
-    font-size: 0.8rem !important;
-    color: #b3b3b3 !important;
-    margin-bottom: 0.25rem !important;
-    text-transform: uppercase !important;
-    letter-spacing: 1px !important;
-}
-
-.info-value {
-    font-size: 1.5rem !important;
-    font-weight: 700 !important;
-    color: #fff !important;
-}
-
-/* CTA DE INVESTIMENTO */
-.invest-cta {
-    text-align: center !important;
-    padding: 2rem !important;
-    background: linear-gradient(135deg, rgba(0,255,136,0.1) 0%, rgba(0,114,255,0.1) 100%) !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(0,255,136,0.3) !important;
-    margin-top: 2rem !important;
-}
-
-.invest-large-btn {
-    background: var(--neon-green) !important;
-    color: #000 !important;
-    border: none !important;
-    border-radius: 2rem !important;
-    padding: 1rem 2.5rem !important;
-    font-size: 1.1rem !important;
-    font-weight: 700 !important;
-    margin-top: 1rem !important;
-}
-
-/* CONTROLES DO PLAYER */
-.expanded-controls {
-    background: rgba(255,255,255,0.05) !important;
-    border-radius: 16px !important;
-    padding: 2rem !important;
-    margin-top: 2rem !important;
-}
-
-.expanded-controls-top {
-    display: flex !important;
-    align-items: center !important;
-    gap: 2rem !important;
-    margin-bottom: 2rem !important;
-    flex-wrap: wrap !important;
-}
-
-.expanded-progress-container {
-    margin-bottom: 2rem !important;
-}
-
-.expanded-progress-bar {
-    height: 6px !important;
-    background: rgba(255,255,255,0.1) !important;
-    border-radius: 3px !important;
-    cursor: pointer !important;
-    margin-bottom: 0.5rem !important;
-}
-
-.expanded-progress-fill {
-    height: 100% !important;
-    background: var(--neon-green) !important;
-    border-radius: 3px !important;
-    width: 0% !important;
-    transition: width 0.1s linear !important;
-}
-
-.expanded-controls-bottom {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 2rem !important;
-    flex-wrap: wrap !important;
-}
-
-.play-large-btn-expanded {
-    background: var(--neon-green) !important;
-    color: #000 !important;
-    padding: 1rem 3rem !important;
-    border-radius: 2rem !important;
-    border: none !important;
-    font-size: 1.1rem !important;
-    font-weight: 700 !important;
-}
-
-/* ========== RESPONSIVIDADE ========== */
-@media (max-width: 1024px) {
-    .expanded-title {
-        font-size: 2.5rem !important;
-    }
-    
-    .expanded-album-art {
-        width: 250px !important;
-        height: 250px !important;
-    }
-}
-
-@media (max-width: 768px) {
-    .expanded-header {
-        padding: 1.5rem !important;
-    }
-    
-    .expanded-track-info {
-        flex-direction: column !important;
-        align-items: center !important;
-        text-align: center !important;
-        gap: 1.5rem !important;
-    }
-    
-    .expanded-album-art {
-        width: 200px !important;
-        height: 200px !important;
-    }
-    
-    .expanded-title {
-        font-size: 2rem !important;
-    }
-    
-    .expanded-artist {
-        font-size: 1.2rem !important;
-    }
-    
-    .expanded-meta {
-        justify-content: center !important;
-        gap: 1rem !important;
-    }
-    
-    .expanded-actions {
-        justify-content: center !important;
-    }
-    
-    .expanded-content {
-        padding: 1.5rem !important;
-    }
-}
-
-@media (max-width: 480px) {
-    .expanded-album-art {
-        width: 150px !important;
-        height: 150px !important;
-    }
-    
-    .expanded-title {
-        font-size: 1.5rem !important;
-    }
-    
-    .expanded-artist {
-        font-size: 1rem !important;
-    }
-    
-    .info-grid {
-        grid-template-columns: 1fr !important;
-    }
-    
-    .expanded-controls-top {
-        flex-direction: column !important;
-        gap: 1rem !important;
-    }
-    
-    .expanded-controls-bottom {
-        flex-direction: column !important;
-        gap: 1rem !important;
-    }
-    
-    .play-large-btn-expanded {
-        width: 100% !important;
-    }
-}        
-
-        /* ========== CORREÇÃO SIMPLES - PLAYER EXPANDIDO EM TELA CHEIA ========== */
-.player-expanded {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 999999 !important;
-    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%) !important;
-    overflow-y: auto !important;
-}
-
-/* Esconder o player inferior quando expandido */
-.player-expanded.show ~ .player-miv {
-    display: none !important;
-}
-
-/* Ajustar conteúdo */
+/* CONTEÚDO */
 .expanded-content {
     max-width: 1200px !important;
     margin: 0 auto !important;
     padding: 2rem !important;
 }
 
-/* Garantir que o vídeo fique visível */
+/* VÍDEO */
 .youtube-container-expanded {
     width: 100% !important;
     aspect-ratio: 16/9 !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
     margin-bottom: 2rem !important;
 }
-        
-    </style>
-</head>
-    <!-- TODO O CONTEÚDO DO SEU BODY AQUI - MANTÉM IGUAL -->
-    <!-- (Copie todo o body do seu arquivo atual) -->
-<body>
 
-<!-- Loading Screen -->
-<div id="loadingScreen" class="loading-screen">
-    <div class="loading-content">
-        <div class="loading-spinner"></div>
-        <h4 class="text-success mb-2">SELO MIV</h4>
-        <p class="text-muted" id="loadingMessage">Conectando ao servidor...</p>
-        <div class="progress-loading">
-            <div class="progress-loading-bar"></div>
-        </div>
-    </div>
-</div>
-
-<!-- Toast Container -->
-<div class="toast-container" id="toastContainer"></div>
-
-<!-- Authentication Screen -->
-<div id="authScreen" class="auth-screen">
-    <div class="auth-card">
-        <div class="logo-header">
-            <div class="logo-icon">
-                <i class="bi bi-shield-lock"></i>
-            </div>
-            <h2 class="text-white mb-2">SELO MIV</h2>
-            <p class="text-muted">Plataforma de Investimento em Música</p>
-        </div>
-
-        <!-- Login Form -->
-        <div id="loginForm">
-            <div id="loginMessage" class="alert d-none"></div>
-            <div class="form-group">
-                <input type="email" id="loginEmail" class="form-control-custom" placeholder="E-mail" required>
-            </div>
-            <div class="form-group">
-                <input type="password" id="loginPassword" class="form-control-custom" placeholder="Senha" required>
-            </div>
-            <button class="btn-miv mb-3" onclick="handleLogin()" id="loginBtn">
-                <i class="bi bi-box-arrow-in-right"></i> Entrar
-            </button>
-            <p class="text-center text-muted">
-                Novo por aqui? <a href="javascript:void(0)" class="auth-link" onclick="showRegisterForm()">Criar conta</a>
-            </p>
-        </div>
-
-        <!-- Register Form -->
-        <div id="registerForm" style="display: none;">
-            <div id="registerMessage" class="alert d-none"></div>
-            <div class="form-group">
-                <input type="text" id="registerName" class="form-control-custom" placeholder="Nome completo" required>
-            </div>
-            <div class="form-group">
-                <input type="email" id="registerEmail" class="form-control-custom" placeholder="E-mail" required>
-            </div>
-            <div class="form-group">
-                <input type="password" id="registerPassword" class="form-control-custom" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
-            </div>
-            <div class="form-group">
-                <select id="registerType" class="form-control-custom" onchange="toggleArtistField()">
-                    <option value="">Selecione seu perfil...</option>
-                    <option value="ouvinte">🎧 Ouvinte/Investidor</option>
-                    <option value="artista">🎤 Artista</option>
-                </select>
-            </div>
-            <div class="form-group" id="artistLinkField" style="display: none;">
-                <input type="url" id="registerLink" class="form-control-custom" placeholder="Link do seu trabalho (YouTube, Spotify, etc.)">
-                <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
-            </div>
-            <button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn">
-                <i class="bi bi-person-plus"></i> Solicitar Cadastro
-            </button>
-            <p class="text-center text-muted">
-                Já tem conta? <a href="javascript:void(0)" class="auth-link" onclick="showLoginForm()">Fazer login</a>
-            </p>
-        </div>
-    </div>
-</div>
-
+/* RESPONSIVIDADE */
+@media (max-width: 768px) {
+    .expanded-track-info {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+    }
+    .expanded-album-art {
+        width: 200px !important;
+        height: 200px !important;
+    }
+    .expanded-title {
+        font-size: 2rem !important;
+    }
+}
 <!-- Main Application -->
 <div id="mainApp" class="main-app">
     <!-- Sidebar -->
