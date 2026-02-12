@@ -224,15 +224,19 @@
             margin-bottom: 0.25rem;
         }
          /* ========== PLAYER EXPANDIDO - TELA CHEIA ========== */
+/* ========== PLAYER EXPANDIDO - TELA CHEIA (ÚNICA VERSÃO) ========== */
 .player-expanded {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
     z-index: 999999 !important;
     background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%) !important;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     display: none !important;
 }
 
@@ -244,6 +248,47 @@
     display: none !important;
 }
 
+.expanded-header {
+    padding: 2rem !important;
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    justify-content: space-between !important;
+}
+
+.expanded-track-info {
+    display: flex !important;
+    gap: 2rem !important;
+    align-items: flex-start !important;
+    flex-wrap: wrap !important;
+}
+
+.expanded-album-art {
+    width: 280px !important;
+    height: 280px !important;
+    border-radius: 12px !important;
+    object-fit: cover !important;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
+}
+
+.expanded-details {
+    flex: 1 !important;
+    min-width: 280px !important;
+}
+
+.expanded-title {
+    font-size: 3rem !important;
+    font-weight: 700 !important;
+    color: #fff !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.expanded-artist {
+    font-size: 1.5rem !important;
+    color: #b3b3b3 !important;
+    margin-bottom: 1rem !important;
+}
+
 .expanded-content {
     max-width: 1200px !important;
     margin: 0 auto !important;
@@ -253,24 +298,25 @@
 .youtube-container-expanded {
     width: 100% !important;
     aspect-ratio: 16/9 !important;
-    margin-bottom: 2rem !important;
     border-radius: 12px !important;
     overflow: hidden !important;
+    margin-bottom: 2rem !important;
 }
-        .saldo-display h4 {
-            color: var(--neon-green);
-            font-weight: 700;
-            margin-bottom: 0;
-        }
-        
-        .user-badge {
-            background: var(--neon-green);
-            color: #000;
-            padding: 0.25rem 0.75rem;
-            border-radius: 1rem;
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
+
+@media (max-width: 768px) {
+    .expanded-track-info {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+    }
+    .expanded-album-art {
+        width: 200px !important;
+        height: 200px !important;
+    }
+    .expanded-title {
+        font-size: 2rem !important;
+    }
+}
         
         /* Sidebar */
         .sidebar {
@@ -2995,7 +3041,6 @@ function getFallbackData(action, data) {
     }
 
 // ========== RENDER MARKETPLACE - VERSÃO ÚNICA E CORRETA ==========
-// ========== RENDER MARKETPLACE - VERSÃO ÚNICA E CORRETA ==========
 function renderMarketplace() {
     const container = document.getElementById('marketplaceContent');
     if (!container) return;
@@ -3012,7 +3057,6 @@ function renderMarketplace() {
             const track = state.playlist[i];
             if (!track) continue;
             
-            // ✅ CAPA - TRATAMENTO SUPER SEGURO
             let coverImage = PLACEHOLDERS.MIV_300;
             if (track.link_capa && typeof track.link_capa === 'string') {
                 const capa = track.link_capa.trim();
@@ -3021,7 +3065,6 @@ function renderMarketplace() {
                 }
             }
             
-            // ✅ DADOS COM FALLBACK
             const trackId = String(track.id || `track_${i}`);
             const trackTitle = String(track.titulo || 'Sem título').replace(/[<>"']/g, '');
             const trackArtist = String(track.artista || 'Artista Desconhecido').replace(/[<>"']/g, '');
@@ -3072,8 +3115,7 @@ function renderMarketplace() {
         
     } catch (error) {
         console.error('Erro ao renderizar marketplace:', error);
-        container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-exclamation-triangle empty-icon"></i><h5 class="text-muted">
-            Erro ao carregar músicas</h5><button class="btn-miv mt-3" onclick="loadMarketplace(true)"><i class="bi bi-arrow-clockwise me-2"></i> Recarregar</button></div>';
+        container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-exclamation-triangle empty-icon"></i><h5 class="text-muted">Erro ao carregar músicas</h5><button class="btn-miv mt-3" onclick="loadMarketplace(true)"><i class="bi bi-arrow-clockwise me-2"></i> Recarregar</button></div>';
     }
 }
 // ========== PLAY EXTERNAL TRACK ==========
@@ -3606,13 +3648,22 @@ function loadYouTubeAPIForExpanded() {
         showModal('investModal');
     }
 
-    function updateInvestmentTotal() {
-        if (!state.currentInvestTrack) return;
-        const qty = parseInt(document.getElementById('investQuantity').value) || 1;
-        const total = qty * (state.currentInvestTrack.valor_acao || 0);
-        document.getElementById('investTotalPrice').textContent = formatCurrency(total);
-        document.getElementById('confirmInvestBtn').disabled = total > state.userBalance;
+  // ========== UPDATE INVESTMENT TOTAL ==========
+function updateInvestmentTotal() {
+    if (!state.currentInvestTrack) return;
+    
+    const quantity = parseInt(document.getElementById('investQuantity')?.value) || 1;
+    const unitPrice = state.currentInvestTrack.valor_acao || 0;
+    const total = quantity * unitPrice;
+    
+    const totalEl = document.getElementById('investTotalPrice');
+    if (totalEl) totalEl.textContent = formatCurrency(total);
+    
+    const confirmBtn = document.getElementById('confirmInvestBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = total > state.userBalance;
     }
+}
 
     function adjustQuantity(amount) { 
         const input = document.getElementById('investQuantity'); 
@@ -3652,40 +3703,6 @@ function loadYouTubeAPIForExpanded() {
             hideLoading();
         }
     }
-
-    // ========== UPDATE INVESTMENT TOTAL ==========
-function updateInvestmentTotal() {
-    if (!state.currentInvestTrack) return;
-    
-    const quantity = parseInt(document.getElementById('investQuantity')?.value) || 1;
-    const unitPrice = state.currentInvestTrack.valor_acao || 0;
-    const total = quantity * unitPrice;
-    
-    const totalEl = document.getElementById('investTotalPrice');
-    if (totalEl) totalEl.textContent = formatCurrency(total);
-    
-    const confirmBtn = document.getElementById('confirmInvestBtn');
-    if (confirmBtn) {
-        confirmBtn.disabled = total > state.userBalance;
-    }
-}
-
-// ========== UPDATE EXTERNAL INVESTMENT TOTAL ==========
-function updateExternalInvestmentTotal() {
-    if (!state.currentExternalTrack) return;
-    
-    const quantity = parseInt(document.getElementById('investExternalQuantity')?.value) || 1;
-    const unitPrice = state.currentExternalTrack.valor_acao || 0;
-    const total = quantity * unitPrice;
-    
-    const totalEl = document.getElementById('investExternalTotalPrice');
-    if (totalEl) totalEl.textContent = formatCurrency(total);
-    
-    const confirmBtn = document.getElementById('confirmExternalInvestBtn');
-    if (confirmBtn) {
-        confirmBtn.disabled = total > state.userBalance;
-    }
-}
 
     function openInvestExternalModal(trackIndex) {
         if (trackIndex < 0 || trackIndex >= state.externalPlaylist.length) { showToast('Música não encontrada', 'error'); return; }
