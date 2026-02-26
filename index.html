@@ -1,13 +1,12 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SELO MIV - Plataforma de Investimento em Música">
     <meta name="theme-color" content="#00ff88">
-    <!-- PERMITIR COMUNICAÇÃO COM YOUTUBE -->
-    <meta http-equiv="Content-Security-Policy" content="frame-src https://www.youtube.com https://www.youtube-nocookie.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com;">
     <title>SELO MIV | Fintech Musical</title>
+    
+    <!-- PERMITIR COMUNICAÇÃO COM YOUTUBE E GOOGLE APPS SCRIPT -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://script.google.com https://script.googleusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com;">
 
     <!-- Bootstrap 5.3.0 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -17,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
     <!-- YouTube Iframe API -->
     <script src="https://www.youtube.com/iframe_api"></script>
-
+</head>
     <style>
         /* ========== CSS COMPLETO (MANTIDO IGUAL) ========== */
         :root {
