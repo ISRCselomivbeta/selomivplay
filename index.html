@@ -3994,17 +3994,55 @@ function createYouTubePlayer(elementId, videoId) {
         else openInvestModal(state.currentTrackIndex);
     }
 
-    async function toggleFavoriteMusic(musicId, trackIndex) {
-        if (!state.currentUser) { showToast('Faça login para favoritar', 'error'); return; }
-        const isFavorite = state.favoriteMusicIds?.includes(musicId.toString());
-        if (isFavorite) state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
-        else state.favoriteMusicIds.push(musicId.toString());
-        showToast(isFavorite ? 'Removido dos favoritos' : 'Adicionado aos favoritos', 'success');
+    // ========== TOGGLE FAVORITE MUSIC CORRIGIDO ==========
+async function toggleFavoriteMusic(musicId, trackIndex) {
+    if (!state.currentUser || !state.currentUser.id) { 
+        showToast('Faça login para favoritar', 'error'); 
+        return; 
+    }
+    
+    // Verificar se já é favorito
+    const isFavorite = state.favoriteMusicIds?.includes(musicId.toString());
+    
+    // Atualizar estado local
+    if (isFavorite) {
+        state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
+        showToast('Removido dos favoritos', 'success');
+    } else {
+        state.favoriteMusicIds.push(musicId.toString());
+        showToast('Adicionado aos favoritos', 'success');
+    }
+    
+    // Atualizar interface
+    renderMarketplace();
+    renderPlaylists();
+    if (trackIndex !== null) updateFavoriteButton(!isFavorite);
+    
+    // ✅ CORREÇÃO: Enviar TODOS os parâmetros necessários
+    const result = await callAPI('toggle_favorite', { 
+        user_id: state.currentUser.id,  // ✅ ADICIONADO!
+        music_id: musicId, 
+        action: isFavorite ? 'remove' : 'add' 
+    });
+    
+    console.log('✅ toggle_favorite resposta:', result);
+    
+    // Se a API falhar, reverter o estado local?
+    if (!result || !result.success) {
+        console.warn('⚠️ API retornou erro, revertendo estado local');
+        // Reverter o estado local
+        if (isFavorite) {
+            state.favoriteMusicIds.push(musicId.toString());
+        } else {
+            state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
+        }
         renderMarketplace();
         renderPlaylists();
-        if (trackIndex !== null) updateFavoriteButton(!isFavorite);
-        await callAPI('toggle_favorite', { music_id: musicId, action: isFavorite ? 'remove' : 'add' });
+        if (trackIndex !== null) updateFavoriteButton(isFavorite);
+        
+        showToast('Erro ao sincronizar com servidor', 'warning');
     }
+}
 
     async function createPlaylist() {
         const name = document.getElementById('playlistName').value.trim();
