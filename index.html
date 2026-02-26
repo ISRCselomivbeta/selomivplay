@@ -2873,9 +2873,9 @@
     }
 
     // ========== LOGIN ==========
-    function handleLogin() {
-    const email = document.getElementById('loginEmailField').value;
-    const password = document.getElementById('loginPasswordField').value;
+    async function handleLogin() {
+        const email = document.getElementById('loginEmail')?.value?.trim();
+        const password = document.getElementById('loginPassword')?.value?.trim();
         const loginBtn = document.getElementById('loginBtn');
         if (!email || !password) { showToast('Preencha todos os campos', 'error'); return; }
 
