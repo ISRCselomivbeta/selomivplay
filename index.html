@@ -2715,26 +2715,22 @@
         currentExternalTrack: null
     };
 // ========== FUNÇÃO DE API COM JSONP (SEM CORS!) ==========
-async function callAPI(action, data = {}) {
-    return new Promise((resolve) => {
-        try {
-            // ✅ ADMIN MASTER - RESPOSTA LOCAL IMEDIATA
-            if (action === 'login' && data.email === 'selomiv@gmail.com' && data.password === 'selomiv123') {
-                console.log('✅ [login] Admin master logado');
-                resolve({
-                    success: true,
-                    message: 'Login ADMIN realizado',
-                    data: {
-                        id: 'admin_master',
-                        nome: 'Administrador Master',
-                        email: data.email,
-                        tipo: 'admin',
-                        saldo: 1000000,
-                        favorite_music_ids: []
-                    }
-                });
-                return;
-            }
+if (action === 'login' && data.email === 'selomiv@gmail.com' && data.password === 'selomiv123') {
+    console.log('✅ [login] Admin master logado');
+    resolve({
+        success: true,
+        message: 'Login ADMIN realizado',
+        data: {
+            id: 'admin_master',
+            nome: 'Administrador Master',
+            email: data.email,
+            tipo: 'admin',
+            saldo: 1000000,
+            favorite_music_ids: []
+        }
+    });
+    return;
+}
 
             // Adiciona user_id se logado
             if (state?.currentUser?.id && !data.user_id) {
