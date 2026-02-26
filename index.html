@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SELO MIV - Plataforma de Investimento em Música">
     <meta name="theme-color" content="#00ff88">
+    <!-- PERMITIR COMUNICAÇÃO COM YOUTUBE -->
+    <meta http-equiv="Content-Security-Policy" content="frame-src https://www.youtube.com https://www.youtube-nocookie.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com;">
     <title>SELO MIV | Fintech Musical</title>
 
     <!-- Bootstrap 5.3.0 -->
@@ -3498,49 +3500,176 @@
     }
 
     // ========== YOUTUBE PLAYER ==========
-    function loadYouTubeAPI() {
-        if (window.YT?.Player) { state.youtubeAPILoaded = true; return; }
-        window.onYouTubeIframeAPIReady = () => state.youtubeAPILoaded = true;
-        const tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        tag.async = true;
-        document.head.appendChild(tag);
+   // ========== LOAD YOUTUBE API CORRIGIDO ==========
+function loadYouTubeAPI(callback) {
+    if (window.YT && YT.Player) {
+        console.log('✅ API do YouTube já carregada');
+        state.youtubeAPILoaded = true;
+        if (callback) callback();
+        return;
     }
-
-    function extractYouTubeId(url) {
-        try {
-            const urlObj = new URL(url);
-            if (urlObj.hostname.includes('youtu.be')) return urlObj.pathname.substring(1);
-            if (urlObj.hostname.includes('youtube.com')) return urlObj.searchParams.get('v');
-        } catch (e) { console.error('Erro ao extrair ID do YouTube:', e); }
+    
+    console.log('📥 Carregando API do YouTube...');
+    
+    // Definir callback global
+    window.onYouTubeIframeAPIReady = () => {
+        console.log('✅ API do YouTube carregada com sucesso');
+        state.youtubeAPILoaded = true;
+        if (callback) callback();
+    };
+    
+    // Carregar script
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    tag.async = true;
+    tag.onload = () => console.log('📦 Script do YouTube carregado');
+    tag.onerror = (e) => console.error('❌ Erro ao carregar script do YouTube:', e);
+    
+    document.head.appendChild(tag);
+}
+    // ========== EXTRACT YOUTUBE ID CORRIGIDO ==========
+function extractYouTubeId(url) {
+    if (!url || typeof url !== 'string') {
+        console.log('URL inválida:', url);
         return null;
     }
-
-    function initializeYouTubePlayer(videoId) {
-        const playerElement = document.getElementById('youtubePlayerExpanded');
-        if (!playerElement) return;
-        playerElement.innerHTML = '';
-        if (!state.youtubeAPILoaded) {
-            playerElement.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&showinfo=0&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-            return;
+    
+    try {
+        // Tenta extrair ID de diferentes formatos de URL do YouTube
+        const patterns = [
+            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+            /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
+            /youtu\.be\/([^&\n?#]+)/
+        ];
+        
+        for (let pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) {
+                return match[1];
+            }
         }
+        
+        // Se não conseguir com regex, tenta com URL API
         try {
-            state.youtubePlayer = new YT.Player('youtubePlayerExpanded', {
-                width: '100%', height: '100%', videoId: videoId,
-                playerVars: { autoplay: 1, controls: 1, modestbranding: 1, rel: 0, showinfo: 0, fs: 1, playsinline: 1 },
-                onReady: (e) => { e.target.setVolume(state.currentVolume); updatePlayerProgress(); state.isPlaying = true; updatePlayerIcons(); state.progressInterval = setInterval(updatePlayerProgress, 1000); },
-                onStateChange: (e) => {
-                    if (e.data === YT.PlayerState.PLAYING) state.isPlaying = true;
-                    if (e.data === YT.PlayerState.PAUSED) state.isPlaying = false;
-                    if (e.data === YT.PlayerState.ENDED) { state.isPlaying = false; if (state.isRepeat) e.target.playVideo(); else playNext(); }
-                    updatePlayerIcons(); updateExpandedPlayer();
-                }
-            });
-        } catch (error) {
-            console.error('Erro ao criar player YouTube:', error);
-            playerElement.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
+            const urlObj = new URL(url);
+            if (urlObj.hostname.includes('youtu.be')) {
+                return urlObj.pathname.substring(1);
+            }
+            if (urlObj.hostname.includes('youtube.com')) {
+                return urlObj.searchParams.get('v');
+            }
+        } catch (e) {
+            // Ignora erro do URL API
         }
+        
+        console.log('Não foi possível extrair ID do YouTube de:', url);
+        return null;
+        
+    } catch (error) {
+        console.error('Erro ao extrair ID do YouTube:', error);
+        return null;
     }
+}
+// ========== INITIALIZE YOUTUBE PLAYER - VERSÃO OFICIAL ==========
+function initializeYouTubePlayer(videoId) {
+    const playerElement = document.getElementById('youtubePlayerExpanded');
+    if (!playerElement) return;
+    
+    // Mostrar loading
+    const loadingEl = document.getElementById('playerLoadingExpanded');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    
+    // Limpar elemento anterior
+    playerElement.innerHTML = '';
+    
+    // Criar novo elemento div para o player
+    const playerDiv = document.createElement('div');
+    playerDiv.id = 'youtube-player-' + Date.now();
+    playerElement.appendChild(playerDiv);
+    
+    // Garantir que a API está carregada
+    if (typeof YT === 'undefined' || !YT.Player) {
+        console.log('API do YouTube não carregada, carregando...');
+        loadYouTubeAPI(() => {
+            createYouTubePlayer(playerDiv.id, videoId);
+        });
+    } else {
+        createYouTubePlayer(playerDiv.id, videoId);
+    }
+}
+
+function createYouTubePlayer(elementId, videoId) {
+    try {
+        state.youtubePlayer = new YT.Player(elementId, {
+            width: '100%',
+            height: '100%',
+            videoId: videoId,
+            playerVars: {
+                autoplay: 1,
+                controls: 1,
+                modestbranding: 1,
+                rel: 0,
+                showinfo: 0,
+                fs: 1,
+                playsinline: 1,
+                origin: 'https://selomivplay.vercel.app', // ✅ SEU DOMÍNIO
+                enablejsapi: 1,
+                widget_referrer: 'https://selomivplay.vercel.app/'
+            },
+            onReady: (event) => {
+                console.log('✅ YouTube Player pronto');
+                // Esconder loading
+                const loadingEl = document.getElementById('playerLoadingExpanded');
+                if (loadingEl) loadingEl.style.display = 'none';
+                
+                event.target.setVolume(state.currentVolume);
+                state.isPlaying = true;
+                updatePlayerIcons();
+                
+                // ✅ INICIAR CONTAGEM DE VIEWS
+                event.target.playVideo();
+                
+                // Atualizar progresso
+                if (state.progressInterval) clearInterval(state.progressInterval);
+                state.progressInterval = setInterval(updatePlayerProgress, 1000);
+            },
+            onStateChange: (event) => {
+                // ✅ ESTADOS DO PLAYER:
+                // -1 = não iniciado, 0 = terminado, 1 = tocando, 2 = pausado, 3 = bufferizando, 5 = video inserido
+                
+                if (event.data === YT.PlayerState.PLAYING) {
+                    state.isPlaying = true;
+                    console.log('▶️ Reproduzindo - view contabilizada');
+                }
+                if (event.data === YT.PlayerState.PAUSED) {
+                    state.isPlaying = false;
+                }
+                if (event.data === YT.PlayerState.ENDED) {
+                    state.isPlaying = false;
+                    console.log('⏹️ Vídeo terminado - view contabilizada');
+                    if (state.isRepeat) {
+                        event.target.playVideo();
+                    } else {
+                        playNext();
+                    }
+                }
+                updatePlayerIcons();
+                updateExpandedPlayer();
+            },
+            onError: (event) => {
+                console.error('❌ Erro no player YouTube:', event.data);
+                showToast('Erro ao carregar vídeo do YouTube', 'error');
+                
+                // Esconder loading
+                const loadingEl = document.getElementById('playerLoadingExpanded');
+                if (loadingEl) loadingEl.style.display = 'none';
+            }
+        });
+    } catch (error) {
+        console.error('❌ Erro ao criar player:', error);
+        showToast('Erro ao inicializar player', 'error');
+    }
+}
 
     function updatePlayerProgress() {
         if (!state.youtubePlayer?.getCurrentTime) return;
@@ -4204,25 +4333,28 @@
     }
 
     // ========== INICIALIZAÇÃO ==========
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('SELO MIV v' + CONFIG.VERSION);
-        const stored = localStorage.getItem('miv_user');
-        if (stored) {
-            try {
-                state.currentUser = JSON.parse(stored);
-                state.userBalance = state.currentUser.saldo || 0;
-                state.favoriteMusicIds = state.currentUser.favorite_music_ids?.split(',').filter(id => id.trim() !== '') || [];
-                initializeApp();
-            } catch (e) { 
-                localStorage.removeItem('miv_user'); 
-                localStorage.removeItem('miv_session'); 
-                hideLoading(); 
-            }
-        } else {
-            hideLoading();
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('SELO MIV v' + CONFIG.VERSION);
+    
+    // ✅ CARREGAR API DO YOUTUBE (OBRIGATÓRIO para views)
+    loadYouTubeAPI();
+    
+    const stored = localStorage.getItem('miv_user');
+    if (stored) {
+        try {
+            state.currentUser = JSON.parse(stored);
+            state.userBalance = state.currentUser.saldo || 0;
+            state.favoriteMusicIds = state.currentUser.favorite_music_ids?.split(',').filter(id => id.trim() !== '') || [];
+            initializeApp();
+        } catch (e) { 
+            localStorage.removeItem('miv_user'); 
+            localStorage.removeItem('miv_session'); 
+            hideLoading(); 
         }
-        loadYouTubeAPI();
-    });
+    } else {
+        hideLoading();
+    }
+});
 
     // ========== EXPOR FUNÇÕES GLOBAIS ==========
     window.handleLogin = handleLogin; 
