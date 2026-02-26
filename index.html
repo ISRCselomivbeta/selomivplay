@@ -1,4 +1,8 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
+    <meta http-equiv="Set-Cookie" content="SameSite=None; Secure">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SELO MIV - Plataforma de Investimento em Música">
@@ -1690,8 +1694,9 @@
         <div id="loginForm">
             <div id="loginMessage" class="alert d-none"></div>
             <div class="form-group">
-                <input type="email" id="loginEmail" class="form-control-custom" placeholder="E-mail" required>
-            </div>
+    <label for="loginEmail" class="text-muted mb-2">E-mail</label>
+    <input type="email" id="loginEmail" class="form-control-custom" placeholder="Digite seu e-mail" required>
+</div>
             <div class="form-group">
                 <input type="password" id="loginPassword" class="form-control-custom" placeholder="Senha" required>
             </div>
@@ -2269,13 +2274,26 @@
                 <h6 id="investTrackTitle" class="fw-bold">Título da Música</h6>
                 <p class="text-muted" id="investTrackArtist">Artista</p>
             </div>
-            <div class="form-group">
-                <label class="text-muted mb-2">Valor por ação:</label>
-                <div class="d-flex align-items-center justify-content-between">
-                    <span class="fw-bold fs-5" id="investUnitPrice">R$ 0,00</span>
-                    <span class="badge bg-success" id="sharesAvailable">Disponível: 0 ações</span>
-                </div>
-            </div>
+           <div class="form-group">
+    <label for="investUnitPrice" class="text-muted mb-2">Valor por ação:</label>
+    <div class="d-flex align-items-center justify-content-between">
+        <span class="fw-bold fs-5" id="investUnitPrice">R$ 0,00</span>
+        <span class="badge bg-success" id="sharesAvailable">Disponível: 0 ações</span>
+    </div>
+</div>
+
+<div class="form-group">
+    <label for="investQuantity" class="text-muted mb-2">Quantidade de ações:</label>
+    <div class="input-group">
+        <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)">
+            <i class="bi bi-dash"></i>
+        </button>
+        <input type="number" id="investQuantity" class="form-control-custom text-center" value="1" min="1" oninput="updateInvestmentTotal()">
+        <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(1)">
+            <i class="bi bi-plus"></i>
+        </button>
+    </div>
+</div>
             <div class="form-group">
                 <label class="text-muted mb-2">Quantidade de ações:</label>
                 <div class="input-group">
@@ -2407,9 +2425,9 @@
             </div>
             
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Título da Música *</label>
-                <input type="text" id="externalTitle" class="form-control-custom" placeholder="Digite o título da música" required>
-            </div>
+    <label for="musicTitle" class="text-muted mb-2 d-block">Título da Música *</label>
+    <input type="text" id="musicTitle" class="form-control-custom" placeholder="Digite o título da música" required>
+</div>
             
             <div class="form-group">
                 <label class="text-muted mb-2 d-block">Artista *</label>
@@ -2533,13 +2551,9 @@
         </div>
         <div class="modal-body">
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Valor para adicionar</label>
-                <div class="btn-group w-100 mb-3" role="group">
-                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(50)">R$ 50</button>
-                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(100)">R$ 100</button>
-                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(200)">R$ 200</button>
-                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(500)">R$ 500</button>
-                </div>
+    <label for="balanceAmount" class="text-muted mb-2 d-block">Valor para adicionar</label>
+    <input type="number" id="balanceAmount" class="form-control-custom" value="100" min="10" step="10" oninput="validateBalanceAmount()">
+</div>
                 <input type="number" id="balanceAmount" class="form-control-custom" value="100" min="10" step="10" oninput="validateBalanceAmount()">
             </div>
             <div class="alert alert-info bg-dark border-info">
@@ -2585,12 +2599,10 @@
                 <i class="bi bi-info-circle me-2"></i>
                 Saques são processados em 5 a 9 dias úteis após confirmação por email.
             </div>
-            <div class="form-group">
-                <label class="text-muted mb-2 d-block">Valor para sacar</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-dark text-white border-secondary">R$</span>
-                    <input type="number" id="withdrawalAmount" class="form-control-custom" value="0" min="10" step="10" oninput="validateWithdrawalAmount()">
-                </div>
+           <div class="form-group">
+    <label for="withdrawalAmount" class="text-muted mb-2 d-block">Valor para sacar</label>
+    <input type="number" id="withdrawalAmount" class="form-control-custom" value="0" min="10" step="10" oninput="validateWithdrawalAmount()">
+</div>
                 <small class="text-muted">Valor máximo disponível: <span id="maxWithdrawal">R$ 0,00</span></small>
             </div>
             <div class="form-group">
