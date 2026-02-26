@@ -3016,14 +3016,30 @@ function getFallbackData(action, data) {
         if (result?.success && result?.data) state.externalPlaylist = result.data;
         renderExternalMarketplace();
     }
-
-    async function loadPortfolio(silent = false) {
-        if (!state.currentUser) return;
-        const result = await callAPI('get_carteira', { user_id: state.currentUser.id });
-        if (result?.success && result?.data) state.portfolioAssets = result.data;
-        renderPortfolio();
-        updatePortfolioValue();
+// ========== LOAD PORTFOLIO CORRIGIDO ==========
+async function loadPortfolio(silent = false) {
+    if (!state.currentUser) return;
+    
+    const result = await callAPI('get_carteira', { user_id: state.currentUser.id });
+    
+    if (result?.success && result?.data) {
+        // ✅ CORREÇÃO: Garantir que state.portfolioAssets seja sempre array
+        if (Array.isArray(result.data)) {
+            state.portfolioAssets = result.data;
+        } else if (result.data && typeof result.data === 'object') {
+            // Se for objeto, tenta extrair investimentos
+            console.log('API retornou objeto, extraindo investimentos');
+            state.portfolioAssets = result.data.investimentos || [];
+        } else {
+            state.portfolioAssets = [];
+        }
+    } else {
+        state.portfolioAssets = [];
     }
+    
+    renderPortfolio();
+    updatePortfolioValue();
+}
 
     async function loadLedger(forceRefresh = false) {
         if (!state.currentUser) return;
@@ -3059,6 +3075,7 @@ function getFallbackData(action, data) {
 
     // ========== RENDER FUNCTIONS ==========
   // ========== RENDER MARKETPLACE CORRIGIDO ==========
+// ========== RENDER MARKETPLACE CORRIGIDO ==========
 function renderMarketplace() {
     const container = document.getElementById('marketplaceContent');
     if (!container) return;
@@ -3086,6 +3103,7 @@ function renderMarketplace() {
         if (percentSold >= 80) badgeClass = 'badge-danger';
         else if (percentSold >= 50) badgeClass = 'badge-warning';
         
+        // ✅ CORREÇÃO: Usar template strings corretamente, sem concatenação problemática
         return `<div class="music-card" onclick="playTrack(${index})">
             <div class="position-relative">
                 <img src="${coverImage}" 
@@ -3176,37 +3194,113 @@ function playExternalTrack(index) {
         }).join('');
     }
 
-    function renderPortfolio() {
-        const container = document.getElementById('portfolioContent');
-        if (!container) return;
-        document.getElementById('assetsCount').textContent = `${state.portfolioAssets.length} ativo${state.portfolioAssets.length !== 1 ? 's' : ''}`;
-        if (!state.portfolioAssets?.length) {
-            container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-briefcase empty-icon"></i><h5 class="text-muted">Nenhum investimento</h5><p class="text-muted">Você ainda não investiu em nenhuma música</p><button class="btn-miv mt-3" onclick="changeSection(\'marketplace\')"><i class="bi bi-shop me-2"></i> Explorar Marketplace</button></div>';
-            return;
+// ========== RENDER PORTFOLIO CORRIGIDO ==========
+function renderPortfolio() {
+    const container = document.getElementById('portfolioContent');
+    if (!container) return;
+    
+    // ✅ CORREÇÃO: Garantir que é array
+    const assets = Array.isArray(state.portfolioAssets) ? state.portfolioAssets : [];
+    
+    document.getElementById('assetsCount').textContent = `${assets.length} ativo${assets.length !== 1 ? 's' : ''}`;
+    
+    if (!assets.length) {
+        container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-briefcase empty-icon"></i><h5 class="text-muted">Nenhum investimento</h5><p class="text-muted">Você ainda não investiu em nenhuma música</p><button class="btn-miv mt-3" onclick="changeSection(\'marketplace\')"><i class="bi bi-shop me-2"></i> Explorar Marketplace</button></div>';
+        return;
+    }
+    
+    const totalInvested = assets.reduce((sum, a) => sum + (a.valor_total || 0), 0);
+    const currentValue = assets.reduce((sum, a) => sum + (a.valor_total || 0) * (1 + (a.rentabilidade_media || 0) / 100), 0);
+    const profit = currentValue - totalInvested;
+    const profitPercent = totalInvested > 0 ? (profit / totalInvested * 100) : 0;
+    
+    container.innerHTML = `
+        <div class="artist-stats mb-4">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
+                <div class="stat-value">${formatCurrency(totalInvested)}</div>
+                <div class="stat-label">Total Investido</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                <div class="stat-value">${formatCurrency(currentValue)}</div>
+                <div class="stat-label">Valor Atual</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-arrow-up-right ${profit >= 0 ? 'text-success' : 'text-danger'}"></i></div>
+                <div class="stat-value ${profit >= 0 ? 'text-success' : 'text-danger'}">${formatCurrency(profit)} (${profitPercent.toFixed(1)}%)</div>
+                <div class="stat-label">Lucro/Prejuízo</div>
+            </div>
+        </div>
+        <div class="music-grid">
+            ${assets.map((asset) => {
+                const music = state.playlist.find(m => m.id === asset.music_id) || {};
+                const appreciation = asset.rentabilidade_media || 0;
+                const currentVal = (asset.valor_total || 0) * (1 + appreciation / 100);
+                const profitVal = currentVal - (asset.valor_total || 0);
+                const profitPerc = asset.valor_total > 0 ? (profitVal / asset.valor_total * 100) : 0;
+                
+                let coverImage = PLACEHOLDERS.MIV_300;
+                if (music.link_capa && typeof music.link_capa === 'string' && music.link_capa.trim() !== '') {
+                    coverImage = music.link_capa.trim();
+                }
+                
+                return `<div class="music-card">
+                    <img src="${coverImage}" class="music-cover" alt="${music.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <div class="music-info">
+                        <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
+                        <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
+                        <div class="music-meta">
+                            <span class="music-price">${formatCurrency(asset.valor_total || 0)}</span>
+                            <span class="investment-score"><i class="bi bi-graph-up-arrow"></i> ${appreciation}%</span>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small class="text-muted">Ações: ${asset.quantidade || 0}</small>
+                            <small class="${profitVal >= 0 ? 'text-success' : 'text-danger'}">
+                                ${profitVal >= 0 ? '▲' : '▼'} ${profitPerc.toFixed(1)}%
+                            </small>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+}
+    // ========== UPDATE PORTFOLIO VALUE CORRIGIDO ==========
+function updatePortfolioValue() {
+    const el = document.getElementById('portfolioValue');
+    if (!el) return;
+    
+    // ✅ CORREÇÃO: Verificar se é array antes de usar reduce
+    let totalValue = 0;
+    
+    if (Array.isArray(state.portfolioAssets) && state.portfolioAssets.length > 0) {
+        totalValue = state.portfolioAssets.reduce((sum, a) => {
+            const valor = a.valor_total || 0;
+            const rentabilidade = a.rentabilidade_media || 0;
+            return sum + (valor * (1 + rentabilidade / 100));
+        }, 0);
+    } else if (state.portfolioAssets && typeof state.portfolioAssets === 'object' && !Array.isArray(state.portfolioAssets)) {
+        // Se for objeto (formato antigo), tenta extrair investimentos
+        console.log('Convertendo formato antigo de carteira');
+        const investimentos = state.portfolioAssets.investimentos || [];
+        if (Array.isArray(investimentos)) {
+            totalValue = investimentos.reduce((sum, a) => {
+                const valor = a.valor_total || 0;
+                const rentabilidade = a.rentabilidade_media || 0;
+                return sum + (valor * (1 + rentabilidade / 100));
+            }, 0);
         }
-        const totalInvested = state.portfolioAssets.reduce((sum, a) => sum + (a.valor_total || 0), 0);
-        const currentValue = state.portfolioAssets.reduce((sum, a) => sum + (a.valor_total || 0) * (1 + (a.rentabilidade_media || 0) / 100), 0);
-        const profit = currentValue - totalInvested;
-        const profitPercent = totalInvested > 0 ? (profit / totalInvested * 100) : 0;
-        container.innerHTML = `<div class="artist-stats mb-4"><div class="stat-card"><div class="stat-icon"><i class="bi bi-cash-stack"></i></div><div class="stat-value">${formatCurrency(totalInvested)}</div><div class="stat-label">Total Investido</div></div><div class="stat-card"><div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div><div class="stat-value">${formatCurrency(currentValue)}</div><div class="stat-label">Valor Atual</div></div><div class="stat-card"><div class="stat-icon"><i class="bi bi-arrow-up-right ${profit >= 0 ? 'text-success' : 'text-danger'}"></i></div><div class="stat-value ${profit >= 0 ? 'text-success' : 'text-danger'}">${formatCurrency(profit)} (${profitPercent.toFixed(1)}%)</div><div class="stat-label">Lucro/Prejuízo</div></div></div><div class="music-grid">${state.portfolioAssets.map((asset) => {
-            const music = state.playlist.find(m => m.id === asset.music_id) || {};
-            const appreciation = asset.rentabilidade_media || 0;
-            const currentVal = (asset.valor_total || 0) * (1 + appreciation / 100);
-            const profitVal = currentVal - (asset.valor_total || 0);
-            const profitPerc = asset.valor_total > 0 ? (profitVal / asset.valor_total * 100) : 0;
-            const coverImage = music.link_capa?.trim() ? music.link_capa : PLACEHOLDERS.MIV_300;
-            return `<div class="music-card"><img src="${coverImage}" class="music-cover" alt="${music.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'"><div class="music-info"><h6 class="music-title">${music.titulo || 'Sem título'}</h6><p class="music-artist">${music.artista || 'Artista Desconhecido'}</p><div class="music-meta"><span class="music-price">${formatCurrency(asset.valor_total || 0)}</span><span class="investment-score"><i class="bi bi-graph-up-arrow"></i> ${appreciation}%</span></div><div class="d-flex justify-content-between mt-2"><small class="text-muted">Ações: ${asset.quantidade || 0}</small><small class="${profitVal >= 0 ? 'text-success' : 'text-danger'}">${profitVal >= 0 ? '▲' : '▼'} ${profitPerc.toFixed(1)}%</small></div></div></div>`;
-        }).join('')}</div>`;
+        // Converte para o novo formato
+        state.portfolioAssets = investimentos;
     }
-
-    function updatePortfolioValue() {
-        const el = document.getElementById('portfolioValue');
-        if (!el) return;
-        const totalValue = state.portfolioAssets.reduce((sum, a) => sum + (a.valor_total || 0) * (1 + (a.rentabilidade_media || 0) / 100), 0);
-        el.textContent = formatCurrency(totalValue);
-        document.getElementById('portfolioUpdateTime').textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    
+    el.textContent = formatCurrency(totalValue);
+    
+    const updateEl = document.getElementById('portfolioUpdateTime');
+    if (updateEl) {
+        updateEl.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
     }
-
+}
     function renderLedger() {
         const container = document.getElementById('ledgerContent');
         if (!container) return;
