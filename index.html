@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#00ff88">
     <title>SELO MIV | Fintech Musical</title>
 
-    <!-- Bootstrap 5.4.0 -->
+    <!-- Bootstrap 5.3.0 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
@@ -2679,7 +2679,7 @@
     const CONFIG = {
         API_URL: 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
         DEV_MODE: false,
-        VERSION: '5.0.0',
+        VERSION: '5.1.0',
         MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv'
     };
 
@@ -2715,22 +2715,26 @@
         currentExternalTrack: null
     };
 // ========== FUNÇÃO DE API COM JSONP (SEM CORS!) ==========
-if (action === 'login' && data.email === 'selomiv@gmail.com' && data.password === 'selomiv123') {
-    console.log('✅ [login] Admin master logado');
-    resolve({
-        success: true,
-        message: 'Login ADMIN realizado',
-        data: {
-            id: 'admin_master',
-            nome: 'Administrador Master',
-            email: data.email,
-            tipo: 'admin',
-            saldo: 1000000,
-            favorite_music_ids: []
-        }
-    });
-    return;
-}
+async function callAPI(action, data = {}) {
+    return new Promise((resolve) => {
+        try {
+            // ✅ ADMIN MASTER - RESPOSTA LOCAL IMEDIATA
+            if (action === 'login' && data.email === 'selomiv@gmail.com' && data.password === 'selomiv123') {
+                console.log('✅ [login] Admin master logado');
+                resolve({
+                    success: true,
+                    message: 'Login ADMIN realizado',
+                    data: {
+                        id: 'admin_master',
+                        nome: 'Administrador Master',
+                        email: data.email,
+                        tipo: 'admin',
+                        saldo: 1000000,
+                        favorite_music_ids: []
+                    }
+                });
+                return;
+            }
 
             // Adiciona user_id se logado
             if (state?.currentUser?.id && !data.user_id) {
