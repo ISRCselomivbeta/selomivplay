@@ -2804,7 +2804,26 @@ async function callAPI(action, data = {}) {
 function getFallbackData(action, data) {
     console.log(`📦 [${action}] Usando fallback local`);
     
-    // Músicas - fallback
+    // Health check
+    if (action === 'health') {
+        return {
+            success: true,
+            status: 'healthy',
+            version: '5.2.0',
+            timestamp: new Date().toISOString()
+        };
+    }
+    
+    // Backup
+    if (action === 'backup') {
+        return {
+            success: true,
+            backupId: 'backup_' + Date.now(),
+            message: 'Backup simulado (modo offline)'
+        };
+    }
+    
+    // Músicas - fallback (já existe)
     if (action === 'get_musicas') {
         return {
             success: true,
@@ -2837,10 +2856,15 @@ function getFallbackData(action, data) {
                     status: 'ativo',
                     genero: 'POP'
                 }
-            ]
+            ],
+            pagination: {
+                page: 1,
+                limit: 20,
+                total: 2,
+                pages: 1
+            }
         };
     }
-    
     // Saldo admin
     if (action === 'get_saldo' && (data.user_id === 'admin_master' || state?.currentUser?.id === 'admin_master')) {
         return {
