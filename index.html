@@ -1691,54 +1691,69 @@
         </div>
 
         <!-- Login Form -->
-        <div id="loginForm">
-            <div id="loginMessage" class="alert d-none"></div>
-            <div class="form-group">
-    <label for="loginEmail" class="text-muted mb-2">E-mail</label>
-    <input type="email" id="loginEmail" class="form-control-custom" placeholder="Digite seu e-mail" required>
-</div>
-            <div class="form-group">
-                <input type="password" id="loginPassword" class="form-control-custom" placeholder="Senha" required>
-            </div>
-            <button class="btn-miv mb-3" onclick="handleLogin()" id="loginBtn">
-                <i class="bi bi-box-arrow-in-right"></i> Entrar
-            </button>
-            <p class="text-center text-muted">
-                Novo por aqui? <a href="javascript:void(0)" class="auth-link" onclick="showRegisterForm()">Criar conta</a>
-            </p>
-        </div>
-
-        <!-- Register Form -->
-        <div id="registerForm" style="display: none;">
-            <div id="registerMessage" class="alert d-none"></div>
-            <div class="form-group">
-                <input type="text" id="registerName" class="form-control-custom" placeholder="Nome completo" required>
-            </div>
-            <div class="form-group">
-                <input type="email" id="registerEmail" class="form-control-custom" placeholder="E-mail" required>
-            </div>
-            <div class="form-group">
-                <input type="password" id="registerPassword" class="form-control-custom" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
-            </div>
-            <div class="form-group">
-                <select id="registerType" class="form-control-custom" onchange="toggleArtistField()">
-                    <option value="">Selecione seu perfil...</option>
-                    <option value="ouvinte">🎧 Ouvinte/Investidor</option>
-                    <option value="artista">🎤 Artista</option>
-                </select>
-            </div>
-            <div class="form-group" id="artistLinkField" style="display: none;">
-                <input type="url" id="registerLink" class="form-control-custom" placeholder="Link do seu trabalho (YouTube, Spotify, etc.)">
-                <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
-            </div>
-            <button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn">
-                <i class="bi bi-person-plus"></i> Solicitar Cadastro
-            </button>
-            <p class="text-center text-muted">
-                Já tem conta? <a href="javascript:void(0)" class="auth-link" onclick="showLoginForm()">Fazer login</a>
-            </p>
-        </div>
+        <di<!-- Login Form -->
+<div id="loginForm">
+    <div id="loginMessage" class="alert d-none"></div>
+    
+    <div class="form-group">
+        <label for="loginEmailField" class="text-muted mb-2">E-mail</label>
+        <input type="email" id="loginEmailField" class="form-control-custom" placeholder="Digite seu e-mail" required>
     </div>
+    
+    <div class="form-group">
+        <label for="loginPasswordField" class="text-muted mb-2">Senha</label>
+        <input type="password" id="loginPasswordField" class="form-control-custom" placeholder="Digite sua senha" required>
+    </div>
+    
+    <button class="btn-miv mb-3" onclick="handleLogin()" id="loginBtn">
+        <i class="bi bi-box-arrow-in-right"></i> Entrar
+    </button>
+    
+    <p class="text-center text-muted">
+        Novo por aqui? <a href="javascript:void(0)" class="auth-link" onclick="showRegisterForm()">Criar conta</a>
+    </p>
+</div>
+      <!-- Register Form -->
+<div id="registerForm" style="display: none;">
+    <div id="registerMessage" class="alert d-none"></div>
+    
+    <div class="form-group">
+        <label for="registerNameField" class="text-muted mb-2">Nome completo</label>
+        <input type="text" id="registerNameField" class="form-control-custom" placeholder="Digite seu nome completo" required>
+    </div>
+    
+    <div class="form-group">
+        <label for="registerEmailField" class="text-muted mb-2">E-mail</label>
+        <input type="email" id="registerEmailField" class="form-control-custom" placeholder="Digite seu e-mail" required>
+    </div>
+    
+    <div class="form-group">
+        <label for="registerPasswordField" class="text-muted mb-2">Senha (mínimo 6 caracteres)</label>
+        <input type="password" id="registerPasswordField" class="form-control-custom" placeholder="Digite sua senha" required minlength="6">
+    </div>
+    
+    <div class="form-group">
+        <label for="registerTypeField" class="text-muted mb-2">Selecione seu perfil</label>
+        <select id="registerTypeField" class="form-control-custom" onchange="toggleArtistField()">
+            <option value="">Selecione seu perfil...</option>
+            <option value="ouvinte">🎧 Ouvinte/Investidor</option>
+            <option value="artista">🎤 Artista</option>
+        </select>
+    </div>
+    
+    <div class="form-group" id="artistLinkField" style="display: none;">
+        <label for="registerLinkField" class="text-muted mb-2">Link do seu trabalho</label>
+        <input type="url" id="registerLinkField" class="form-control-custom" placeholder="YouTube, Spotify, etc.">
+        <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
+    </div>
+    
+    <button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn">
+        <i class="bi bi-person-plus"></i> Solicitar Cadastro
+    </button>
+    
+    <p class="text-center text-muted">
+        Já tem conta? <a href="javascript:void(0)" class="auth-link" onclick="showLoginForm()">Fazer login</a>
+    </p>
 </div>
 
 <!-- Main Application -->
@@ -2269,56 +2284,45 @@
                 <i class="bi bi-x"></i>
             </button>
         </div>
+        
         <div class="modal-body">
             <div class="text-center mb-4">
                 <h6 id="investTrackTitle" class="fw-bold">Título da Música</h6>
                 <p class="text-muted" id="investTrackArtist">Artista</p>
             </div>
-           <div class="form-group">
-    <label for="investUnitPrice" class="text-muted mb-2">Valor por ação:</label>
-    <div class="d-flex align-items-center justify-content-between">
-        <span class="fw-bold fs-5" id="investUnitPrice">R$ 0,00</span>
-        <span class="badge bg-success" id="sharesAvailable">Disponível: 0 ações</span>
-    </div>
-</div>
-
-<div class="form-group">
-    <label for="investQuantity" class="text-muted mb-2">Quantidade de ações:</label>
-    <div class="input-group">
-        <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)">
-            <i class="bi bi-dash"></i>
-        </button>
-        <input type="number" id="investQuantity" class="form-control-custom text-center" value="1" min="1" oninput="updateInvestmentTotal()">
-        <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(1)">
-            <i class="bi bi-plus"></i>
-        </button>
-    </div>
-</div>
+            
             <div class="form-group">
-                <label class="text-muted mb-2">Quantidade de ações:</label>
+                <label for="investUnitPriceDisplay" class="text-muted mb-2">Valor por ação:</label>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="fw-bold fs-5" id="investUnitPriceDisplay">R$ 0,00</span>
+                    <span class="badge bg-success" id="investSharesAvailable">Disponível: 0 ações</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="investQuantityField" class="text-muted mb-2">Quantidade de ações:</label>
                 <div class="input-group">
                     <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)">
                         <i class="bi bi-dash"></i>
                     </button>
-                    <input type="number" id="investQuantity" class="form-control-custom text-center" value="1" min="1" oninput="updateInvestmentTotal()">
+                    <input type="number" id="investQuantityField" class="form-control-custom text-center" value="1" min="1" oninput="updateInvestmentTotal()">
                     <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(1)">
                         <i class="bi bi-plus"></i>
                     </button>
                 </div>
             </div>
+            
             <div class="form-group">
-                <label class="text-muted mb-2">Valor total do investimento:</label>
-                <div class="fw-bold fs-4 text-success" id="investTotalPrice">R$ 0,00</div>
+                <label for="investTotalPriceDisplay" class="text-muted mb-2">Valor total do investimento:</label>
+                <div class="fw-bold fs-4 text-success" id="investTotalPriceDisplay">R$ 0,00</div>
             </div>
+            
             <div class="alert alert-info bg-dark border-info mt-3">
                 <i class="bi bi-info-circle me-2"></i> 
-                Saldo disponível: <span id="investAvailableBalance" class="fw-bold">R$ 0,00</span>
-            </div>
-            <div class="alert alert-warning bg-dark border-warning mt-2">
-                <i class="bi bi-file-earmark-text me-2"></i>
-                Um contrato digital será gerado e enviado para seu email após a compra.
+                Saldo disponível: <span id="investAvailableBalanceDisplay" class="fw-bold">R$ 0,00</span>
             </div>
         </div>
+        
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('investModal')">Cancelar</button>
             <button class="btn btn-miv" onclick="confirmInvestment()" id="confirmInvestBtn">
@@ -2327,7 +2331,7 @@
         </div>
     </div>
 </div>
-
+<!-- Invest External Modal -->
 <!-- Invest External Modal -->
 <div id="investExternalModal" class="modal-overlay">
     <div class="modal-content">
@@ -2337,64 +2341,61 @@
                 <i class="bi bi-x"></i>
             </button>
         </div>
+        
         <div class="modal-body">
             <div class="text-center mb-4">
-                <h6 id="investExternalTitle" class="fw-bold">Título da Música</h6>
-                <p class="text-muted" id="investExternalArtist">Artista</p>
+                <h6 id="investExternalTitleDisplay" class="fw-bold">Título da Música</h6>
+                <p class="text-muted" id="investExternalArtistDisplay">Artista</p>
                 <span class="badge bg-warning">Bolsa Externa</span>
             </div>
             
             <div class="alert alert-warning bg-dark border-warning mb-3">
                 <i class="bi bi-exclamation-triangle me-2"></i>
-                <strong>Investimento Antecipado:</strong> Esta música ainda não é do SELO MIV. 
-                Se atingir 1 milhão em vendas, o artista pode aceitar entrar no SELO.
-                Se recusar, você recebe seu investimento de volta com desconto de 0,99% pela especulação.
+                <strong>Investimento Antecipado:</strong> Esta música ainda não é do SELO MIV.
             </div>
             
             <div class="form-group">
-                <label class="text-muted mb-2">Valor por ação:</label>
+                <label for="investExternalUnitPriceDisplay" class="text-muted mb-2">Valor por ação:</label>
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="fw-bold fs-5" id="investExternalUnitPrice">R$ 0,00</span>
-                    <span class="badge bg-warning" id="sharesExternalAvailable">Disponível: 0 ações</span>
+                    <span class="fw-bold fs-5" id="investExternalUnitPriceDisplay">R$ 0,00</span>
+                    <span class="badge bg-warning" id="investExternalSharesAvailable">Disponível: 0 ações</span>
                 </div>
             </div>
+            
             <div class="form-group">
-                <label class="text-muted mb-2">Quantidade de ações:</label>
+                <label for="investExternalQuantityField" class="text-muted mb-2">Quantidade de ações:</label>
                 <div class="input-group">
                     <button class="btn btn-outline-secondary" type="button" onclick="adjustExternalQuantity(-1)">
                         <i class="bi bi-dash"></i>
                     </button>
-                    <input type="number" id="investExternalQuantity" class="form-control-custom text-center" value="1" min="1" oninput="updateExternalInvestmentTotal()">
+                    <input type="number" id="investExternalQuantityField" class="form-control-custom text-center" value="1" min="1" oninput="updateExternalInvestmentTotal()">
                     <button class="btn btn-outline-secondary" type="button" onclick="adjustExternalQuantity(1)">
                         <i class="bi bi-plus"></i>
                     </button>
                 </div>
             </div>
+            
             <div class="form-group">
-                <label class="text-muted mb-2">Valor total do investimento:</label>
-                <div class="fw-bold fs-4 text-warning" id="investExternalTotalPrice">R$ 0,00</div>
+                <label for="investExternalTotalPriceDisplay" class="text-muted mb-2">Valor total do investimento:</label>
+                <div class="fw-bold fs-4 text-warning" id="investExternalTotalPriceDisplay">R$ 0,00</div>
             </div>
             
             <div class="form-group">
                 <div class="external-music-progress">
-                    <div class="external-music-progress-bar" id="externalProgressBar"></div>
+                    <div class="external-music-progress-bar" id="investExternalProgressBar"></div>
                 </div>
                 <div class="d-flex justify-content-between mt-2">
-                    <small class="text-muted" id="externalCurrentSales">Vendas atuais: R$ 0</small>
-                    <small class="text-muted" id="externalTargetSales">Meta: R$ 1.000.000</small>
+                    <small class="text-muted" id="investExternalCurrentSales">Vendas atuais: R$ 0</small>
+                    <small class="text-muted" id="investExternalTargetSales">Meta: R$ 1.000.000</small>
                 </div>
             </div>
             
             <div class="alert alert-info bg-dark border-info mt-3">
                 <i class="bi bi-info-circle me-2"></i> 
-                Saldo disponível: <span id="investExternalAvailableBalance" class="fw-bold">R$ 0,00</span>
-            </div>
-            
-            <div class="alert alert-danger bg-dark border-danger mt-2">
-                <i class="bi bi-shield-exclamation me-2"></i>
-                <strong>Risco calculado:</strong> Taxa de especulação de 0,99% aplicada em caso de recusa do artista.
+                Saldo disponível: <span id="investExternalBalanceDisplay" class="fw-bold">R$ 0,00</span>
             </div>
         </div>
+        
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('investExternalModal')">Cancelar</button>
             <button class="btn btn-warning" onclick="confirmExternalInvestment()" id="confirmExternalInvestBtn">
@@ -2403,69 +2404,56 @@
         </div>
     </div>
 </div>
-
 <!-- Add External Music Modal -->
 <div id="addExternalMusicModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-globe me-2 text-warning"></i> Sugerir Música para Bolsa Externa</h5>
+            <h5 class="modal-title"><i class="bi bi-globe me-2 text-warning"></i> Sugerir Música</h5>
             <button class="modal-close" onclick="closeModal('addExternalMusicModal')">
                 <i class="bi bi-x"></i>
             </button>
         </div>
+        
         <div class="modal-body">
             <div class="alert alert-info bg-dark border-info mb-3">
                 <i class="bi bi-info-circle me-2"></i>
-                Sugira músicas do YouTube que ainda não são do SELO MIV para investimento antecipado.
+                Sugira músicas do YouTube para investimento antecipado.
             </div>
             
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Link do YouTube *</label>
-                <input type="url" id="externalYoutubeLink" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
+                <label for="externalYoutubeLinkField" class="text-muted mb-2 d-block">Link do YouTube *</label>
+                <input type="url" id="externalYoutubeLinkField" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
             </div>
             
             <div class="form-group">
-    <label for="musicTitle" class="text-muted mb-2 d-block">Título da Música *</label>
-    <input type="text" id="musicTitle" class="form-control-custom" placeholder="Digite o título da música" required>
-</div>
-            
-            <div class="form-group">
-                <label class="text-muted mb-2 d-block">Artista *</label>
-                <input type="text" id="externalArtist" class="form-control-custom" placeholder="Nome do artista" required>
+                <label for="externalTitleField" class="text-muted mb-2 d-block">Título da Música *</label>
+                <input type="text" id="externalTitleField" class="form-control-custom" placeholder="Digite o título da música" required>
             </div>
             
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Valor por Ação Sugerido *</label>
-                <input type="number" id="externalPrice" class="form-control-custom" value="10.00" min="1" step="0.01" required>
-                <small class="text-muted">Valor sugerido para cada ação</small>
+                <label for="externalArtistField" class="text-muted mb-2 d-block">Artista *</label>
+                <input type="text" id="externalArtistField" class="form-control-custom" placeholder="Nome do artista" required>
             </div>
             
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Porcentagem para Investimento *</label>
+                <label for="externalPriceField" class="text-muted mb-2 d-block">Valor por Ação Sugerido *</label>
+                <input type="number" id="externalPriceField" class="form-control-custom" value="10.00" min="1" step="0.01" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="externalPercentField" class="text-muted mb-2 d-block">Porcentagem para Investimento *</label>
                 <div class="input-group">
-                    <input type="number" id="externalPercent" class="form-control-custom" value="20" min="1" max="100" required>
+                    <input type="number" id="externalPercentField" class="form-control-custom" value="20" min="1" max="100" required>
                     <span class="input-group-text bg-dark text-white border-secondary">%</span>
                 </div>
-                <small class="text-muted">Percentual da música disponível para investimento</small>
             </div>
             
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Mensagem para o Artista (opcional)</label>
-                <textarea id="externalMessage" class="form-control-custom" rows="3" placeholder="Por que você acha que esta música tem potencial?"></textarea>
-                <small class="text-muted">Esta mensagem será enviada ao artista se a música atingir 1 milhão</small>
-            </div>
-            
-            <div class="alert alert-warning bg-dark border-warning mt-3">
-                <i class="bi bi-exclamation-triangle me-2"></i>
-                <strong>Condições:</strong>
-                <ul class="mb-0 mt-2">
-                    <li>A música precisa atingir R$ 1.000.000 em investimentos</li>
-                    <li>O artista será contactado para entrar no SELO MIV</li>
-                    <li>Se recusar, investidores recebem 99,01% do valor investido</li>
-                    <li>O SELO MIV fica com 0,99% pela especulação</li>
-                </ul>
+                <label for="externalMessageField" class="text-muted mb-2 d-block">Mensagem para o Artista (opcional)</label>
+                <textarea id="externalMessageField" class="form-control-custom" rows="3" placeholder="Por que você acha que esta música tem potencial?"></textarea>
             </div>
         </div>
+        
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('addExternalMusicModal')">Cancelar</button>
             <button class="btn btn-warning" onclick="submitExternalMusic()" id="submitExternalBtn">
@@ -2474,7 +2462,6 @@
         </div>
     </div>
 </div>
-
 <!-- Add Music Modal -->
 <div id="addMusicModal" class="modal-overlay">
     <div class="modal-content">
@@ -2484,14 +2471,16 @@
                 <i class="bi bi-x"></i>
             </button>
         </div>
+        
         <div class="modal-body">
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Título da Música *</label>
-                <input type="text" id="musicTitle" class="form-control-custom" placeholder="Digite o título da música" required>
+                <label for="musicTitleField" class="text-muted mb-2 d-block">Título da Música *</label>
+                <input type="text" id="musicTitleField" class="form-control-custom" placeholder="Digite o título da música" required>
             </div>
+            
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Gênero Musical *</label>
-                <select id="musicGenre" class="form-control-custom" required>
+                <label for="musicGenreField" class="text-muted mb-2 d-block">Gênero Musical *</label>
+                <select id="musicGenreField" class="form-control-custom" required>
                     <option value="">Selecione um gênero</option>
                     <option value="POP">🎵 POP</option>
                     <option value="HIPHOP_RAP">🎤 HIP HOP / RAP</option>
@@ -2503,34 +2492,38 @@
                     <option value="OUTRO">🎼 OUTRO</option>
                 </select>
             </div>
+            
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Link do YouTube *</label>
-                <input type="url" id="musicYoutube" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
+                <label for="musicYoutubeField" class="text-muted mb-2 d-block">Link do YouTube *</label>
+                <input type="url" id="musicYoutubeField" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
             </div>
+            
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
-                <input type="url" id="musicCover" class="form-control-custom" placeholder="https://exemplo.com/capa.jpg">
-                <small class="text-muted">Recomendado: 300x300 pixels</small>
+                <label for="musicCoverField" class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
+                <input type="url" id="musicCoverField" class="form-control-custom" placeholder="https://exemplo.com/capa.jpg">
             </div>
+            
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Valor por Ação *</label>
-                <input type="number" id="musicPrice" class="form-control-custom" value="10.00" min="1" step="0.01" required>
+                <label for="musicPriceField" class="text-muted mb-2 d-block">Valor por Ação *</label>
+                <input type="number" id="musicPriceField" class="form-control-custom" value="10.00" min="1" step="0.01" required>
             </div>
+            
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Percentual Disponível *</label>
+                <label for="musicPercentField" class="text-muted mb-2 d-block">Percentual Disponível *</label>
                 <div class="input-group">
-                    <input type="number" id="musicPercent" class="form-control-custom" value="20" min="1" max="100" required>
+                    <input type="number" id="musicPercentField" class="form-control-custom" value="20" min="1" max="100" required>
                     <span class="input-group-text bg-dark text-white border-secondary">%</span>
                 </div>
-                <small class="text-muted">Este percentual será disponibilizado para investimento</small>
             </div>
+            
             <div class="form-check mt-3">
-                <input class="form-check-input" type="checkbox" id="musicTerms" required>
-                <label class="form-check-label text-muted">
+                <input class="form-check-input" type="checkbox" id="musicTermsField" required>
+                <label class="form-check-label text-muted" for="musicTermsField">
                     Aceito os termos de distribuição e compartilhamento de royalties
                 </label>
             </div>
         </div>
+        
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('addMusicModal')">Cancelar</button>
             <button class="btn-miv" onclick="registerMusic()" id="registerMusicBtn">
@@ -2539,7 +2532,6 @@
         </div>
     </div>
 </div>
-
 <!-- Add Balance Modal -->
 <div id="addBalanceModal" class="modal-overlay">
     <div class="modal-content">
@@ -2551,29 +2543,14 @@
         </div>
         <div class="modal-body">
             <div class="form-group">
-    <label for="balanceAmount" class="text-muted mb-2 d-block">Valor para adicionar</label>
-    <input type="number" id="balanceAmount" class="form-control-custom" value="100" min="10" step="10" oninput="validateBalanceAmount()">
-</div>
-                <input type="number" id="balanceAmount" class="form-control-custom" value="100" min="10" step="10" oninput="validateBalanceAmount()">
-            </div>
-            <div class="alert alert-info bg-dark border-info">
-                <i class="bi bi-info-circle me-2"></i> O saldo será adicionado instantaneamente à sua conta
-            </div>
-            <div class="mt-4">
-                <h6>Método de pagamento:</h6>
-                <div class="form-check mt-2">
-                    <input class="form-check-input" type="radio" name="paymentMethod" id="paymentMercadoPago" checked>
-                    <label class="form-check-label" for="paymentMercadoPago">
-                        <i class="bi bi-credit-card me-2"></i> Mercado Pago (Link oficial)
-                    </label>
+                <label for="balanceAmountField" class="text-muted mb-2 d-block">Valor para adicionar</label>
+                <div class="btn-group w-100 mb-3" role="group">
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(50)">R$ 50</button>
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(100)">R$ 100</button>
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(200)">R$ 200</button>
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(500)">R$ 500</button>
                 </div>
-                <div class="mt-2">
-                    <small class="text-muted">Utilizamos o link oficial do Mercado Pago para garantir contabilização segura.</small>
-                </div>
-            </div>
-            <div class="alert alert-success bg-dark border-success mt-3">
-                <i class="bi bi-shield-check me-2"></i>
-                <strong>Integridade do YouTube garantida:</strong> Todas as reproduções são contabilizadas oficialmente.
+                <input type="number" id="balanceAmountField" class="form-control-custom" value="100" min="10" step="10" oninput="validateBalanceAmount()">
             </div>
         </div>
         <div class="modal-footer">
@@ -2595,32 +2572,27 @@
             </button>
         </div>
         <div class="modal-body">
-            <div class="alert alert-info bg-dark border-info mb-3">
-                <i class="bi bi-info-circle me-2"></i>
-                Saques são processados em 5 a 9 dias úteis após confirmação por email.
-            </div>
-           <div class="form-group">
-    <label for="withdrawalAmount" class="text-muted mb-2 d-block">Valor para sacar</label>
-    <input type="number" id="withdrawalAmount" class="form-control-custom" value="0" min="10" step="10" oninput="validateWithdrawalAmount()">
-</div>
-                <small class="text-muted">Valor máximo disponível: <span id="maxWithdrawal">R$ 0,00</span></small>
-            </div>
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Método de pagamento *</label>
-                <select id="withdrawalMethod" class="form-control-custom" required>
+                <label for="withdrawalAmountField" class="text-muted mb-2 d-block">Valor para sacar</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark text-white border-secondary">R$</span>
+                    <input type="number" id="withdrawalAmountField" class="form-control-custom" value="0" min="10" step="10" oninput="validateWithdrawalAmount()">
+                </div>
+                <small class="text-muted">Valor máximo disponível: <span id="maxWithdrawalDisplay">R$ 0,00</span></small>
+            </div>
+            
+            <div class="form-group">
+                <label for="withdrawalMethodField" class="text-muted mb-2 d-block">Método de pagamento *</label>
+                <select id="withdrawalMethodField" class="form-control-custom" required>
                     <option value="">Selecione...</option>
                     <option value="PIX">PIX</option>
                     <option value="TED">TED/DOC</option>
                 </select>
             </div>
+            
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Dados bancários</label>
-                <textarea id="bankDetails" class="form-control-custom" rows="3" placeholder="Banco, Agência, Conta, CPF/CNPJ, Nome do titular"></textarea>
-                <small class="text-muted">Preencha todos os dados para receber o pagamento</small>
-            </div>
-            <div class="alert alert-warning bg-dark border-warning mt-3">
-                <i class="bi bi-envelope me-2"></i>
-                Após enviar a solicitação, você receberá um email para confirmar o saque.
+                <label for="bankDetailsField" class="text-muted mb-2 d-block">Dados bancários</label>
+                <textarea id="bankDetailsField" class="form-control-custom" rows="3" placeholder="Banco, Agência, Conta, CPF/CNPJ, Nome do titular"></textarea>
             </div>
         </div>
         <div class="modal-footer">
@@ -2643,12 +2615,13 @@
         </div>
         <div class="modal-body">
             <div class="form-group">
-                <label class="text-muted mb-2 d-block">Nome da Playlist *</label>
-                <input type="text" id="playlistName" class="form-control-custom" placeholder="Ex: Rock Favorito, Chillout, etc." required>
+                <label for="playlistNameField" class="text-muted mb-2 d-block">Nome da Playlist *</label>
+                <input type="text" id="playlistNameField" class="form-control-custom" placeholder="Ex: Rock Favorito, Chillout, etc." required>
             </div>
+            
             <div class="form-check mt-3">
-                <input class="form-check-input" type="checkbox" id="playlistPublic">
-                <label class="form-check-label text-muted">
+                <input class="form-check-input" type="checkbox" id="playlistPublicField">
+                <label class="form-check-label text-muted" for="playlistPublicField">
                     Playlist pública (outros usuários podem ver)
                 </label>
             </div>
@@ -2661,7 +2634,6 @@
         </div>
     </div>
 </div>
-
 <!-- Contract View Modal -->
 <div id="contractModal" class="modal-overlay">
     <div class="modal-content">
@@ -2901,9 +2873,9 @@
     }
 
     // ========== LOGIN ==========
-    async function handleLogin() {
-        const email = document.getElementById('loginEmail')?.value?.trim();
-        const password = document.getElementById('loginPassword')?.value?.trim();
+    function handleLogin() {
+    const email = document.getElementById('loginEmailField').value;
+    const password = document.getElementById('loginPasswordField').value;
         const loginBtn = document.getElementById('loginBtn');
         if (!email || !password) { showToast('Preencha todos os campos', 'error'); return; }
 
