@@ -1659,6 +1659,64 @@
         .spin {
             animation: spin 1s linear infinite;
         }
+
+        /* ========== SISTEMA DE RECOMENDAÇÃO ========== */
+        .genre-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .match-badge {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--neon-green);
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .recommended-card {
+            border: 2px solid var(--neon-green) !important;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+            animation: glowPulse 2s infinite;
+        }
+
+        @keyframes glowPulse {
+            0% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.2); }
+            50% { box-shadow: 0 0 30px rgba(0, 255, 136, 0.4); }
+            100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.2); }
+        }
+
+        .recommended-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: linear-gradient(135deg, var(--neon-green), #00cc6a);
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            z-index: 10;
+        }
+
+        .intention-btn {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid #ffc107;
+            color: #ffc107;
+            transition: all 0.3s ease;
+        }
+
+        .intention-btn:hover {
+            background: #ffc107;
+            color: #000;
+        }
     </style>
 </head>
 <body>
@@ -2293,29 +2351,31 @@
             </div>
             
             <div class="form-group">
-                <label for="investUnitPriceDisplay" class="text-muted mb-2">Valor por ação:</label>
+                <label for="investUnitPriceHidden" class="text-muted mb-2">Valor por ação:</label>
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="fw-bold fs-5" id="investUnitPriceDisplay">R$ 0,00</span>
                     <span class="badge bg-success" id="investSharesAvailable">Disponível: 0 ações</span>
                 </div>
+                <input type="hidden" id="investUnitPriceHidden" value="0">
             </div>
             
             <div class="form-group">
                 <label for="investQuantityField" class="text-muted mb-2">Quantidade de ações:</label>
                 <div class="input-group">
-                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)" id="decreaseQuantityBtn" name="decreaseQuantityBtn">
                         <i class="bi bi-dash"></i>
                     </button>
-                    <input type="number" id="investQuantityField" class="form-control-custom text-center" value="1" min="1" oninput="updateInvestmentTotal()">
-                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(1)">
+                    <input type="number" id="investQuantityField" class="form-control-custom text-center" value="1" min="1" oninput="updateInvestmentTotal()" name="investQuantityField">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(1)" id="increaseQuantityBtn" name="increaseQuantityBtn">
                         <i class="bi bi-plus"></i>
                     </button>
                 </div>
             </div>
             
             <div class="form-group">
-                <label for="investTotalPriceDisplay" class="text-muted mb-2">Valor total do investimento:</label>
+                <label for="investTotalPriceHidden" class="text-muted mb-2">Valor total do investimento:</label>
                 <div class="fw-bold fs-4 text-success" id="investTotalPriceDisplay">R$ 0,00</div>
+                <input type="hidden" id="investTotalPriceHidden" value="0">
             </div>
             
             <div class="alert alert-info bg-dark border-info mt-3">
@@ -2356,29 +2416,31 @@
             </div>
             
             <div class="form-group">
-                <label for="investExternalUnitPriceDisplay" class="text-muted mb-2">Valor por ação:</label>
+                <label for="investExternalUnitPriceHidden" class="text-muted mb-2">Valor por ação:</label>
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="fw-bold fs-5" id="investExternalUnitPriceDisplay">R$ 0,00</span>
                     <span class="badge bg-warning" id="investExternalSharesAvailable">Disponível: 0 ações</span>
                 </div>
+                <input type="hidden" id="investExternalUnitPriceHidden" value="0">
             </div>
             
             <div class="form-group">
                 <label for="investExternalQuantityField" class="text-muted mb-2">Quantidade de ações:</label>
                 <div class="input-group">
-                    <button class="btn btn-outline-secondary" type="button" onclick="adjustExternalQuantity(-1)">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustExternalQuantity(-1)" id="decreaseExternalQuantityBtn" name="decreaseExternalQuantityBtn">
                         <i class="bi bi-dash"></i>
                     </button>
-                    <input type="number" id="investExternalQuantityField" class="form-control-custom text-center" value="1" min="1" oninput="updateExternalInvestmentTotal()">
-                    <button class="btn btn-outline-secondary" type="button" onclick="adjustExternalQuantity(1)">
+                    <input type="number" id="investExternalQuantityField" class="form-control-custom text-center" value="1" min="1" oninput="updateExternalInvestmentTotal()" name="investExternalQuantityField">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustExternalQuantity(1)" id="increaseExternalQuantityBtn" name="increaseExternalQuantityBtn">
                         <i class="bi bi-plus"></i>
                     </button>
                 </div>
             </div>
             
             <div class="form-group">
-                <label for="investExternalTotalPriceDisplay" class="text-muted mb-2">Valor total do investimento:</label>
+                <label for="investExternalTotalPriceHidden" class="text-muted mb-2">Valor total do investimento:</label>
                 <div class="fw-bold fs-4 text-warning" id="investExternalTotalPriceDisplay">R$ 0,00</div>
+                <input type="hidden" id="investExternalTotalPriceHidden" value="0">
             </div>
             
             <div class="form-group">
@@ -2681,6 +2743,18 @@
         PLAYLIST: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\' viewBox=\'0 0 60 60\'%3E%3Crect width=\'60\' height=\'60\' fill=\'%2300ff88\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'24\' fill=\'%23000000\'%3E♪%3C/text%3E%3C/svg%3E'
     };
 
+    // ========== PESOS POR GÊNERO ==========
+    const GENRE_WEIGHTS = {
+        'POP': { color: '#ff6b6b', icon: '🎵', baseWeight: 1.0 },
+        'ROCK': { color: '#ff4757', icon: '🤘', baseWeight: 1.0 },
+        'HIPHOP_RAP': { color: '#ffa502', icon: '🎤', baseWeight: 1.0 },
+        'ELETRONICA': { color: '#00d2d3', icon: '⚡', baseWeight: 1.0 },
+        'MPB': { color: '#1dd1a1', icon: '🎸', baseWeight: 1.0 },
+        'SERTANEJO': { color: '#5f27cd', icon: '🎶', baseWeight: 1.0 },
+        'FUNK': { color: '#ff9ff3', icon: '💃', baseWeight: 1.0 },
+        'OUTRO': { color: '#8395a7', icon: '🎼', baseWeight: 0.8 }
+    };
+
     // ========== ESTADO GLOBAL ==========
     const state = {
         currentUser: null,
@@ -2701,14 +2775,22 @@
         isRepeat: false,
         lastVolume: 80,
         currentInvestTrack: null,
-        currentExternalTrack: null
+        currentExternalTrack: null,
+        // NOVO: Perfil musical do usuário
+        userMusicProfile: {
+            preferredGenres: {},
+            listenedTracks: [],
+            investedTracks: [],
+            intentionContracts: [],
+            recommendations: []
+        },
+        externalMusicHistory: []
     };
 
     // ========== FUNÇÃO DE API COM JSONP ==========
     async function callAPI(action, data = {}) {
         return new Promise((resolve) => {
             try {
-                // ✅ ADMIN MASTER
                 if (action === 'login' && data.email === 'selomiv@gmail.com' && data.password === 'selomiv123') {
                     console.log('✅ [login] Admin master logado');
                     resolve({
@@ -2726,12 +2808,10 @@
                     return;
                 }
 
-                // ✅ Adiciona user_id automaticamente
                 if (state?.currentUser?.id && !data.user_id) {
                     data.user_id = state.currentUser.id;
                 }
 
-                // ✅ CONSTRUIR URL JSONP
                 const callbackName = 'jsonp_' + action + '_' + Date.now();
                 let url = CONFIG.API_URL + '?callback=' + encodeURIComponent(callbackName);
                 url += '&action=' + encodeURIComponent(action);
@@ -2868,7 +2948,140 @@
         return { success: true, data: [] };
     }
 
-    // ========== LOGIN CORRIGIDO ==========
+    // ========== SISTEMA DE APRENDIZADO MUSICAL ==========
+    function learnFromAction(track, actionType) {
+        if (!state.currentUser) return;
+        
+        if (!state.userMusicProfile) {
+            state.userMusicProfile = {
+                preferredGenres: {},
+                listenedTracks: [],
+                investedTracks: [],
+                intentionContracts: [],
+                recommendations: []
+            };
+        }
+        
+        const genre = track.genero || 'OUTRO';
+        const trackId = track.id;
+        
+        const actionWeights = {
+            'play': 1,
+            'favorite': 3,
+            'playlist': 4,
+            'invest': 10,
+            'intention': 5
+        };
+        
+        const weight = actionWeights[actionType] || 1;
+        
+        if (!state.userMusicProfile.preferredGenres[genre]) {
+            state.userMusicProfile.preferredGenres[genre] = weight;
+        } else {
+            state.userMusicProfile.preferredGenres[genre] += weight;
+        }
+        
+        if (!state.userMusicProfile.listenedTracks.includes(trackId)) {
+            state.userMusicProfile.listenedTracks.push(trackId);
+        }
+        
+        if (actionType === 'invest' && !state.userMusicProfile.investedTracks.includes(trackId)) {
+            state.userMusicProfile.investedTracks.push(trackId);
+        }
+        
+        saveUserMusicProfile();
+        updateExternalRecommendations();
+    }
+
+    async function saveUserMusicProfile() {
+        if (!state.currentUser) return;
+        await callAPI('save_music_profile', {
+            user_id: state.currentUser.id,
+            profile: JSON.stringify(state.userMusicProfile)
+        });
+    }
+
+    async function loadUserMusicProfile() {
+        if (!state.currentUser) return;
+        const result = await callAPI('get_music_profile', { user_id: state.currentUser.id });
+        if (result?.success && result?.data) {
+            state.userMusicProfile = result.data;
+        }
+    }
+
+    function updateExternalRecommendations() {
+        if (!state.externalPlaylist || state.externalPlaylist.length === 0) return;
+        
+        const profile = state.userMusicProfile;
+        const genres = profile?.preferredGenres || {};
+        const listenedIds = profile?.listenedTracks || [];
+        const investedIds = profile?.investedTracks || [];
+        const intentionIds = profile?.intentionContracts || [];
+        
+        const excludeIds = [...listenedIds, ...investedIds, ...intentionIds];
+        
+        const scoredTracks = state.externalPlaylist.map(track => {
+            if (excludeIds.includes(track.id)) {
+                return { ...track, recommendationScore: -1, shouldShow: false };
+            }
+            
+            const genre = track.genero || 'OUTRO';
+            const genreWeight = genres[genre] || 0;
+            
+            const popularityFactor = Math.min(1, (track.vendas_atuais || 0) / 1000000);
+            const noveltyFactor = track.isNew ? 0.2 : 0;
+            const investmentPotential = track.valor_acao ? (100 / track.valor_acao) * 0.1 : 0;
+            
+            const score = (genreWeight * 10) + (popularityFactor * 5) + noveltyFactor + investmentPotential;
+            
+            let matchReason = "✨ Potencial de investimento";
+            if (genreWeight > 5) matchReason = "🎯 Combina com seu gosto!";
+            else if (popularityFactor > 0.8) matchReason = "🔥 Quase batendo a meta!";
+            else if (track.isNew) matchReason = "🆕 Novidade na bolsa!";
+            else if (track.valor_acao < 15) matchReason = "💰 Ótimo custo-benefício";
+            
+            return {
+                ...track,
+                recommendationScore: score,
+                shouldShow: score > 0,
+                matchReason: matchReason
+            };
+        });
+        
+        const recommendations = scoredTracks
+            .filter(t => t.shouldShow)
+            .sort((a, b) => b.recommendationScore - a.recommendationScore);
+        
+        state.userMusicProfile.recommendations = recommendations;
+        renderExternalMarketplace();
+    }
+
+    async function createIntentionContract(trackId) {
+        if (!state.currentUser) {
+            showToast('Faça login para criar contrato de intenção', 'error');
+            return;
+        }
+        
+        const track = state.externalPlaylist.find(t => t.id === trackId);
+        if (!track) return;
+        
+        const result = await callAPI('create_intention', {
+            user_id: state.currentUser.id,
+            external_id: trackId,
+            valor_proposto: track.valor_acao * 10,
+            data_limite: new Date(Date.now() + 30*24*60*60*1000).toISOString()
+        });
+        
+        if (result?.success) {
+            if (!state.userMusicProfile.intentionContracts.includes(trackId)) {
+                state.userMusicProfile.intentionContracts.push(trackId);
+            }
+            learnFromAction(track, 'intention');
+            showToast('Contrato de intenção criado!', 'success');
+        }
+    }
+
+    // ========== LOGIN ==========
     async function handleLogin() {
         const email = document.getElementById('loginEmailField')?.value?.trim();
         const password = document.getElementById('loginPasswordField')?.value?.trim();
@@ -2928,6 +3141,7 @@
                 showToast('Login realizado!', 'success');
                 document.getElementById('loginEmailField').value = '';
                 document.getElementById('loginPasswordField').value = '';
+                await loadUserMusicProfile();
                 initializeApp();
             } else {
                 showToast(result?.message || 'Credenciais inválidas', 'error');
@@ -2942,7 +3156,7 @@
         }
     }
 
-    // ========== REGISTER CORRIGIDO ==========
+    // ========== REGISTER ==========
     async function handleRegister() {
         const name = document.getElementById('registerNameField')?.value?.trim();
         const email = document.getElementById('registerEmailField')?.value?.trim();
@@ -3037,20 +3251,20 @@
 
     async function loadExternalMarketplace(forceRefresh = false) {
         const result = await callAPI('get_external_musicas');
-        if (result?.success && result?.data) state.externalPlaylist = result.data;
+        if (result?.success && result?.data) {
+            state.externalPlaylist = result.data;
+            updateExternalRecommendations();
+        }
         renderExternalMarketplace();
     }
 
     async function loadPortfolio(silent = false) {
         if (!state.currentUser) return;
-        
         const result = await callAPI('get_carteira', { user_id: state.currentUser.id });
-        
         if (result?.success && result?.data) {
             if (Array.isArray(result.data)) {
                 state.portfolioAssets = result.data;
             } else if (result.data && typeof result.data === 'object') {
-                console.log('API retornou objeto, extraindo investimentos');
                 state.portfolioAssets = result.data.investimentos || [];
             } else {
                 state.portfolioAssets = [];
@@ -3058,7 +3272,6 @@
         } else {
             state.portfolioAssets = [];
         }
-        
         renderPortfolio();
         updatePortfolioValue();
     }
@@ -3200,14 +3413,112 @@
     function renderExternalMarketplace() {
         const container = document.getElementById('externalContent');
         if (!container) return;
+        
         if (!state.externalPlaylist?.length) {
             container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-globe empty-icon"></i><h5 class="text-muted">Nenhuma música externa disponível</h5><p class="text-muted">Seja o primeiro a sugerir uma música!</p><button class="btn-miv btn-warning mt-3" onclick="openAddExternalMusicModal()"><i class="bi bi-plus-circle me-2"></i> Sugerir Música</button></div>';
             return;
         }
-        container.innerHTML = state.externalPlaylist.map((track, index) => {
-            const progressPercent = Math.min(100, ((track.vendas_atuais || 0) / (track.meta_vendas || 1000000) * 100));
-            return `<div class="music-card external-investment-card" onclick="playExternalTrack(${index})"><div class="position-relative"><img src="${PLACEHOLDERS.EXT_300}" class="music-cover" alt="${track.titulo || 'Música Externa'}" onerror="this.src='${PLACEHOLDERS.EXT_300}'"><div class="external-music-badge"><i class="bi bi-globe"></i> Bolsa Externa</div></div><div class="music-info"><h6 class="music-title">${track.titulo || 'Sem título'}</h6><p class="music-artist">${track.artista || 'Artista Desconhecido'}</p><div class="external-music-progress"><div class="external-music-progress-bar" style="width: ${progressPercent}%"></div></div><div class="music-meta"><span class="music-price text-warning">${formatCurrency(track.valor_acao || 0)}</span><span class="badge ${track.status === 'aguardando' ? 'status-aguardando' : 'status-aprovado'}">${track.status === 'aguardando' ? '⏳ Aguardando' : '✅ Ativo'}</span></div><div class="d-flex justify-content-between mt-2"><small class="text-muted">${formatCurrency(track.vendas_atuais || 0)} levantados</small><small class="text-muted">Meta: ${formatCurrency(track.meta_vendas || 1000000)}</small></div><button class="btn btn-warning btn-sm w-100 mt-2" onclick="event.stopPropagation(); openInvestExternalModal(${index})"><i class="bi bi-currency-dollar me-1"></i> Investir Antecipado</button></div></div>`;
-        }).join('');
+        
+        const recommendations = state.userMusicProfile?.recommendations || [];
+        const otherTracks = state.externalPlaylist.filter(t => 
+            !recommendations.some(r => r.id === t.id)
+        );
+        
+        let html = '';
+        
+        if (recommendations.length > 0) {
+            html += `
+                <div class="mb-5">
+                    <h3 class="section-title mb-4">
+                        <i class="bi bi-stars text-warning"></i>
+                        Recomendados para você
+                    </h3>
+                    <div class="music-grid">
+                        ${recommendations.map((track, index) => {
+                            const progressPercent = Math.min(100, ((track.vendas_atuais || 0) / (track.meta_vendas || 1000000) * 100));
+                            const genreInfo = GENRE_WEIGHTS[track.genero] || GENRE_WEIGHTS['OUTRO'];
+                            
+                            return `<div class="music-card external-investment-card recommended-card" onclick="playExternalTrack(${state.externalPlaylist.findIndex(t => t.id === track.id)})">
+                                <div class="position-relative">
+                                    <img src="${PLACEHOLDERS.EXT_300}" class="music-cover" alt="${track.titulo || 'Música Externa'}" onerror="this.src='${PLACEHOLDERS.EXT_300}'">
+                                    <div class="external-music-badge">
+                                        <i class="bi bi-globe"></i> Bolsa Externa
+                                    </div>
+                                    ${track.isNew ? '<div class="position-absolute top-0 start-0 m-2"><span class="badge bg-info">🆕 NOVA</span></div>' : ''}
+                                </div>
+                                <div class="music-info">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <span class="genre-badge" style="background: ${genreInfo.color}20; color: ${genreInfo.color}">
+                                            ${genreInfo.icon} ${track.genero || 'OUTRO'}
+                                        </span>
+                                        <span class="match-badge">${track.matchReason || ''}</span>
+                                    </div>
+                                    <h6 class="music-title">${track.titulo || 'Sem título'}</h6>
+                                    <p class="music-artist">${track.artista || 'Artista Desconhecido'}</p>
+                                    <div class="external-music-progress">
+                                        <div class="external-music-progress-bar" style="width: ${progressPercent}%"></div>
+                                    </div>
+                                    <div class="music-meta">
+                                        <span class="music-price text-warning">${formatCurrency(track.valor_acao || 0)}</span>
+                                        <span class="badge ${track.status === 'aguardando' ? 'status-aguardando' : 'status-aprovado'}">${track.status === 'aguardando' ? '⏳ Aguardando' : '✅ Ativo'}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-2">
+                                        <small class="text-muted">${formatCurrency(track.vendas_atuais || 0)} levantados</small>
+                                        <small class="text-muted">Meta: ${formatCurrency(track.meta_vendas || 1000000)}</small>
+                                    </div>
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button class="btn btn-warning btn-sm flex-grow-1" onclick="event.stopPropagation(); openInvestExternalModal(${state.externalPlaylist.findIndex(t => t.id === track.id)})">
+                                            <i class="bi bi-currency-dollar"></i> Investir
+                                        </button>
+                                        <button class="btn btn-outline-warning btn-sm intention-btn" onclick="event.stopPropagation(); createIntentionContract('${track.id}')" title="Contrato de Intenção">
+                                            <i class="bi bi-file-earmark-text"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (otherTracks.length > 0) {
+            html += `
+                <div class="mb-4">
+                    <h3 class="section-title mb-4">
+                        <i class="bi bi-music-note-beamed"></i>
+                        Outras Oportunidades
+                    </h3>
+                    <div class="music-grid">
+                        ${otherTracks.map((track, index) => {
+                            const progressPercent = Math.min(100, ((track.vendas_atuais || 0) / (track.meta_vendas || 1000000) * 100));
+                            return `<div class="music-card external-investment-card" onclick="playExternalTrack(${state.externalPlaylist.findIndex(t => t.id === track.id)})">
+                                <div class="position-relative">
+                                    <img src="${PLACEHOLDERS.EXT_300}" class="music-cover" alt="${track.titulo || 'Música Externa'}" onerror="this.src='${PLACEHOLDERS.EXT_300}'">
+                                    <div class="external-music-badge"><i class="bi bi-globe"></i> Bolsa Externa</div>
+                                </div>
+                                <div class="music-info">
+                                    <h6 class="music-title">${track.titulo || 'Sem título'}</h6>
+                                    <p class="music-artist">${track.artista || 'Artista Desconhecido'}</p>
+                                    <div class="external-music-progress">
+                                        <div class="external-music-progress-bar" style="width: ${progressPercent}%"></div>
+                                    </div>
+                                    <div class="music-meta">
+                                        <span class="music-price text-warning">${formatCurrency(track.valor_acao || 0)}</span>
+                                        <span class="badge ${track.status === 'aguardando' ? 'status-aguardando' : 'status-aprovado'}">${track.status === 'aguardando' ? '⏳ Aguardando' : '✅ Ativo'}</span>
+                                    </div>
+                                    <button class="btn btn-warning btn-sm w-100 mt-2" onclick="event.stopPropagation(); openInvestExternalModal(${state.externalPlaylist.findIndex(t => t.id === track.id)})">
+                                        <i class="bi bi-currency-dollar me-1"></i> Investir Antecipado
+                                    </button>
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
     }
 
     function renderPortfolio() {
@@ -3215,7 +3526,6 @@
         if (!container) return;
         
         const assets = Array.isArray(state.portfolioAssets) ? state.portfolioAssets : [];
-        
         document.getElementById('assetsCount').textContent = `${assets.length} ativo${assets.length !== 1 ? 's' : ''}`;
         
         if (!assets.length) {
@@ -3271,28 +3581,17 @@
         if (!el) return;
         
         let totalValue = 0;
+        const assets = Array.isArray(state.portfolioAssets) ? state.portfolioAssets : [];
         
-        if (Array.isArray(state.portfolioAssets) && state.portfolioAssets.length > 0) {
-            totalValue = state.portfolioAssets.reduce((sum, a) => {
+        if (assets.length > 0) {
+            totalValue = assets.reduce((sum, a) => {
                 const valor = a.valor_total || 0;
                 const rentabilidade = a.rentabilidade_media || 0;
                 return sum + (valor * (1 + rentabilidade / 100));
             }, 0);
-        } else if (state.portfolioAssets && typeof state.portfolioAssets === 'object' && !Array.isArray(state.portfolioAssets)) {
-            console.log('Convertendo formato antigo de carteira');
-            const investimentos = state.portfolioAssets.investimentos || [];
-            if (Array.isArray(investimentos)) {
-                totalValue = investimentos.reduce((sum, a) => {
-                    const valor = a.valor_total || 0;
-                    const rentabilidade = a.rentabilidade_media || 0;
-                    return sum + (valor * (1 + rentabilidade / 100));
-                }, 0);
-            }
-            state.portfolioAssets = investimentos;
         }
         
         el.textContent = formatCurrency(totalValue);
-        
         const updateEl = document.getElementById('portfolioUpdateTime');
         if (updateEl) {
             updateEl.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
@@ -3403,6 +3702,9 @@
         
         const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
         updateFavoriteButton(isFavorite);
+        
+        // Aprender com a ação
+        learnFromAction(track, 'play');
         
         if (track.link_youtube) {
             const videoId = extractYouTubeId(track.link_youtube);
@@ -3727,12 +4029,9 @@
     
     function setVolume(value) {
         state.currentVolume = Math.max(0, Math.min(100, parseInt(value)));
-        
         const volumeBar = document.getElementById('volumeSliderBar');
         if (volumeBar) volumeBar.style.width = `${state.currentVolume}%`;
-        
         updateVolumeIcon();
-        
         if (state.youtubePlayer && typeof state.youtubePlayer.setVolume === 'function') {
             try {
                 state.youtubePlayer.setVolume(state.currentVolume);
@@ -3752,10 +4051,8 @@
     function handleVolumeClick(event) {
         const volumeSlider = document.getElementById('volumeSlider');
         if (!volumeSlider) return;
-        
         const rect = volumeSlider.getBoundingClientRect();
         const percent = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-        
         setVolume(Math.round(percent * 100));
     }
 
@@ -3789,7 +4086,6 @@
         if (modal) { modal.classList.remove('show'); document.body.style.overflow = 'auto'; } 
     }
 
-    // ========== INVEST MODAL CORRIGIDO ==========
     function openInvestModal(trackIndex) {
         if (trackIndex < 0 || trackIndex >= state.playlist.length) { 
             showToast('Música não encontrada', 'error'); 
@@ -3799,6 +4095,7 @@
         document.getElementById('investTrackTitle').textContent = state.currentInvestTrack.titulo || 'Sem título';
         document.getElementById('investTrackArtist').textContent = state.currentInvestTrack.artista || 'Artista Desconhecido';
         document.getElementById('investUnitPriceDisplay').textContent = formatCurrency(state.currentInvestTrack.valor_acao || 0);
+        document.getElementById('investUnitPriceHidden').value = state.currentInvestTrack.valor_acao || 0;
         document.getElementById('investAvailableBalanceDisplay').textContent = formatCurrency(state.userBalance);
         document.getElementById('investQuantityField').value = 1;
         const totalShares = (state.currentInvestTrack.percentual_disponivel || 0) / 0.01;
@@ -3813,6 +4110,7 @@
         const qty = parseInt(document.getElementById('investQuantityField').value) || 1;
         const total = qty * (state.currentInvestTrack.valor_acao || 0);
         document.getElementById('investTotalPriceDisplay').textContent = formatCurrency(total);
+        document.getElementById('investTotalPriceHidden').value = total;
         document.getElementById('confirmInvestBtn').disabled = total > state.userBalance;
     }
 
@@ -3846,6 +4144,8 @@
                 valor_unitario: state.currentInvestTrack.valor_acao || 0, 
                 valor_total: total 
             });
+            
+            learnFromAction(state.currentInvestTrack, 'invest');
             state.userBalance -= total;
             updateBalanceDisplay();
             closeModal('investModal');
@@ -3861,7 +4161,6 @@
         }
     }
 
-    // ========== EXTERNAL INVEST MODAL CORRIGIDO ==========
     function openInvestExternalModal(trackIndex) {
         if (trackIndex < 0 || trackIndex >= state.externalPlaylist.length) { 
             showToast('Música não encontrada', 'error'); 
@@ -3871,6 +4170,7 @@
         document.getElementById('investExternalTitleDisplay').textContent = state.currentExternalTrack.titulo || 'Sem título';
         document.getElementById('investExternalArtistDisplay').textContent = state.currentExternalTrack.artista || 'Artista Desconhecido';
         document.getElementById('investExternalUnitPriceDisplay').textContent = formatCurrency(state.currentExternalTrack.valor_acao || 0);
+        document.getElementById('investExternalUnitPriceHidden').value = state.currentExternalTrack.valor_acao || 0;
         document.getElementById('investExternalBalanceDisplay').textContent = formatCurrency(state.userBalance);
         document.getElementById('investExternalQuantityField').value = 1;
         const totalShares = state.currentExternalTrack.total_acoes || ((state.currentExternalTrack.percentual_disponivel || 0) / 0.01);
@@ -3888,6 +4188,7 @@
         const qty = parseInt(document.getElementById('investExternalQuantityField').value) || 1;
         const total = qty * (state.currentExternalTrack.valor_acao || 0);
         document.getElementById('investExternalTotalPriceDisplay').textContent = formatCurrency(total);
+        document.getElementById('investExternalTotalPriceHidden').value = total;
         document.getElementById('confirmExternalInvestBtn').disabled = total > state.userBalance;
     }
 
@@ -3921,6 +4222,8 @@
                 valor_unitario: state.currentExternalTrack.valor_acao || 0, 
                 valor_total: total 
             });
+            
+            learnFromAction(state.currentExternalTrack, 'invest');
             state.userBalance -= total;
             updateBalanceDisplay();
             closeModal('investExternalModal');
@@ -3948,7 +4251,6 @@
         }
     }
 
-    // ========== TOGGLE FAVORITE MUSIC CORRIGIDO ==========
     async function toggleFavoriteMusic(musicId, trackIndex) {
         if (!state.currentUser || !state.currentUser.id) { 
             showToast('Faça login para favoritar', 'error'); 
@@ -3956,6 +4258,11 @@
         }
         
         const isFavorite = state.favoriteMusicIds?.includes(musicId.toString());
+        const track = state.playlist.find(t => t.id === musicId);
+        
+        if (track) {
+            learnFromAction(track, isFavorite ? 'favorite' : 'play');
+        }
         
         if (isFavorite) {
             state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
@@ -4435,6 +4742,7 @@
     window.validateWithdrawalAmount = validateWithdrawalAmount;
     window.toggleArtistField = toggleArtistField; 
     window.formatCurrency = formatCurrency;
+    window.createIntentionContract = createIntentionContract;
 
     // ========== FUNÇÕES UTILITÁRIAS ==========
     function formatCurrency(value) {
