@@ -50,36 +50,179 @@
             padding-bottom: var(--player-height);
         }
         
-        /* Loading Screen */
-        .loading-screen {
-            position: fixed;
-            inset: 0;
-            background: var(--bg-dark);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.3s ease;
-        }
-        
-        .loading-content {
-            text-align: center;
-        }
-        
-        .loading-spinner {
-            width: 4rem;
-            height: 4rem;
-            border: 0.25rem solid rgba(0, 255, 136, 0.3);
-            border-top-color: var(--neon-green);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
+       /* ========== LOADING SCREEN COM NOVO LOGO ========== */
+.loading-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.3s ease;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+/* NOVO LOGO ANIMADO PARA O LOADING */
+.loading-logo {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1.5rem;
+    animation: pulseLogo 2s ease-in-out infinite;
+}
+
+.loading-logo svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 20px rgba(0, 255, 136, 0.5));
+}
+
+/* Escudo com brilho pulsante */
+.loading-logo .shield-path {
+    stroke: var(--neon-green);
+    stroke-width: 3;
+    fill: rgba(0, 255, 136, 0.1);
+    animation: glowPulse 2s ease-in-out infinite;
+}
+
+/* Letras MIV com brilho */
+.loading-logo .miv-text {
+    fill: var(--neon-green);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    animation: textGlow 2s ease-in-out infinite;
+}
+
+/* Ondas sonoras animadas */
+.loading-logo .sound-wave-left,
+.loading-logo .sound-wave-right {
+    stroke: var(--neon-green);
+    stroke-width: 2;
+    fill: none;
+    animation: wavePulse 1.5s ease-in-out infinite;
+}
+
+.loading-logo .sound-wave-left {
+    animation-delay: 0.2s;
+}
+
+.loading-logo .sound-wave-right {
+    animation-delay: 0.4s;
+}
+
+/* Pontos tecnológicos pulsantes */
+.loading-logo .tech-dot {
+    fill: var(--neon-green);
+    r: 3;
+    animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+.loading-logo .tech-dot:nth-child(1) { animation-delay: 0s; }
+.loading-logo .tech-dot:nth-child(2) { animation-delay: 0.3s; }
+.loading-logo .tech-dot:nth-child(3) { animation-delay: 0.6s; }
+
+/* Linha de crescimento animada */
+.loading-logo .growth-line {
+    stroke: var(--neon-green);
+    stroke-width: 2;
+    fill: none;
+    stroke-dasharray: 5 3;
+    animation: drawLine 3s linear infinite;
+}
+
+/* Spinner original (opcional - pode remover se quiser só o logo) */
+.loading-spinner {
+    width: 4rem;
+    height: 4rem;
+    border: 0.25rem solid rgba(0, 255, 136, 0.3);
+    border-top-color: var(--neon-green);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 1.5rem auto 0;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* NOVAS ANIMAÇÕES */
+@keyframes pulseLogo {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes glowPulse {
+    0%, 100% {
+        stroke-opacity: 1;
+        filter: drop-shadow(0 0 5px rgba(0, 255, 136, 0.5));
+    }
+    50% {
+        stroke-opacity: 0.8;
+        filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.8));
+    }
+}
+
+@keyframes textGlow {
+    0%, 100% {
+        fill-opacity: 1;
+        filter: drop-shadow(0 0 2px rgba(0, 255, 136, 0.5));
+    }
+    50% {
+        fill-opacity: 0.9;
+        filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.9));
+    }
+}
+
+@keyframes wavePulse {
+    0%, 100% {
+        stroke-width: 2;
+        stroke-opacity: 0.6;
+    }
+    50% {
+        stroke-width: 3;
+        stroke-opacity: 1;
+    }
+}
+
+@keyframes dotPulse {
+    0%, 100% {
+        r: 3;
+        opacity: 0.6;
+    }
+    50% {
+        r: 4;
+        opacity: 1;
+    }
+}
+
+@keyframes drawLine {
+    0% {
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dashoffset: 20;
+    }
+}
+
+/* Responsividade para mobile */
+@media (max-width: 480px) {
+    .loading-logo {
+        width: 90px;
+        height: 90px;
+    }
+    
+    .loading-logo .miv-text {
+        font-size: 18px;
+    }
+}
         /* Auth Screen */
         .auth-screen {
             position: fixed;
@@ -1740,12 +1883,40 @@
 <div id="authScreen" class="auth-screen">
     <div class="auth-card">
         <div class="logo-header">
-            <div class="logo-icon">
-                <i class="bi bi-shield-lock"></i>
-            </div>
-            <h2 class="text-white mb-2">SELO MIV</h2>
-            <p class="text-muted">Plataforma de Investimento em Música</p>
-        </div>
+    <!-- NOVO LOGO SVG -->
+    <div class="logo-svg-container">
+        <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Escudo/Selo principal -->
+            <path d="M60 10 L100 30 L100 70 L60 90 L20 70 L20 30 L60 10" stroke="#00ff88" stroke-width="3" fill="rgba(0, 255, 136, 0.1)"/>
+            
+            <!-- Borda interna do escudo -->
+            <path d="M60 18 L92 35 L92 65 L60 82 L28 65 L28 35 L60 18" stroke="#0072ff" stroke-width="2" fill="none" stroke-dasharray="4 4"/>
+            
+            <!-- Letras MIV estilizadas -->
+            <text x="45" y="55" fill="#00ff88" font-family="Outfit, sans-serif" font-weight="700" font-size="22">M</text>
+            <text x="62" y="55" fill="#00ff88" font-family="Outfit, sans-serif" font-weight="700" font-size="22">I</text>
+            <text x="78" y="55" fill="#00ff88" font-family="Outfit, sans-serif" font-weight="700" font-size="22">V</text>
+            
+            <!-- Ondas sonoras (esquerda) -->
+            <path d="M30 45 L20 45 L20 65 L30 65" stroke="#00ff88" stroke-width="2" fill="none"/>
+            <path d="M20 50 L10 50 L10 60 L20 60" stroke="#0072ff" stroke-width="2" fill="none" opacity="0.8"/>
+            
+            <!-- Ondas sonoras (direita) -->
+            <path d="M90 45 L100 45 L100 65 L90 65" stroke="#00ff88" stroke-width="2" fill="none"/>
+            <path d="M100 50 L110 50 L110 60 L100 60" stroke="#0072ff" stroke-width="2" fill="none" opacity="0.8"/>
+            
+            <!-- Pontos de tecnologia/hexágonos -->
+            <circle cx="45" cy="75" r="3" fill="#00ff88" opacity="0.6"/>
+            <circle cx="60" cy="80" r="3" fill="#0072ff" opacity="0.6"/>
+            <circle cx="75" cy="75" r="3" fill="#00ff88" opacity="0.6"/>
+            
+            <!-- Linhas de crescimento/investimento -->
+            <path d="M50 95 L55 88 L60 93 L65 85 L70 92" stroke="#00ff88" stroke-width="2" fill="none" stroke-dasharray="3 2"/>
+        </svg>
+    </div>
+    <h2 class="text-white mb-2">SELO MIV</h2>
+    <p class="text-muted">Plataforma de Investimento em Música</p>
+</div>
 
         <!-- Login Form -->
         <div id="loginForm">
