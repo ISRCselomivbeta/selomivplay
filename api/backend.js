@@ -1,6 +1,4 @@
 // ========== BACKEND.JS - VERCEL SERVERLESS FUNCTION ==========
-// Este arquivo fica em /api/backend.js
-
 export default async function handler(req, res) {
   // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,7 +13,7 @@ export default async function handler(req, res) {
   
   const { action, ...params } = req.query;
   
-  // URL do seu Google Apps Script
+  // SUA URL DO GOOGLE APPS SCRIPT
   const GAS_URL = 'https://script.google.com/macros/s/SEU_ID_AQUI/exec'; // 🔴 COLOQUE SUA URL
   
   console.log('🚀 Backend Vercel chamado:', { action, params });
@@ -45,120 +43,27 @@ export default async function handler(req, res) {
     const data = await response.json();
     console.log('✅ Resposta do GAS:', data);
     
-    // Retornar resposta
+    // Retornar a resposta do GAS (sem modificar)
     res.status(200).json(data);
     
   } catch (error) {
     console.error('❌ Erro no backend:', error);
     
-    // Fallback data para quando GAS falhar
-    const fallbackData = getFallbackData(action, params);
-    
-    res.status(200).json(fallbackData);
-  }
-}
-
-// ========== FALLBACK DATA ==========
-function getFallbackData(action, data) {
-  console.log(`📦 [${action}] Usando fallback local no backend`);
-  
-  if (action === 'health') {
-    return {
-      success: true,
-      status: 'healthy',
-      version: '6.0.0',
-      timestamp: new Date().toISOString()
-    };
-  }
-  
-  if (action === 'login') {
-    // Admin master
-    if (data.email === 'selomiv@gmail.com' && data.password === 'selomiv123') {
-      return {
+    // Fallback APENAS para health check
+    if (action === 'health') {
+      res.status(200).json({
         success: true,
-        message: 'Login ADMIN realizado',
-        data: {
-          id: 'admin_master',
-          nome: 'Administrador Master',
-          email: data.email,
-          tipo: 'admin',
-          saldo: 1000000,
-          favorite_music_ids: []
-        }
-      };
+        status: 'healthy',
+        version: '6.0.0',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      // Para qualquer outra ação, retornar erro
+      res.status(200).json({
+        success: false,
+        message: 'Erro de conexão com o servidor',
+        error: error.toString()
+      });
     }
-    
-    // Para outros emails, retorna erro (vai ser processado pelo GAS)
-    return {
-      success: false,
-      message: 'Credenciais inválidas',
-      data: null
-    };
   }
-  
-  if (action === 'register') {
-    return {
-      success: true,
-      message: 'Cadastro realizado! Aguarde aprovação.',
-      data: {
-        user_id: 'user_' + Date.now(),
-        nome: data.nome,
-        email: data.email,
-        tipo: data.tipo,
-        status: 'pendente'
-      }
-    };
-  }
-  
-  if (action === 'get_musicas') {
-    return {
-      success: true,
-      data: [
-        {
-          id: '1',
-          titulo: 'Bohemian Rhapsody',
-          artista: 'Queen',
-          link_capa: 'https://i.scdn.co/image/ab67616d0000b273e8b066f70c206551210d902b',
-          link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
-          valor_acao: 25.50,
-          percentual_disponivel: 30,
-          acoes_vendidas: 150,
-          total_investidores: 45,
-          rentabilidade_media: 12.5,
-          status: 'ativo',
-          genero: 'ROCK'
-        },
-        {
-          id: '2',
-          titulo: 'Blinding Lights',
-          artista: 'The Weeknd',
-          link_capa: 'https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36',
-          link_youtube: 'https://www.youtube.com/watch?v=4NRXx6U8ABQ',
-          valor_acao: 32.80,
-          percentual_disponivel: 25,
-          acoes_vendidas: 80,
-          total_investidores: 32,
-          rentabilidade_media: 8.3,
-          status: 'ativo',
-          genero: 'POP'
-        }
-      ],
-      pagination: {
-        page: 1,
-        limit: 20,
-        total: 2,
-        pages: 1
-      }
-    };
-  }
-  
-  if (action === 'get_saldo') {
-    return {
-      success: true,
-      data: { saldo_disponivel: 1000, saldo_bloqueado: 0 }
-    };
-  }
-  
-  // Default
-  return { success: true, data: [] };
 }
