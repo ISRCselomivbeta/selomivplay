@@ -1,5 +1,5 @@
 // ========== BACKEND.JS - VERCEL SERVERLESS FUNCTION ==========
-// VERSÃO QUE FUNCINA 100% SEM API DO GOOGLE
+// Este arquivo fica em /api/backend.js
 
 export default async function handler(req, res) {
   // Configurar CORS
@@ -110,6 +110,22 @@ function getFallbackData(action, data) {
         total: 2,
         pages: 1
       }
+    };
+  }
+  
+  if (action === 'get_saldo') {
+    return {
+      success: true,
+      data: { saldo_disponivel: 1000, saldo_bloqueado: 0 }
+    };
+  }
+  
+  if (['buy', 'buy_external', 'register', 'upload_music', 'suggest_external_music', 
+       'create_playlist', 'toggle_favorite', 'request_withdrawal'].includes(action)) {
+    return {
+      success: true,
+      message: 'Ação realizada com sucesso!',
+      data: { contrato_id: 'CT_' + Date.now() }
     };
   }
   
