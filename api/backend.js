@@ -15,8 +15,8 @@ export default async function handler(req, res) {
   
   const { action, ...params } = req.query;
   
-  // URL do seu Google Apps Script (MANTÉM A MESMA)
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
+  // URL do seu Google Apps Script
+  const GAS_URL = 'https://script.google.com/macros/s/SEU_ID_AQUI/exec'; // 🔴 COLOQUE SUA URL
   
   console.log('🚀 Backend Vercel chamado:', { action, params });
   
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
   }
 }
 
-// ========== FALLBACK DATA (igual ao seu frontend) ==========
+// ========== FALLBACK DATA ==========
 function getFallbackData(action, data) {
   console.log(`📦 [${action}] Usando fallback local no backend`);
   
@@ -68,6 +68,45 @@ function getFallbackData(action, data) {
       status: 'healthy',
       version: '6.0.0',
       timestamp: new Date().toISOString()
+    };
+  }
+  
+  if (action === 'login') {
+    // Admin master
+    if (data.email === 'selomiv@gmail.com' && data.password === 'selomiv123') {
+      return {
+        success: true,
+        message: 'Login ADMIN realizado',
+        data: {
+          id: 'admin_master',
+          nome: 'Administrador Master',
+          email: data.email,
+          tipo: 'admin',
+          saldo: 1000000,
+          favorite_music_ids: []
+        }
+      };
+    }
+    
+    // Para outros emails, retorna erro (vai ser processado pelo GAS)
+    return {
+      success: false,
+      message: 'Credenciais inválidas',
+      data: null
+    };
+  }
+  
+  if (action === 'register') {
+    return {
+      success: true,
+      message: 'Cadastro realizado! Aguarde aprovação.',
+      data: {
+        user_id: 'user_' + Date.now(),
+        nome: data.nome,
+        email: data.email,
+        tipo: data.tipo,
+        status: 'pendente'
+      }
     };
   }
   
@@ -120,14 +159,6 @@ function getFallbackData(action, data) {
     };
   }
   
-  if (['buy', 'buy_external', 'register', 'upload_music', 'suggest_external_music', 
-       'create_playlist', 'toggle_favorite', 'request_withdrawal'].includes(action)) {
-    return {
-      success: true,
-      message: 'Ação realizada com sucesso!',
-      data: { contrato_id: 'CT_' + Date.now() }
-    };
-  }
-  
+  // Default
   return { success: true, data: [] };
 }
