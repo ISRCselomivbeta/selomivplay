@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   const { action, ...params } = req.query;
   
   // SUA URL DO GOOGLE APPS SCRIPT
-  const GAS_URL = 'https://script.google.com/macros/s/SEU_ID_AQUI/exec'; // 🔴 COLOQUE SUA URL
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec'; // 🔴 COLOQUE SUA URL
   
   console.log('🚀 Backend Vercel chamado:', { action, params });
   
