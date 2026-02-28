@@ -2204,24 +2204,131 @@
         </section>
 
         <!-- Blockchain Explorer Section -->
-        <section id="blockchainSection" class="section">
-            <div class="section-header">
-                <h2 class="section-title">⛓️ Blockchain Explorer</h2>
-                <div>
-                    <button class="btn btn-sm btn-outline-purple ms-2" onclick="loadBlockchainData()">
-                        <i class="bi bi-arrow-clockwise"></i> Atualizar
-                    </button>
+<section id="blockchainSection" class="section">
+    <div class="section-header">
+        <h2 class="section-title"><i class="bi bi-link-45deg text-purple me-2"></i> Blockchain Explorer</h2>
+        <div>
+            <button class="btn btn-sm btn-outline-purple" onclick="loadBlockchainData()">
+                <i class="bi bi-arrow-clockwise"></i> Atualizar
+            </button>
+        </div>
+    </div>
+    
+    <div class="alert alert-info bg-dark border-purple mb-4">
+        <i class="bi bi-info-circle me-2"></i>
+        Todos os contratos e transações são registrados permanentemente na blockchain SELO MIV.
+        Cada bloco contém o hash do bloco anterior, garantindo imutabilidade.
+    </div>
+    
+    <!-- Blockchain Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-link"></i></div>
+                <div class="stat-value" id="blockchainContractsCount">0</div>
+                <div class="stat-label">Contratos</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-arrow-left-right"></i></div>
+                <div class="stat-value" id="blockchainTransactionsCount">0</div>
+                <div class="stat-label">Transações</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-shield-check"></i></div>
+                <div class="stat-value" id="blockchainLastBlock">0</div>
+                <div class="stat-label">Blocos</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-clock-history"></i></div>
+                <div class="stat-value" id="blockchainLastUpdate">-</div>
+                <div class="stat-label">Último bloco</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Últimos Contratos -->
+    <div class="card bg-dark border-purple mb-4">
+        <div class="card-header bg-purple text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i> Últimos Contratos</h5>
+            <span class="badge bg-light text-dark">Block #<span id="currentBlockNumber">0</span></span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="ledger-table">
+                    <thead>
+                        <tr>
+                            <th>Hash</th>
+                            <th>Timestamp</th>
+                            <th>Música</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Previous Hash</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blockchainContractsList">
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="bi bi-link-45deg fs-1 text-muted d-block mb-3"></i>
+                                <span class="text-muted">Nenhum contrato na blockchain</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Últimas Transações -->
+    <div class="card bg-dark border-purple">
+        <div class="card-header bg-purple text-white">
+            <h5 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i> Últimas Transações</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="ledger-table">
+                    <thead>
+                        <tr>
+                            <th>Hash</th>
+                            <th>Timestamp</th>
+                            <th>Tipo</th>
+                            <th>Detalhes</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blockchainTransactionsList">
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <i class="bi bi-arrow-left-right fs-1 text-muted d-block mb-3"></i>
+                                <span class="text-muted">Nenhuma transação na blockchain</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Blockchain Visualization -->
+    <div class="mt-4">
+        <h5 class="section-title">
+            <i class="bi bi-diagram-3 me-2"></i>
+            Visualização da Blockchain
+        </h5>
+        <div class="card bg-dark border-purple">
+            <div class="card-body">
+                <div id="blockchainVisualization" class="d-flex flex-wrap gap-3 justify-content-center">
+                    <!-- Blocks will be added here dynamically -->
                 </div>
             </div>
-            <div class="alert alert-info bg-dark border-purple mb-3">
-                <i class="bi bi-link-45deg me-2"></i>
-                Todos os royalties e investimentos são registrados permanentemente na blockchain.
-            </div>
-            <div id="blockchainContent">
-                <!-- Blockchain data will be loaded here -->
-            </div>
-        </section>
-    </main>
+        </div>
+    </div>
+</section>
 
     <!-- Player MIV -->
     <div id="playerSpotify" class="player-miv" style="display: none;" onclick="togglePlayerExpansion()">
@@ -3293,8 +3400,9 @@
     };
 
 // ========== FUNÇÃO DE API CORRIGIDA ==========
+// ========== FUNÇÃO DE API CORRIGIDA ==========
 async function callAPI(action, data = {}) {
-  // ✅ ADMIN MASTER
+  // ✅ ADMIN MASTER (mantido)
   if (action === 'login' && data.email === 'selomiv@gmail.com' && data.password === 'selomiv123') {
     console.log('✅ [login] Admin master logado');
     return {
@@ -3317,9 +3425,10 @@ async function callAPI(action, data = {}) {
   }
 
   try {
-    // ✅ Usa backend do Vercel
+    // ✅ URL CORRIGIDA - Usa o endpoint correto do Vercel
     const baseUrl = window.location.origin;
-    const url = new URL(`${baseUrl}/api/backend.js`);
+    // IMPORTANTE: Não usar .js na URL
+    const url = new URL(`${baseUrl}/api/backend`);
     
     url.searchParams.append('action', action);
     
@@ -3331,13 +3440,24 @@ async function callAPI(action, data = {}) {
 
     console.log(`📡 [${action}] Fetching:`, url.toString());
 
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     const result = await response.json();
     console.log(`✅ [${action}] Resposta:`, result);
     return result;
 
   } catch (error) {
     console.error(`❌ [${action}] Erro:`, error);
+    showToast('Erro de conexão com o servidor', 'error');
     return getFallbackData(action, data);
   }
 }
@@ -4152,79 +4272,112 @@ function getFallbackData(action, data) {
         }
     }
 
-    // ========== BLOCKCHAIN FUNCTIONS ==========
-    function openBlockchainExplorer() {
-        changeSection('blockchain');
-        
-        const container = document.getElementById('blockchainContent');
-        if (!container) return;
-        
-        const contracts = state.blockchain.contracts || [];
-        const transactions = state.blockchain.transactions || [];
-        
-        let html = `
-            <div class="card bg-dark border-purple mb-4">
-                <div class="card-header bg-purple text-white">
-                    <h5 class="mb-0"><i class="bi bi-link-45deg me-2"></i> Blockchain Explorer</h5>
+// ========== LOAD BLOCKCHAIN DATA ==========
+function loadBlockchainData() {
+    const contracts = state.blockchain.contracts || [];
+    const transactions = state.blockchain.transactions || [];
+    
+    // Atualizar stats
+    document.getElementById('blockchainContractsCount').textContent = contracts.length;
+    document.getElementById('blockchainTransactionsCount').textContent = transactions.length;
+    document.getElementById('blockchainLastBlock').textContent = state.blockchain.lastBlock || 0;
+    document.getElementById('blockchainLastUpdate').textContent = contracts.length > 0 ? 
+        formatDate(contracts[contracts.length - 1].timestamp) : '-';
+    document.getElementById('currentBlockNumber').textContent = state.blockchain.lastBlock || 0;
+    
+    // Renderizar contratos
+    const contractsList = document.getElementById('blockchainContractsList');
+    if (contracts.length === 0) {
+        contractsList.innerHTML = '<tr><td colspan="6" class="text-center py-4"><i class="bi bi-link-45deg fs-1 text-muted d-block mb-3"></i><span class="text-muted">Nenhum contrato na blockchain</span></td></tr>';
+    } else {
+        contractsList.innerHTML = contracts.slice(-5).reverse().map(c => {
+            // Buscar música
+            const music = state.playlist.find(m => m.id === c.music_id) || {};
+            return `
+                <tr>
+                    <td><span class="blockchain-hash" title="${c.hash}">${c.hash.substring(0, 10)}...${c.hash.substring(c.hash.length - 6)}</span></td>
+                    <td>${formatDate(c.timestamp)}</td>
+                    <td>${music.titulo || 'N/A'}</td>
+                    <td>${formatCurrency(c.valor_total || 0)}</td>
+                    <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Verificado</span></td>
+                    <td><span class="text-muted small" title="${c.previousHash}">${c.previousHash.substring(0, 8)}...</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    // Renderizar transações
+    const transactionsList = document.getElementById('blockchainTransactionsList');
+    if (transactions.length === 0) {
+        transactionsList.innerHTML = '<tr><td colspan="5" class="text-center py-4"><i class="bi bi-arrow-left-right fs-1 text-muted d-block mb-3"></i><span class="text-muted">Nenhuma transação na blockchain</span></td></tr>';
+    } else {
+        transactionsList.innerHTML = transactions.slice(-5).reverse().map(t => `
+            <tr>
+                <td><span class="blockchain-hash" title="${t.hash}">${t.hash.substring(0, 10)}...${t.hash.substring(t.hash.length - 6)}</span></td>
+                <td>${formatDate(t.timestamp)}</td>
+                <td>${t.id?.startsWith('ROY') ? '🎵 Royalty' : '💰 Transação'}</td>
+                <td>Valor: ${formatCurrency(t.amount || 0)}</td>
+                <td><span class="${t.distributed ? 'blockchain-verified' : 'blockchain-pending'}">
+                    <i class="bi ${t.distributed ? 'bi-check-circle' : 'bi-clock'}"></i>
+                    ${t.distributed ? 'Distribuído' : 'Pendente'}
+                </span></td>
+            </tr>
+        `).join('');
+    }
+    
+    // Renderizar visualização da blockchain
+    renderBlockchainVisualization(contracts);
+}
+
+function renderBlockchainVisualization(contracts) {
+    const container = document.getElementById('blockchainVisualization');
+    if (!container) return;
+    
+    if (contracts.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-4">Nenhum bloco minerado ainda</div>';
+        return;
+    }
+    
+    const lastBlocks = contracts.slice(-5);
+    
+    container.innerHTML = lastBlocks.map((block, index) => {
+        const isLast = index === lastBlocks.length - 1;
+        return `
+            <div class="card bg-dark border-${isLast ? 'success' : 'purple'}" style="width: 200px;">
+                <div class="card-header bg-${isLast ? 'success' : 'purple'} text-white py-2">
+                    <small>Bloco #${state.blockchain.contracts.indexOf(block) + 1}</small>
                 </div>
-                <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="bi bi-link"></i></div>
-                                <div class="stat-value">${contracts.length}</div>
-                                <div class="stat-label">Contratos na Blockchain</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="bi bi-arrow-left-right"></i></div>
-                                <div class="stat-value">${transactions.length}</div>
-                                <div class="stat-label">Transações Registradas</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="bi bi-shield-check"></i></div>
-                                <div class="stat-value">${state.blockchain.lastBlock}</div>
-                                <div class="stat-label">Blocos Minerados</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <h6 class="mb-3">Últimos Contratos</h6>
-                    <div class="table-responsive">
-                        <table class="ledger-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Hash</th>
-                                    <th>Timestamp</th>
-                                    <th>Valor</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${contracts.slice(-5).reverse().map(c => `
-                                    <tr>
-                                        <td>${c.id}</td>
-                                        <td><span class="blockchain-hash">${c.hash.substring(0, 15)}...</span></td>
-                                        <td>${formatDate(c.timestamp)}</td>
-                                        <td>${formatCurrency(c.valor_total || 0)}</td>
-                                        <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Verificado</span></td>
-                                    </tr>
-                                `).join('')}
-                                ${contracts.length === 0 ? '<tr><td colspan="5" class="text-center">Nenhum contrato na blockchain</td></tr>' : ''}
-                            </tbody>
-                        </table>
+                <div class="card-body p-2">
+                    <small class="d-block text-muted">Hash:</small>
+                    <small class="blockchain-hash d-block mb-2" style="font-size: 10px;">${block.hash.substring(0, 15)}...</small>
+                    <small class="d-block text-muted">Prev:</small>
+                    <small class="text-muted" style="font-size: 10px;">${block.previousHash.substring(0, 10)}...</small>
+                    <div class="mt-2">
+                        <span class="badge bg-${isLast ? 'success' : 'secondary'}">${block.music_id ? 'Contrato' : 'Gênesis'}</span>
                     </div>
                 </div>
             </div>
         `;
-        
-        container.innerHTML = html;
+    }).join('');
+    
+    // Adicionar setas de conexão
+    if (lastBlocks.length > 1) {
+        container.innerHTML += `
+            <div class="d-flex align-items-center">
+                <i class="bi bi-arrow-right fs-2 text-purple"></i>
+            </div>
+            <div class="card bg-dark border-purple" style="width: 200px;">
+                <div class="card-header bg-purple text-white py-2">
+                    <small>Próximo Bloco</small>
+                </div>
+                <div class="card-body p-2 text-center">
+                    <i class="bi bi-plus-circle text-muted"></i>
+                    <small class="d-block text-muted">Aguardando</small>
+                </div>
+            </div>
+        `;
     }
-
+}
     function showELORanking() {
         if (!state.playlist || state.playlist.length === 0) {
             showToast('Nenhuma música para ranking', 'warning');
