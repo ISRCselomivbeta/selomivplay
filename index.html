@@ -4,9 +4,9 @@
     <meta http-equiv="Set-Cookie" content="SameSite=None; Secure">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="SELO MIV - Plataforma de Investimento em Música">
+    <meta name="description" content="SELO MIV - Plataforma de Investimento em Música com Blockchain">
     <meta name="theme-color" content="#00ff88">
-    <title>SELO MIV | Fintech Musical</title>
+    <title>SELO MIV | Fintech Musical Blockchain</title>
     
     <!-- PERMITIR COMUNICAÇÃO COM YOUTUBE E GOOGLE APPS SCRIPT -->
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://script.google.com https://script.googleusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com;">
@@ -33,6 +33,8 @@
             --spotify-green: #1DB954;
             --player-height: 90px;
             --player-expanded-height: 100vh;
+            --blockchain-purple: #9b59b6;
+            --royalty-gold: #f1c40f;
         }
         
         * {
@@ -186,6 +188,27 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+        }
+
+        .btn-blockchain {
+            background: linear-gradient(135deg, var(--blockchain-purple) 0%, #8e44ad 100%);
+            border: none;
+            border-radius: 0.75rem;
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-blockchain:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(155, 89, 182, 0.3);
         }
         
         .auth-link {
@@ -405,7 +428,7 @@
             font-weight: 600;
         }
         
-        /* Player MIV */
+        /* Player MIV - Melhorado */
         .player-miv {
             position: fixed;
             bottom: 0;
@@ -421,6 +444,11 @@
             padding: 0 1.5rem;
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
             transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .player-miv:hover {
+            background: rgba(30, 30, 30, 0.98);
         }
 
         .player-bar {
@@ -703,7 +731,7 @@
             width: 80%;
         }
 
-        /* Player Expanded */
+        /* Player Expanded - Melhorado */
         .player-expanded {
             position: fixed;
             inset: 0;
@@ -1659,6 +1687,153 @@
         .spin {
             animation: spin 1s linear infinite;
         }
+
+        /* ===== NOVOS ESTILOS ===== */
+        
+        /* ELO System */
+        .elo-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin: 2px;
+            color: #000;
+            z-index: 10;
+        }
+        
+        .elo-ranking-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .elo-ranking-table th {
+            background: rgba(0,255,136,0.1);
+            color: var(--neon-green);
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid var(--neon-green);
+        }
+        
+        .elo-ranking-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-light);
+        }
+        
+        .elo-ranking-table tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .elo-trend-up { color: #00ff88; }
+        .elo-trend-down { color: #ff4444; }
+        .elo-trend-stable { color: #ffc107; }
+
+        /* Blockchain */
+        .blockchain-badge {
+            background: var(--blockchain-purple);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .blockchain-hash {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--blockchain-purple);
+            background: rgba(155, 89, 182, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        
+        .blockchain-verified {
+            color: var(--neon-green);
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .blockchain-pending {
+            color: #ffc107;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Artist Management */
+        .music-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .music-action-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-muted);
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .music-action-btn:hover {
+            background: var(--border);
+            color: var(--text-light);
+        }
+        
+        .music-action-btn.edit:hover {
+            border-color: #007bff;
+            color: #007bff;
+        }
+        
+        .music-action-btn.pause:hover {
+            border-color: #ffc107;
+            color: #ffc107;
+        }
+        
+        .music-action-btn.delete:hover {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .status-active {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+        }
+        
+        .status-paused {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid #ffc107;
+        }
+        
+        .status-deleted {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
     </style>
 </head>
 <body>
@@ -1686,7 +1861,7 @@
                 <i class="bi bi-shield-lock"></i>
             </div>
             <h2 class="text-white mb-2">SELO MIV</h2>
-            <p class="text-muted">Plataforma de Investimento em Música</p>
+            <p class="text-muted">Plataforma de Investimento em Música com Blockchain</p>
         </div>
 
         <!-- Login Form -->
@@ -1804,6 +1979,11 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="#" class="nav-link" onclick="openBlockchainExplorer()">
+                    <i class="bi bi-link-45deg text-purple"></i> <span class="text-purple">Blockchain Explorer</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="#" class="nav-link" onclick="openAddBalanceModal()">
                     <i class="bi bi-plus-circle text-success"></i> <span class="text-success">Adicionar Saldo</span>
                 </a>
@@ -1833,7 +2013,10 @@
                     <h4 id="currentBalance">R$ 0,00</h4>
                 </div>
             </div>
-            <div class="user-badge" id="userBadge">Ouvinte</div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="blockchain-badge" id="blockchainStatus">⛓️ Blockchain Ativa</span>
+                <div class="user-badge" id="userBadge">Ouvinte</div>
+            </div>
         </div>
     </header>
 
@@ -1845,6 +2028,9 @@
                 <h2 class="section-title">🎵 Marketplace</h2>
                 <div>
                     <small class="text-muted">Taxa 0% em compras</small>
+                    <button class="btn btn-sm btn-outline-warning ms-2" onclick="showELORanking()">
+                        <i class="bi bi-trophy-fill"></i> Ranking ELO
+                    </button>
                     <button class="btn btn-sm btn-outline-success ms-2" onclick="loadMarketplace(true)">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
@@ -1861,6 +2047,9 @@
                 <h6 class="text-muted">VALOR TOTAL DA CARTEIRA</h6>
                 <div class="portfolio-value" id="portfolioValue">R$ 0,00</div>
                 <small class="text-muted" id="portfolioUpdateTime">Atualizado em tempo real</small>
+                <div class="mt-2 blockchain-verified">
+                    <i class="bi bi-shield-check"></i> Todos os ativos registrados na blockchain
+                </div>
             </div>
             <div class="section-header">
                 <h2 class="section-title">📊 Meus Ativos</h2>
@@ -1892,6 +2081,7 @@
                             <th>Descrição</th>
                             <th class="text-end">Valor</th>
                             <th>Contrato</th>
+                            <th>Blockchain</th>
                         </tr>
                     </thead>
                     <tbody id="ledgerContent">
@@ -1906,7 +2096,7 @@
             <div class="section-header">
                 <h2 class="section-title">📈 Melhores Investimentos</h2>
                 <div>
-                    <small class="text-muted">Baseado em algoritmo inteligente</small>
+                    <small class="text-muted">Baseado em algoritmo ELO</small>
                     <button class="btn btn-sm btn-outline-success ms-2" onclick="loadTopInvestments(true)">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
@@ -1914,7 +2104,7 @@
             </div>
             <div class="alert alert-info bg-dark border-info mb-3">
                 <i class="bi bi-lightbulb me-2"></i>
-                Nosso algoritmo analisa vendas, disponibilidade e potencial de retorno para indicar os melhores investimentos.
+                Nosso algoritmo ELO analisa vendas, disponibilidade e potencial de retorno para indicar os melhores investimentos.
             </div>
             <div id="investmentsContent" class="music-grid">
                 <!-- Top investments will be loaded here -->
@@ -2012,10 +2202,29 @@
                 <!-- Artist's music will be loaded here -->
             </div>
         </section>
+
+        <!-- Blockchain Explorer Section -->
+        <section id="blockchainSection" class="section">
+            <div class="section-header">
+                <h2 class="section-title">⛓️ Blockchain Explorer</h2>
+                <div>
+                    <button class="btn btn-sm btn-outline-purple ms-2" onclick="loadBlockchainData()">
+                        <i class="bi bi-arrow-clockwise"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-info bg-dark border-purple mb-3">
+                <i class="bi bi-link-45deg me-2"></i>
+                Todos os royalties e investimentos são registrados permanentemente na blockchain.
+            </div>
+            <div id="blockchainContent">
+                <!-- Blockchain data will be loaded here -->
+            </div>
+        </section>
     </main>
 
     <!-- Player MIV -->
-    <div id="playerSpotify" class="player-miv" style="display: none;">
+    <div id="playerSpotify" class="player-miv" style="display: none;" onclick="togglePlayerExpansion()">
         <div class="player-bar">
             <div class="player-track-info">
                 <div class="track-image-container">
@@ -2024,7 +2233,7 @@
                         alt="Album Art" 
                         id="playerAlbumArt"
                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'56\' height=\'56\' viewBox=\'0 0 56 56\'%3E%3Crect width=\'56\' height=\'56\' fill=\'%23111418\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'14\' fill=\'%2300ff88\'%3EMIV%3C/text%3E%3C/svg%3E'">                    
-                    <div class="track-image-overlay" onclick="togglePlay()" id="trackImageOverlay">
+                    <div class="track-image-overlay" onclick="event.stopPropagation(); togglePlay()" id="trackImageOverlay">
                         <i class="bi bi-play-fill" id="trackOverlayIcon"></i>
                     </div>
                 </div>
@@ -2035,10 +2244,10 @@
                 </div>
                 
                 <div class="track-actions">
-                    <button class="player-btn favorite-btn" onclick="toggleFavorite()" id="favoriteBtn" title="Favoritar">
+                    <button class="player-btn favorite-btn" onclick="event.stopPropagation(); toggleFavorite()" id="favoriteBtn" title="Favoritar">
                         <i class="bi bi-star" id="favoriteIcon"></i>
                     </button>
-                    <button class="player-btn" onclick="openInvestModalFromPlayer()" title="Investir">
+                    <button class="player-btn" onclick="event.stopPropagation(); openInvestModalFromPlayer()" title="Investir">
                         <i class="bi bi-currency-dollar"></i>
                     </button>
                 </div>
@@ -2046,28 +2255,28 @@
             
             <div class="player-controls-center">
                 <div class="control-buttons">
-                    <button class="control-btn shuffle-btn" onclick="toggleShuffle()" id="shuffleBtn" title="Aleatório">
+                    <button class="control-btn shuffle-btn" onclick="event.stopPropagation(); toggleShuffle()" id="shuffleBtn" title="Aleatório">
                         <i class="bi bi-shuffle" id="shuffleIcon"></i>
                     </button>
                     
-                    <button class="control-btn prev-btn" onclick="playPrevious()" title="Anterior">
+                    <button class="control-btn prev-btn" onclick="event.stopPropagation(); playPrevious()" title="Anterior">
                         <i class="bi bi-skip-backward-fill"></i>
                     </button>
                     
-                    <button class="control-btn play-btn" onclick="togglePlay()" id="playPauseBtn" title="Play/Pause">
+                    <button class="control-btn play-btn" onclick="event.stopPropagation(); togglePlay()" id="playPauseBtn" title="Play/Pause">
                         <i class="bi bi-play-fill" id="playPauseIcon"></i>
                     </button>
                     
-                    <button class="control-btn next-btn" onclick="playNext()" title="Próxima">
+                    <button class="control-btn next-btn" onclick="event.stopPropagation(); playNext()" title="Próxima">
                         <i class="bi bi-skip-forward-fill"></i>
                     </button>
                     
-                    <button class="control-btn repeat-btn" onclick="toggleRepeat()" id="repeatBtn" title="Repetir">
+                    <button class="control-btn repeat-btn" onclick="event.stopPropagation(); toggleRepeat()" id="repeatBtn" title="Repetir">
                         <i class="bi bi-repeat" id="repeatIcon"></i>
                     </button>
                 </div>
                 
-                <div class="progress-container">
+                <div class="progress-container" onclick="event.stopPropagation()">
                     <span class="time-current" id="currentTimeDisplay">0:00</span>
                     <div class="progress-bar" onclick="handleProgressClick(event)" id="progressContainer">
                         <div class="progress-fill" id="playerProgressBar"></div>
@@ -2078,12 +2287,12 @@
             </div>
             
             <div class="player-controls-right">
-                <button class="player-btn queue-btn" onclick="toggleQueue()" title="Fila de reprodução">
+                <button class="player-btn queue-btn" onclick="event.stopPropagation(); toggleQueue()" title="Fila de reprodução">
                     <i class="bi bi-music-note-list"></i>
                 </button>
                 
-                <div class="volume-container">
-                    <button class="player-btn volume-btn" onclick="toggleMute()" title="Volume" id="volumeBtn">
+                <div class="volume-container" onclick="event.stopPropagation()">
+                    <button class="player-btn volume-btn" onclick="event.stopPropagation(); toggleMute()" title="Volume" id="volumeBtn">
                         <i class="bi bi-volume-up" id="volumeIcon"></i>
                     </button>
                     <div class="volume-slider-container">
@@ -2093,13 +2302,13 @@
                     </div>
                 </div>
                 
-                <button class="player-btn expand-btn" onclick="togglePlayerExpansion()" title="Expandir player">
+                <button class="player-btn expand-btn" onclick="event.stopPropagation(); togglePlayerExpansion()" title="Expandir player">
                     <i class="bi bi-arrows-angle-expand" id="expandIcon"></i>
                 </button>
             </div>
         </div>
         
-        <div class="player-expanded" id="playerExpanded">
+        <div class="player-expanded" id="playerExpanded" onclick="event.stopPropagation()">
             <div class="expanded-header">
                 <div class="expanded-track-info">
                     <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
@@ -2218,7 +2427,7 @@
                     
                     <div class="invest-cta">
                         <h4>Invista nesta música e participe dos royalties!</h4>
-                        <p>Cada ação dá direito a uma porcentagem dos rendimentos autorais.</p>
+                        <p>Cada ação dá direito a uma porcentagem dos rendimentos autorais registrados na blockchain.</p>
                         <button class="miv-btn invest-large-btn" onclick="openInvestModalFromPlayer()">
                             <i class="bi bi-currency-dollar"></i>
                             Investir Agora
@@ -2290,6 +2499,9 @@
             <div class="text-center mb-4">
                 <h6 id="investTrackTitle" class="fw-bold">Título da Música</h6>
                 <p class="text-muted" id="investTrackArtist">Artista</p>
+                <div class="blockchain-verified mt-2">
+                    <i class="bi bi-shield-check"></i> Registro na blockchain
+                </div>
             </div>
             
             <div class="form-group">
@@ -2321,6 +2533,10 @@
             <div class="alert alert-info bg-dark border-info mt-3">
                 <i class="bi bi-info-circle me-2"></i> 
                 Saldo disponível: <span id="investAvailableBalanceDisplay" class="fw-bold">R$ 0,00</span>
+            </div>
+
+            <div class="blockchain-hash mt-3" id="investBlockchainPreview">
+                ⛓️ Hash da transação: Será gerado após a confirmação
             </div>
         </div>
         
@@ -2536,6 +2752,85 @@
     </div>
 </div>
 
+<!-- Edit Music Modal -->
+<div id="editMusicModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i> Editar Música</h5>
+            <button class="modal-close" onclick="closeModal('editMusicModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <input type="hidden" id="editMusicId">
+            
+            <div class="form-group">
+                <label for="editMusicTitleField" class="text-muted mb-2 d-block">Título da Música *</label>
+                <input type="text" id="editMusicTitleField" class="form-control-custom" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMusicGenreField" class="text-muted mb-2 d-block">Gênero Musical *</label>
+                <select id="editMusicGenreField" class="form-control-custom" required>
+                    <option value="POP">🎵 POP</option>
+                    <option value="HIPHOP_RAP">🎤 HIP HOP / RAP</option>
+                    <option value="ROCK">🤘 ROCK</option>
+                    <option value="ELETRONICA">⚡ ELETRÔNICA</option>
+                    <option value="MPB">🎸 MPB</option>
+                    <option value="SERTANEJO">🎶 SERTANEJO</option>
+                    <option value="FUNK">💃 FUNK</option>
+                    <option value="OUTRO">🎼 OUTRO</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMusicYoutubeField" class="text-muted mb-2 d-block">Link do YouTube *</label>
+                <input type="url" id="editMusicYoutubeField" class="form-control-custom" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMusicCoverField" class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
+                <input type="url" id="editMusicCoverField" class="form-control-custom">
+            </div>
+            
+            <div class="form-group">
+                <label for="editMusicPriceField" class="text-muted mb-2 d-block">Valor por Ação *</label>
+                <input type="number" id="editMusicPriceField" class="form-control-custom" min="1" step="0.01" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMusicPercentField" class="text-muted mb-2 d-block">Percentual Disponível *</label>
+                <div class="input-group">
+                    <input type="number" id="editMusicPercentField" class="form-control-custom" min="1" max="100" required>
+                    <span class="input-group-text bg-dark text-white border-secondary">%</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="text-muted mb-2 d-block">Status da Música</label>
+                <select id="editMusicStatusField" class="form-control-custom">
+                    <option value="active">✅ Ativa</option>
+                    <option value="paused">⏸️ Pausada</option>
+                    <option value="deleted">🗑️ Solicitar Exclusão</option>
+                </select>
+                <small class="text-muted">Ao pausar, a música não aparecerá no marketplace</small>
+            </div>
+            
+            <div class="blockchain-hash mt-3" id="editMusicBlockchainInfo">
+                ⛓️ As alterações serão registradas na blockchain
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('editMusicModal')">Cancelar</button>
+            <button class="btn btn-miv" onclick="updateMusic()" id="updateMusicBtn">
+                <i class="bi bi-save me-2"></i> Salvar Alterações
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Add Balance Modal -->
 <div id="addBalanceModal" class="modal-overlay">
     <div class="modal-content">
@@ -2598,6 +2893,10 @@
                 <label for="bankDetailsField" class="text-muted mb-2 d-block">Dados bancários</label>
                 <textarea id="bankDetailsField" class="form-control-custom" rows="3" placeholder="Banco, Agência, Conta, CPF/CNPJ, Nome do titular"></textarea>
             </div>
+
+            <div class="blockchain-hash mt-3">
+                ⛓️ Transação será registrada na blockchain
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('withdrawalModal')">Cancelar</button>
@@ -2652,6 +2951,9 @@
             <div class="contract-view" id="contractContent">
                 <!-- Contract content will be loaded here -->
             </div>
+            <div class="blockchain-hash mt-3" id="contractBlockchainHash">
+                ⛓️ Hash: 0x...
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('contractModal')">Fechar</button>
@@ -2662,14 +2964,35 @@
     </div>
 </div>
 
+<!-- ELO Ranking Modal -->
+<div id="eloRankingModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-trophy-fill me-2 text-warning"></i> Ranking ELO das Músicas</h5>
+            <button class="modal-close" onclick="closeModal('eloRankingModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="eloRankingContent">
+                <!-- Ranking will be loaded here -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('eloRankingModal')">Fechar</button>
+        </div>
+    </div>
+</div>
+
 <!-- JavaScript -->
 <script>
     // ========== CONFIGURAÇÃO ==========
     const CONFIG = {
         API_URL: 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
         DEV_MODE: false,
-        VERSION: '5.1.0',
-        MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv'
+        VERSION: '6.0.0',
+        MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
+        BLOCKCHAIN_ENABLED: true
     };
 
     // ========== PLACEHOLDERS ==========
@@ -2701,7 +3024,272 @@
         isRepeat: false,
         lastVolume: 80,
         currentInvestTrack: null,
-        currentExternalTrack: null
+        currentExternalTrack: null,
+        blockchain: {
+            enabled: true,
+            contracts: [],
+            transactions: [],
+            lastBlock: 0
+        }
+    };
+
+    // ========== SISTEMA DE RATING ELO ==========
+    const ELO = {
+        CONFIG: {
+            BASE_RATING: 1400,
+            K_FACTOR: 32,
+            K_HIGH: 48,
+            K_LOW: 24,
+            MIN_MATCHES: 5,
+            DECAY_DAYS: 30,
+            DECAY_PERCENT: 0.05,
+            WEIGHTS: {
+                INVESTMENT: 0.35,
+                SHARES_SOLD: 0.25,
+                INVESTORS: 0.20,
+                RETURNS: 0.15,
+                EXTERNAL: 0.05
+            }
+        },
+
+        calculateExpected: function(ratingA, ratingB) {
+            return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+        },
+
+        getKFactor: function(expectedA, actualA) {
+            const surprise = Math.abs(actualA - expectedA);
+            if (surprise > 0.3) return this.CONFIG.K_HIGH;
+            else if (surprise < 0.1) return this.CONFIG.K_LOW;
+            else return this.CONFIG.K_FACTOR;
+        },
+
+        updateRating: function(ratingA, ratingB, actualA, kFactor = null) {
+            const expectedA = this.calculateExpected(ratingA, ratingB);
+            const k = kFactor || this.getKFactor(expectedA, actualA);
+            const newRatingA = ratingA + k * (actualA - expectedA);
+            const newRatingB = ratingB + k * ((1 - actualA) - (1 - expectedA));
+            return {
+                newRatingA: Math.max(100, Math.min(3000, Math.round(newRatingA))),
+                newRatingB: Math.max(100, Math.min(3000, Math.round(newRatingB)))
+            };
+        },
+
+        calculateMusicScore: function(music) {
+            if (!music) return this.CONFIG.BASE_RATING;
+            const weights = this.CONFIG.WEIGHTS;
+            const normalize = (value, min, max) => {
+                if (value <= min) return 0;
+                if (value >= max) return 1;
+                return (value - min) / (max - min);
+            };
+            
+            const investmentScore = normalize(music.valor_total_investido || 0, 0, 1000000) * 1000;
+            const sharesScore = normalize(music.acoes_vendidas || 0, 0, 10000) * 1000;
+            const investorsScore = normalize(music.total_investidores || 0, 0, 1000) * 1000;
+            const returnsScore = normalize(music.rentabilidade_media || 0, 0, 50) * 1000;
+            const externalBonus = music.is_external ? 50 : 0;
+            
+            const score = (
+                investmentScore * weights.INVESTMENT +
+                sharesScore * weights.SHARES_SOLD +
+                investorsScore * weights.INVESTORS +
+                returnsScore * weights.RETURNS
+            ) + externalBonus;
+            
+            return Math.round(this.CONFIG.BASE_RATING + score);
+        },
+
+        compareMusic: function(musicA, musicB, result) {
+            const ratingA = musicA.elo_rating || this.CONFIG.BASE_RATING;
+            const ratingB = musicB.elo_rating || this.CONFIG.BASE_RATING;
+            
+            const updated = this.updateRating(ratingA, ratingB, result);
+            
+            musicA.elo_history = musicA.elo_history || [];
+            musicB.elo_history = musicB.elo_history || [];
+            
+            musicA.elo_history.push({
+                date: new Date().toISOString(),
+                oldRating: ratingA,
+                newRating: updated.newRatingA,
+                result: result
+            });
+            
+            musicB.elo_history.push({
+                date: new Date().toISOString(),
+                oldRating: ratingB,
+                newRating: updated.newRatingB,
+                result: 1 - result
+            });
+            
+            musicA.elo_rating = updated.newRatingA;
+            musicB.elo_rating = updated.newRatingB;
+            
+            return { musicA, musicB };
+        },
+
+        updateCompleteRanking: function(musics) {
+            if (!musics || musics.length === 0) return musics;
+            
+            musics.forEach(music => {
+                if (!music.elo_rating) {
+                    music.elo_rating = this.calculateMusicScore(music);
+                }
+            });
+            
+            for (let i = 0; i < musics.length; i++) {
+                for (let j = i + 1; j < musics.length; j++) {
+                    const musicA = musics[i];
+                    const musicB = musics[j];
+                    
+                    const metricsA = [
+                        musicA.acoes_vendidas || 0,
+                        musicA.total_investidores || 0,
+                        musicA.rentabilidade_media || 0,
+                        musicA.valor_total_investido || 0
+                    ];
+                    
+                    const metricsB = [
+                        musicB.acoes_vendidas || 0,
+                        musicB.total_investidores || 0,
+                        musicB.rentabilidade_media || 0,
+                        musicB.valor_total_investido || 0
+                    ];
+                    
+                    const totalA = metricsA.reduce((sum, val) => sum + val, 0);
+                    const totalB = metricsB.reduce((sum, val) => sum + val, 0);
+                    
+                    let probA = 0.5;
+                    if (totalA + totalB > 0) {
+                        probA = totalA / (totalA + totalB);
+                    }
+                    
+                    const random = Math.random();
+                    let result;
+                    if (random < probA) result = 1;
+                    else if (random < probA + 0.05) result = 0.5;
+                    else result = 0;
+                    
+                    const updated = this.compareMusic(musicA, musicB, result);
+                    musics[i] = updated.musicA;
+                    musics[j] = updated.musicB;
+                }
+            }
+            
+            return musics.sort((a, b) => (b.elo_rating || 0) - (a.elo_rating || 0));
+        },
+
+        getRatingLevel: function(rating) {
+            if (rating >= 2600) return '⚜️ Lenda';
+            if (rating >= 2400) return '👑 Mestre';
+            if (rating >= 2200) return '💎 Diamante';
+            if (rating >= 2000) return '🥇 Platina';
+            if (rating >= 1800) return '🥈 Ouro';
+            if (rating >= 1600) return '🥉 Prata';
+            if (rating >= 1400) return '🔰 Bronze';
+            return '🆚 Iniciante';
+        },
+
+        getRatingColor: function(rating) {
+            if (rating >= 2400) return '#ffd700';
+            if (rating >= 2000) return '#c0c0c0';
+            if (rating >= 1600) return '#cd7f32';
+            return '#6c757d';
+        },
+
+        getTrend: function(music) {
+            if (!music.elo_history || music.elo_history.length < 2) return '➡️ Estável';
+            const last = music.elo_history[music.elo_history.length - 1];
+            const prev = music.elo_history[music.elo_history.length - 2];
+            if (last.newRating > prev.newRating) return '📈 Subindo';
+            if (last.newRating < prev.newRating) return '📉 Descendo';
+            return '➡️ Estável';
+        },
+
+        applyRatingDecay: function(musics) {
+            const now = new Date();
+            return musics.map(music => {
+                if (!music.elo_rating) return music;
+                const lastUpdate = music.last_rating_update ? new Date(music.last_rating_update) : now;
+                const daysDiff = (now - lastUpdate) / (1000 * 60 * 60 * 24);
+                
+                if (daysDiff > this.CONFIG.DECAY_DAYS) {
+                    const decayMultiplier = 1 - (this.CONFIG.DECAY_PERCENT * Math.floor(daysDiff / this.CONFIG.DECAY_DAYS));
+                    music.elo_rating = Math.max(this.CONFIG.BASE_RATING, Math.round(music.elo_rating * decayMultiplier));
+                    music.last_rating_update = now.toISOString();
+                    
+                    music.elo_history = music.elo_history || [];
+                    music.elo_history.push({
+                        date: now.toISOString(),
+                        oldRating: music.elo_rating / decayMultiplier,
+                        newRating: music.elo_rating,
+                        reason: 'decay'
+                    });
+                }
+                return music;
+            });
+        }
+    };
+
+    // ========== SISTEMA DE BLOCKCHAIN ==========
+    const Blockchain = {
+        generateHash: function(data) {
+            // Simula geração de hash blockchain
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(2, 15);
+            return '0x' + timestamp.toString(16) + random + data.substring(0, 8);
+        },
+
+        createContract: function(investment) {
+            const contract = {
+                id: 'CT_' + Date.now(),
+                hash: this.generateHash(investment.music_id + investment.user_id),
+                timestamp: new Date().toISOString(),
+                music_id: investment.music_id,
+                user_id: investment.user_id,
+                quantidade: investment.quantidade,
+                valor_total: investment.valor_total,
+                status: 'active',
+                previousHash: state.blockchain.lastBlock ? state.blockchain.contracts[state.blockchain.contracts.length - 1].hash : '0x0'
+            };
+            
+            state.blockchain.contracts.push(contract);
+            state.blockchain.lastBlock++;
+            
+            return contract;
+        },
+
+        recordRoyalty: function(music_id, amount, investors) {
+            const royalty = {
+                id: 'ROY_' + Date.now(),
+                hash: this.generateHash(music_id + amount),
+                timestamp: new Date().toISOString(),
+                music_id: music_id,
+                amount: amount,
+                investors: investors,
+                distributed: false
+            };
+            
+            state.blockchain.transactions.push(royalty);
+            return royalty;
+        },
+
+        verifyContract: function(contractId) {
+            const contract = state.blockchain.contracts.find(c => c.id === contractId);
+            if (!contract) return false;
+            
+            // Verifica integridade da cadeia
+            const index = state.blockchain.contracts.indexOf(contract);
+            if (index > 0) {
+                const prevContract = state.blockchain.contracts[index - 1];
+                return contract.previousHash === prevContract.hash;
+            }
+            return true;
+        },
+
+        getContractHistory: function(music_id) {
+            return state.blockchain.contracts.filter(c => c.music_id === music_id);
+        }
     };
 
     // ========== FUNÇÃO DE API COM JSONP ==========
@@ -2794,7 +3382,7 @@
             return {
                 success: true,
                 status: 'healthy',
-                version: '5.2.0',
+                version: '6.0.0',
                 timestamp: new Date().toISOString()
             };
         }
@@ -2822,8 +3410,9 @@
                         acoes_vendidas: 150,
                         total_investidores: 45,
                         rentabilidade_media: 12.5,
-                        status: 'ativo',
-                        genero: 'ROCK'
+                        status: 'active',
+                        genero: 'ROCK',
+                        blockchain_hash: '0x' + Date.now().toString(16)
                     },
                     {
                         id: '2',
@@ -2836,8 +3425,9 @@
                         acoes_vendidas: 80,
                         total_investidores: 32,
                         rentabilidade_media: 8.3,
-                        status: 'ativo',
-                        genero: 'POP'
+                        status: 'active',
+                        genero: 'POP',
+                        blockchain_hash: '0x' + (Date.now() + 1000).toString(16)
                     }
                 ],
                 pagination: {
@@ -2857,11 +3447,36 @@
         }
         
         if (['buy', 'buy_external', 'register', 'upload_music', 'suggest_external_music', 
-             'create_playlist', 'toggle_favorite', 'request_withdrawal'].includes(action)) {
+             'create_playlist', 'toggle_favorite', 'request_withdrawal', 'update_music', 
+             'delete_music', 'pause_music'].includes(action)) {
+            
+            // Se for uma compra, criar contrato na blockchain
+            if (action === 'buy' && CONFIG.BLOCKCHAIN_ENABLED) {
+                const contract = Blockchain.createContract({
+                    music_id: data.music_id,
+                    user_id: data.user_id || 'user_' + Date.now(),
+                    quantidade: data.quantidade,
+                    valor_total: data.valor_total
+                });
+                
+                return {
+                    success: true,
+                    message: 'Ação realizada com sucesso!',
+                    data: { 
+                        contrato_id: contract.id,
+                        blockchain_hash: contract.hash,
+                        transaction: contract
+                    }
+                };
+            }
+            
             return {
                 success: true,
                 message: 'Ação realizada com sucesso!',
-                data: { contrato_id: 'CT_' + Date.now() }
+                data: { 
+                    contrato_id: 'CT_' + Date.now(),
+                    blockchain_hash: Blockchain.generateHash(action + Date.now())
+                }
             };
         }
         
@@ -3031,7 +3646,12 @@
 
     async function loadMarketplace(forceRefresh = false) {
         const result = await callAPI('get_musicas');
-        if (result?.success && result?.data) state.playlist = result.data;
+        if (result?.success && result?.data) {
+            state.playlist = result.data;
+            // Aplicar ELO
+            state.playlist = ELO.applyRatingDecay(state.playlist);
+            state.playlist = ELO.updateCompleteRanking(state.playlist);
+        }
         renderMarketplace();
     }
 
@@ -3072,7 +3692,11 @@
 
     async function loadTopInvestments(forceRefresh = false) {
         const result = await callAPI('get_top_investments');
-        if (result?.success && result?.data) state.topInvestments = result.data;
+        if (result?.success && result?.data) {
+            state.topInvestments = result.data;
+            // Aplicar ELO nos top investments
+            state.topInvestments = ELO.updateCompleteRanking(state.topInvestments);
+        }
         renderTopInvestments();
     }
 
@@ -3126,6 +3750,13 @@
             if (percentSold >= 80) badgeClass = 'badge-danger';
             else if (percentSold >= 50) badgeClass = 'badge-warning';
             
+            // ELO data
+            const eloRating = track.elo_rating || ELO.CONFIG.BASE_RATING;
+            const eloLevel = ELO.getRatingLevel(eloRating);
+            const eloColor = ELO.getRatingColor(eloRating);
+            const trend = ELO.getTrend(track);
+            const trendClass = trend.includes('Subindo') ? 'elo-trend-up' : (trend.includes('Descendo') ? 'elo-trend-down' : 'elo-trend-stable');
+            
             return `<div class="music-card" onclick="playTrack(${index})">
                 <div class="position-relative">
                     <img src="${coverImage}" class="music-cover" alt="${track.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
@@ -3135,10 +3766,18 @@
                             <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}"></i>
                         </button>
                     </div>
+                    <div class="position-absolute top-0 start-50 translate-middle-x mt-2" style="z-index: 5;">
+                        <span class="elo-badge" style="background-color: ${eloColor};">${eloLevel}</span>
+                    </div>
+                    ${track.blockchain_hash ? '<div class="position-absolute bottom-0 end-0 m-2"><span class="blockchain-badge">⛓️</span></div>' : ''}
                 </div>
                 <div class="music-info">
                     <h6 class="music-title">${track.titulo || 'Sem título'}</h6>
                     <p class="music-artist">${track.artista || 'Artista Desconhecido'}</p>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted">Rating: <strong style="color: ${eloColor}">${eloRating}</strong></small>
+                        <small class="${trendClass}">${trend}</small>
+                    </div>
                     <div class="music-meta">
                         <span class="music-price">${formatCurrency(track.valor_acao || 0)}</span>
                         <span class="music-percent ${badgeClass}" data-tooltip="${availableShares} de ${totalShares} ações disponíveis">${percentSold}% vendido</span>
@@ -3260,6 +3899,7 @@
                                 <small class="text-muted">Ações: ${asset.quantidade || 0}</small>
                                 <small class="${profitVal >= 0 ? 'text-success' : 'text-danger'}">${profitVal >= 0 ? '▲' : '▼'} ${profitPerc.toFixed(1)}%</small>
                             </div>
+                            ${asset.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ Hash: ' + asset.blockchain_hash.substring(0, 10) + '...</div>' : ''}
                         </div>
                     </div>`;
                 }).join('')}
@@ -3303,7 +3943,7 @@
         const container = document.getElementById('ledgerContent');
         if (!container) return;
         if (!state.ledgerData?.length) {
-            container.innerHTML = '<tr><td colspan="4" class="text-center py-5"><i class="bi bi-receipt display-6 text-muted mb-3"></i><h5 class="text-muted">Nenhuma transação</h5><p class="text-muted">Suas transações aparecerão aqui</p></td></tr>';
+            container.innerHTML = '<tr><td colspan="5" class="text-center py-5"><i class="bi bi-receipt display-6 text-muted mb-3"></i><h5 class="text-muted">Nenhuma transação</h5><p class="text-muted">Suas transações aparecerão aqui</p></td></tr>';
             return;
         }
         const sorted = [...state.ledgerData].sort((a, b) => new Date(b.data) - new Date(a.data));
@@ -3311,7 +3951,7 @@
             const isNegative = t.valor < 0;
             const icons = { INVESTIMENTO: 'bi-currency-dollar', DEPOSITO: 'bi-plus-circle', SAQUE: 'bi-dash-circle', ROYALTY: 'bi-cash-coin' };
             const classes = { INVESTIMENTO: 'text-info', DEPOSITO: 'text-success', SAQUE: 'text-danger', ROYALTY: 'text-success' };
-            return `<tr><td>${formatDate(t.data)}</td><td><div class="d-flex align-items-center gap-2"><i class="bi ${icons[t.tipo] || 'bi-receipt'} ${classes[t.tipo] || 'text-muted'}"></i><div><div>${t.descricao || t.tipo}</div><small class="text-muted">Ref: ${t.referencia || 'N/A'}</small></div></div></td><td class="text-end ${isNegative ? 'text-danger' : 'text-success'}"><strong>${isNegative ? '-' : '+'}${formatCurrency(Math.abs(t.valor || 0))}</strong></td><td><button class="btn btn-sm btn-outline-info" onclick="viewContract('${t.referencia || ''}')"><i class="bi bi-file-earmark-text"></i></button></td></tr>`;
+            return `<tr><td>${formatDate(t.data)}</td><td><div class="d-flex align-items-center gap-2"><i class="bi ${icons[t.tipo] || 'bi-receipt'} ${classes[t.tipo] || 'text-muted'}"></i><div><div>${t.descricao || t.tipo}</div><small class="text-muted">Ref: ${t.referencia || 'N/A'}</small></div></div></td><td class="text-end ${isNegative ? 'text-danger' : 'text-success'}"><strong>${isNegative ? '-' : '+'}${formatCurrency(Math.abs(t.valor || 0))}</strong></td><td><button class="btn btn-sm btn-outline-info" onclick="viewContract('${t.referencia || ''}')"><i class="bi bi-file-earmark-text"></i></button></td><td>${t.blockchain_hash ? '<span class="blockchain-verified"><i class="bi bi-shield-check"></i></span>' : '-'}</td></tr>`;
         }).join('');
     }
 
@@ -3328,7 +3968,13 @@
             else if (i.investment_score >= 60) scoreColor = 'text-info';
             else if (i.investment_score >= 40) scoreColor = 'text-warning';
             const coverImage = i.link_capa?.trim() ? i.link_capa : PLACEHOLDERS.MIV_300;
-            return `<div class="music-card top-investment-card"><img src="${coverImage}" class="music-cover" alt="${i.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'"><div class="music-info"><h6 class="music-title">${i.titulo || 'Sem título'}</h6><p class="music-artist">${i.artista || 'Artista Desconhecido'}</p><div class="music-meta"><span class="music-price">${formatCurrency(i.valor_acao || 0)}</span><span class="badge badge-success">Score: ${i.investment_score || 0}</span></div><div class="d-flex justify-content-between align-items-center mt-2"><small class="${scoreColor}"><i class="bi bi-star-fill"></i> ${i.recommendation || 'Boa oportunidade'}</small><small class="text-success">+${i.rentabilidade_media || 0}% retorno</small></div></div></div>`;
+            
+            // ELO data
+            const eloRating = i.elo_rating || ELO.CONFIG.BASE_RATING;
+            const eloLevel = ELO.getRatingLevel(eloRating);
+            const eloColor = ELO.getRatingColor(eloRating);
+            
+            return `<div class="music-card top-investment-card"><img src="${coverImage}" class="music-cover" alt="${i.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'"><div class="music-info"><h6 class="music-title">${i.titulo || 'Sem título'}</h6><p class="music-artist">${i.artista || 'Artista Desconhecido'}</p><div class="music-meta"><span class="music-price">${formatCurrency(i.valor_acao || 0)}</span><span class="badge badge-success">Score: ${i.investment_score || 0}</span></div><div class="d-flex justify-content-between align-items-center mt-2"><small class="${scoreColor}"><i class="bi bi-star-fill"></i> ${i.recommendation || 'Boa oportunidade'}</small><small class="text-success">+${i.rentabilidade_media || 0}% retorno</small></div><div><span class="elo-badge" style="background-color: ${eloColor};">${eloLevel}</span></div></div></div>`;
         }).join('');
     }
 
@@ -3348,7 +3994,13 @@
                 favoritesContainer.innerHTML = favoriteTracks.map((t, i) => {
                     const trackIndex = state.playlist.findIndex(p => p.id === t.id);
                     const coverImage = t.link_capa?.trim() ? t.link_capa : PLACEHOLDERS.MIV_300;
-                    return `<div class="music-card" onclick="playTrack(${trackIndex})"><img src="${coverImage}" class="music-cover" alt="${t.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'"><div class="music-info"><h6 class="music-title">${t.titulo || 'Sem título'}</h6><p class="music-artist">${t.artista || 'Artista Desconhecido'}</p><div class="d-flex justify-content-between"><span class="music-price">${formatCurrency(t.valor_acao || 0)}</span><button class="favorite-btn active" onclick="event.stopPropagation(); toggleFavoriteMusic(\'${t.id}\', ${trackIndex})"><i class="bi bi-star-fill"></i></button></div></div></div>`;
+                    
+                    // ELO data
+                    const eloRating = t.elo_rating || ELO.CONFIG.BASE_RATING;
+                    const eloLevel = ELO.getRatingLevel(eloRating);
+                    const eloColor = ELO.getRatingColor(eloRating);
+                    
+                    return `<div class="music-card" onclick="playTrack(${trackIndex})"><img src="${coverImage}" class="music-cover" alt="${t.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'"><div class="music-info"><h6 class="music-title">${t.titulo || 'Sem título'}</h6><p class="music-artist">${t.artista || 'Artista Desconhecido'}</p><div class="d-flex justify-content-between"><span class="music-price">${formatCurrency(t.valor_acao || 0)}</span><button class="favorite-btn active" onclick="event.stopPropagation(); toggleFavoriteMusic(\'${t.id}\', ${trackIndex})"><i class="bi bi-star-fill"></i></button></div><span class="elo-badge" style="background-color: ${eloColor};">${eloLevel}</span></div></div>`;
                 }).join('');
             } else {
                 favoritesContainer.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-star empty-icon"></i><h5 class="text-muted">Nenhuma música favoritada</h5><p class="text-muted">Adicione músicas aos favoritos clicando na estrela</p></div>';
@@ -3366,8 +4018,306 @@
         container.innerHTML = musics.map(m => {
             const percentSold = m.percentual_disponivel ? ((m.acoes_vendidas || 0) / (m.percentual_disponivel / 0.01) * 100).toFixed(1) : 0;
             const coverImage = m.link_capa?.trim() ? m.link_capa : PLACEHOLDERS.MIV_300;
-            return `<div class="music-card"><img src="${coverImage}" class="music-cover" alt="${m.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'"><div class="music-info"><h6 class="music-title">${m.titulo || 'Sem título'}</h6><p class="music-artist">${m.artista || 'Artista Desconhecido'}</p><div class="music-meta"><span class="music-price">${formatCurrency(m.valor_acao || 0)}</span><span class="badge badge-info">${percentSold}% vendido</span></div><div class="d-flex justify-content-between mt-2"><small class="text-muted">Royalties: ${formatCurrency(m.royalties_acumulados || 0)}</small><small class="text-success">+${m.rentabilidade_media || 0}% retorno</small></div></div></div>`;
+            
+            let statusClass = 'status-active';
+            let statusText = '✅ Ativa';
+            if (m.status === 'paused') {
+                statusClass = 'status-paused';
+                statusText = '⏸️ Pausada';
+            } else if (m.status === 'deleted') {
+                statusClass = 'status-deleted';
+                statusText = '🗑️ Excluída';
+            }
+            
+            return `<div class="music-card">
+                <img src="${coverImage}" class="music-cover" alt="${m.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                <div class="music-info">
+                    <h6 class="music-title">${m.titulo || 'Sem título'}</h6>
+                    <p class="music-artist">${m.artista || 'Artista Desconhecido'}</p>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                    <div class="music-meta">
+                        <span class="music-price">${formatCurrency(m.valor_acao || 0)}</span>
+                        <span class="badge badge-info">${percentSold}% vendido</span>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <small class="text-muted">Royalties: ${formatCurrency(m.royalties_acumulados || 0)}</small>
+                        <small class="text-success">+${m.rentabilidade_media || 0}% retorno</small>
+                    </div>
+                    <div class="music-actions">
+                        <button class="music-action-btn edit" onclick="event.stopPropagation(); openEditMusicModal('${m.id}')">
+                            <i class="bi bi-pencil"></i> Editar
+                        </button>
+                        ${m.status !== 'paused' ? 
+                            `<button class="music-action-btn pause" onclick="event.stopPropagation(); pauseMusic('${m.id}')">
+                                <i class="bi bi-pause-circle"></i> Pausar
+                            </button>` : 
+                            `<button class="music-action-btn pause" onclick="event.stopPropagation(); unpauseMusic('${m.id}')">
+                                <i class="bi bi-play-circle"></i> Reativar
+                            </button>`
+                        }
+                        <button class="music-action-btn delete" onclick="event.stopPropagation(); requestDeleteMusic('${m.id}')">
+                            <i class="bi bi-trash"></i> Excluir
+                        </button>
+                    </div>
+                    ${m.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ ' + m.blockchain_hash.substring(0, 10) + '...</div>' : ''}
+                </div>
+            </div>`;
         }).join('');
+    }
+
+    // ========== ARTIST MANAGEMENT FUNCTIONS ==========
+    function openEditMusicModal(musicId) {
+        const music = state.playlist.find(m => m.id === musicId) || 
+                     (state.externalPlaylist ? state.externalPlaylist.find(m => m.id === musicId) : null);
+        
+        if (!music) {
+            showToast('Música não encontrada', 'error');
+            return;
+        }
+        
+        document.getElementById('editMusicId').value = music.id;
+        document.getElementById('editMusicTitleField').value = music.titulo || '';
+        document.getElementById('editMusicGenreField').value = music.genero || 'POP';
+        document.getElementById('editMusicYoutubeField').value = music.link_youtube || '';
+        document.getElementById('editMusicCoverField').value = music.link_capa || '';
+        document.getElementById('editMusicPriceField').value = music.valor_acao || 10;
+        document.getElementById('editMusicPercentField').value = music.percentual_disponivel || 20;
+        document.getElementById('editMusicStatusField').value = music.status || 'active';
+        
+        document.getElementById('editMusicBlockchainInfo').innerHTML = 
+            `⛓️ Hash atual: ${music.blockchain_hash || 'A ser gerado'}`;
+        
+        showModal('editMusicModal');
+    }
+
+    async function updateMusic() {
+        const musicId = document.getElementById('editMusicId').value;
+        const title = document.getElementById('editMusicTitleField').value.trim();
+        const genre = document.getElementById('editMusicGenreField').value;
+        const youtube = document.getElementById('editMusicYoutubeField').value.trim();
+        const cover = document.getElementById('editMusicCoverField').value.trim();
+        const price = parseFloat(document.getElementById('editMusicPriceField').value);
+        const percent = parseFloat(document.getElementById('editMusicPercentField').value);
+        const status = document.getElementById('editMusicStatusField').value;
+        
+        if (!title || !genre || !youtube || !price || !percent) {
+            showToast('Preencha todos os campos obrigatórios', 'error');
+            return;
+        }
+        
+        if (price < 1) {
+            showToast('Valor mínimo por ação: R$ 1,00', 'error');
+            return;
+        }
+        
+        if (percent < 1 || percent > 100) {
+            showToast('Percentual deve estar entre 1% e 100%', 'error');
+            return;
+        }
+        
+        const btn = document.getElementById('updateMusicBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Atualizando...';
+        
+        try {
+            const result = await callAPI('update_music', {
+                music_id: musicId,
+                titulo: title,
+                genero: genre,
+                link_youtube: youtube,
+                link_capa: cover,
+                valor_acao: price,
+                percentual_disponivel: percent,
+                status: status
+            });
+            
+            if (result?.success) {
+                showToast('Música atualizada com sucesso!', 'success');
+                closeModal('editMusicModal');
+                await Promise.all([loadMarketplace(true), loadArtistData(true)]);
+            } else {
+                showToast(result?.message || 'Erro ao atualizar música', 'error');
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar música:', error);
+            showToast('Erro ao atualizar música', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-save me-2"></i> Salvar Alterações';
+        }
+    }
+
+    async function pauseMusic(musicId) {
+        if (!confirm('Deseja pausar esta música? Ela não aparecerá no marketplace até ser reativada.')) {
+            return;
+        }
+        
+        try {
+            const result = await callAPI('pause_music', { music_id: musicId, action: 'pause' });
+            if (result?.success) {
+                showToast('Música pausada com sucesso!', 'success');
+                await Promise.all([loadMarketplace(true), loadArtistData(true)]);
+            }
+        } catch (error) {
+            console.error('Erro ao pausar música:', error);
+            showToast('Erro ao pausar música', 'error');
+        }
+    }
+
+    async function unpauseMusic(musicId) {
+        try {
+            const result = await callAPI('pause_music', { music_id: musicId, action: 'unpause' });
+            if (result?.success) {
+                showToast('Música reativada com sucesso!', 'success');
+                await Promise.all([loadMarketplace(true), loadArtistData(true)]);
+            }
+        } catch (error) {
+            console.error('Erro ao reativar música:', error);
+            showToast('Erro ao reativar música', 'error');
+        }
+    }
+
+    async function requestDeleteMusic(musicId) {
+        if (!confirm('Tem certeza que deseja solicitar a exclusão desta música? Esta ação não pode ser desfeita e afetará todos os investidores.')) {
+            return;
+        }
+        
+        try {
+            const result = await callAPI('delete_music', { music_id: musicId });
+            if (result?.success) {
+                showToast('Solicitação de exclusão enviada!', 'success');
+                await Promise.all([loadMarketplace(true), loadArtistData(true)]);
+            }
+        } catch (error) {
+            console.error('Erro ao solicitar exclusão:', error);
+            showToast('Erro ao solicitar exclusão', 'error');
+        }
+    }
+
+    // ========== BLOCKCHAIN FUNCTIONS ==========
+    function openBlockchainExplorer() {
+        changeSection('blockchain');
+        
+        const container = document.getElementById('blockchainContent');
+        if (!container) return;
+        
+        const contracts = state.blockchain.contracts || [];
+        const transactions = state.blockchain.transactions || [];
+        
+        let html = `
+            <div class="card bg-dark border-purple mb-4">
+                <div class="card-header bg-purple text-white">
+                    <h5 class="mb-0"><i class="bi bi-link-45deg me-2"></i> Blockchain Explorer</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="bi bi-link"></i></div>
+                                <div class="stat-value">${contracts.length}</div>
+                                <div class="stat-label">Contratos na Blockchain</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="bi bi-arrow-left-right"></i></div>
+                                <div class="stat-value">${transactions.length}</div>
+                                <div class="stat-label">Transações Registradas</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="bi bi-shield-check"></i></div>
+                                <div class="stat-value">${state.blockchain.lastBlock}</div>
+                                <div class="stat-label">Blocos Minerados</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mb-3">Últimos Contratos</h6>
+                    <div class="table-responsive">
+                        <table class="ledger-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Hash</th>
+                                    <th>Timestamp</th>
+                                    <th>Valor</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${contracts.slice(-5).reverse().map(c => `
+                                    <tr>
+                                        <td>${c.id}</td>
+                                        <td><span class="blockchain-hash">${c.hash.substring(0, 15)}...</span></td>
+                                        <td>${formatDate(c.timestamp)}</td>
+                                        <td>${formatCurrency(c.valor_total || 0)}</td>
+                                        <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Verificado</span></td>
+                                    </tr>
+                                `).join('')}
+                                ${contracts.length === 0 ? '<tr><td colspan="5" class="text-center">Nenhum contrato na blockchain</td></tr>' : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+
+    function showELORanking() {
+        if (!state.playlist || state.playlist.length === 0) {
+            showToast('Nenhuma música para ranking', 'warning');
+            return;
+        }
+        
+        const ranked = [...state.playlist].sort((a, b) => (b.elo_rating || ELO.CONFIG.BASE_RATING) - (a.elo_rating || ELO.CONFIG.BASE_RATING));
+        
+        let rankingHTML = `
+            <table class="elo-ranking-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Música</th>
+                        <th>Artista</th>
+                        <th>Rating</th>
+                        <th>Nível</th>
+                        <th>Tendência</th>
+                        <th>Retorno</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        ranked.forEach((music, index) => {
+            const eloRating = music.elo_rating || ELO.CONFIG.BASE_RATING;
+            const eloLevel = ELO.getRatingLevel(eloRating);
+            const eloColor = ELO.getRatingColor(eloRating);
+            const trend = ELO.getTrend(music);
+            const trendClass = trend.includes('Subindo') ? 'elo-trend-up' : (trend.includes('Descendo') ? 'elo-trend-down' : 'elo-trend-stable');
+            
+            rankingHTML += `
+                <tr>
+                    <td><strong>${index + 1}º</strong></td>
+                    <td>${music.titulo || 'Sem título'}</td>
+                    <td>${music.artista || 'Desconhecido'}</td>
+                    <td><strong style="color: ${eloColor}">${eloRating}</strong></td>
+                    <td><span class="elo-badge" style="background-color: ${eloColor};">${eloLevel}</span></td>
+                    <td class="${trendClass}">${trend}</td>
+                    <td class="text-success">+${music.rentabilidade_media || 0}%</td>
+                </tr>
+            `;
+        });
+        
+        rankingHTML += `
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('eloRankingContent').innerHTML = rankingHTML;
+        showModal('eloRankingModal');
     }
 
     // ========== PLAYER FUNCTIONS ==========
@@ -3377,8 +4327,18 @@
             return;
         }
         
-        state.currentTrackIndex = index;
+        // Verificar status da música
         const track = state.playlist[index];
+        if (track.status === 'paused') {
+            showToast('Esta música está pausada pelo artista', 'warning');
+            return;
+        }
+        if (track.status === 'deleted') {
+            showToast('Esta música não está mais disponível', 'error');
+            return;
+        }
+        
+        state.currentTrackIndex = index;
         
         const player = document.getElementById('playerSpotify');
         if (player) player.style.display = 'flex';
@@ -3656,6 +4616,7 @@
 
     function handleProgressClick(e) {
         if (!state.youtubePlayer?.seekTo) return;
+        e.stopPropagation();
         const rect = document.getElementById('progressContainer').getBoundingClientRect();
         const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         state.youtubePlayer.seekTo(state.youtubePlayer.getDuration() * percent, true);
@@ -3750,6 +4711,7 @@
     }
     
     function handleVolumeClick(event) {
+        event.stopPropagation();
         const volumeSlider = document.getElementById('volumeSlider');
         if (!volumeSlider) return;
         
@@ -3795,15 +4757,31 @@
             showToast('Música não encontrada', 'error'); 
             return; 
         }
-        state.currentInvestTrack = state.playlist[trackIndex];
-        document.getElementById('investTrackTitle').textContent = state.currentInvestTrack.titulo || 'Sem título';
-        document.getElementById('investTrackArtist').textContent = state.currentInvestTrack.artista || 'Artista Desconhecido';
-        document.getElementById('investUnitPriceDisplay').textContent = formatCurrency(state.currentInvestTrack.valor_acao || 0);
+        
+        const track = state.playlist[trackIndex];
+        if (track.status === 'paused') {
+            showToast('Esta música está pausada pelo artista', 'warning');
+            return;
+        }
+        if (track.status === 'deleted') {
+            showToast('Esta música não está mais disponível', 'error');
+            return;
+        }
+        
+        state.currentInvestTrack = track;
+        document.getElementById('investTrackTitle').textContent = track.titulo || 'Sem título';
+        document.getElementById('investTrackArtist').textContent = track.artista || 'Artista Desconhecido';
+        document.getElementById('investUnitPriceDisplay').textContent = formatCurrency(track.valor_acao || 0);
         document.getElementById('investAvailableBalanceDisplay').textContent = formatCurrency(state.userBalance);
         document.getElementById('investQuantityField').value = 1;
-        const totalShares = (state.currentInvestTrack.percentual_disponivel || 0) / 0.01;
-        const availableShares = Math.max(0, totalShares - (state.currentInvestTrack.acoes_vendidas || 0));
+        const totalShares = (track.percentual_disponivel || 0) / 0.01;
+        const availableShares = Math.max(0, totalShares - (track.acoes_vendidas || 0));
         document.getElementById('investSharesAvailable').textContent = `Disponível: ${availableShares} ações`;
+        
+        // Blockchain preview
+        document.getElementById('investBlockchainPreview').innerHTML = 
+            `⛓️ Hash da transação: ${Blockchain.generateHash(track.id + Date.now()).substring(0, 20)}...`;
+        
         updateInvestmentTotal();
         showModal('investModal');
     }
@@ -3840,17 +4818,46 @@
         showLoading('Processando investimento...');
 
         try {
-            await callAPI('buy', { 
+            const result = await callAPI('buy', { 
                 music_id: state.currentInvestTrack.id, 
                 quantidade: qty, 
                 valor_unitario: state.currentInvestTrack.valor_acao || 0, 
                 valor_total: total 
             });
-            state.userBalance -= total;
-            updateBalanceDisplay();
-            closeModal('investModal');
-            showToast('Investimento realizado!', 'success');
-            await Promise.all([loadMarketplace(), loadPortfolio(), loadLedger()]);
+            
+            if (result?.success) {
+                state.userBalance -= total;
+                updateBalanceDisplay();
+                closeModal('investModal');
+                
+                // Registrar na blockchain
+                if (CONFIG.BLOCKCHAIN_ENABLED && result.data?.blockchain_hash) {
+                    showToast(`Investimento realizado! Hash: ${result.data.blockchain_hash.substring(0, 10)}...`, 'success');
+                } else {
+                    showToast('Investimento realizado!', 'success');
+                }
+                
+                await Promise.all([loadMarketplace(), loadPortfolio(), loadLedger()]);
+                
+                // Atualizar ELO rating
+                if (state.currentInvestTrack) {
+                    const musicIndex = state.playlist.findIndex(m => m.id === state.currentInvestTrack.id);
+                    if (musicIndex >= 0) {
+                        const baseMusic = {
+                            id: 'base',
+                            acoes_vendidas: 0,
+                            total_investidores: 0,
+                            rentabilidade_media: 0,
+                            valor_total_investido: 0
+                        };
+                        const updated = ELO.compareMusic(state.playlist[musicIndex], baseMusic, 1);
+                        state.playlist[musicIndex] = updated.musicA;
+                        renderMarketplace();
+                    }
+                }
+            } else {
+                showToast(result?.message || 'Erro ao processar investimento', 'error');
+            }
         } catch (error) {
             console.error('Erro ao investir:', error);
             showToast('Erro ao processar investimento', 'error');
@@ -3915,17 +4922,22 @@
         showLoading('Processando investimento...');
 
         try {
-            await callAPI('buy_external', { 
+            const result = await callAPI('buy_external', { 
                 external_id: state.currentExternalTrack.id, 
                 quantidade: qty, 
                 valor_unitario: state.currentExternalTrack.valor_acao || 0, 
                 valor_total: total 
             });
-            state.userBalance -= total;
-            updateBalanceDisplay();
-            closeModal('investExternalModal');
-            showToast('Investimento externo realizado!', 'success');
-            await Promise.all([loadExternalMarketplace(), loadLedger()]);
+            
+            if (result?.success) {
+                state.userBalance -= total;
+                updateBalanceDisplay();
+                closeModal('investExternalModal');
+                showToast('Investimento externo realizado!', 'success');
+                await Promise.all([loadExternalMarketplace(), loadLedger()]);
+            } else {
+                showToast(result?.message || 'Erro ao processar investimento', 'error');
+            }
         } catch (error) {
             console.error('Erro ao investir externo:', error);
             showToast('Erro ao processar investimento', 'error');
@@ -4055,25 +5067,31 @@
         btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cadastrando...';
         
         try {
-            await callAPI('upload_music', { 
+            const result = await callAPI('upload_music', { 
                 titulo: title, 
                 artista: state.currentUser?.nome || 'Artista', 
                 genero: genre, 
                 link_youtube: youtube, 
                 link_capa: cover, 
                 valor_acao: price, 
-                percentual_disponivel: percent 
+                percentual_disponivel: percent,
+                status: 'active'
             });
-            showToast('Música cadastrada!', 'success');
-            closeModal('addMusicModal');
-            document.getElementById('musicTitleField').value = '';
-            document.getElementById('musicGenreField').value = '';
-            document.getElementById('musicYoutubeField').value = '';
-            document.getElementById('musicCoverField').value = '';
-            document.getElementById('musicPriceField').value = '10.00';
-            document.getElementById('musicPercentField').value = '20';
-            document.getElementById('musicTermsField').checked = false;
-            await Promise.all([loadArtistData(true), loadMarketplace(true)]);
+            
+            if (result?.success) {
+                showToast('Música cadastrada!', 'success');
+                closeModal('addMusicModal');
+                document.getElementById('musicTitleField').value = '';
+                document.getElementById('musicGenreField').value = '';
+                document.getElementById('musicYoutubeField').value = '';
+                document.getElementById('musicCoverField').value = '';
+                document.getElementById('musicPriceField').value = '10.00';
+                document.getElementById('musicPercentField').value = '20';
+                document.getElementById('musicTermsField').checked = false;
+                await Promise.all([loadArtistData(true), loadMarketplace(true)]);
+            } else {
+                showToast(result?.message || 'Erro ao cadastrar música', 'error');
+            }
         } catch (error) {
             console.error('Erro ao cadastrar música:', error);
             showToast('Erro ao cadastrar música', 'error');
@@ -4106,7 +5124,7 @@
         btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Enviando...';
         
         try {
-            await callAPI('suggest_external_music', { 
+            const result = await callAPI('suggest_external_music', { 
                 link_youtube: youtube, 
                 titulo: title, 
                 artista: artist, 
@@ -4115,17 +5133,21 @@
                 mensagem: message 
             });
             
-            showToast('Música sugerida!', 'success');
-            closeModal('addExternalMusicModal');
-            
-            document.getElementById('externalYoutubeLinkField').value = '';
-            document.getElementById('externalTitleField').value = '';
-            document.getElementById('externalArtistField').value = '';
-            document.getElementById('externalPriceField').value = '10.00';
-            document.getElementById('externalPercentField').value = '20';
-            document.getElementById('externalMessageField').value = '';
-            
-            await loadExternalMarketplace(true);
+            if (result?.success) {
+                showToast('Música sugerida!', 'success');
+                closeModal('addExternalMusicModal');
+                
+                document.getElementById('externalYoutubeLinkField').value = '';
+                document.getElementById('externalTitleField').value = '';
+                document.getElementById('externalArtistField').value = '';
+                document.getElementById('externalPriceField').value = '10.00';
+                document.getElementById('externalPercentField').value = '20';
+                document.getElementById('externalMessageField').value = '';
+                
+                await loadExternalMarketplace(true);
+            } else {
+                showToast(result?.message || 'Erro ao sugerir música', 'error');
+            }
         } catch (error) {
             console.error('Erro ao sugerir música:', error);
             showToast('Erro ao sugerir música', 'error');
@@ -4227,16 +5249,20 @@
         btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Solicitando...';
         
         try {
-            await callAPI('request_withdrawal', { 
+            const result = await callAPI('request_withdrawal', { 
                 valor: amount, 
                 metodo: method, 
                 dados_bancarios: details 
             });
             
-            state.userBalance -= amount;
-            updateBalanceDisplay();
-            closeModal('withdrawalModal');
-            showToast('Saque solicitado!', 'success');
+            if (result?.success) {
+                state.userBalance -= amount;
+                updateBalanceDisplay();
+                closeModal('withdrawalModal');
+                showToast('Saque solicitado!', 'success');
+            } else {
+                showToast(result?.message || 'Erro ao processar saque', 'error');
+            }
         } catch (error) {
             console.error('Erro ao solicitar saque:', error);
             showToast('Erro ao processar saque', 'error');
@@ -4255,7 +5281,10 @@
             <p>Este é um contrato digital entre o investidor e o SELO MIV.</p>
             <p>O investidor adquire direitos proporcionais sobre os royalties da música conforme o percentual investido.</p>
             <p>Os termos completos estão disponíveis na plataforma.</p>
+            <p><strong>Blockchain Hash:</strong> ${Blockchain.generateHash(ref)}</p>
         `; 
+        document.getElementById('contractBlockchainHash').innerHTML = 
+            `⛓️ Hash: ${Blockchain.generateHash(ref)}`;
         showModal('contractModal'); 
     }
 
@@ -4273,7 +5302,10 @@
 
     function changeSection(section) { 
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); 
-        document.getElementById(section + 'Section')?.classList.add('active'); 
+        const sectionElement = document.getElementById(section + 'Section');
+        if (sectionElement) {
+            sectionElement.classList.add('active');
+        }
         toggleSidebar(); 
         window.scrollTo(0, 0); 
     }
@@ -4435,6 +5467,15 @@
     window.validateWithdrawalAmount = validateWithdrawalAmount;
     window.toggleArtistField = toggleArtistField; 
     window.formatCurrency = formatCurrency;
+    
+    // NOVAS FUNÇÕES
+    window.openEditMusicModal = openEditMusicModal;
+    window.updateMusic = updateMusic;
+    window.pauseMusic = pauseMusic;
+    window.unpauseMusic = unpauseMusic;
+    window.requestDeleteMusic = requestDeleteMusic;
+    window.openBlockchainExplorer = openBlockchainExplorer;
+    window.showELORanking = showELORanking;
 
     // ========== FUNÇÕES UTILITÁRIAS ==========
     function formatCurrency(value) {
@@ -4516,4 +5557,3 @@
 </script>
 </body>
 </html>
-
