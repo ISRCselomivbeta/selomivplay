@@ -4270,95 +4270,137 @@ async function loadAllData() {
         }).join('');
     }
 
-    function renderPortfolio() {
-        const container = document.getElementById('portfolioContent');
-        if (!container) return;
+function renderPortfolio() {
+    const container = document.getElementById('portfolioContent');
+    if (!container) return;
+    
+    const assets = Array.isArray(state.portfolioAssets) ? state.portfolioAssets : [];
+    
+    document.getElementById('assetsCount').textContent = `${assets.length} ativo${assets.length !== 1 ? 's' : ''}`;
+    
+    if (!assets.length) {
+        container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-briefcase empty-icon"></i><h5 class="text-muted">Nenhum investimento</h5><p class="text-muted">Você ainda não investiu em nenhuma música</p><button class="btn-miv mt-3" onclick="changeSection(\'marketplace\')"><i class="bi bi-shop me-2"></i> Explorar Marketplace</button></div>';
+        return;
+    }
+    
+    // Calcular totais com valorização REAL
+    let totalInvestido = 0;
+    let valorAtualTotal = 0;
+    
+    assets.forEach(asset => {
+        const valorInvestido = asset.valor_total || 0;
+        totalInvestido += valorInvestido;
         
-        const assets = Array.isArray(state.portfolioAssets) ? state.portfolioAssets : [];
-        
-        document.getElementById('assetsCount').textContent = `${assets.length} ativo${assets.length !== 1 ? 's' : ''}`;
-        
-        if (!assets.length) {
-            container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-briefcase empty-icon"></i><h5 class="text-muted">Nenhum investimento</h5><p class="text-muted">Você ainda não investiu em nenhuma música</p><button class="btn-miv mt-3" onclick="changeSection(\'marketplace\')"><i class="bi bi-shop me-2"></i> Explorar Marketplace</button></div>';
-            return;
+        // Buscar preço atual da música no marketplace
+        const music = state.playlist.find(m => m.id === asset.music_id);
+        if (music && music.valor_acao) {
+            // Valor atual = quantidade * preço atual da ação
+            const valorAtual = (asset.quantidade || 0) * music.valor_acao;
+            valorAtualTotal += valorAtual;
+        } else {
+            // Se não encontrar a música, usar o valor investido
+            valorAtualTotal += valorInvestido;
         }
-        
-        const totalInvested = assets.reduce((sum, a) => sum + (a.valor_total || 0), 0);
-        const currentValue = assets.reduce((sum, a) => sum + (a.valor_total || 0) * (1 + (a.rentabilidade_media || 0) / 100), 0);
-        const profit = currentValue - totalInvested;
-        const profitPercent = totalInvested > 0 ? (profit / totalInvested * 100) : 0;
-        
-        container.innerHTML = `
-            <div class="artist-stats mb-4">
-                <div class="stat-card"><div class="stat-icon"><i class="bi bi-cash-stack"></i></div><div class="stat-value">${formatCurrency(totalInvested)}</div><div class="stat-label">Total Investido</div></div>
-                <div class="stat-card"><div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div><div class="stat-value">${formatCurrency(currentValue)}</div><div class="stat-label">Valor Atual</div></div>
-                <div class="stat-card"><div class="stat-icon"><i class="bi bi-arrow-up-right ${profit >= 0 ? 'text-success' : 'text-danger'}"></i></div><div class="stat-value ${profit >= 0 ? 'text-success' : 'text-danger'}">${formatCurrency(profit)} (${profitPercent.toFixed(1)}%)</div><div class="stat-label">Lucro/Prejuízo</div></div>
+    });
+    
+    const profit = valorAtualTotal - totalInvestido;
+    const profitPercent = totalInvestido > 0 ? (profit / totalInvestido * 100) : 0;
+    
+    container.innerHTML = `
+        <div class="artist-stats mb-4">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
+                <div class="stat-value">${formatCurrency(totalInvestido)}</div>
+                <div class="stat-label">Total Investido</div>
             </div>
-            <div class="music-grid">
-                ${assets.map((asset) => {
-                    const music = state.playlist.find(m => m.id === asset.music_id) || {};
-                    const appreciation = asset.rentabilidade_media || 0;
-                    const currentVal = (asset.valor_total || 0) * (1 + appreciation / 100);
-                    const profitVal = currentVal - (asset.valor_total || 0);
-                    const profitPerc = asset.valor_total > 0 ? (profitVal / asset.valor_total * 100) : 0;
-                    
-                    let coverImage = PLACEHOLDERS.MIV_300;
-                    if (music.link_capa && typeof music.link_capa === 'string' && music.link_capa.trim() !== '') {
-                        coverImage = music.link_capa.trim();
-                    }
-                    
-                    return `<div class="music-card">
-                        <img src="${coverImage}" class="music-cover" alt="${music.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                        <div class="music-info">
-                            <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
-                            <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
-                            <div class="music-meta">
-                                <span class="music-price">${formatCurrency(asset.valor_total || 0)}</span>
-                                <span class="investment-score"><i class="bi bi-graph-up-arrow"></i> ${appreciation}%</span>
-                            </div>
-                            <div class="d-flex justify-content-between mt-2">
-                                <small class="text-muted">Ações: ${asset.quantidade || 0}</small>
-                                <small class="${profitVal >= 0 ? 'text-success' : 'text-danger'}">${profitVal >= 0 ? '▲' : '▼'} ${profitPerc.toFixed(1)}%</small>
-                            </div>
-                            ${asset.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ Hash: ' + asset.blockchain_hash.substring(0, 10) + '...</div>' : ''}
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                <div class="stat-value">${formatCurrency(valorAtualTotal)}</div>
+                <div class="stat-label">Valor Atual</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-arrow-up-right ${profit >= 0 ? 'text-success' : 'text-danger'}"></i></div>
+                <div class="stat-value ${profit >= 0 ? 'text-success' : 'text-danger'}">
+                    ${formatCurrency(profit)} (${profitPercent.toFixed(1)}%)
+                </div>
+                <div class="stat-label">Lucro/Prejuízo</div>
+            </div>
+        </div>
+        <div class="music-grid">
+            ${assets.map((asset) => {
+                const music = state.playlist.find(m => m.id === asset.music_id) || {};
+                const valorInvestido = asset.valor_total || 0;
+                const quantidade = asset.quantidade || 0;
+                
+                // Calcular valor atual baseado no preço da música
+                let valorAtual = valorInvestido;
+                let profitVal = 0;
+                let profitPerc = 0;
+                
+                if (music.valor_acao) {
+                    valorAtual = quantidade * music.valor_acao;
+                    profitVal = valorAtual - valorInvestido;
+                    profitPerc = valorInvestido > 0 ? (profitVal / valorInvestido * 100) : 0;
+                }
+                
+                let coverImage = PLACEHOLDERS.MIV_300;
+                if (music.link_capa && typeof music.link_capa === 'string' && music.link_capa.trim() !== '') {
+                    coverImage = music.link_capa.trim();
+                }
+                
+                return `<div class="music-card">
+                    <img src="${coverImage}" class="music-cover" alt="${music.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <div class="music-info">
+                        <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
+                        <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
+                        <div class="music-meta">
+                            <span class="music-price">${formatCurrency(valorInvestido)}</span>
+                            <span class="investment-score">
+                                <i class="bi bi-graph-up-arrow"></i> 
+                                ${profitPerc > 0 ? '+' : ''}${profitPerc.toFixed(1)}%
+                            </span>
                         </div>
-                    </div>`;
-                }).join('')}
-            </div>`;
-    }
+                        <div class="d-flex justify-content-between mt-2">
+                            <small class="text-muted">Ações: ${quantidade}</small>
+                            <small class="${profitVal >= 0 ? 'text-success' : 'text-danger'}">
+                                ${profitVal >= 0 ? '▲' : '▼'} 
+                                ${formatCurrency(Math.abs(profitVal))}
+                            </small>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small class="text-muted">Preço atual:</small>
+                            <small class="text-success">${formatCurrency(music.valor_acao || 0)}</small>
+                        </div>
+                        ${asset.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ Hash: ' + asset.blockchain_hash.substring(0, 10) + '...</div>' : ''}
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+}
 
-    function updatePortfolioValue() {
-        const el = document.getElementById('portfolioValue');
-        if (!el) return;
-        
-        let totalValue = 0;
-        
-        if (Array.isArray(state.portfolioAssets) && state.portfolioAssets.length > 0) {
-            totalValue = state.portfolioAssets.reduce((sum, a) => {
-                const valor = a.valor_total || 0;
-                const rentabilidade = a.rentabilidade_media || 0;
-                return sum + (valor * (1 + rentabilidade / 100));
-            }, 0);
-        } else if (state.portfolioAssets && typeof state.portfolioAssets === 'object' && !Array.isArray(state.portfolioAssets)) {
-            console.log('Convertendo formato antigo de carteira');
-            const investimentos = state.portfolioAssets.investimentos || [];
-            if (Array.isArray(investimentos)) {
-                totalValue = investimentos.reduce((sum, a) => {
-                    const valor = a.valor_total || 0;
-                    const rentabilidade = a.rentabilidade_media || 0;
-                    return sum + (valor * (1 + rentabilidade / 100));
-                }, 0);
-            }
-            state.portfolioAssets = investimentos;
+function updatePortfolioValue() {
+    const el = document.getElementById('portfolioValue');
+    if (!el) return;
+    
+    let totalValue = 0;
+    const assets = Array.isArray(state.portfolioAssets) ? state.portfolioAssets : [];
+    
+    assets.forEach(asset => {
+        const music = state.playlist.find(m => m.id === asset.music_id);
+        if (music && music.valor_acao) {
+            totalValue += (asset.quantidade || 0) * music.valor_acao;
+        } else {
+            totalValue += asset.valor_total || 0;
         }
-        
-        el.textContent = formatCurrency(totalValue);
-        
-        const updateEl = document.getElementById('portfolioUpdateTime');
-        if (updateEl) {
-            updateEl.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-        }
+    });
+    
+    el.textContent = formatCurrency(totalValue);
+    
+    const updateEl = document.getElementById('portfolioUpdateTime');
+    if (updateEl) {
+        updateEl.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
     }
+}
 
     function renderLedger() {
         const container = document.getElementById('ledgerContent');
