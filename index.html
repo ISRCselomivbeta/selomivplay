@@ -4023,20 +4023,21 @@ function getFallbackData(action, data) {
         }
     }
 
-    // ========== INICIALIZAÇÃO ==========
-    function initializeApp() {
-        document.getElementById('authScreen').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        updateUserInterface();
-        loadAllData();
-        loadYouTubeAPI();
-        setInterval(() => {
+// ========== INICIALIZAÇÃO ==========
+function initializeApp() {
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    updateUserInterface();
+    loadAllData();
+    loadYouTubeAPI();
+    
+    // Atualizar saldo a cada 30 segundos
+    setInterval(() => {
         if (state.currentUser) {
             updateBalanceDisplay();
         }
     }, 30000);
 }
-    }
 
 // ========== CARREGAR DADOS ==========
 async function loadAllData() {
