@@ -4030,29 +4030,39 @@ function getFallbackData(action, data) {
         updateUserInterface();
         loadAllData();
         loadYouTubeAPI();
+        setInterval(() => {
+        if (state.currentUser) {
+            updateBalanceDisplay();
+        }
+    }, 30000);
+}
     }
 
-    // ========== CARREGAR DADOS ==========
-    async function loadAllData() {
-        showLoading('Carregando dados...');
-        try {
-            await Promise.all([
-                loadMarketplace(),
-                loadExternalMarketplace(),
-                loadPortfolio(),
-                loadLedger(),
-                loadTopInvestments(),
-                loadUserPlaylists()
-            ]);
-            if (state.currentUser?.tipo === 'artista') await loadArtistData();
-            showToast('Sistema carregado!', 'success');
-        } catch (error) {
-            console.error('Erro ao carregar dados:', error);
-            showToast('Alguns dados não foram carregados', 'warning');
-        } finally {
-            hideLoading();
-        }
+// ========== CARREGAR DADOS ==========
+async function loadAllData() {
+    showLoading('Carregando dados...');
+    try {
+        await Promise.all([
+            loadMarketplace(),
+            loadExternalMarketplace(),
+            loadPortfolio(),
+            loadLedger(),
+            loadTopInvestments(),
+            loadUserPlaylists()
+        ]);
+        
+        // Atualizar saldo da planilha
+        await updateBalanceDisplay();
+        
+        if (state.currentUser?.tipo === 'artista') await loadArtistData();
+        showToast('Sistema carregado!', 'success');
+    } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        showToast('Alguns dados não foram carregados', 'warning');
+    } finally {
+        hideLoading();
     }
+}
 
     async function loadMarketplace(forceRefresh = false) {
         const result = await callAPI('get_musicas');
@@ -5084,74 +5094,77 @@ function getFallbackData(action, data) {
         updateInvestmentTotal(); 
     }
 
-    async function confirmInvestment() {
-        if (!state.currentUser || !state.currentInvestTrack) { 
-            showToast('Erro ao processar investimento', 'error'); 
-            return; 
-        }
-        const qty = parseInt(document.getElementById('investQuantityField').value) || 1;
-        const total = qty * (state.currentInvestTrack.valor_acao || 0);
-        if (total > state.userBalance) { 
-            showToast('Saldo insuficiente', 'error'); 
-            return; 
-        }
-        
-        const btn = document.getElementById('confirmInvestBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Processando...';
-        showLoading('Processando investimento...');
-
-        try {
-            const result = await callAPI('buy', { 
-                music_id: state.currentInvestTrack.id, 
-                quantidade: qty, 
-                valor_unitario: state.currentInvestTrack.valor_acao || 0, 
-                valor_total: total 
-            });
-            
-            if (result?.success) {
-                state.userBalance -= total;
-                updateBalanceDisplay();
-                closeModal('investModal');
-                
-                // Registrar na blockchain
-                if (CONFIG.BLOCKCHAIN_ENABLED && result.data?.blockchain_hash) {
-                    showToast(`Investimento realizado! Hash: ${result.data.blockchain_hash.substring(0, 10)}...`, 'success');
-                } else {
-                    showToast('Investimento realizado!', 'success');
-                }
-                
-                await Promise.all([loadMarketplace(), loadPortfolio(), loadLedger()]);
-                
-                // Atualizar ELO rating
-                if (state.currentInvestTrack) {
-                    const musicIndex = state.playlist.findIndex(m => m.id === state.currentInvestTrack.id);
-                    if (musicIndex >= 0) {
-                        const baseMusic = {
-                            id: 'base',
-                            acoes_vendidas: 0,
-                            total_investidores: 0,
-                            rentabilidade_media: 0,
-                            valor_total_investido: 0
-                        };
-                        const updated = ELO.compareMusic(state.playlist[musicIndex], baseMusic, 1);
-                        state.playlist[musicIndex] = updated.musicA;
-                        renderMarketplace();
-                    }
-                }
-            } else {
-                showToast(result?.message || 'Erro ao processar investimento', 'error');
-            }
-        } catch (error) {
-            console.error('Erro ao investir:', error);
-            showToast('Erro ao processar investimento', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-circle me-2"></i> Confirmar Investimento';
-            hideLoading();
-        }
+// ========== CONFIRM INVESTMENT CORRIGIDO ==========
+async function confirmInvestment() {
+    if (!state.currentUser || !state.currentInvestTrack) { 
+        showToast('Erro ao processar investimento', 'error'); 
+        return; 
     }
+    
+    const qty = parseInt(document.getElementById('investQuantityField').value) || 1;
+    const total = qty * (state.currentInvestTrack.valor_acao || 0);
+    
+    if (total > state.userBalance) { 
+        showToast('Saldo insuficiente', 'error'); 
+        return; 
+    }
+    
+    const btn = document.getElementById('confirmInvestBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Processando...';
+    showLoading('Processando investimento...');
 
+    try {
+        const result = await callAPI('buy', { 
+            music_id: state.currentInvestTrack.id, 
+            quantidade: qty, 
+            valor_unitario: state.currentInvestTrack.valor_acao || 0, 
+            valor_total: total 
+        });
+        
+        if (result?.success) {
+            // NÃO atualizar localmente - buscar da API
+            showToast('Investimento realizado!', 'success');
+            closeModal('investModal');
+            
+            // Atualizar saldo direto da planilha
+            await updateBalanceDisplay();
+            
+            // Recarregar dados
+            await Promise.all([
+                loadMarketplace(),
+                loadPortfolio(),
+                loadLedger()
+            ]);
+            
+            // Atualizar ELO rating
+            if (state.currentInvestTrack) {
+                const musicIndex = state.playlist.findIndex(m => m.id === state.currentInvestTrack.id);
+                if (musicIndex >= 0) {
+                    const baseMusic = {
+                        id: 'base',
+                        acoes_vendidas: 0,
+                        total_investidores: 0,
+                        rentabilidade_media: 0,
+                        valor_total_investido: 0
+                    };
+                    const updated = ELO.compareMusic(state.playlist[musicIndex], baseMusic, 1);
+                    state.playlist[musicIndex] = updated.musicA;
+                    renderMarketplace();
+                }
+            }
+        } else {
+            showToast(result?.message || 'Erro ao processar investimento', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao investir:', error);
+        showToast('Erro ao processar investimento', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle me-2"></i> Confirmar Investimento';
+        hideLoading();
+    }
+}
     // ========== EXTERNAL INVEST MODAL CORRIGIDO ==========
     function openInvestExternalModal(trackIndex) {
         if (trackIndex < 0 || trackIndex >= state.externalPlaylist.length) { 
@@ -5611,11 +5624,39 @@ function getFallbackData(action, data) {
         return new Date(d).toLocaleDateString('pt-BR'); 
     }
 
-    function updateBalanceDisplay() { 
-        const el = document.getElementById('currentBalance'); 
-        if (el) el.textContent = formatCurrency(state.userBalance); 
+    // ========== FUNÇÃO PARA ATUALIZAR SALDO ==========
+async function updateBalanceDisplay() {
+    const el = document.getElementById('currentBalance');
+    if (!el) return;
+    
+    // Se não tiver usuário logado, mostra 0
+    if (!state.currentUser || !state.currentUser.id) {
+        el.textContent = formatCurrency(0);
+        return;
     }
-
+    
+    try {
+        // Buscar saldo atual da planilha via API
+        const result = await callAPI('get_saldo', { user_id: state.currentUser.id });
+        
+        if (result?.success && result.data) {
+            // Atualizar estado local
+            state.userBalance = result.data.saldo_disponivel || 0;
+            
+            // Atualizar display
+            el.textContent = formatCurrency(state.userBalance);
+            
+            console.log('💰 Saldo atualizado:', state.userBalance);
+        } else {
+            // Fallback para o estado local se a API falhar
+            el.textContent = formatCurrency(state.userBalance);
+        }
+    } catch (error) {
+        console.error('Erro ao buscar saldo:', error);
+        // Fallback para o estado local
+        el.textContent = formatCurrency(state.userBalance);
+    }
+}
     function updateUserInterface() { 
         if (!state.currentUser) return; 
         const badge = document.getElementById('userBadge'); 
