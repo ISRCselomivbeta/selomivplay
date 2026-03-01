@@ -2661,66 +2661,6 @@
         </div>
     </div>
 </section>
-                    
-                    <div class="invest-cta">
-                        <h4>Invista nesta música e participe dos royalties!</h4>
-                        <p>Cada ação dá direito a uma porcentagem dos rendimentos autorais registrados na blockchain.</p>
-                        <button class="miv-btn invest-large-btn" onclick="openInvestModalFromPlayer()">
-                            <i class="bi bi-currency-dollar"></i>
-                            Investir Agora
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="expanded-controls">
-                    <div class="expanded-controls-top">
-                        <button class="control-btn" onclick="toggleShuffle()" id="expandedShuffleBtn">
-                            <i class="bi bi-shuffle" id="expandedShuffleIcon"></i>
-                            Aleatório
-                        </button>
-                        
-                        <button class="control-btn" onclick="toggleRepeat()" id="expandedRepeatBtn">
-                            <i class="bi bi-repeat" id="expandedRepeatIcon"></i>
-                            Repetir
-                        </button>
-                        
-                        <div class="queue-info">
-                            <i class="bi bi-music-note-list"></i>
-                            <span>Na fila: <strong id="queueCount">0</strong> músicas</span>
-                        </div>
-                    </div>
-                    
-                    <div class="expanded-progress-container">
-                        <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
-                            <div class="expanded-progress-fill" id="expandedProgressBar"></div>
-                        </div>
-                        <div class="expanded-time-display">
-                            <span id="expandedCurrentTime">0:00</span>
-                            <span id="expandedTotalTime">0:00</span>
-                        </div>
-                    </div>
-                    
-                    <div class="expanded-controls-bottom">
-                        <button class="control-btn prev-large-btn" onclick="playPrevious()">
-                            <i class="bi bi-skip-backward-fill"></i>
-                            Anterior
-                        </button>
-                        
-                        <button class="control-btn play-large-btn-expanded" onclick="togglePlay()" id="expandedPlayPauseBtn">
-                            <i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i>
-                            <span id="expandedPlayPauseText">Pausar</span>
-                        </button>
-                        
-                        <button class="control-btn next-large-btn" onclick="playNext()">
-                            <i class="bi bi-skip-forward-fill"></i>
-                            Próxima
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Invest Modal -->
 <div id="investModal" class="modal-overlay">
@@ -5745,16 +5685,6 @@ function renderBlockchainVisualization(contracts) {
 
     function toggleSidebar() { 
         document.getElementById('sidebar')?.classList.toggle('open'); 
-    }
-
-    function changeSection(section) { 
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); 
-        const sectionElement = document.getElementById(section + 'Section');
-        if (sectionElement) {
-            sectionElement.classList.add('active');
-        }
-        toggleSidebar(); 
-        window.scrollTo(0, 0); 
     }
 
     function toggleArtistField() { 
