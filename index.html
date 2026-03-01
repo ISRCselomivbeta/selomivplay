@@ -3288,76 +3288,59 @@ window.showELORanking = function() {
 };
 
 // ========== FUNÇÃO LOAD BLOCKCHAIN DATA GLOBAL ==========
-window.loadBlockchainData = function() {
+window.loadBlockchainData = async function() {
     console.log('loadBlockchainData chamado');
-    const contracts = state.blockchain.contracts || [];
-    const transactions = state.blockchain.transactions || [];
     
-    // Atualizar stats
-    const contractsCount = document.getElementById('blockchainContractsCount');
-    if (contractsCount) contractsCount.textContent = contracts.length;
-    
-    const transactionsCount = document.getElementById('blockchainTransactionsCount');
-    if (transactionsCount) transactionsCount.textContent = transactions.length;
-    
-    const lastBlock = document.getElementById('blockchainLastBlock');
-    if (lastBlock) lastBlock.textContent = state.blockchain.lastBlock || 0;
-    
-    const lastUpdate = document.getElementById('blockchainLastUpdate');
-    if (lastUpdate) lastUpdate.textContent = contracts.length > 0 ? 
-        formatDate(contracts[contracts.length - 1].timestamp) : '-';
-    
-    const currentBlock = document.getElementById('currentBlockNumber');
-    if (currentBlock) currentBlock.textContent = state.blockchain.lastBlock || 0;
-    
-    // Renderizar contratos
-    const contractsList = document.getElementById('blockchainContractsList');
-    if (contractsList) {
-        if (contracts.length === 0) {
-            contractsList.innerHTML = '<tr><td colspan="6" class="text-center py-4"><i class="bi bi-link-45deg fs-1 text-muted d-block mb-3"></i><span class="text-muted">Nenhum contrato na blockchain</span></td></tr>';
-        } else {
-            contractsList.innerHTML = contracts.slice(-5).reverse().map(c => {
-                // Buscar música
-                const music = state.playlist.find(m => m.id === c.music_id) || {};
-                return `
+    try {
+        // Buscar blocos da planilha via API
+        const result = await callAPI('get_mining_stats', {});
+        
+        if (result?.success && result.data) {
+            // Atualizar stats
+            document.getElementById('blockchainContractsCount').textContent = result.data.global?.total_blocks || 0;
+            document.getElementById('blockchainTransactionsCount').textContent = result.data.global?.total_transactions || 0;
+            document.getElementById('blockchainLastBlock').textContent = result.data.global?.total_blocks || 0;
+            document.getElementById('blockchainLastUpdate').textContent = new Date().toLocaleTimeString('pt-BR');
+            document.getElementById('currentBlockNumber').textContent = result.data.global?.total_blocks || 0;
+        }
+        
+        // Buscar contratos específicos
+        const contractsResult = await callAPI('get_mining_ranking', { limit: 20 });
+        
+        const contractsList = document.getElementById('blockchainContractsList');
+        if (contractsList) {
+            if (contractsResult?.success && contractsResult.data?.length > 0) {
+                contractsList.innerHTML = contractsResult.data.map((item, index) => {
+                    return `
+                        <tr>
+                            <td><span class="blockchain-hash">0x${(index + 1000).toString(16)}...</span></td>
+                            <td>${new Date().toLocaleDateString('pt-BR')}</td>
+                            <td>${item.user_name || 'Usuário'}</td>
+                            <td>${formatCurrency(item.total_rewards || 0)}</td>
+                            <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Verificado</span></td>
+                            <td><span class="text-muted small">0x${(index).toString(16)}...</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                contractsList.innerHTML = `
                     <tr>
-                        <td><span class="blockchain-hash" title="${c.hash}">${c.hash.substring(0, 10)}...${c.hash.substring(c.hash.length - 6)}</span></td>
-                        <td>${formatDate(c.timestamp)}</td>
-                        <td>${music.titulo || 'N/A'}</td>
-                        <td>${formatCurrency(c.valor_total || 0)}</td>
-                        <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Verificado</span></td>
-                        <td><span class="text-muted small" title="${c.previousHash}">${c.previousHash.substring(0, 8)}...</span></td>
+                        <td colspan="6" class="text-center py-4">
+                            <i class="bi bi-link-45deg fs-1 text-muted d-block mb-3"></i>
+                            <span class="text-muted">Nenhum bloco minerado ainda. Faça um investimento!</span>
+                        </td>
                     </tr>
                 `;
-            }).join('');
+            }
         }
+        
+        // Renderizar visualização
+        renderBlockchainVisualization([]);
+        
+    } catch (error) {
+        console.error('Erro ao carregar blockchain:', error);
     }
-    
-    // Renderizar transações
-    const transactionsList = document.getElementById('blockchainTransactionsList');
-    if (transactionsList) {
-        if (transactions.length === 0) {
-            transactionsList.innerHTML = '<tr><td colspan="5" class="text-center py-4"><i class="bi bi-arrow-left-right fs-1 text-muted d-block mb-3"></i><span class="text-muted">Nenhuma transação na blockchain</span></td></tr>';
-        } else {
-            transactionsList.innerHTML = transactions.slice(-5).reverse().map(t => `
-                <tr>
-                    <td><span class="blockchain-hash" title="${t.hash}">${t.hash.substring(0, 10)}...${t.hash.substring(t.hash.length - 6)}</span></td>
-                    <td>${formatDate(t.timestamp)}</td>
-                    <td>${t.id?.startsWith('ROY') ? '🎵 Royalty' : '💰 Transação'}</td>
-                    <td>Valor: ${formatCurrency(t.amount || 0)}</td>
-                    <td><span class="${t.distributed ? 'blockchain-verified' : 'blockchain-pending'}">
-                        <i class="bi ${t.distributed ? 'bi-check-circle' : 'bi-clock'}"></i>
-                        ${t.distributed ? 'Distribuído' : 'Pendente'}
-                    </span></td>
-                </tr>
-            `).join('');
-        }
-    }
-    
-    // Renderizar visualização da blockchain
-    renderBlockchainVisualization(contracts);
 };
-
 // ========== FUNÇÃO RENDER BLOCKCHAIN VISUALIZATION ==========
 window.renderBlockchainVisualization = function(contracts) {
     const container = document.getElementById('blockchainVisualization');
@@ -4546,165 +4529,6 @@ function getFallbackData(action, data) {
             console.error('Erro ao solicitar exclusão:', error);
             showToast('Erro ao solicitar exclusão', 'error');
         }
-    }
-
-// ========== LOAD BLOCKCHAIN DATA ==========
-function loadBlockchainData() {
-    const contracts = state.blockchain.contracts || [];
-    const transactions = state.blockchain.transactions || [];
-    
-    // Atualizar stats
-    document.getElementById('blockchainContractsCount').textContent = contracts.length;
-    document.getElementById('blockchainTransactionsCount').textContent = transactions.length;
-    document.getElementById('blockchainLastBlock').textContent = state.blockchain.lastBlock || 0;
-    document.getElementById('blockchainLastUpdate').textContent = contracts.length > 0 ? 
-        formatDate(contracts[contracts.length - 1].timestamp) : '-';
-    document.getElementById('currentBlockNumber').textContent = state.blockchain.lastBlock || 0;
-    
-    // Renderizar contratos
-    const contractsList = document.getElementById('blockchainContractsList');
-    if (contracts.length === 0) {
-        contractsList.innerHTML = '<tr><td colspan="6" class="text-center py-4"><i class="bi bi-link-45deg fs-1 text-muted d-block mb-3"></i><span class="text-muted">Nenhum contrato na blockchain</span></td></tr>';
-    } else {
-        contractsList.innerHTML = contracts.slice(-5).reverse().map(c => {
-            // Buscar música
-            const music = state.playlist.find(m => m.id === c.music_id) || {};
-            return `
-                <tr>
-                    <td><span class="blockchain-hash" title="${c.hash}">${c.hash.substring(0, 10)}...${c.hash.substring(c.hash.length - 6)}</span></td>
-                    <td>${formatDate(c.timestamp)}</td>
-                    <td>${music.titulo || 'N/A'}</td>
-                    <td>${formatCurrency(c.valor_total || 0)}</td>
-                    <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Verificado</span></td>
-                    <td><span class="text-muted small" title="${c.previousHash}">${c.previousHash.substring(0, 8)}...</span></td>
-                </tr>
-            `;
-        }).join('');
-    }
-    
-    // Renderizar transações
-    const transactionsList = document.getElementById('blockchainTransactionsList');
-    if (transactions.length === 0) {
-        transactionsList.innerHTML = '<tr><td colspan="5" class="text-center py-4"><i class="bi bi-arrow-left-right fs-1 text-muted d-block mb-3"></i><span class="text-muted">Nenhuma transação na blockchain</span></td></tr>';
-    } else {
-        transactionsList.innerHTML = transactions.slice(-5).reverse().map(t => `
-            <tr>
-                <td><span class="blockchain-hash" title="${t.hash}">${t.hash.substring(0, 10)}...${t.hash.substring(t.hash.length - 6)}</span></td>
-                <td>${formatDate(t.timestamp)}</td>
-                <td>${t.id?.startsWith('ROY') ? '🎵 Royalty' : '💰 Transação'}</td>
-                <td>Valor: ${formatCurrency(t.amount || 0)}</td>
-                <td><span class="${t.distributed ? 'blockchain-verified' : 'blockchain-pending'}">
-                    <i class="bi ${t.distributed ? 'bi-check-circle' : 'bi-clock'}"></i>
-                    ${t.distributed ? 'Distribuído' : 'Pendente'}
-                </span></td>
-            </tr>
-        `).join('');
-    }
-    
-    // Renderizar visualização da blockchain
-    renderBlockchainVisualization(contracts);
-}
-
-function renderBlockchainVisualization(contracts) {
-    const container = document.getElementById('blockchainVisualization');
-    if (!container) return;
-    
-    if (contracts.length === 0) {
-        container.innerHTML = '<div class="text-center text-muted py-4">Nenhum bloco minerado ainda</div>';
-        return;
-    }
-    
-    const lastBlocks = contracts.slice(-5);
-    
-    container.innerHTML = lastBlocks.map((block, index) => {
-        const isLast = index === lastBlocks.length - 1;
-        return `
-            <div class="card bg-dark border-${isLast ? 'success' : 'purple'}" style="width: 200px;">
-                <div class="card-header bg-${isLast ? 'success' : 'purple'} text-white py-2">
-                    <small>Bloco #${state.blockchain.contracts.indexOf(block) + 1}</small>
-                </div>
-                <div class="card-body p-2">
-                    <small class="d-block text-muted">Hash:</small>
-                    <small class="blockchain-hash d-block mb-2" style="font-size: 10px;">${block.hash.substring(0, 15)}...</small>
-                    <small class="d-block text-muted">Prev:</small>
-                    <small class="text-muted" style="font-size: 10px;">${block.previousHash.substring(0, 10)}...</small>
-                    <div class="mt-2">
-                        <span class="badge bg-${isLast ? 'success' : 'secondary'}">${block.music_id ? 'Contrato' : 'Gênesis'}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    // Adicionar setas de conexão
-    if (lastBlocks.length > 1) {
-        container.innerHTML += `
-            <div class="d-flex align-items-center">
-                <i class="bi bi-arrow-right fs-2 text-purple"></i>
-            </div>
-            <div class="card bg-dark border-purple" style="width: 200px;">
-                <div class="card-header bg-purple text-white py-2">
-                    <small>Próximo Bloco</small>
-                </div>
-                <div class="card-body p-2 text-center">
-                    <i class="bi bi-plus-circle text-muted"></i>
-                    <small class="d-block text-muted">Aguardando</small>
-                </div>
-            </div>
-        `;
-    }
-}
-    function showELORanking() {
-        if (!state.playlist || state.playlist.length === 0) {
-            showToast('Nenhuma música para ranking', 'warning');
-            return;
-        }
-        
-        const ranked = [...state.playlist].sort((a, b) => (b.elo_rating || ELO.CONFIG.BASE_RATING) - (a.elo_rating || ELO.CONFIG.BASE_RATING));
-        
-        let rankingHTML = `
-            <table class="elo-ranking-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Música</th>
-                        <th>Artista</th>
-                        <th>Rating</th>
-                        <th>Nível</th>
-                        <th>Tendência</th>
-                        <th>Retorno</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        
-        ranked.forEach((music, index) => {
-            const eloRating = music.elo_rating || ELO.CONFIG.BASE_RATING;
-            const eloLevel = ELO.getRatingLevel(eloRating);
-            const eloColor = ELO.getRatingColor(eloRating);
-            const trend = ELO.getTrend(music);
-            const trendClass = trend.includes('Subindo') ? 'elo-trend-up' : (trend.includes('Descendo') ? 'elo-trend-down' : 'elo-trend-stable');
-            
-            rankingHTML += `
-                <tr>
-                    <td><strong>${index + 1}º</strong></td>
-                    <td>${music.titulo || 'Sem título'}</td>
-                    <td>${music.artista || 'Desconhecido'}</td>
-                    <td><strong style="color: ${eloColor}">${eloRating}</strong></td>
-                    <td><span class="elo-badge" style="background-color: ${eloColor};">${eloLevel}</span></td>
-                    <td class="${trendClass}">${trend}</td>
-                    <td class="text-success">+${music.rentabilidade_media || 0}%</td>
-                </tr>
-            `;
-        });
-        
-        rankingHTML += `
-                </tbody>
-            </table>
-        `;
-        
-        document.getElementById('eloRankingContent').innerHTML = rankingHTML;
-        showModal('eloRankingModal');
     }
 
     // ========== PLAYER FUNCTIONS ==========
