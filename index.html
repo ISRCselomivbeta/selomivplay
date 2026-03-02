@@ -2677,12 +2677,19 @@
             <div class="col-md-8">
                 <!-- YouTube Player -->
                 <div class="youtube-container-expanded mb-4">
-                    <div id="youtubePlayerExpanded" style="width: 100%; height: 100%;"></div>
-                    <div class="player-loading" id="playerLoadingExpanded">
-                        <div class="loading-spinner"></div>
-                        <span>Carregando vídeo...</span>
-                    </div>
-                </div>
+    <div id="youtubePlayerExpanded" style="width: 100%; height: 100%;"></div>
+    <!-- ===== SUBSTITUA O player-loading EXISTENTE POR ESTE ===== -->
+    <div class="player-loading" id="playerLoadingExpanded">
+        <div class="loading-spinner"></div>
+        <span id="loadingMessageText">Carregando vídeo...</span>
+        <div class="mt-2 small text-muted" id="realTimeStatus"></div>
+    </div>
+    <!-- ===== FIM ===== -->
+</div>
+
+<!-- ===== ADICIONE ESTE DIV APÓS O youtube-container-expanded ===== -->
+<div id="playerStatus" class="mt-2 small text-center"></div>
+<!-- ===== FIM ===== -->
                 
                 <!-- Controles Expandidos -->
                 <div class="expanded-controls bg-dark p-4 rounded-3">
@@ -3462,33 +3469,41 @@
     };
 
     // ========== ESTADO GLOBAL ==========
-    const state = {
-        currentUser: null,
-        userBalance: 0,
-        playlist: [],
-        externalPlaylist: [],
-        portfolioAssets: [],
-        ledgerData: [],
-        topInvestments: [],
-        userPlaylists: [],
-        favoriteMusicIds: [],
-        currentTrackIndex: -1,
-        isPlaying: false,
-        youtubePlayer: null,
-        youtubeAPILoaded: false,
-        currentVolume: 80,
-        isShuffle: false,
-        isRepeat: false,
-        lastVolume: 80,
-        currentInvestTrack: null,
-        currentExternalTrack: null,
-        blockchain: {
-            enabled: true,
-            contracts: [],
-            transactions: [],
-            lastBlock: 0
-        }
-    };
+const state = {
+    currentUser: null,
+    userBalance: 0,
+    playlist: [],
+    externalPlaylist: [],
+    portfolioAssets: [],
+    ledgerData: [],
+    topInvestments: [],
+    userPlaylists: [],
+    favoriteMusicIds: [],
+    currentTrackIndex: -1,
+    isPlaying: false,
+    youtubePlayer: null,
+    youtubeAPILoaded: false,
+    currentVolume: 80,
+    isShuffle: false,
+    isRepeat: false,
+    lastVolume: 80,
+    currentInvestTrack: null,
+    currentExternalTrack: null,
+    blockchain: {
+        enabled: true,
+        contracts: [],
+        transactions: [],
+        lastBlock: 0
+    },
+    // ===== NOVAS PROPRIEDADES =====
+    streamingTimer: null,
+    streamingProgress: 0,
+    streamingTrackId: null,
+    streamingLastReward: 0,
+    isBuffering: false,
+    playerReady: false
+}; // <-- A chave de fechamento DEVE estar aqui
+    
 // ========== DECLARAÇÃO ANTECIPADA DAS FUNÇÕES GLOBAIS ==========
 // Isso garante que as funções existam antes de serem chamadas pelo HTML
 window.openBlockchainExplorer = function() {
@@ -5135,23 +5150,32 @@ function updatePortfolioValue() {
         }
     }
 
-    // ========== PLAYER FUNCTIONS ==========
-    function playTrack(index) {
-        if (index < 0 || index >= state.playlist.length) {
-            showToast('Música não encontrada', 'error');
-            return;
-        }
-        
-        // Verificar status da música
-        const track = state.playlist[index];
-        if (track.status === 'paused') {
-            showToast('Esta música está pausada pelo artista', 'warning');
-            return;
-        }
-        if (track.status === 'deleted') {
-            showToast('Esta música não está mais disponível', 'error');
-            return;
-        }
+function playTrack(index) {
+    // Resetar estado de streaming (colocar logo no início)
+    state.streamingProgress = 0;
+    state.streamingLastReward = 0;
+    state.streamingTrackId = null;
+    state.playerReady = false;
+    
+    // Verificação de índice (UMA VEZ SÓ)
+    if (index < 0 || index >= state.playlist.length) {
+        showToast('Música não encontrada', 'error');
+        return;
+    }
+    
+    // Verificar status da música
+    const track = state.playlist[index];
+    if (track.status === 'paused') {
+        showToast('Esta música está pausada pelo artista', 'warning');
+        return;
+    }
+    if (track.status === 'deleted') {
+        showToast('Esta música não está mais disponível', 'error');
+        return;
+    }
+    
+    // ... resto do código ...
+}
         
         state.currentTrackIndex = index;
         
@@ -5258,32 +5282,327 @@ function updatePortfolioValue() {
         }
     }
 
-    // ========== YOUTUBE PLAYER ==========
-    function loadYouTubeAPI(callback) {
-        if (window.YT && YT.Player) {
-            console.log('✅ API do YouTube já carregada');
-            state.youtubeAPILoaded = true;
-            if (callback) callback();
+function loadYouTubeAPI(callback) {
+    if (window.YT && YT.Player) {
+        console.log('✅ API do YouTube já carregada');
+        state.youtubeAPILoaded = true;
+        if (callback) callback();
+        return;
+    }
+    
+    console.log('📥 Carregando API do YouTube...');
+    
+    window.onYouTubeIframeAPIReady = () => {
+        console.log('✅ API do YouTube carregada com sucesso');
+        state.youtubeAPILoaded = true;
+        if (callback) callback();
+    };
+    
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    tag.async = true;
+    tag.onload = () => console.log('📦 Script do YouTube carregado');
+    tag.onerror = (e) => console.error('❌ Erro ao carregar script do YouTube:', e);
+    
+    document.head.appendChild(tag);
+}
+// ========== VERIFICAR PROGRESSO REAL DO YOUTUBE ==========
+function checkStreamingProgress() {
+    // Verificações de segurança
+    if (!state.youtubePlayer || !state.playerReady) {
+        return;
+    }
+    
+    try {
+        // Verificar se o player tem os métodos necessários
+        if (typeof state.youtubePlayer.getPlayerState !== 'function' ||
+            typeof state.youtubePlayer.getCurrentTime !== 'function' ||
+            typeof state.youtubePlayer.getDuration !== 'function' ||
+            typeof state.youtubePlayer.getVideoLoadedFraction !== 'function') {
             return;
         }
         
-        console.log('📥 Carregando API do YouTube...');
+        const playerState = state.youtubePlayer.getPlayerState();
+        const currentTime = state.youtubePlayer.getCurrentTime() || 0;
+        const duration = state.youtubePlayer.getDuration() || 0;
+        const loadedFraction = state.youtubePlayer.getVideoLoadedFraction() || 0;
         
-        window.onYouTubeIframeAPIReady = () => {
-            console.log('✅ API do YouTube carregada com sucesso');
-            state.youtubeAPILoaded = true;
-            if (callback) callback();
-        };
+        // SÓ processar se o vídeo realmente carregou
+        if (duration === 0 || loadedFraction === 0) {
+            // Vídeo ainda não carregou de verdade
+            showLoadingMessage('Carregando vídeo...', true);
+            return;
+        }
         
-        const tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        tag.async = true;
-        tag.onload = () => console.log('📦 Script do YouTube carregado');
-        tag.onerror = (e) => console.error('❌ Erro ao carregar script do YouTube:', e);
+        // Esconder loading quando carregou
+        hideLoadingMessage();
         
-        document.head.appendChild(tag);
+        // ATUALIZAR UI COM DADOS REAIS
+        updateRealProgress(currentTime, duration);
+        
+        // VERIFICAÇÃO REAL: SÓ processar recompensa se:
+        // 1. Estiver tocando de verdade (PLAYING)
+        // 2. Não estiver em buffering
+        // 3. O vídeo está realmente carregado
+        // 4. O tempo é válido
+        if (playerState === YT.PlayerState.PLAYING && 
+            !state.isBuffering && 
+            duration > 0 && 
+            currentTime > 0) {
+            
+            // Verificar se atingiu 30 segundos REAIS
+            if (currentTime >= 30) {
+                const now = Date.now();
+                
+                // Verificar se já recompensou recentemente (30 segundos exatos)
+                if (now - state.streamingLastReward > 29000) { // ~29 segundos
+                    
+                    // Verificar se é a mesma música
+                    if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
+                        const currentTrack = state.playlist[state.currentTrackIndex];
+                        
+                        // SÓ registrar se mudou de música ou passou 30s
+                        if (currentTrack && currentTrack.id !== state.streamingTrackId) {
+                            state.streamingTrackId = currentTrack.id;
+                            state.streamingLastReward = 0; // Reset para nova música
+                        }
+                        
+                        // Registrar recompensa REAL
+                        if (state.streamingLastReward === 0 || now - state.streamingLastReward > 29000) {
+                            registerRealStreamingReward(currentTrack, currentTime, duration);
+                            state.streamingLastReward = now;
+                        }
+                    }
+                }
+            }
+        } else {
+            // DEBUG: mostrar status real
+            console.log(`📊 Status real: State=${playerState}, Time=${currentTime.toFixed(1)}s, Loaded=${(loadedFraction*100).toFixed(1)}%`);
+        }
+        
+    } catch (error) {
+        console.error('Erro no monitoramento de streaming:', error);
     }
+}
 
+// ========== ATUALIZAR UI COM DADOS REAIS ==========
+function updateRealProgress(currentTime, duration) {
+    // Elementos do player
+    const progressBar = document.getElementById('playerProgressBar');
+    const currentDisplay = document.getElementById('currentTimeDisplay');
+    const totalDisplay = document.getElementById('totalTimeDisplay');
+    
+    // Elementos do player expandido
+    const expandedBar = document.getElementById('expandedProgressBar');
+    const expandedCurrent = document.getElementById('expandedCurrentTime');
+    const expandedTotal = document.getElementById('expandedTotalTime');
+    
+    if (duration > 0) {
+        const percent = (currentTime / duration) * 100;
+        
+        // Atualizar barras de progresso
+        if (progressBar) progressBar.style.width = percent + '%';
+        if (expandedBar) expandedBar.style.width = percent + '%';
+        
+        // Atualizar tempos
+        if (currentDisplay) currentDisplay.textContent = formatTime(currentTime);
+        if (expandedCurrent) expandedCurrent.textContent = formatTime(currentTime);
+        if (totalDisplay) totalDisplay.textContent = formatTime(duration);
+        if (expandedTotal) expandedTotal.textContent = formatTime(duration);
+        
+        // ATUALIZAR TÍTULO COM STATUS REAL
+        const playerStatus = document.getElementById('playerStatus');
+        if (playerStatus) {
+            if (state.isPlaying) {
+                playerStatus.innerHTML = `<span class="text-success"><i class="bi bi-play-circle-fill"></i> Tocando agora</span>`;
+            } else {
+                playerStatus.innerHTML = `<span class="text-muted"><i class="bi bi-pause-circle-fill"></i> Pausado</span>`;
+            }
+        }
+    }
+}
+
+// ========== REGISTRAR RECOMPENSA REAL NA API ==========
+async function registerRealStreamingReward(track, currentTime, duration) {
+    if (!track || !track.id || !state.currentUser) {
+        console.log('❌ Não foi possível registrar recompensa: dados incompletos');
+        return;
+    }
+    
+    // VERIFICAÇÕES REAIS ANTES DE REGISTRAR
+    if (duration < 30) {
+        console.log('⏳ Vídeo muito curto para recompensa:', duration);
+        return;
+    }
+    
+    if (currentTime < 30) {
+        console.log('⏳ Ainda não atingiu 30 segundos:', currentTime);
+        return;
+    }
+    
+    console.log(`🎵 STREAMING REAL: 30s completos em "${track.titulo}"! Registrando...`);
+    
+    // Mostrar notificação visual
+    showToast(`⏱️ 30 segundos de "${track.titulo}"!`, 'info');
+    
+    try {
+        // Chamar API REAL para registrar streaming
+        const result = await callAPI('register_streaming', {
+            music_id: track.id,
+            user_id: state.currentUser.id,
+            duration: Math.floor(currentTime), // Tempo real
+            total_duration: Math.floor(duration),
+            timestamp: new Date().toISOString(),
+            // Dados adicionais para verificação
+            youtube_time: currentTime,
+            player_state: state.isPlaying ? 'playing' : 'paused',
+            verification: 'real' // Marcar como verificação real
+        });
+        
+        console.log('📦 Resposta da API de streaming:', result);
+        
+        if (result?.success) {
+            // RECOMPENSA REAL
+            const rewardAmount = result.data?.reward || 1; // 1 SELO COIN
+            showToast(`✅ +${rewardAmount} SELO COIN por streaming!`, 'success');
+            
+            // Atualizar saldo REAL
+            await updateBalanceDisplay();
+            
+            // Registrar no extrato
+            await loadLedger(true);
+            
+            // Atualizar estatísticas da música
+            updateMusicRealStats(track);
+            
+        } else {
+            // Se a API falhar, NÃO dar recompensa falsa
+            console.log('⚠️ API não registrou streaming:', result?.message);
+            showToast('❌ Erro ao registrar streaming', 'error');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao registrar streaming REAL:', error);
+        showToast('❌ Falha na conexão', 'error');
+    }
+}
+
+// ========== ATUALIZAR ESTATÍSTICAS REAIS ==========
+function updateMusicRealStats(track) {
+    // Encontrar música no state
+    const musicIndex = state.playlist.findIndex(m => m.id === track.id);
+    if (musicIndex >= 0) {
+        // Incrementar contador de streams
+        state.playlist[musicIndex].stream_count = (state.playlist[musicIndex].stream_count || 0) + 1;
+        
+        // Atualizar última stream
+        state.playlist[musicIndex].last_stream = new Date().toISOString();
+        
+        // Calcular ELO baseado em streams reais
+        if (ELO && typeof ELO.calculateMusicScore === 'function') {
+            const newElo = ELO.calculateMusicScore(state.playlist[musicIndex]);
+            state.playlist[musicIndex].elo_rating = newElo;
+        }
+        
+        // Re-renderizar marketplace
+        renderMarketplace();
+    }
+}
+
+// ========== GERENCIAR MENSAGEM DE LOADING REAL ==========
+function showLoadingMessage(message, isReal = true) {
+    const loadingEl = document.getElementById('playerLoadingExpanded');
+    const loadingText = document.getElementById('loadingMessageText');
+    
+    if (loadingEl) {
+        loadingEl.style.display = 'flex';
+    }
+    
+    if (loadingText) {
+        loadingText.textContent = message;
+    }
+    
+    // Log real
+    if (isReal) {
+        console.log('⏳ Status real:', message);
+    }
+}
+
+function hideLoadingMessage() {
+    const loadingEl = document.getElementById('playerLoadingExpanded');
+    if (loadingEl) {
+        loadingEl.style.display = 'none';
+    }
+}
+
+// ========== INICIAR MONITORAMENTO DE STREAMING ==========
+function startStreamingMonitor() {
+    // Limpar timer existente
+    if (state.streamingTimer) {
+        clearInterval(state.streamingTimer);
+    }
+    
+    console.log('🎵 Iniciando monitoramento de streaming...');
+    
+    // Criar novo timer a cada 1 segundo
+    state.streamingTimer = setInterval(() => {
+        checkStreamingProgress();
+    }, 1000);
+}
+
+// ========== PARAR MONITORAMENTO ==========
+function stopStreamingMonitor() {
+    if (state.streamingTimer) {
+        clearInterval(state.streamingTimer);
+        state.streamingTimer = null;
+    }
+    console.log('⏹️ Monitoramento de streaming parado');
+}
+
+// ========== VERIFICAR SE O YOUTUBE REALMENTE CONTOU A VIEW ==========
+function verifyYouTubeView() {
+    return new Promise((resolve) => {
+        if (!state.youtubePlayer || !state.playerReady) {
+            resolve(false);
+            return;
+        }
+        
+        try {
+            // Verificações REAIS do YouTube
+            const playerState = state.youtubePlayer.getPlayerState();
+            const currentTime = state.youtubePlayer.getCurrentTime() || 0;
+            const duration = state.youtubePlayer.getDuration() || 0;
+            const loadedFraction = state.youtubePlayer.getVideoLoadedFraction() || 0;
+            const playbackRate = state.youtubePlayer.getPlaybackRate() || 1;
+            const availableQuality = state.youtubePlayer.getAvailableQualityLevels?.() || [];
+            
+            // Critérios para view REAL:
+            const isPlaying = playerState === YT.PlayerState.PLAYING;
+            const hasContent = duration > 30; // Música tem mais de 30s
+            const isLoaded = loadedFraction > 0.5; // Mais de 50% carregado
+            const hasQuality = availableQuality.length > 0; // Qualidade disponível
+            const isProgressing = currentTime > 5; // Já passou de 5s
+            
+            const isRealView = isPlaying && hasContent && isLoaded && hasQuality && isProgressing;
+            
+            console.log('🔍 Verificação REAL do YouTube:', {
+                isPlaying,
+                hasContent,
+                isLoaded,
+                hasQuality,
+                isProgressing,
+                result: isRealView ? '✅ VIEW REAL' : '❌ NÃO CONTOU'
+            });
+            
+            resolve(isRealView);
+            
+        } catch (error) {
+            console.error('Erro ao verificar view:', error);
+            resolve(false);
+        }
+    });
+}
+// ===== FIM DAS FUNÇÕES =====
     function extractYouTubeId(url) {
         if (!url || typeof url !== 'string') {
             console.log('URL inválida:', url);
@@ -5346,71 +5665,193 @@ function updatePortfolioValue() {
         }
     }
 
-    function createYouTubePlayer(elementId, videoId) {
-        try {
-            state.youtubePlayer = new YT.Player(elementId, {
-                width: '100%',
-                height: '100%',
-                videoId: videoId,
-                playerVars: {
-                    autoplay: 1,
-                    controls: 1,
-                    modestbranding: 1,
-                    rel: 0,
-                    showinfo: 0,
-                    fs: 1,
-                    playsinline: 1,
-                    origin: 'https://selomivplay.vercel.app',
-                    enablejsapi: 1,
-                    widget_referrer: 'https://selomivplay.vercel.app/'
-                },
-                onReady: (event) => {
-                    console.log('✅ YouTube Player pronto');
-                    const loadingEl = document.getElementById('playerLoadingExpanded');
-                    if (loadingEl) loadingEl.style.display = 'none';
-                    
-                    event.target.setVolume(state.currentVolume);
-                    state.isPlaying = true;
-                    updatePlayerIcons();
+function createYouTubePlayer(elementId, videoId) {
+    try {
+        // Verificar se o elemento existe
+        const element = document.getElementById(elementId);
+        if (!element) {
+            console.error('❌ Elemento do player não encontrado:', elementId);
+            return;
+        }
+        
+        // Garantir que o elemento está vazio
+        element.innerHTML = '';
+        
+        // Criar novo div para o player
+        const playerDiv = document.createElement('div');
+        playerDiv.id = 'yt-player-' + Date.now();
+        element.appendChild(playerDiv);
+        
+        console.log('🎬 Criando player YouTube para:', videoId);
+        
+        state.youtubePlayer = new YT.Player(playerDiv.id, {
+            width: '100%',
+            height: '100%',
+            videoId: videoId,
+            playerVars: {
+                autoplay: 1,
+                controls: 1,
+                modestbranding: 1,
+                rel: 0,
+                showinfo: 0,
+                fs: 1,
+                playsinline: 1,
+                origin: window.location.origin, // Usar origem atual
+                enablejsapi: 1,
+                widget_referrer: window.location.origin
+            },
+            onReady: (event) => {
+                console.log('✅ YouTube Player pronto');
+                state.playerReady = true;
+                
+                const loadingEl = document.getElementById('playerLoadingExpanded');
+                if (loadingEl) loadingEl.style.display = 'none';
+                
+                event.target.setVolume(state.currentVolume);
+                
+                if (state.isPlaying) {
                     event.target.playVideo();
-                    
-                    if (state.progressInterval) clearInterval(state.progressInterval);
-                    state.progressInterval = setInterval(updatePlayerProgress, 1000);
-                },
-                onStateChange: (event) => {
-                    if (event.data === YT.PlayerState.PLAYING) {
-                        state.isPlaying = true;
-                        console.log('▶️ Reproduzindo - view contabilizada');
+                }
+                
+                // Iniciar monitoramento de progresso
+                startStreamingMonitor();
+                
+                // Iniciar intervalo de progresso
+                if (state.progressInterval) clearInterval(state.progressInterval);
+                state.progressInterval = setInterval(updatePlayerProgress, 1000);
+                
+                // Salvar ID da música atual
+                if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
+                    state.streamingTrackId = state.playlist[state.currentTrackIndex].id;
+                }
+            },
+            onStateChange: (event) => {
+                handlePlayerStateChange(event);
+            },
+            onError: (event) => {
+                console.error('❌ Erro no player YouTube:', event.data);
+                state.playerReady = false;
+                
+                const loadingEl = document.getElementById('playerLoadingExpanded');
+                if (loadingEl) loadingEl.style.display = 'none';
+                
+                // Mensagens de erro amigáveis
+                const errorMessages = {
+                    2: 'ID do vídeo inválido',
+                    5: 'Erro no player HTML5',
+                    100: 'Vídeo não encontrado',
+                    101: 'Embedding não permitido',
+                    150: 'Embedding não permitido'
+                };
+                
+                showToast(errorMessages[event.data] || 'Erro ao carregar vídeo', 'error');
+            }
+        });
+    } catch (error) {
+        console.error('❌ Erro ao criar player:', error);
+        showToast('Erro ao inicializar player', 'error');
+    }
+}
+// ===== COLE AQUI =====
+// ========== MANIPULADOR DE ESTADO DO PLAYER ==========
+function handlePlayerStateChange(event) {
+    const playerStatus = document.getElementById('player-status');
+    const loadingEl = document.getElementById('playerLoadingExpanded');
+    
+    // Atualizar estado real
+    state.isBuffering = (event.data === YT.PlayerState.BUFFERING);
+    
+    // Log REAL do YouTube
+    const stateNames = {
+        [-1]: '🔵 Não iniciado',
+        0: '✅ Finalizado',
+        1: '▶️ Reproduzindo',
+        2: '⏸️ Pausado',
+        3: '⏳ Buffering',
+        5: '🎬 Video selecionado'
+    };
+    
+    console.log(`🎬 YouTube State: ${stateNames[event.data] || event.data}`);
+    
+    switch(event.data) {
+        case YT.PlayerState.PLAYING:
+            console.log('▶️ Vídeo tocando');
+            state.isPlaying = true;
+            state.isBuffering = false;
+            
+            if (loadingEl) loadingEl.style.display = 'none';
+            
+            // Registrar início da reprodução
+            state.streamingProgress = 0;
+            
+            // Se não tiver timer, iniciar
+            if (!state.streamingTimer) {
+                startStreamingMonitor();
+            }
+            
+            // Verificar se é uma view REAL
+            verifyYouTubeView().then(isReal => {
+                if (isReal) {
+                    console.log('✅ YouTube está contando esta view');
+                    const realTimeStatus = document.getElementById('realTimeStatus');
+                    if (realTimeStatus) {
+                        realTimeStatus.innerHTML = '<span class="text-success">✓ View sendo contada</span>';
                     }
-                    if (event.data === YT.PlayerState.PAUSED) {
-                        state.isPlaying = false;
+                } else {
+                    console.log('⚠️ YouTube pode não estar contando');
+                    const realTimeStatus = document.getElementById('realTimeStatus');
+                    if (realTimeStatus) {
+                        realTimeStatus.innerHTML = '<span class="text-warning">⚠️ Aguardando confirmação</span>';
                     }
-                    if (event.data === YT.PlayerState.ENDED) {
-                        state.isPlaying = false;
-                        console.log('⏹️ Vídeo terminado - view contabilizada');
-                        if (state.isRepeat) {
-                            event.target.playVideo();
-                        } else {
-                            playNext();
-                        }
-                    }
-                    updatePlayerIcons();
-                    updateExpandedPlayer();
-                },
-                onError: (event) => {
-                    console.error('❌ Erro no player YouTube:', event.data);
-                    showToast('Erro ao carregar vídeo do YouTube', 'error');
-                    
-                    const loadingEl = document.getElementById('playerLoadingExpanded');
-                    if (loadingEl) loadingEl.style.display = 'none';
                 }
             });
-        } catch (error) {
-            console.error('❌ Erro ao criar player:', error);
-            showToast('Erro ao inicializar player', 'error');
-        }
+            break;
+            
+        case YT.PlayerState.PAUSED:
+            console.log('⏸️ Vídeo pausado');
+            state.isPlaying = false;
+            state.isBuffering = false;
+            break;
+            
+        case YT.PlayerState.BUFFERING:
+            console.log('⏳ Buffering...');
+            state.isBuffering = true;
+            
+            if (loadingEl) loadingEl.style.display = 'flex';
+            showLoadingMessage('Carregando...', true);
+            break;
+            
+        case YT.PlayerState.ENDED:
+            console.log('✅ Vídeo finalizado - view contada pelo YouTube');
+            state.isPlaying = false;
+            state.isBuffering = false;
+            state.streamingProgress = 0;
+            
+            if (loadingEl) loadingEl.style.display = 'none';
+            hideLoadingMessage();
+            
+            // Se repeat estiver ativo, replay
+            if (state.isRepeat) {
+                event.target.playVideo();
+            } else {
+                playNext();
+            }
+            break;
+            
+        case YT.PlayerState.CUED:
+            console.log('🎬 Vídeo carregado');
+            state.playerReady = true;
+            state.isBuffering = false;
+            
+            if (loadingEl) loadingEl.style.display = 'none';
+            hideLoadingMessage();
+            break;
     }
-
+    
+    updatePlayerIcons();
+    updateExpandedPlayer();
+}
+// ===== FIM =====
     function updatePlayerProgress() {
         if (!state.youtubePlayer?.getCurrentTime) return;
         try {
@@ -5447,15 +5888,40 @@ function updatePortfolioValue() {
     }
 
     function updatePlayerIcons() {
-        const isPlaying = state.isPlaying;
-        document.getElementById('playPauseIcon').className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
-        document.getElementById('trackOverlayIcon').className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
-        document.getElementById('expandedPlayIcon').className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
-        document.getElementById('expandedPlayPauseIcon').className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
-        document.getElementById('expandedPlayText').textContent = isPlaying ? 'Pausar' : 'Reproduzir';
-        document.getElementById('expandedPlayPauseText').textContent = isPlaying ? 'Pausar' : 'Reproduzir';
+    // Verificações de segurança para todos os elementos
+    const playPauseIcon = document.getElementById('playPauseIcon');
+    const trackOverlayIcon = document.getElementById('trackOverlayIcon');
+    const expandedPlayIcon = document.getElementById('expandedPlayIcon');
+    const expandedPlayPauseIcon = document.getElementById('expandedPlayPauseIcon');
+    const expandedPlayText = document.getElementById('expandedPlayText');
+    const expandedPlayPauseText = document.getElementById('expandedPlayPauseText');
+    
+    const isPlaying = state.isPlaying;
+    
+    if (playPauseIcon) {
+        playPauseIcon.className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
     }
-
+    
+    if (trackOverlayIcon) {
+        trackOverlayIcon.className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
+    }
+    
+    if (expandedPlayIcon) {
+        expandedPlayIcon.className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
+    }
+    
+    if (expandedPlayPauseIcon) {
+        expandedPlayPauseIcon.className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
+    }
+    
+    if (expandedPlayText) {
+        expandedPlayText.textContent = isPlaying ? 'Pausar' : 'Reproduzir';
+    }
+    
+    if (expandedPlayPauseText) {
+        expandedPlayPauseText.textContent = isPlaying ? 'Pausar' : 'Reproduzir';
+    }
+}
     function updateFavoriteButton(isFavorite) {
         const btn = document.getElementById('favoriteBtn');
         const icon = document.getElementById('favoriteIcon');
@@ -6249,6 +6715,24 @@ async function updateBalanceDisplay() {
             hideLoading();
         }
     });
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            // Aba escondida - pausar monitoramento para economizar recursos
+            if (state.streamingTimer) {
+                clearInterval(state.streamingTimer);
+                state.streamingTimer = null;
+                console.log('⏸️ Monitoramento pausado (aba inativa)');
+            }
+        } else {
+            // Aba visível - reiniciar monitoramento se estiver tocando
+            if (state.isPlaying && state.playerReady) {
+                startStreamingMonitor();
+                console.log('▶️ Monitoramento retomado (aba ativa)');
+            }
+        }
+    });
+    // ===== FIM =====
+});
 
     // ========== EXPOR FUNÇÕES GLOBAIS ==========
     window.handleLogin = handleLogin; 
