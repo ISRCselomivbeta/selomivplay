@@ -6501,83 +6501,105 @@ async function createTradeOffer() {
 }
 
 // Carregar ofertas
+// ========== CARREGAR NEGOCIAÇÕES REAIS DA PLANILHA ==========
 async function loadTradeOffers() {
     const loading = document.getElementById('tradesLoading');
     const empty = document.getElementById('tradesEmpty');
     const container = document.getElementById('tradesContainer');
+    const pendingBadge = document.getElementById('pendingTradesCount');
     
     if (loading) loading.style.display = 'block';
     if (empty) empty.style.display = 'none';
     if (container) container.innerHTML = '';
     
     try {
-        // Simular carregamento (substituir por chamada API real)
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Verificar se usuário está logado
+        if (!state.currentUser || !state.currentUser.id) {
+            throw new Error('Usuário não logado');
+        }
         
-        // Dados simulados
-        tradeOffers = {
-            received: [
-                {
-                    id: 'rec_1',
-                    type: 'received',
-                    music_title: 'Bohemian Rhapsody',
-                    artist: 'Queen',
-                    quantity: 5,
-                    price: 28.50,
-                    total: 142.50,
-                    seller_name: 'João Silva',
-                    seller_email: 'joao@email.com',
-                    message: 'Aceita negociar?',
-                    status: 'pending',
-                    date: new Date(Date.now() - 3600000).toISOString()
-                }
-            ],
-            sent: [
-                {
-                    id: 'sent_1',
-                    type: 'sent',
-                    music_title: 'Lose Yourself',
-                    artist: 'Eminem',
-                    quantity: 2,
-                    price: 42.00,
-                    total: 84.00,
-                    buyer_email: 'pedro@email.com',
-                    message: 'Interessado?',
-                    status: 'pending',
-                    date: new Date(Date.now() - 86400000).toISOString()
-                }
-            ],
-            history: [
-                {
-                    id: 'hist_1',
-                    type: 'history',
-                    music_title: 'Shape of You',
-                    artist: 'Ed Sheeran',
-                    quantity: 10,
-                    price: 15.00,
-                    total: 150.00,
-                    buyer_email: 'carla@email.com',
-                    seller_name: 'Você',
-                    status: 'accepted',
-                    date: new Date(Date.now() - 172800000).toISOString()
-                }
-            ]
-        };
+        console.log('📦 Buscando negociações para:', state.currentUser.email);
         
-        if (loading) loading.style.display = 'none';
+        // CHAMADA REAL PARA A API
+        const result = await callAPI('get_trades', { 
+            user_id: state.currentUser.id 
+        });
         
-        // Mostrar aba recebidas por padrão
-        renderTradeOffers('received');
-        updateTradeBadge();
+        console.log('📦 Resposta da API:', result);
+        
+        if (result?.success && result.data) {
+            // Usar dados REAIS da planilha
+            tradeOffers = {
+                received: result.data.received || [],
+                sent: result.data.sent || [],
+                history: result.data.history || []
+            };
+            
+            // Calcular pendentes para o badge
+            const pendingCount = 
+                (tradeOffers.received?.filter(o => o.status === 'pending')?.length || 0) +
+                (tradeOffers.sent?.filter(o => o.status === 'pending')?.length || 0);
+            
+            // Atualizar badge do menu
+            if (pendingBadge) {
+                if (pendingCount > 0) {
+                    pendingBadge.textContent = pendingCount;
+                    pendingBadge.style.display = 'inline';
+                } else {
+                    pendingBadge.style.display = 'none';
+                }
+            }
+            
+            // Atualizar badge da seção
+            const sectionBadge = document.getElementById('pendingTradesCount');
+            if (sectionBadge) {
+                sectionBadge.textContent = `${pendingCount} pendente${pendingCount !== 1 ? 's' : ''}`;
+            }
+            
+            // Mostrar aba recebidas por padrão
+            renderTradeOffers('received');
+            
+        } else {
+            // Se não houver dados, mostrar vazio
+            console.log('Nenhuma negociação encontrada');
+            tradeOffers = { received: [], sent: [], history: [] };
+            
+            if (empty) {
+                empty.style.display = 'block';
+                empty.innerHTML = `
+                    <i class="bi bi-arrow-left-right empty-icon text-info"></i>
+                    <h5 class="text-muted">Nenhuma negociação</h5>
+                    <p class="text-muted">Você ainda não tem negociações ativas</p>
+                    <button class="btn btn-outline-info mt-3" onclick="changeSection('portfolio')">
+                        <i class="bi bi-briefcase me-2"></i> Ver meu portfólio
+                    </button>
+                `;
+            }
+            if (container) container.innerHTML = '';
+        }
         
     } catch (error) {
-        console.error('Erro ao carregar negociações:', error);
+        console.error('❌ Erro ao carregar negociações:', error);
+        
+        // Mostrar erro amigável
+        if (empty) {
+            empty.style.display = 'block';
+            empty.innerHTML = `
+                <i class="bi bi-exclamation-triangle empty-icon text-danger"></i>
+                <h5 class="text-muted">Erro ao carregar</h5>
+                <p class="text-muted">${error.message || 'Tente novamente mais tarde'}</p>
+                <button class="btn btn-outline-danger mt-3" onclick="loadTradeOffers()">
+                    <i class="bi bi-arrow-clockwise me-2"></i> Tentar novamente
+                </button>
+            `;
+        }
+        
+        showToast('Erro ao carregar negociações: ' + (error.message || 'erro desconhecido'), 'error');
+        
+    } finally {
         if (loading) loading.style.display = 'none';
-        if (empty) empty.style.display = 'block';
-        showToast('Erro ao carregar negociações', 'error');
     }
 }
-
 // Renderizar ofertas por tipo
 function renderTradeOffers(type) {
     const container = document.getElementById('tradesContainer');
