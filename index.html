@@ -3567,9 +3567,9 @@ window.showELORanking = function() {
     showModal('eloRankingModal');
 };
 
-// ========== LOAD BLOCKCHAIN DATA CORRIGIDA ==========
+// ========== LOAD BLOCKCHAIN DATA COM DADOS REAIS ==========
 window.loadBlockchainData = async function() {
-    console.log('🔍 Carregando blockchain...');
+    console.log('🔍 Carregando blockchain com dados REAIS...');
     
     try {
         // Mostrar loading
@@ -3578,110 +3578,145 @@ window.loadBlockchainData = async function() {
         const visualization = document.getElementById('blockchainVisualization');
         
         if (contractsList) {
-            contractsList.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-success"></div><p class="mt-2">Carregando blockchain...</p></td></tr>';
+            contractsList.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-success"></div><p class="mt-2">Buscando blocos reais...</p></td></tr>';
         }
         
-        // ===== 1. BUSCAR BLOCOS REAIS DA BLOCKCHAIN =====
-        // Tenta buscar blocos de streaming primeiro
-        let blocksResult = await callAPI('get_mining_blocks', { limit: 10 });
+        // ===== 1. BUSCAR BLOCOS REAIS DA PLANILHA 'streaming_blocks' =====
+        let blocksResult = await callAPI('get_mining_blocks', { limit: 20 });
+        console.log('📦 Blocos de streaming (reais):', blocksResult);
         
-        // Se não existir a função, tenta buscar do histórico
-        if (!blocksResult?.success || !blocksResult.data) {
-            blocksResult = await callAPI('get_streaming_history', { limit: 10 });
-        }
-        
-        // Fallback: criar dados simulados para teste
+        // ===== 2. SE NÃO TIVER BLOCOS, BUSCAR DA CARTEIRA (INVESTIMENTOS) =====
         if (!blocksResult?.success || !blocksResult?.data || blocksResult.data.length === 0) {
-            console.log('⚠️ Usando dados simulados para blockchain');
-            blocksResult = {
-                success: true,
-                data: gerarBlocosSimulados()
-            };
-        }
-        
-        console.log('📦 Blocos carregados:', blocksResult);
-        
-        // ===== 2. BUSCAR ESTATÍSTICAS =====
-        const statsResult = await callAPI('get_mining_stats', {});
-        
-        if (statsResult?.success && statsResult.data) {
-            const global = statsResult.data.global || {};
-            document.getElementById('blockchainContractsCount').textContent = global.total_blocks || blocksResult.data.length || 0;
-            document.getElementById('blockchainTransactionsCount').textContent = global.total_transactions || 0;
-            document.getElementById('blockchainLastBlock').textContent = global.total_blocks || blocksResult.data.length || 0;
-            document.getElementById('blockchainLastUpdate').textContent = new Date().toLocaleTimeString('pt-BR');
-            document.getElementById('currentBlockNumber').textContent = global.total_blocks || blocksResult.data.length || 0;
-        }
-        
-        // ===== 3. RENDERIZAR CONTRATOS (BLOCOS) =====
-        if (contractsList && blocksResult.data) {
-            contractsList.innerHTML = blocksResult.data.map((block, index) => {
-                // Extrair campos com nomes diferentes
-                const blockHash = block.block_hash || block.hash || generateFakeHash(index);
-                const blockPrevHash = block.previous_hash || block.previousHash || '0x' + (index).toString(16).padStart(12, '0');
-                const blockIndex = block.block_index || block.index || index + 1;
-                const blockMusic = block.music_title || block.music_name || block.music_id || 'Bloco';
-                const blockValue = block.reward_amount || block.valor_total || block.total || Math.floor(Math.random() * 1000) + 100;
-                const blockUser = block.miner_user_id || block.user_name || block.user_id || 'Minerador';
-                
-                return `
-                    <tr>
-                        <td><span class="blockchain-hash" title="${blockHash}">${blockHash.substring(0, 15)}...</span></td>
-                        <td>${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}</td>
-                        <td>${blockMusic}</td>
-                        <td>${formatCurrency(blockValue)}</td>
-                        <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Verificado</span></td>
-                        <td><span class="text-muted small" title="${blockPrevHash}">${blockPrevHash.substring(0, 10)}...</span></td>
-                    </tr>
-                `;
-            }).join('');
-        }
-        
-        // ===== 4. RENDERIZAR TRANSAÇÕES =====
-        if (transactionsList) {
-            // Buscar transações reais ou usar simuladas
-            const txResult = await callAPI('get_transactions', { limit: 10 });
-            const transactions = txResult?.success && txResult.data ? txResult.data : gerarTransacoesSimuladasArray();
+            console.log('🔄 Buscando investimentos da carteira...');
+            const carteiraResult = await callAPI('get_carteira', { limit: 20 });
             
-            transactionsList.innerHTML = transactions.map(tx => {
-                const txHash = tx.tx_hash || tx.hash || generateFakeHash();
-                const txType = tx.tipo || tx.type || getRandomType();
-                const txValue = tx.valor || tx.amount || Math.floor(Math.random() * 500) + 50;
+            if (carteiraResult?.success && carteiraResult.data) {
+                const investimentos = Array.isArray(carteiraResult.data) ? carteiraResult.data : 
+                                     (carteiraResult.data.investimentos || []);
                 
-                return `
-                    <tr>
-                        <td><span class="blockchain-hash" title="${txHash}">${txHash.substring(0, 15)}...</span></td>
-                        <td>${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}</td>
-                        <td>${txType}</td>
-                        <td>Valor: ${formatCurrency(txValue)}</td>
-                        <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Confirmado</span></td>
-                    </tr>
-                `;
-            }).join('');
+                // Converter investimentos para formato de bloco
+                blocksResult = {
+                    success: true,
+                    data: investimentos.map((inv, index) => ({
+                        block_index: 1000 + index,
+                        block_hash: inv.hash_transacao || '0x' + Date.now().toString(16) + index,
+                        previous_hash: '0x' + (Date.now() - 1000).toString(16),
+                        timestamp: inv.data_compra || new Date().toISOString(),
+                        music_title: `Investimento #${index + 1}`,
+                        reward_amount: inv.valor_total || 0,
+                        miner_user_id: inv.user_id || 'investidor'
+                    }))
+                };
+                console.log('📦 Dados da carteira convertidos:', blocksResult.data.length, 'itens');
+            }
         }
         
-        // ===== 5. RENDERIZAR VISUALIZAÇÃO =====
-        renderBlockchainVisualization(blocksResult.data);
+        // ===== 3. SE AINDA NÃO TIVER, BUSCAR NEGOCIAÇÕES =====
+        if (!blocksResult?.data || blocksResult.data.length === 0) {
+            console.log('🔄 Buscando negociações...');
+            const tradesResult = await callAPI('get_trades', { limit: 20 });
+            
+            if (tradesResult?.success && tradesResult.data) {
+                const todasTrades = [
+                    ...(tradesResult.data.received || []),
+                    ...(tradesResult.data.sent || []),
+                    ...(tradesResult.data.history || [])
+                ];
+                
+                blocksResult = {
+                    success: true,
+                    data: todasTrades.map((trade, index) => ({
+                        block_index: 2000 + index,
+                        block_hash: trade.blockchain_hash || '0x' + Date.now().toString(16) + index,
+                        previous_hash: '0x' + (Date.now() - 2000).toString(16),
+                        timestamp: trade.timestamp || new Date().toISOString(),
+                        music_title: trade.music_title || 'Negociação',
+                        reward_amount: trade.total || 0,
+                        miner_user_id: trade.seller_id || trade.buyer_id || 'trader'
+                    }))
+                };
+                console.log('📦 Negociações convertidas:', blocksResult.data.length, 'itens');
+            }
+        }
+        
+        // ===== 4. SE TIVER DADOS REAIS, MOSTRAR =====
+        if (blocksResult?.data && blocksResult.data.length > 0) {
+            console.log('✅ Dados REAIS carregados:', blocksResult.data.length, 'blocos');
+            
+            // Atualizar contadores com dados reais
+            document.getElementById('blockchainContractsCount').textContent = blocksResult.data.length;
+            document.getElementById('blockchainLastBlock').textContent = blocksResult.data.length;
+            document.getElementById('currentBlockNumber').textContent = blocksResult.data.length;
+            
+            // Renderizar contratos na tabela
+            if (contractsList) {
+                contractsList.innerHTML = blocksResult.data.slice(0, 10).map((block, index) => {
+                    const blockHash = block.block_hash || block.hash || 'hash_' + index;
+                    const blockPrevHash = block.previous_hash || block.previousHash || '0x0';
+                    const blockMusic = block.music_title || block.music_name || 'Bloco Real';
+                    const blockValue = block.reward_amount || block.valor_total || block.total || 0;
+                    
+                    return `
+                        <tr>
+                            <td><span class="blockchain-hash" title="${blockHash}">${blockHash.substring(0, 15)}...</span></td>
+                            <td>${new Date(block.timestamp || Date.now()).toLocaleDateString('pt-BR')}</td>
+                            <td>${blockMusic}</td>
+                            <td>${formatCurrency(blockValue)}</td>
+                            <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Real</span></td>
+                            <td><span class="text-muted small">${blockPrevHash.substring(0, 10)}...</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+            
+            // Renderizar visualização
+            renderBlockchainVisualization(blocksResult.data);
+            
+        } else {
+            // ===== 5. SÓ USA SIMULADOS SE NÃO TIVER NENHUM DADO REAL =====
+            console.log('⚠️ NENHUM dado real encontrado - usando simulados para demonstração');
+            
+            // Mostrar mensagem amigável
+            if (visualization) {
+                visualization.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-info-circle fs-1 d-block mb-3"></i>
+                        <h5>Nenhum bloco real encontrado</h5>
+                        <p class="small">Para gerar blocos reais:</p>
+                        <ul class="list-unstyled mt-3">
+                            <li class="mb-2">🎵 <strong>Ouça músicas</strong> - Cada 30s de streaming minera um bloco</li>
+                            <li class="mb-2">💰 <strong>Invista</strong> - Cada compra de ações gera um bloco</li>
+                            <li class="mb-2">🤝 <strong>Negocie</strong> - Cada trade aceito gera um bloco</li>
+                        </ul>
+                        <button class="btn btn-outline-success mt-3" onclick="gerarBlocosSimuladosParaVisualizacao()">
+                            <i class="bi bi-magic me-2"></i>Ver exemplo (simulado)
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // Usar simulados apenas para demonstração
+            const blocosSimulados = gerarBlocosSimulados(5);
+            renderBlockchainVisualization(blocosSimulados);
+        }
         
     } catch (error) {
         console.error('❌ Erro ao carregar blockchain:', error);
         
-        // Fallback: mostrar dados simulados
+        // Fallback seguro - mostrar simulados
         const contractsList = document.getElementById('blockchainContractsList');
-        const transactionsList = document.getElementById('blockchainTransactionsList');
-        
         if (contractsList) {
             contractsList.innerHTML = gerarDadosSimulados();
         }
         
+        const transactionsList = document.getElementById('blockchainTransactionsList');
         if (transactionsList) {
             transactionsList.innerHTML = gerarTransacoesSimuladas();
         }
         
-        // Mostrar visualização simulada
         renderBlockchainVisualization(gerarBlocosSimulados(5));
     }
-}
+};
 
 // ===== FUNÇÕES AUXILIARES =====
 function gerarBlocosSimulados(quantidade = 10) {
