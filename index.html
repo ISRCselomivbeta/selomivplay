@@ -5521,7 +5521,6 @@ function updateMusicRealStats(track) {
     if (musicIndex >= 0) {
         state.playlist[musicIndex].stream_count = (state.playlist[musicIndex].stream_count || 0) + 1;
         state.playlist[musicIndex].last_stream = new Date().toISOString();
-        
         if (ELO && typeof ELO.calculateMusicScore === 'function') {
             const newElo = ELO.calculateMusicScore(state.playlist[musicIndex]);
             state.playlist[musicIndex].elo_rating = newElo;
