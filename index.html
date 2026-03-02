@@ -3902,68 +3902,6 @@ window.gerarBlocosSimuladosParaVisualizacao = function() {
         showToast('Blocos de exemplo gerados!', 'success');
     }
 };
-    // Adicionar setas de conexão apenas se houver mais de um bloco
-    if (lastBlocks.length > 1) {
-        const blocks = container.querySelectorAll('.card');
-        
-        // Para cada bloco, exceto o último, adicionar seta depois dele
-        for (let i = 0; i < blocks.length - 1; i++) {
-            const arrowHtml = `
-                <div class="d-flex align-items-center mx-2">
-                    <i class="bi bi-arrow-right fs-2 text-purple"></i>
-                </div>
-            `;
-            blocks[i].insertAdjacentHTML('afterend', arrowHtml);
-        }
-        
-        // Adicionar bloco "Próximo" após o último
-        const lastBlock = blocks[blocks.length - 1];
-        if (lastBlock) {
-            const nextBlockHtml = `
-                <div class="d-flex align-items-center mx-2">
-                    <i class="bi bi-arrow-right fs-2 text-purple"></i>
-                </div>
-                <div class="card bg-dark border-purple" style="width: 200px;">
-                    <div class="card-header bg-purple text-white py-2">
-                        <small>Próximo Bloco</small>
-                    </div>
-                    <div class="card-body p-2 text-center">
-                        <i class="bi bi-plus-circle text-muted fs-4"></i>
-                        <small class="d-block text-muted mt-2">Aguardando</small>
-                    </div>
-                </div>
-            `;
-            lastBlock.insertAdjacentHTML('afterend', nextBlockHtml);
-        }
-    }
-};
-    
-    // Adicionar setas de conexão
-    if (lastBlocks.length > 1) {
-        const arrowHtml = `
-            <div class="d-flex align-items-center">
-                <i class="bi bi-arrow-right fs-2 text-purple"></i>
-            </div>
-            <div class="card bg-dark border-purple" style="width: 200px;">
-                <div class="card-header bg-purple text-white py-2">
-                    <small>Próximo Bloco</small>
-                </div>
-                <div class="card-body p-2 text-center">
-                    <i class="bi bi-plus-circle text-muted"></i>
-                    <small class="d-block text-muted">Aguardando</small>
-                </div>
-            </div>
-        `;
-        
-        // Inserir as setas após cada bloco, exceto o último
-        const blocks = container.querySelectorAll('.card');
-        blocks.forEach((block, idx) => {
-            if (idx < blocks.length - 1) {
-                block.insertAdjacentHTML('afterend', arrowHtml);
-            }
-        });
-    }
-};
     // ========== SISTEMA DE RATING ELO ==========
     const ELO = {
         CONFIG: {
