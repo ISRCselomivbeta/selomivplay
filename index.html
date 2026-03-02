@@ -6425,7 +6425,7 @@ function selectUser(userId, userName, userEmail) {
     `;
 }
 
-// Criar oferta de negociação
+// Criar oferta de negociação (CORRIGIDA - chama API real)
 async function createTradeOffer() {
     if (!state.currentUser || !currentTradeAsset) {
         showToast('Erro ao criar oferta', 'error');
@@ -6459,47 +6459,38 @@ async function createTradeOffer() {
     btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Enviando...';
     
     try {
-        // Simular envio (substituir por chamada API real)
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const newOffer = {
-            id: 'trade_' + Date.now(),
-            type: 'sent',
-            music_title: currentTradeAsset.music_title,
-            artist: currentTradeAsset.artist,
+        // CHAMADA REAL PARA A API
+        const result = await callAPI('create_trade', {
+            seller_id: state.currentUser.id,
+            buyer_email: buyerEmail,
+            music_id: currentTradeAsset.music_id,
             quantity: quantity,
             price: price,
             total: total,
-            buyer_email: buyerEmail,
-            seller_name: state.currentUser.nome || 'Você',
-            message: message,
-            status: 'pending',
-            date: new Date().toISOString()
-        };
+            message: message
+        });
         
-        // Adicionar à lista de enviadas
-        tradeOffers.sent.unshift(newOffer);
+        console.log('📦 Resposta create_trade:', result);
         
-        showToast('Oferta enviada com sucesso!', 'success');
-        closeModal('tradeModal');
-        
-        // Atualizar badge do menu
-        updateTradeBadge();
-        
-        // Se estiver na seção de negociações, atualizar
-        if (document.getElementById('tradesSection')?.classList.contains('active')) {
-            renderTradeOffers('sent');
+        if (result?.success) {
+            showToast('Oferta enviada com sucesso!', 'success');
+            closeModal('tradeModal');
+            
+            // Recarregar negociações
+            await loadTradeOffers();
+            
+        } else {
+            showToast(result?.message || 'Erro ao enviar oferta', 'error');
         }
         
     } catch (error) {
         console.error('Erro ao criar oferta:', error);
-        showToast('Erro ao enviar oferta', 'error');
+        showToast('Erro ao enviar oferta: ' + (error.message || 'erro desconhecido'), 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-send me-2"></i> Enviar Oferta';
     }
 }
-
 // ========== CARREGAR NEGOCIAÇÕES REAIS DA PLANILHA ==========
 async function loadTradeOffers() {
     const loading = document.getElementById('tradesLoading');
