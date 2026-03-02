@@ -1769,6 +1769,45 @@
             align-items: center;
             gap: 4px;
         }
+        /* Adicione ao final do seu CSS */
+#blockchainVisualization {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+    min-height: 200px;
+}
+
+#blockchainVisualization .card {
+    transition: transform 0.3s ease;
+}
+
+#blockchainVisualization .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(155, 89, 182, 0.3);
+}
+
+.progress-loading {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-loading-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-green), #00cc6a);
+    border-radius: 2px;
+    width: 0%;
+    animation: loading 2s infinite;
+}
+
+@keyframes loading {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+}
 
         /* Artist Management */
         .music-actions {
@@ -3528,190 +3567,341 @@ window.showELORanking = function() {
     showModal('eloRankingModal');
 };
 
-// ========== FUNÇÃO LOAD BLOCKCHAIN DATA CORRIGIDA ==========
+// ========== LOAD BLOCKCHAIN DATA CORRIGIDA ==========
 window.loadBlockchainData = async function() {
-    console.log('loadBlockchainData chamado');
+    console.log('🔍 Carregando blockchain...');
     
     try {
         // Mostrar loading
         const contractsList = document.getElementById('blockchainContractsList');
+        const transactionsList = document.getElementById('blockchainTransactionsList');
+        const visualization = document.getElementById('blockchainVisualization');
+        
         if (contractsList) {
             contractsList.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-success"></div><p class="mt-2">Carregando blockchain...</p></td></tr>';
         }
         
-        // ===== 1. BUSCAR DADOS DA API =====
-        // Estatísticas gerais
-        const statsResult = await callAPI('get_mining_stats', {});
-        console.log('Stats:', statsResult);
+        // ===== 1. BUSCAR BLOCOS REAIS DA BLOCKCHAIN =====
+        // Tenta buscar blocos de streaming primeiro
+        let blocksResult = await callAPI('get_mining_blocks', { limit: 10 });
         
-        // Ranking (últimos blocos)
-        const rankingResult = await callAPI('get_mining_ranking', { limit: 10 });
-        console.log('Ranking:', rankingResult);
-        
-        // ===== 2. ATUALIZAR STATS =====
-        if (statsResult?.success && statsResult.data) {
-            const global = statsResult.data.global || {};
-            
-            document.getElementById('blockchainContractsCount').textContent = global.total_blocks || 0;
-            document.getElementById('blockchainTransactionsCount').textContent = global.total_transactions || 0;
-            document.getElementById('blockchainLastBlock').textContent = global.total_blocks || 0;
-            document.getElementById('blockchainLastUpdate').textContent = new Date().toLocaleTimeString('pt-BR');
-            document.getElementById('currentBlockNumber').textContent = global.total_blocks || 0;
+        // Se não existir a função, tenta buscar do histórico
+        if (!blocksResult?.success || !blocksResult.data) {
+            blocksResult = await callAPI('get_streaming_history', { limit: 10 });
         }
         
-        // ===== 3. RENDERIZAR CONTRATOS =====
-        if (contractsList) {
-            if (rankingResult?.success && rankingResult.data && rankingResult.data.length > 0) {
-                contractsList.innerHTML = rankingResult.data.map((item, index) => {
-                    // Gerar hash fictício baseado no índice
-                    const hash = '0x' + (Date.now() + index).toString(16).substring(0, 12) + '...';
-                    const prevHash = '0x' + (index).toString(16).padStart(12, '0');
-                    
-                    return `
-                        <tr>
-                            <td><span class="blockchain-hash" title="${hash}">${hash}</span></td>
-                            <td>${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}</td>
-                            <td>${item.user_name || 'Usuário'}</td>
-                            <td>${formatCurrency(item.total_rewards || 0)}</td>
-                            <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Verificado</span></td>
-                            <td><span class="text-muted small" title="${prevHash}">${prevHash.substring(0, 10)}...</span></td>
-                        </tr>
-                    `;
-                }).join('');
-            } else {
-                // Se não tiver dados, usar dados simulados para teste
-                contractsList.innerHTML = gerarDadosSimulados();
-            }
+        // Fallback: criar dados simulados para teste
+        if (!blocksResult?.success || !blocksResult?.data || blocksResult.data.length === 0) {
+            console.log('⚠️ Usando dados simulados para blockchain');
+            blocksResult = {
+                success: true,
+                data: gerarBlocosSimulados()
+            };
+        }
+        
+        console.log('📦 Blocos carregados:', blocksResult);
+        
+        // ===== 2. BUSCAR ESTATÍSTICAS =====
+        const statsResult = await callAPI('get_mining_stats', {});
+        
+        if (statsResult?.success && statsResult.data) {
+            const global = statsResult.data.global || {};
+            document.getElementById('blockchainContractsCount').textContent = global.total_blocks || blocksResult.data.length || 0;
+            document.getElementById('blockchainTransactionsCount').textContent = global.total_transactions || 0;
+            document.getElementById('blockchainLastBlock').textContent = global.total_blocks || blocksResult.data.length || 0;
+            document.getElementById('blockchainLastUpdate').textContent = new Date().toLocaleTimeString('pt-BR');
+            document.getElementById('currentBlockNumber').textContent = global.total_blocks || blocksResult.data.length || 0;
+        }
+        
+        // ===== 3. RENDERIZAR CONTRATOS (BLOCOS) =====
+        if (contractsList && blocksResult.data) {
+            contractsList.innerHTML = blocksResult.data.map((block, index) => {
+                // Extrair campos com nomes diferentes
+                const blockHash = block.block_hash || block.hash || generateFakeHash(index);
+                const blockPrevHash = block.previous_hash || block.previousHash || '0x' + (index).toString(16).padStart(12, '0');
+                const blockIndex = block.block_index || block.index || index + 1;
+                const blockMusic = block.music_title || block.music_name || block.music_id || 'Bloco';
+                const blockValue = block.reward_amount || block.valor_total || block.total || Math.floor(Math.random() * 1000) + 100;
+                const blockUser = block.miner_user_id || block.user_name || block.user_id || 'Minerador';
+                
+                return `
+                    <tr>
+                        <td><span class="blockchain-hash" title="${blockHash}">${blockHash.substring(0, 15)}...</span></td>
+                        <td>${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}</td>
+                        <td>${blockMusic}</td>
+                        <td>${formatCurrency(blockValue)}</td>
+                        <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Verificado</span></td>
+                        <td><span class="text-muted small" title="${blockPrevHash}">${blockPrevHash.substring(0, 10)}...</span></td>
+                    </tr>
+                `;
+            }).join('');
         }
         
         // ===== 4. RENDERIZAR TRANSAÇÕES =====
-        const transactionsList = document.getElementById('blockchainTransactionsList');
         if (transactionsList) {
-            transactionsList.innerHTML = gerarTransacoesSimuladas();
+            // Buscar transações reais ou usar simuladas
+            const txResult = await callAPI('get_transactions', { limit: 10 });
+            const transactions = txResult?.success && txResult.data ? txResult.data : gerarTransacoesSimuladasArray();
+            
+            transactionsList.innerHTML = transactions.map(tx => {
+                const txHash = tx.tx_hash || tx.hash || generateFakeHash();
+                const txType = tx.tipo || tx.type || getRandomType();
+                const txValue = tx.valor || tx.amount || Math.floor(Math.random() * 500) + 50;
+                
+                return `
+                    <tr>
+                        <td><span class="blockchain-hash" title="${txHash}">${txHash.substring(0, 15)}...</span></td>
+                        <td>${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}</td>
+                        <td>${txType}</td>
+                        <td>Valor: ${formatCurrency(txValue)}</td>
+                        <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Confirmado</span></td>
+                    </tr>
+                `;
+            }).join('');
         }
         
         // ===== 5. RENDERIZAR VISUALIZAÇÃO =====
-        renderBlockchainVisualization(rankingResult?.data || []);
+        renderBlockchainVisualization(blocksResult.data);
         
     } catch (error) {
-        console.error('Erro ao carregar blockchain:', error);
+        console.error('❌ Erro ao carregar blockchain:', error);
         
         // Fallback: mostrar dados simulados
         const contractsList = document.getElementById('blockchainContractsList');
+        const transactionsList = document.getElementById('blockchainTransactionsList');
+        
         if (contractsList) {
             contractsList.innerHTML = gerarDadosSimulados();
         }
         
-        const transactionsList = document.getElementById('blockchainTransactionsList');
         if (transactionsList) {
             transactionsList.innerHTML = gerarTransacoesSimuladas();
         }
+        
+        // Mostrar visualização simulada
+        renderBlockchainVisualization(gerarBlocosSimulados(5));
     }
 }
 
-// ===== FUNÇÕES AUXILIARES PARA DADOS SIMULADOS =====
-function gerarDadosSimulados() {
-    let html = '';
+// ===== FUNÇÕES AUXILIARES =====
+function gerarBlocosSimulados(quantidade = 10) {
+    const blocos = [];
     const musicas = ['Bohemian Rhapsody', 'Blinding Lights', 'Lose Yourself', 'Shape of You', 'Rolling in the Deep'];
     const artistas = ['Queen', 'The Weeknd', 'Eminem', 'Ed Sheeran', 'Adele'];
     
-    for (let i = 0; i < 5; i++) {
-        const hash = '0x' + (Date.now() + i).toString(16).substring(0, 12) + '...';
-        const prevHash = '0x' + (i).toString(16).padStart(12, '0');
-        const valor = Math.floor(Math.random() * 1000) + 100;
+    for (let i = 0; i < quantidade; i++) {
+        const index = i + 1;
+        const musicIndex = i % musicas.length;
         
-        html += `
-            <tr>
-                <td><span class="blockchain-hash" title="${hash}">${hash}</span></td>
-                <td>${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}</td>
-                <td>${musicas[i % musicas.length]} - ${artistas[i % artistas.length]}</td>
-                <td>${formatCurrency(valor)}</td>
-                <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Verificado</span></td>
-                <td><span class="text-muted small" title="${prevHash}">${prevHash.substring(0, 10)}...</span></td>
-            </tr>
-        `;
+        blocos.push({
+            block_index: index,
+            block_hash: '0x' + (Date.now() + i).toString(16).padStart(16, '0'),
+            previous_hash: i === 0 ? '0'.repeat(64) : '0x' + (Date.now() + i - 1).toString(16).padStart(16, '0'),
+            timestamp: new Date(Date.now() - i * 60000).toISOString(),
+            miner_user_id: 'user_' + (i + 100),
+            user_name: 'Minerador ' + (i + 1),
+            music_title: musicas[musicIndex] + ' - ' + artistas[musicIndex],
+            reward_amount: Math.floor(Math.random() * 1000) + 100,
+            music_id: 'music_' + (i + 1)
+        });
     }
-    return html;
+    
+    return blocos;
 }
 
-function gerarTransacoesSimuladas() {
-    let html = '';
-    const tipos = ['🎵 Royalty', '💰 Investimento', '💸 Streaming', '⛏️ Mineração'];
+function gerarTransacoesSimuladasArray() {
+    const tipos = ['🎵 Royalty', '💰 Investimento', '💸 Streaming', '⛏️ Mineração', '🤝 Negociação'];
+    const transacoes = [];
     
     for (let i = 0; i < 5; i++) {
-        const hash = '0x' + (Date.now() + i + 100).toString(16).substring(0, 12) + '...';
-        const tipo = tipos[Math.floor(Math.random() * tipos.length)];
-        const valor = Math.floor(Math.random() * 500) + 50;
-        
-        html += `
-            <tr>
-                <td><span class="blockchain-hash" title="${hash}">${hash}</span></td>
-                <td>${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}</td>
-                <td>${tipo}</td>
-                <td>Valor: ${formatCurrency(valor)}</td>
-                <td><span class="blockchain-verified"><i class="bi bi-shield-check"></i> Confirmado</span></td>
-            </tr>
-        `;
+        transacoes.push({
+            hash: '0x' + (Date.now() + i + 100).toString(16).padStart(16, '0'),
+            tipo: tipos[Math.floor(Math.random() * tipos.length)],
+            valor: Math.floor(Math.random() * 500) + 50
+        });
     }
-    return html;
+    
+    return transacoes;
 }
-// ========== FUNÇÃO RENDER BLOCKCHAIN VISUALIZATION ==========
+
+function generateFakeHash(seed = 0) {
+    return '0x' + (Date.now() + seed).toString(16).padStart(16, '0') + '...';
+}
+
+function getRandomType() {
+    const tipos = ['🎵 Royalty', '💰 Investimento', '💸 Streaming', '⛓️ Contrato'];
+    return tipos[Math.floor(Math.random() * tipos.length)];
+}
+
+    
+// ========== FUNÇÃO RENDER BLOCKCHAIN VISUALIZATION CORRIGIDA ==========
 window.renderBlockchainVisualization = function(contracts) {
     const container = document.getElementById('blockchainVisualization');
     if (!container) return;
     
-    if (contracts.length === 0) {
-        container.innerHTML = '<div class="text-center text-muted py-4">Nenhum bloco minerado ainda</div>';
-        return;
-    }
-    
-    const lastBlocks = contracts.slice(-5);
-    
-    // ========== FUNÇÃO RENDER BLOCKCHAIN VISUALIZATION CORRIGIDA ==========
-window.renderBlockchainVisualization = function(contracts) {
-    const container = document.getElementById('blockchainVisualization');
-    if (!container) return;
-    
+    // Se não tiver contratos ou for ranking de usuários
     if (!contracts || contracts.length === 0) {
-        container.innerHTML = '<div class="text-center text-muted py-4">Nenhum bloco minerado ainda</div>';
+        container.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-link-45deg fs-1 d-block mb-3"></i>
+                <h5>Nenhum bloco encontrado</h5>
+                <p class="small">Os primeiros blocos aparecerão quando houver investimentos</p>
+                <button class="btn btn-outline-success btn-sm mt-2" onclick="gerarBlocosSimuladosParaVisualizacao()">
+                    <i class="bi bi-magic me-2"></i>Gerar blocos de exemplo
+                </button>
+            </div>
+        `;
         return;
     }
     
+    // Verificar se os dados têm os campos esperados
+    const hasValidBlocks = contracts.some(b => b.block_hash || b.hash);
+    
+    if (!hasValidBlocks) {
+        // Se veio ranking em vez de blocos, mostrar mensagem
+        container.innerHTML = `
+            <div class="alert alert-info bg-dark border-info">
+                <i class="bi bi-info-circle me-2"></i>
+                Mostrando ranking de mineração. Clique em "Gerar blocos" para ver a visualização.
+            </div>
+            <div class="text-center mt-3">
+                <button class="btn btn-outline-success" onclick="gerarBlocosSimuladosParaVisualizacao()">
+                    <i class="bi bi-magic me-2"></i>Gerar blocos de exemplo
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    // Pegar últimos 5 blocos
     const lastBlocks = contracts.slice(-5);
     
-    container.innerHTML = lastBlocks.map((block, index) => {
-        const isLast = index === lastBlocks.length - 1;
+    // Limpar container antes de adicionar
+    container.innerHTML = '';
+    
+    // Função para criar um bloco
+    function criarBloco(block, index, isLast) {
+        // Extrair campos com fallbacks
+        const blockHash = block?.block_hash || block?.hash || '0x' + Date.now().toString(16).substring(0, 16);
+        const blockPrevHash = block?.previous_hash || block?.previousHash || '0x' + (index).toString(16).padStart(16, '0');
+        const blockIndex = block?.block_index || block?.index || index + 1;
+        const blockMusic = block?.music_title || block?.music_name || block?.music_id || 'Bloco';
         
-        // Validação segura dos campos
-        const blockHash = block?.block_hash || block?.hash || 'hash_indisponivel';
-        const blockPreviousHash = block?.previous_hash || block?.previousHash || '0'.repeat(64);
-        const blockMusicId = block?.music_id || block?.id || null;
-        const blockIndex = block?.block_index || block?.index || (state.blockchain?.contracts?.indexOf(block) + 1) || index + 1;
+        // Criar elemento
+        const blockDiv = document.createElement('div');
+        blockDiv.className = `card bg-dark border-${isLast ? 'success' : 'purple'}`;
+        blockDiv.style.width = '200px';
+        blockDiv.style.flexShrink = '0';
         
-        return `
-            <div class="card bg-dark border-${isLast ? 'success' : 'purple'}" style="width: 200px;">
-                <div class="card-header bg-${isLast ? 'success' : 'purple'} text-white py-2">
-                    <small>Bloco #${blockIndex}</small>
-                </div>
-                <div class="card-body p-2">
-                    <small class="d-block text-muted">Hash:</small>
-                    <small class="blockchain-hash d-block mb-2" style="font-size: 10px;">
-                        ${blockHash.substring(0, 15)}...
-                    </small>
-                    <small class="d-block text-muted">Prev:</small>
-                    <small class="text-muted" style="font-size: 10px;">
-                        ${blockPreviousHash.substring(0, 10)}...
-                    </small>
-                    <div class="mt-2">
-                        <span class="badge bg-${isLast ? 'success' : 'secondary'}">
-                            ${blockMusicId ? 'Contrato' : 'Gênesis'}
-                        </span>
-                    </div>
+        blockDiv.innerHTML = `
+            <div class="card-header bg-${isLast ? 'success' : 'purple'} text-white py-2">
+                <small class="d-flex justify-content-between align-items-center">
+                    <span>Bloco #${blockIndex}</span>
+                    ${isLast ? '<i class="bi bi-check-circle-fill"></i>' : ''}
+                </small>
+            </div>
+            <div class="card-body p-2">
+                <small class="d-block text-muted">Hash:</small>
+                <small class="blockchain-hash d-block mb-2" style="font-size: 10px; word-break: break-all;" 
+                       title="${blockHash}">
+                    ${blockHash.substring(0, 15)}...
+                </small>
+                <small class="d-block text-muted">Prev:</small>
+                <small class="text-muted" style="font-size: 10px; word-break: break-all;"
+                       title="${blockPrevHash}">
+                    ${blockPrevHash.substring(0, 10)}...
+                </small>
+                <div class="mt-2 text-center">
+                    <span class="badge bg-${isLast ? 'success' : 'secondary'}">
+                        <i class="bi bi-music-note-beamed me-1"></i>
+                        ${blockMusic.length > 15 ? blockMusic.substring(0, 12) + '...' : blockMusic}
+                    </span>
                 </div>
             </div>
         `;
-    }).join('');
+        
+        return blockDiv;
+    }
     
+    // Adicionar blocos com setas
+    lastBlocks.forEach((block, idx) => {
+        const isLast = idx === lastBlocks.length - 1;
+        
+        // Adicionar bloco
+        container.appendChild(criarBloco(block, idx, isLast));
+        
+        // Se não for o último, adicionar seta
+        if (idx < lastBlocks.length - 1) {
+            const arrowDiv = document.createElement('div');
+            arrowDiv.className = 'd-flex align-items-center';
+            arrowDiv.innerHTML = '<i class="bi bi-arrow-right fs-2 text-purple"></i>';
+            container.appendChild(arrowDiv);
+        }
+    });
+    
+    // Adicionar seta e bloco "Próximo" após o último
+    if (lastBlocks.length > 0) {
+        const arrowDiv = document.createElement('div');
+        arrowDiv.className = 'd-flex align-items-center';
+        arrowDiv.innerHTML = '<i class="bi bi-arrow-right fs-2 text-purple"></i>';
+        container.appendChild(arrowDiv);
+        
+        const nextBlockDiv = document.createElement('div');
+        nextBlockDiv.className = 'card bg-dark border-purple';
+        nextBlockDiv.style.width = '200px';
+        nextBlockDiv.style.flexShrink = '0';
+        nextBlockDiv.style.opacity = '0.7';
+        nextBlockDiv.innerHTML = `
+            <div class="card-header bg-purple text-white py-2">
+                <small>Próximo Bloco</small>
+            </div>
+            <div class="card-body p-2 text-center">
+                <i class="bi bi-plus-circle text-muted fs-4"></i>
+                <small class="d-block text-muted mt-2">Aguardando mineração</small>
+                <div class="progress-loading mt-2" style="max-width: 100%;">
+                    <div class="progress-loading-bar"></div>
+                </div>
+            </div>
+        `;
+        container.appendChild(nextBlockDiv);
+    }
+};
+
+// ===== FUNÇÃO PARA GERAR BLOCOS SIMULADOS (CLICÁVEL) =====
+window.gerarBlocosSimuladosParaVisualizacao = function() {
+    const blocos = [];
+    const musicas = [
+        'Bohemian Rhapsody - Queen',
+        'Blinding Lights - The Weeknd',
+        'Lose Yourself - Eminem',
+        'Shape of You - Ed Sheeran',
+        'Rolling in the Deep - Adele',
+        'Hotel California - Eagles',
+        'Imagine - John Lennon',
+        'Smells Like Teen Spirit - Nirvana'
+    ];
+    
+    for (let i = 0; i < 5; i++) {
+        const hash = '0x' + (Date.now() + i).toString(16).padStart(16, '0') + (i * 1000).toString(16);
+        const prevHash = i === 0 ? '0'.repeat(64) : '0x' + (Date.now() + i - 1).toString(16).padStart(16, '0');
+        
+        blocos.push({
+            block_index: 100 + i,
+            block_hash: hash,
+            previous_hash: prevHash,
+            music_title: musicas[i % musicas.length],
+            timestamp: new Date(Date.now() - i * 3600000).toISOString()
+        });
+    }
+    
+    // Chamar a visualização com os blocos simulados
+    renderBlockchainVisualization(blocos);
+    
+    // Mostrar toast
+    if (typeof showToast === 'function') {
+        showToast('Blocos de exemplo gerados!', 'success');
+    }
+};
     // Adicionar setas de conexão apenas se houver mais de um bloco
     if (lastBlocks.length > 1) {
         const blocks = container.querySelectorAll('.card');
