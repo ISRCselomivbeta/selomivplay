@@ -1923,6 +1923,8 @@
         flex-wrap: wrap;
     }
 }
+
+        
 /* ===== SISTEMA DE NEGOCIAÇÃO ===== */
 .trade-offer-card {
     background: linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(0, 123, 255, 0.05) 100%);
@@ -2633,6 +2635,68 @@
                 </div>
             </div>
                 </section>
+                </div>
+</section>  <!-- FIM DO PLAYER EXPANDIDO -->
+
+<!-- MINHAS NEGOCIAÇÕES SECTION -->
+<section id="tradesSection" class="section">
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="bi bi-arrow-left-right me-2 text-info"></i>
+            Minhas Negociações
+        </h2>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-info" onclick="loadTradeOffers()" id="refreshTradesBtn">
+                <i class="bi bi-arrow-clockwise me-1"></i> Atualizar
+            </button>
+            <span class="badge bg-info" id="pendingTradesCount">0 pendentes</span>
+        </div>
+    </div>
+    
+    <!-- Abas -->
+    <ul class="nav nav-tabs border-0 mb-3" id="tradeTabs">
+        <li class="nav-item">
+            <a class="nav-link text-muted active" href="#" onclick="switchTradeTab('received')">
+                <i class="bi bi-inbox me-1"></i> Recebidas
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-muted" href="#" onclick="switchTradeTab('sent')">
+                <i class="bi bi-send me-1"></i> Enviadas
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-muted" href="#" onclick="switchTradeTab('history')">
+                <i class="bi bi-clock-history me-1"></i> Histórico
+            </a>
+        </li>
+    </ul>
+    
+    <!-- Lista de negociações -->
+    <div id="tradesList" class="mt-3">
+        <!-- Loading -->
+        <div id="tradesLoading" style="display: none;" class="text-center py-5">
+            <div class="spinner-border text-info mb-3"></div>
+            <p class="text-muted">Carregando negociações...</p>
+        </div>
+        
+        <!-- Empty state -->
+        <div id="tradesEmpty" class="empty-state-actionable">
+            <i class="bi bi-arrow-left-right empty-icon text-info"></i>
+            <h5 class="text-muted">Nenhuma negociação</h5>
+            <p class="text-muted">Você ainda não tem negociações ativas</p>
+            <button class="btn btn-outline-info mt-3" onclick="changeSection('portfolio')">
+                <i class="bi bi-briefcase me-2"></i> Ver meu portfólio
+            </button>
+        </div>
+        
+        <!-- Lista dinâmica -->
+        <div id="tradesContainer"></div>
+    </div>
+</section>
+
+<!-- Invest Modal -->
+<div id="investModal" class="modal-overlay">
 <!-- Invest Modal -->
 <div id="investModal" class="modal-overlay">
     <div class="modal-content">
