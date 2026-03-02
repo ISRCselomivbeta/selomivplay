@@ -1923,6 +1923,79 @@
         flex-wrap: wrap;
     }
 }
+/* ===== SISTEMA DE NEGOCIAÇÃO ===== */
+.trade-offer-card {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(0, 123, 255, 0.05) 100%);
+    border-left: 4px solid #00ff88;
+    transition: all 0.3s ease;
+}
+
+.trade-offer-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 255, 136, 0.1);
+}
+
+.trade-offer-card.pending {
+    border-left-color: #ffc107;
+}
+
+.trade-offer-card.accepted {
+    border-left-color: #28a745;
+}
+
+.trade-offer-card.declined {
+    border-left-color: #dc3545;
+    opacity: 0.7;
+}
+
+.user-search-result {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-search-result:hover {
+    background: rgba(0, 255, 136, 0.1);
+    transform: translateX(5px);
+}
+
+.trade-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 10;
+}
+
+.trade-badge.pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid #ffc107;
+}
+
+.trade-badge.accepted {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+/* Modal de negociação maior */
+#tradeModal .modal-content {
+    max-width: 600px;
+}
+
+/* Animação para novas ofertas */
+@keyframes newTradePulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+}
+
+.trade-new {
+    animation: newTradePulse 2s infinite;
+}        
     </style>
 </head>
 <body>
@@ -2090,6 +2163,13 @@
             <li class="nav-item">
     <a href="#" class="nav-link" onclick="openPlayerExpanded()">
         <i class="bi bi-music-player text-success"></i> <span class="text-success">Player Expandido</span>
+    </a>
+</li>
+            <li class="nav-item">
+    <a href="#" class="nav-link" onclick="changeSection('trades')">
+        <i class="bi bi-arrow-left-right text-info"></i> 
+        <span class="text-info">Negociações</span>
+        <span class="badge bg-info ms-auto" id="menuTradeBadge" style="display: none;">0</span>
     </a>
 </li>
             <li class="nav-item">
@@ -2552,116 +2632,7 @@
                     </div>
                 </div>
             </div>
-            
-            <div class="col-md-8">
-                <!-- YouTube Player -->
-                <div class="youtube-container-expanded mb-4">
-                    <div id="youtubePlayerExpanded" style="width: 100%; height: 100%;"></div>
-                    <div class="player-loading" id="playerLoadingExpanded">
-                        <div class="loading-spinner"></div>
-                        <span>Carregando vídeo...</span>
-                    </div>
-                </div>
-                
-                <!-- Controles Expandidos -->
-                <div class="expanded-controls bg-dark p-4 rounded-3">
-                    <div class="expanded-progress-container mb-4">
-                        <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
-                            <div class="expanded-progress-fill" id="expandedProgressBar"></div>
-                        </div>
-                        <div class="expanded-time-display d-flex justify-content-between mt-2">
-                            <span id="expandedCurrentTime" class="text-muted">0:00</span>
-                            <span id="expandedTotalTime" class="text-muted">0:00</span>
-                        </div>
-                    </div>
-                    
-                    <div class="expanded-controls-bottom d-flex justify-content-center align-items-center gap-4">
-                        <button class="btn btn-outline-success" onclick="playPrevious()">
-                            <i class="bi bi-skip-backward-fill"></i>
-                        </button>
-                        
-                        <button class="btn btn-success btn-lg rounded-circle" onclick="togglePlay()" id="expandedPlayPauseBtn" style="width: 60px; height: 60px;">
-                            <i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i>
-                        </button>
-                        
-                        <button class="btn btn-outline-success" onclick="playNext()">
-                            <i class="bi bi-skip-forward-fill"></i>
-                        </button>
-                    </div>
-                    
-                    <div class="expanded-controls-top d-flex justify-content-center gap-3 mt-4">
-                        <button class="btn btn-outline-success" onclick="toggleShuffle()" id="expandedShuffleBtn">
-                            <i class="bi bi-shuffle me-2"></i>Aleatório
-                        </button>
-                        
-                        <button class="btn btn-outline-success" onclick="toggleRepeat()" id="expandedRepeatBtn">
-                            <i class="bi bi-repeat me-2"></i>Repetir
-                        </button>
-                        
-                        <button class="btn btn-outline-success" onclick="toggleFavorite()" id="expandedFavoriteBtn">
-                            <i class="bi bi-star" id="expandedFavoriteIcon"></i>
-                        </button>
-                        
-                        <button class="btn btn-success" onclick="openInvestModalFromPlayer()">
-                            <i class="bi bi-currency-dollar me-2"></i>Investir
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Informações da Música -->
-                <div class="track-info-section mt-4">
-                    <h4 class="text-white mb-3">
-                        <i class="bi bi-info-circle text-success me-2"></i>
-                        Sobre esta música
-                    </h4>
-                    
-                    <div class="info-grid">
-                        <div class="info-card">
-                            <div class="info-icon">
-                                <i class="bi bi-cash-coin"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Valor por ação</div>
-                                <div class="info-value text-success" id="expandedPrice">R$ 0,00</div>
-                            </div>
-                        </div>
-                        
-                        <div class="info-card">
-                            <div class="info-icon">
-                                <i class="bi bi-percent"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Disponível</div>
-                                <div class="info-value text-success" id="expandedAvailable">0%</div>
-                            </div>
-                        </div>
-                        
-                        <div class="info-card">
-                            <div class="info-icon">
-                                <i class="bi bi-graph-up-arrow"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Retorno</div>
-                                <div class="info-value text-success" id="expandedReturn">0%</div>
-                            </div>
-                        </div>
-                        
-                        <div class="info-card">
-                            <div class="info-icon">
-                                <i class="bi bi-people"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Investidores</div>
-                                <div class="info-value text-success" id="expandedInvestors">0</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
+                </section>
 <!-- Invest Modal -->
 <div id="investModal" class="modal-overlay">
     <div class="modal-content">
@@ -3157,6 +3128,108 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('eloRankingModal')">Fechar</button>
+        </div>
+    </div>
+</div>
+        <!-- Trade Modal -->
+<div id="tradeModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2 text-info"></i> Negociar Ações</h5>
+            <button class="modal-close" onclick="closeModal('tradeModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="text-center mb-4">
+                <h6 id="tradeMusicTitle" class="fw-bold">Título da Música</h6>
+                <p class="text-muted" id="tradeMusicArtist">Artista</p>
+                <div class="d-flex justify-content-center gap-3 mt-2">
+                    <span class="badge bg-info">Você tem <span id="tradeSharesOwned">0</span> ações</span>
+                    <span class="badge bg-secondary">Preço atual: <span id="tradeCurrentPrice">R$ 0,00</span></span>
+                </div>
+            </div>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="bg-dark p-3 rounded-3 text-center border border-secondary">
+                        <small class="text-muted d-block">Valor investido</small>
+                        <span class="text-success fw-bold fs-5" id="tradeInvestedValue">R$ 0,00</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="bg-dark p-3 rounded-3 text-center border border-secondary">
+                        <small class="text-muted d-block">Valor atual</small>
+                        <span class="text-info fw-bold fs-5" id="tradeCurrentValue">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="text-muted mb-2 d-block">
+                    <i class="bi bi-person me-1"></i> Email do comprador
+                </label>
+                <input type="email" id="tradeBuyerEmail" class="form-control-custom" placeholder="email@exemplo.com" 
+                       onkeyup="searchUserByEmail()" autocomplete="off">
+                <div id="userSearchResults" class="mt-2 bg-dark border rounded-3" style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+            
+            <div class="form-group">
+                <label class="text-muted mb-2 d-block">
+                    <i class="bi bi-calculator me-1"></i> Quantidade de ações
+                </label>
+                <div class="input-group">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustTradeQuantity(-1)">
+                        <i class="bi bi-dash"></i>
+                    </button>
+                    <input type="number" id="tradeQuantity" class="form-control-custom text-center" value="1" min="1" 
+                           oninput="updateTradeCalculation()" style="font-size: 1.1rem;">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustTradeQuantity(1)">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                </div>
+                <small class="text-muted" id="tradeMaxQuantity">Máximo disponível: 0 ações</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="text-muted mb-2 d-block">
+                    <i class="bi bi-coin me-1"></i> Preço por ação (SELO COIN)
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark text-white border-secondary">R$</span>
+                    <input type="number" id="tradePrice" class="form-control-custom" step="0.01" min="0.01" 
+                           value="10.00" oninput="updateTradeCalculation()" style="font-size: 1.1rem;">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="text-muted mb-2 d-block">
+                    <i class="bi bi-chat me-1"></i> Mensagem (opcional)
+                </label>
+                <textarea id="tradeMessage" class="form-control-custom" rows="2" 
+                          placeholder="Ex: Aceito negociar, podemos conversar sobre o preço..."></textarea>
+            </div>
+            
+            <div class="alert bg-dark border-info mt-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-info-circle text-info me-2"></i>
+                        <span class="text-muted">Total da negociação</span>
+                    </div>
+                    <span class="fw-bold fs-4 text-warning" id="tradeTotalDisplay">R$ 0,00</span>
+                </div>
+                <div class="mt-2 small text-muted">
+                    <i class="bi bi-shield-check me-1"></i> Transação protegida pela blockchain
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('tradeModal')">Cancelar</button>
+            <button class="btn btn-info" onclick="createTradeOffer()" id="createTradeBtn">
+                <i class="bi bi-send me-2"></i> Enviar Oferta
+            </button>
         </div>
     </div>
 </div>
@@ -4349,35 +4422,31 @@ function renderPortfolio() {
                 }
                 
                 return `<div class="music-card">
-                    <img src="${coverImage}" class="music-cover" alt="${music.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                    <div class="music-info">
-                        <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
-                        <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
-                        <div class="music-meta">
-                            <span class="music-price">${formatCurrency(valorInvestido)}</span>
-                            <span class="investment-score">
-                                <i class="bi bi-graph-up-arrow"></i> 
-                                ${profitPerc > 0 ? '+' : ''}${profitPerc.toFixed(1)}%
-                            </span>
-                        </div>
-                        <div class="d-flex justify-content-between mt-2">
-                            <small class="text-muted">Ações: ${quantidade}</small>
-                            <small class="${profitVal >= 0 ? 'text-success' : 'text-danger'}">
-                                ${profitVal >= 0 ? '▲' : '▼'} 
-                                ${formatCurrency(Math.abs(profitVal))}
-                            </small>
-                        </div>
-                        <div class="d-flex justify-content-between mt-1">
-                            <small class="text-muted">Preço atual:</small>
-                            <small class="text-success">${formatCurrency(music.valor_acao || 0)}</small>
-                        </div>
-                        ${asset.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ Hash: ' + asset.blockchain_hash.substring(0, 10) + '...</div>' : ''}
-                    </div>
-                </div>`;
-            }).join('')}
-        </div>`;
-}
-
+    <img src="${coverImage}" class="music-cover" alt="${music.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+    <div class="music-info">
+        <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
+        <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
+        <div class="music-meta">
+            <span class="music-price">${formatCurrency(valorInvestido)}</span>
+            <span class="investment-score">
+                <i class="bi bi-graph-up-arrow"></i> 
+                ${profitPerc > 0 ? '+' : ''}${profitPerc.toFixed(1)}%
+            </span>
+        </div>
+        <div class="d-flex justify-content-between mt-2">
+            <small class="text-muted">Ações: ${quantidade}</small>
+            <small class="${profitVal >= 0 ? 'text-success' : 'text-danger'}">
+                ${profitVal >= 0 ? '▲' : '▼'} 
+                ${formatCurrency(Math.abs(profitVal))}
+            </small>
+        </div>
+        <div class="d-flex justify-content-between mt-1">
+            <small class="text-muted">Preço atual:</small>
+            <small class="text-success">${formatCurrency(music.valor_acao || 0)}</small>
+        </div>
+        ${asset.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ Hash: ' + asset.blockchain_hash.substring(0, 10) + '...</div>' : ''}
+    </div>
+</div>`;
 function updatePortfolioValue() {
     const el = document.getElementById('portfolioValue');
     if (!el) return;
@@ -6055,6 +6124,518 @@ function updateExpandedPlayer() {
         expandedFavoriteIcon.className = isFavorite ? 'bi bi-star-fill' : 'bi bi-star';
     }
 } 
+    // ========== SISTEMA DE NEGOCIAÇÃO ENTRE USUÁRIOS ==========
+
+// Estado das negociações
+let currentTradeAsset = null;
+let tradeOffers = {
+    received: [],
+    sent: [],
+    history: []
+};
+
+// Abrir modal de negociação
+function openTradeModal(asset) {
+    if (!state.currentUser) {
+        showToast('Faça login para negociar', 'error');
+        return;
+    }
+    
+    currentTradeAsset = asset;
+    
+    // Preencher dados
+    document.getElementById('tradeMusicTitle').textContent = asset.music_title || 'Música';
+    document.getElementById('tradeMusicArtist').textContent = asset.artist || 'Artista';
+    document.getElementById('tradeSharesOwned').textContent = asset.quantidade || 0;
+    document.getElementById('tradeCurrentPrice').textContent = formatCurrency(asset.valor_acao || 0);
+    document.getElementById('tradeInvestedValue').textContent = formatCurrency(asset.valor_investido || 0);
+    document.getElementById('tradeCurrentValue').textContent = formatCurrency((asset.quantidade || 0) * (asset.valor_acao || 0));
+    document.getElementById('tradeMaxQuantity').textContent = `Máximo disponível: ${asset.quantidade || 0} ações`;
+    
+    // Reset campos
+    document.getElementById('tradeQuantity').value = 1;
+    document.getElementById('tradePrice').value = asset.valor_acao || 10;
+    document.getElementById('tradeBuyerEmail').value = '';
+    document.getElementById('tradeMessage').value = '';
+    document.getElementById('userSearchResults').innerHTML = '';
+    
+    updateTradeCalculation();
+    showModal('tradeModal');
+}
+
+// Ajustar quantidade
+function adjustTradeQuantity(amount) {
+    const input = document.getElementById('tradeQuantity');
+    const max = currentTradeAsset?.quantidade || 0;
+    let newValue = parseInt(input.value) + amount;
+    newValue = Math.max(1, Math.min(max, newValue));
+    input.value = newValue;
+    updateTradeCalculation();
+}
+
+// Atualizar cálculo da negociação
+function updateTradeCalculation() {
+    const qty = parseInt(document.getElementById('tradeQuantity').value) || 1;
+    const price = parseFloat(document.getElementById('tradePrice').value) || 0;
+    const total = qty * price;
+    document.getElementById('tradeTotalDisplay').textContent = formatCurrency(total);
+}
+
+// Buscar usuário por email
+async function searchUserByEmail() {
+    const email = document.getElementById('tradeBuyerEmail').value.trim();
+    const resultsDiv = document.getElementById('userSearchResults');
+    
+    if (!email || email.length < 3) {
+        resultsDiv.innerHTML = '';
+        return;
+    }
+    
+    resultsDiv.innerHTML = '<div class="p-3 text-center"><div class="spinner-border spinner-border-sm text-info"></div> Buscando...</div>';
+    
+    try {
+        // Simular busca (substituir por chamada API real)
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Dados simulados
+        const users = [
+            { id: 'user1', nome: 'João Silva', email: 'joao@email.com' },
+            { id: 'user2', nome: 'Maria Santos', email: 'maria@email.com' },
+            { id: 'user3', nome: 'Pedro Oliveira', email: 'pedro@email.com' }
+        ].filter(u => u.email.includes(email) || u.nome.toLowerCase().includes(email.toLowerCase()));
+        
+        if (users.length === 0) {
+            resultsDiv.innerHTML = '<div class="p-3 text-center text-muted">Nenhum usuário encontrado</div>';
+            return;
+        }
+        
+        resultsDiv.innerHTML = users.map(user => `
+            <div class="user-search-result p-3 border-bottom" onclick="selectUser('${user.id}', '${user.nome}', '${user.email}')">
+                <div class="d-flex align-items-center">
+                    <div class="bg-info rounded-circle p-2 me-2" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                        <span class="text-dark fw-bold">${user.nome.charAt(0)}</span>
+                    </div>
+                    <div>
+                        <strong>${user.nome}</strong><br>
+                        <small class="text-muted">${user.email}</small>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Erro ao buscar usuários:', error);
+        resultsDiv.innerHTML = '<div class="p-3 text-center text-danger">Erro ao buscar usuários</div>';
+    }
+}
+
+// Selecionar usuário
+function selectUser(userId, userName, userEmail) {
+    document.getElementById('tradeBuyerEmail').value = userEmail;
+    document.getElementById('userSearchResults').innerHTML = `
+        <div class="p-3 bg-info bg-opacity-10 rounded-3">
+            <i class="bi bi-check-circle-fill text-info me-2"></i>
+            Negociando com: <strong>${userName}</strong>
+        </div>
+    `;
+}
+
+// Criar oferta de negociação
+async function createTradeOffer() {
+    if (!state.currentUser || !currentTradeAsset) {
+        showToast('Erro ao criar oferta', 'error');
+        return;
+    }
+    
+    const buyerEmail = document.getElementById('tradeBuyerEmail').value.trim();
+    if (!buyerEmail) {
+        showToast('Digite o email do comprador', 'error');
+        return;
+    }
+    
+    const quantity = parseInt(document.getElementById('tradeQuantity').value) || 1;
+    const price = parseFloat(document.getElementById('tradePrice').value) || 0;
+    const message = document.getElementById('tradeMessage').value.trim();
+    
+    if (quantity > (currentTradeAsset.quantidade || 0)) {
+        showToast(`Você só tem ${currentTradeAsset.quantidade} ações`, 'error');
+        return;
+    }
+    
+    if (price <= 0) {
+        showToast('Preço inválido', 'error');
+        return;
+    }
+    
+    const total = quantity * price;
+    
+    const btn = document.getElementById('createTradeBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Enviando...';
+    
+    try {
+        // Simular envio (substituir por chamada API real)
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        const newOffer = {
+            id: 'trade_' + Date.now(),
+            type: 'sent',
+            music_title: currentTradeAsset.music_title,
+            artist: currentTradeAsset.artist,
+            quantity: quantity,
+            price: price,
+            total: total,
+            buyer_email: buyerEmail,
+            seller_name: state.currentUser.nome || 'Você',
+            message: message,
+            status: 'pending',
+            date: new Date().toISOString()
+        };
+        
+        // Adicionar à lista de enviadas
+        tradeOffers.sent.unshift(newOffer);
+        
+        showToast('Oferta enviada com sucesso!', 'success');
+        closeModal('tradeModal');
+        
+        // Atualizar badge do menu
+        updateTradeBadge();
+        
+        // Se estiver na seção de negociações, atualizar
+        if (document.getElementById('tradesSection')?.classList.contains('active')) {
+            renderTradeOffers('sent');
+        }
+        
+    } catch (error) {
+        console.error('Erro ao criar oferta:', error);
+        showToast('Erro ao enviar oferta', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send me-2"></i> Enviar Oferta';
+    }
+}
+
+// Carregar ofertas
+async function loadTradeOffers() {
+    const loading = document.getElementById('tradesLoading');
+    const empty = document.getElementById('tradesEmpty');
+    const container = document.getElementById('tradesContainer');
+    
+    if (loading) loading.style.display = 'block';
+    if (empty) empty.style.display = 'none';
+    if (container) container.innerHTML = '';
+    
+    try {
+        // Simular carregamento (substituir por chamada API real)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Dados simulados
+        tradeOffers = {
+            received: [
+                {
+                    id: 'rec_1',
+                    type: 'received',
+                    music_title: 'Bohemian Rhapsody',
+                    artist: 'Queen',
+                    quantity: 5,
+                    price: 28.50,
+                    total: 142.50,
+                    seller_name: 'João Silva',
+                    seller_email: 'joao@email.com',
+                    message: 'Aceita negociar?',
+                    status: 'pending',
+                    date: new Date(Date.now() - 3600000).toISOString()
+                }
+            ],
+            sent: [
+                {
+                    id: 'sent_1',
+                    type: 'sent',
+                    music_title: 'Lose Yourself',
+                    artist: 'Eminem',
+                    quantity: 2,
+                    price: 42.00,
+                    total: 84.00,
+                    buyer_email: 'pedro@email.com',
+                    message: 'Interessado?',
+                    status: 'pending',
+                    date: new Date(Date.now() - 86400000).toISOString()
+                }
+            ],
+            history: [
+                {
+                    id: 'hist_1',
+                    type: 'history',
+                    music_title: 'Shape of You',
+                    artist: 'Ed Sheeran',
+                    quantity: 10,
+                    price: 15.00,
+                    total: 150.00,
+                    buyer_email: 'carla@email.com',
+                    seller_name: 'Você',
+                    status: 'accepted',
+                    date: new Date(Date.now() - 172800000).toISOString()
+                }
+            ]
+        };
+        
+        if (loading) loading.style.display = 'none';
+        
+        // Mostrar aba recebidas por padrão
+        renderTradeOffers('received');
+        updateTradeBadge();
+        
+    } catch (error) {
+        console.error('Erro ao carregar negociações:', error);
+        if (loading) loading.style.display = 'none';
+        if (empty) empty.style.display = 'block';
+        showToast('Erro ao carregar negociações', 'error');
+    }
+}
+
+// Renderizar ofertas por tipo
+function renderTradeOffers(type) {
+    const container = document.getElementById('tradesContainer');
+    const empty = document.getElementById('tradesEmpty');
+    const offers = tradeOffers[type] || [];
+    
+    // Atualizar abas
+    document.querySelectorAll('#tradeTabs .nav-link').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    if (event?.target) {
+        event.target.classList.add('active');
+    }
+    
+    if (offers.length === 0) {
+        container.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+    
+    empty.style.display = 'none';
+    
+    container.innerHTML = offers.map(offer => {
+        const isReceived = type === 'received';
+        const isSent = type === 'sent';
+        
+        let statusClass = 'pending';
+        let statusText = '⏳ Aguardando';
+        
+        if (offer.status === 'accepted') {
+            statusClass = 'accepted';
+            statusText = '✅ Aceita';
+        } else if (offer.status === 'declined') {
+            statusClass = 'declined';
+            statusText = '❌ Recusada';
+        }
+        
+        return `
+            <div class="trade-offer-card bg-dark p-4 mb-3 rounded-3 border border-secondary ${offer.status}">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="text-white mb-1">${offer.music_title}</h5>
+                        <p class="text-muted small">${offer.artist}</p>
+                    </div>
+                    <span class="badge bg-${offer.status === 'pending' ? 'warning' : (offer.status === 'accepted' ? 'success' : 'danger')}">
+                        ${statusText}
+                    </span>
+                </div>
+                
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="bg-black bg-opacity-50 p-2 rounded text-center">
+                            <small class="text-muted d-block">Quantidade</small>
+                            <strong>${offer.quantity} ações</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-black bg-opacity-50 p-2 rounded text-center">
+                            <small class="text-muted d-block">Preço unitário</small>
+                            <strong class="text-info">${formatCurrency(offer.price)}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-black bg-opacity-50 p-2 rounded text-center">
+                            <small class="text-muted d-block">Total</small>
+                            <strong class="text-warning">${formatCurrency(offer.total)}</strong>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        ${isReceived ? `
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-person text-info me-2"></i>
+                                <span>${offer.seller_name}</span>
+                                <small class="text-muted ms-2">(${offer.seller_email})</small>
+                            </div>
+                        ` : ''}
+                        ${isSent ? `
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-envelope text-info me-2"></i>
+                                <span>Para: ${offer.buyer_email}</span>
+                            </div>
+                        ` : ''}
+                        ${offer.message ? `
+                            <div class="mt-2 p-2 bg-black bg-opacity-25 rounded">
+                                <i class="bi bi-chat-quote text-muted me-2"></i>
+                                <span class="text-muted">"${offer.message}"</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${offer.status === 'pending' && isReceived ? `
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-success btn-sm" onclick="acceptTradeOffer('${offer.id}')">
+                                <i class="bi bi-check-lg me-1"></i> Aceitar
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="declineTradeOffer('${offer.id}')">
+                                <i class="bi bi-x-lg me-1"></i> Recusar
+                            </button>
+                        </div>
+                    ` : ''}
+                    
+                    ${offer.status === 'pending' && isSent ? `
+                        <button class="btn btn-outline-danger btn-sm" onclick="cancelTradeOffer('${offer.id}')">
+                            <i class="bi bi-x-circle me-1"></i> Cancelar
+                        </button>
+                    ` : ''}
+                </div>
+                
+                <div class="mt-2 small text-muted">
+                    <i class="bi bi-clock me-1"></i>
+                    ${new Date(offer.date).toLocaleString('pt-BR')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Trocar aba de negociações
+function switchTradeTab(type) {
+    event?.preventDefault();
+    renderTradeOffers(type);
+}
+
+// Aceitar oferta
+async function acceptTradeOffer(offerId) {
+    if (!confirm('Confirmar negociação? O valor será debitado do seu saldo.')) return;
+    
+    try {
+        showToast('Processando negociação...', 'info');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const offer = tradeOffers.received.find(o => o.id === offerId);
+        if (offer) {
+            offer.status = 'accepted';
+            tradeOffers.history.unshift({...offer, type: 'history'});
+            tradeOffers.received = tradeOffers.received.filter(o => o.id !== offerId);
+        }
+        
+        showToast('Negociação concluída com sucesso!', 'success');
+        await updateBalanceDisplay();
+        await loadPortfolio();
+        renderTradeOffers('received');
+        updateTradeBadge();
+        
+    } catch (error) {
+        console.error('Erro ao aceitar oferta:', error);
+        showToast('Erro ao processar negociação', 'error');
+    }
+}
+
+// Recusar oferta
+async function declineTradeOffer(offerId) {
+    if (!confirm('Recusar esta oferta?')) return;
+    
+    try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const offer = tradeOffers.received.find(o => o.id === offerId);
+        if (offer) {
+            offer.status = 'declined';
+            tradeOffers.history.unshift({...offer, type: 'history'});
+            tradeOffers.received = tradeOffers.received.filter(o => o.id !== offerId);
+        }
+        
+        showToast('Oferta recusada', 'info');
+        renderTradeOffers('received');
+        updateTradeBadge();
+        
+    } catch (error) {
+        console.error('Erro ao recusar oferta:', error);
+        showToast('Erro ao recusar oferta', 'error');
+    }
+}
+
+// Cancelar oferta
+async function cancelTradeOffer(offerId) {
+    if (!confirm('Cancelar esta oferta?')) return;
+    
+    try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const offer = tradeOffers.sent.find(o => o.id === offerId);
+        if (offer) {
+            offer.status = 'declined';
+            tradeOffers.history.unshift({...offer, type: 'history'});
+            tradeOffers.sent = tradeOffers.sent.filter(o => o.id !== offerId);
+        }
+        
+        showToast('Oferta cancelada', 'info');
+        renderTradeOffers('sent');
+        updateTradeBadge();
+        
+    } catch (error) {
+        console.error('Erro ao cancelar oferta:', error);
+        showToast('Erro ao cancelar oferta', 'error');
+    }
+}
+
+// Atualizar badge do menu
+function updateTradeBadge() {
+    const pendingCount = (tradeOffers.received?.filter(o => o.status === 'pending')?.length || 0) +
+                        (tradeOffers.sent?.filter(o => o.status === 'pending')?.length || 0);
+    
+    const badge = document.getElementById('menuTradeBadge');
+    if (badge) {
+        if (pendingCount > 0) {
+            badge.textContent = pendingCount;
+            badge.style.display = 'inline';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+    
+    const pendingBadge = document.getElementById('pendingTradesCount');
+    if (pendingBadge) {
+        pendingBadge.textContent = `${pendingCount} pendente${pendingCount !== 1 ? 's' : ''}`;
+    }
+}
+
+// Sobrescrever changeSection para carregar negociações
+const originalChangeSection = changeSection;
+changeSection = function(section) {
+    originalChangeSection(section);
+    if (section === 'trades') {
+        loadTradeOffers();
+    }
+};
+
+// Exportar funções
+window.openTradeModal = openTradeModal;
+window.adjustTradeQuantity = adjustTradeQuantity;
+window.updateTradeCalculation = updateTradeCalculation;
+window.searchUserByEmail = searchUserByEmail;
+window.selectUser = selectUser;
+window.createTradeOffer = createTradeOffer;
+window.loadTradeOffers = loadTradeOffers;
+window.switchTradeTab = switchTradeTab;
+window.acceptTradeOffer = acceptTradeOffer;
+window.declineTradeOffer = declineTradeOffer;
+window.cancelTradeOffer = cancelTradeOffer;
 </script>
 </body>
 </html>
