@@ -4422,31 +4422,49 @@ function renderPortfolio() {
                 }
                 
                 return `<div class="music-card">
-    <img src="${coverImage}" class="music-cover" alt="${music.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-    <div class="music-info">
-        <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
-        <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
-        <div class="music-meta">
-            <span class="music-price">${formatCurrency(valorInvestido)}</span>
-            <span class="investment-score">
-                <i class="bi bi-graph-up-arrow"></i> 
-                ${profitPerc > 0 ? '+' : ''}${profitPerc.toFixed(1)}%
-            </span>
+                    <img src="${coverImage}" class="music-cover" alt="${music.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <div class="music-info">
+                        <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
+                        <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
+                        <div class="music-meta">
+                            <span class="music-price">${formatCurrency(valorInvestido)}</span>
+                            <span class="investment-score">
+                                <i class="bi bi-graph-up-arrow"></i> 
+                                ${profitPerc > 0 ? '+' : ''}${profitPerc.toFixed(1)}%
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small class="text-muted">Ações: ${quantidade}</small>
+                            <small class="${profitVal >= 0 ? 'text-success' : 'text-danger'}">
+                                ${profitVal >= 0 ? '▲' : '▼'} 
+                                ${formatCurrency(Math.abs(profitVal))}
+                            </small>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small class="text-muted">Preço atual:</small>
+                            <small class="text-success">${formatCurrency(music.valor_acao || 0)}</small>
+                        </div>
+                        
+                        <!-- BOTÃO DE NEGOCIAÇÃO -->
+                        <button class="btn btn-outline-info btn-sm w-100 mt-2" onclick="event.stopPropagation(); openTradeModal({
+                            music_id: '${asset.music_id}',
+                            music_title: '${music.titulo || ''}',
+                            artist: '${music.artista || ''}',
+                            quantidade: ${quantidade},
+                            valor_acao: ${music.valor_acao || 0},
+                            valor_investido: ${valorInvestido}
+                        })">
+                            <i class="bi bi-arrow-left-right me-1"></i> Negociar
+                        </button>
+                        
+                        ${asset.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ Hash: ' + asset.blockchain_hash.substring(0, 10) + '...</div>' : ''}
+                    </div>
+                </div>`;
+            }).join('')}
         </div>
-        <div class="d-flex justify-content-between mt-2">
-            <small class="text-muted">Ações: ${quantidade}</small>
-            <small class="${profitVal >= 0 ? 'text-success' : 'text-danger'}">
-                ${profitVal >= 0 ? '▲' : '▼'} 
-                ${formatCurrency(Math.abs(profitVal))}
-            </small>
-        </div>
-        <div class="d-flex justify-content-between mt-1">
-            <small class="text-muted">Preço atual:</small>
-            <small class="text-success">${formatCurrency(music.valor_acao || 0)}</small>
-        </div>
-        ${asset.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ Hash: ' + asset.blockchain_hash.substring(0, 10) + '...</div>' : ''}
-    </div>
-</div>`;
+    `;
+}
+
 function updatePortfolioValue() {
     const el = document.getElementById('portfolioValue');
     if (!el) return;
@@ -4470,7 +4488,6 @@ function updatePortfolioValue() {
         updateEl.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
     }
 }
-
     function renderLedger() {
         const container = document.getElementById('ledgerContent');
         if (!container) return;
