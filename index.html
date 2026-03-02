@@ -2596,7 +2596,7 @@
         </div>
     </div>
 </div>
-<!-- Player Expandido como Seção (NOVA SEÇÃO) -->
+        <!-- Player Expandido como Seção (NOVA SEÇÃO) -->
 <section id="playerExpandedSection" class="section">
     <div class="section-header">
         <h2 class="section-title">
@@ -2634,8 +2634,114 @@
                     </div>
                 </div>
             </div>
-                </section>
+            
+            <div class="col-md-8">
+                <!-- YouTube Player -->
+                <div class="youtube-container-expanded mb-4">
+                    <div id="youtubePlayerExpanded" style="width: 100%; height: 100%;"></div>
+                    <div class="player-loading" id="playerLoadingExpanded">
+                        <div class="loading-spinner"></div>
+                        <span>Carregando vídeo...</span>
+                    </div>
                 </div>
+                
+                <!-- Controles Expandidos -->
+                <div class="expanded-controls bg-dark p-4 rounded-3">
+                    <div class="expanded-progress-container mb-4">
+                        <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
+                            <div class="expanded-progress-fill" id="expandedProgressBar"></div>
+                        </div>
+                        <div class="expanded-time-display d-flex justify-content-between mt-2">
+                            <span id="expandedCurrentTime" class="text-muted">0:00</span>
+                            <span id="expandedTotalTime" class="text-muted">0:00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="expanded-controls-bottom d-flex justify-content-center align-items-center gap-4">
+                        <button class="btn btn-outline-success" onclick="playPrevious()">
+                            <i class="bi bi-skip-backward-fill"></i>
+                        </button>
+                        
+                        <button class="btn btn-success btn-lg rounded-circle" onclick="togglePlay()" id="expandedPlayPauseBtn" style="width: 60px; height: 60px;">
+                            <i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i>
+                        </button>
+                        
+                        <button class="btn btn-outline-success" onclick="playNext()">
+                            <i class="bi bi-skip-forward-fill"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="expanded-controls-top d-flex justify-content-center gap-3 mt-4">
+                        <button class="btn btn-outline-success" onclick="toggleShuffle()" id="expandedShuffleBtn">
+                            <i class="bi bi-shuffle me-2"></i>Aleatório
+                        </button>
+                        
+                        <button class="btn btn-outline-success" onclick="toggleRepeat()" id="expandedRepeatBtn">
+                            <i class="bi bi-repeat me-2"></i>Repetir
+                        </button>
+                        
+                        <button class="btn btn-outline-success" onclick="toggleFavorite()" id="expandedFavoriteBtn">
+                            <i class="bi bi-star" id="expandedFavoriteIcon"></i>
+                        </button>
+                        
+                        <button class="btn btn-success" onclick="openInvestModalFromPlayer()">
+                            <i class="bi bi-currency-dollar me-2"></i>Investir
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Informações da Música -->
+                <div class="track-info-section mt-4">
+                    <h4 class="text-white mb-3">
+                        <i class="bi bi-info-circle text-success me-2"></i>
+                        Sobre esta música
+                    </h4>
+                    
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-cash-coin"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Valor por ação</div>
+                                <div class="info-value text-success" id="expandedPrice">R$ 0,00</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-percent"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Disponível</div>
+                                <div class="info-value text-success" id="expandedAvailable">0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-graph-up-arrow"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Retorno</div>
+                                <div class="info-value text-success" id="expandedReturn">0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Investidores</div>
+                                <div class="info-value text-success" id="expandedInvestors">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>  <!-- FIM DO PLAYER EXPANDIDO -->
 
 <!-- MINHAS NEGOCIAÇÕES SECTION -->
@@ -2695,8 +2801,6 @@
     </div>
 </section>
 
-<!-- Invest Modal -->
-<div id="investModal" class="modal-overlay">
 <!-- Invest Modal -->
 <div id="investModal" class="modal-overlay">
     <div class="modal-content">
