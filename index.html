@@ -3503,7 +3503,83 @@ const state = {
     isBuffering: false,
     playerReady: false
 }; // <-- A chave de fechamento DEVE estar aqui
+    // ========== FUNÇÕES UTILITÁRIAS (DEFINIR PRIMEIRO) ==========
+function formatCurrency(value) {
+    if (value === null || value === undefined || isNaN(value)) value = 0;
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(Number(value));
+}
+
+function hideLoading() {
+    const loading = document.getElementById('loadingScreen');
+    if (loading) loading.style.display = 'none';
+}
+
+function showLoading(message = 'Carregando...') {
+    const loading = document.getElementById('loadingScreen');
+    if (loading) {
+        loading.style.display = 'flex';
+        const msg = document.getElementById('loadingMessage');
+        if (msg) msg.textContent = message;
+    }
+}
+
+function showToast(message, type = 'success', duration = 3000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
     
+    const toastId = 'toast_' + Date.now();
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.className = `toast ${type}`;
+    
+    let icon = 'bi-info-circle';
+    if (type === 'success') icon = 'bi-check-circle';
+    if (type === 'error') icon = 'bi-exclamation-circle';
+    if (type === 'warning') icon = 'bi-exclamation-triangle';
+    
+    toast.innerHTML = `
+        <i class="bi ${icon} toast-icon"></i>
+        <div class="toast-message">${message}</div>
+        <button class="btn btn-sm btn-link text-white p-0" onclick="this.closest('.toast').remove()">
+            <i class="bi bi-x"></i>
+        </button>
+    `;
+    
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        return dateString;
+    }
+}
+
+function formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
 // ========== DECLARAÇÃO ANTECIPADA DAS FUNÇÕES GLOBAIS ==========
 // Isso garante que as funções existam antes de serem chamadas pelo HTML
 window.openBlockchainExplorer = function() {
@@ -7097,6 +7173,6 @@ window.acceptTradeOffer = acceptTradeOffer;
 window.declineTradeOffer = declineTradeOffer;
 window.cancelTradeOffer = cancelTradeOffer;
 
-</script> <!-- FIM DO SCRIPT -->
+</script> <!-- FIM DO SCRIPT - NADA DEPOIS DISSO -->
 </body>
 </html>
