@@ -4501,54 +4501,70 @@ function getFallbackData(action, data) {
   return { success: true, data: [] };
 }
 
-    // ========== LOGIN CORRIGIDO ==========
-    async function handleLogin() {
-        const email = document.getElementById('loginEmailField')?.value?.trim();
-        const password = document.getElementById('loginPasswordField')?.value?.trim();
-        const loginBtn = document.getElementById('loginBtn');
-        
-        if (!email || !password) { 
-            showToast('Preencha todos os campos', 'error'); 
-            return; 
+// ========== LOGIN CORRIGIDO COM SUPORTE A CONTAS ANTIGAS ==========
+async function handleLogin() {
+    const email = document.getElementById('loginEmailField')?.value?.trim();
+    const password = document.getElementById('loginPasswordField')?.value?.trim();
+    const loginBtn = document.getElementById('loginBtn');
+    
+    if (!email || !password) { 
+        showToast('Preencha todos os campos', 'error'); 
+        return; 
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Autenticando...';
+    showLoading('Autenticando...');
+
+    try {
+        if (email === 'selomiv@gmail.com' && password === 'selomiv123') {
+            // Admin não precisa de confirmação
+            state.currentUser = { 
+                id: 'admin_master', 
+                nome: 'Administrador Master', 
+                email, 
+                tipo: 'admin', 
+                saldo: 1000000, 
+                favorite_music_ids: [] 
+            };
+            state.userBalance = 1000000;
+            state.favoriteMusicIds = [];
+            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+            localStorage.setItem('miv_session', Date.now().toString());
+            showToast('Login ADMIN realizado!', 'success');
+            document.getElementById('loginEmailField').value = '';
+            document.getElementById('loginPasswordField').value = '';
+            hideLoading();
+            initializeApp();
+            return;
         }
 
-        loginBtn.disabled = true;
-        loginBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Autenticando...';
-        showLoading('Autenticando...');
-
-        try {
-            if (email === 'selomiv@gmail.com' && password === 'selomiv123') {
-                state.currentUser = { 
-                    id: 'admin_master', 
-                    nome: 'Administrador Master', 
-                    email, 
-                    tipo: 'admin', 
-                    saldo: 1000000, 
-                    favorite_music_ids: [] 
-                };
-                state.userBalance = 1000000;
-                state.favoriteMusicIds = [];
-                localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-                localStorage.setItem('miv_session', Date.now().toString());
-                showToast('Login ADMIN realizado!', 'success');
-                document.getElementById('loginEmailField').value = '';
-                document.getElementById('loginPasswordField').value = '';
-                hideLoading();
-                initializeApp();
-                return;
-            }
-
-            const result = await callAPI('login', { email, password });
+        const result = await callAPI('login', { email, password });
+        
+        if (result?.success && result?.data) {
+            // VERIFICAR SE EMAIL FOI CONFIRMADO (COM SUPORTE A CONTAS ANTIGAS)
+            const userData = result.data;
             
-            if (result?.success && result?.data) {
-                state.currentUser = result.data;
-                state.userBalance = result.data.saldo || 0;
+            // Se for conta antiga (criada antes do sistema de confirmação)
+            if (userData.is_old_account === true) {
+                console.log('🔄 Conta antiga detectada - confirmando automaticamente');
                 
-                if (result.data.favorite_music_ids) {
-                    if (Array.isArray(result.data.favorite_music_ids)) {
-                        state.favoriteMusicIds = result.data.favorite_music_ids;
-                    } else if (typeof result.data.favorite_music_ids === 'string') {
-                        state.favoriteMusicIds = result.data.favorite_music_ids.split(',').filter(id => id.trim() !== '');
+                // Marcar como confirmada no backend
+                await callAPI('mark_as_confirmed', { 
+                    user_id: userData.id,
+                    email: userData.email 
+                });
+                
+                // Continuar login normalmente
+                state.currentUser = userData;
+                state.userBalance = userData.saldo || 0;
+                
+                // Carregar favoritos
+                if (userData.favorite_music_ids) {
+                    if (Array.isArray(userData.favorite_music_ids)) {
+                        state.favoriteMusicIds = userData.favorite_music_ids;
+                    } else if (typeof userData.favorite_music_ids === 'string') {
+                        state.favoriteMusicIds = userData.favorite_music_ids.split(',').filter(id => id.trim() !== '');
                     } else {
                         state.favoriteMusicIds = [];
                     }
@@ -4558,23 +4574,86 @@ function getFallbackData(action, data) {
                 
                 localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
                 localStorage.setItem('miv_session', Date.now().toString());
-                showToast('Login realizado!', 'success');
+                showToast('Login realizado! (Conta antiga confirmada automaticamente)', 'success');
                 document.getElementById('loginEmailField').value = '';
                 document.getElementById('loginPasswordField').value = '';
                 initializeApp();
-            } else {
-                showToast(result?.message || 'Credenciais inválidas', 'error');
+                return;
             }
-        } catch (error) {
-            console.error('Erro no login:', error);
-            showToast('Erro ao conectar com o servidor', 'error');
-        } finally {
-            loginBtn.disabled = false;
-            loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
-            hideLoading();
+            
+            // Para contas novas, verificar confirmação
+            if (userData.email_confirmado === false) {
+                showToast('❌ Por favor, confirme seu email antes de fazer login', 'error', 5000);
+                showToast(`✉️ Enviamos um link para ${email}`, 'info', 5000);
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
+                hideLoading();
+                return;
+            }
+            
+            // Login normal para contas confirmadas
+            state.currentUser = userData;
+            state.userBalance = userData.saldo || 0;
+            
+            if (userData.favorite_music_ids) {
+                if (Array.isArray(userData.favorite_music_ids)) {
+                    state.favoriteMusicIds = userData.favorite_music_ids;
+                } else if (typeof userData.favorite_music_ids === 'string') {
+                    state.favoriteMusicIds = userData.favorite_music_ids.split(',').filter(id => id.trim() !== '');
+                } else {
+                    state.favoriteMusicIds = [];
+                }
+            } else {
+                state.favoriteMusicIds = [];
+            }
+            
+            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+            localStorage.setItem('miv_session', Date.now().toString());
+            showToast('Login realizado!', 'success');
+            document.getElementById('loginEmailField').value = '';
+            document.getElementById('loginPasswordField').value = '';
+            initializeApp();
+            
+        } else {
+            showToast(result?.message || 'Credenciais inválidas', 'error');
         }
+    } catch (error) {
+        console.error('Erro no login:', error);
+        showToast('Erro ao conectar com o servidor', 'error');
+    } finally {
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
+        hideLoading();
     }
-
+}
+    // ========== MIGRAR TODAS AS CONTAS ANTIGAS (APENAS ADMIN) ==========
+async function migrateAllOldAccounts() {
+    if (!state.currentUser || state.currentUser.tipo !== 'admin') {
+        showToast('Apenas administradores podem migrar contas', 'error');
+        return;
+    }
+    
+    if (!confirm('Deseja migrar todas as contas antigas para confirmadas automaticamente?')) {
+        return;
+    }
+    
+    showLoading('Migrando contas antigas...');
+    
+    try {
+        const result = await callAPI('migrate_old_accounts');
+        
+        if (result?.success) {
+            showToast(`✅ ${result.data?.migrated || 0} contas migradas com sucesso!`, 'success');
+        } else {
+            showToast(result?.message || 'Erro na migração', 'error');
+        }
+    } catch (error) {
+        console.error('Erro na migração:', error);
+        showToast('Erro ao migrar contas', 'error');
+    } finally {
+        hideLoading();
+    }
+}
 // ========== REGISTER COM CONFIRMAÇÃO DE EMAIL ==========
 async function handleRegister() {
     const name = document.getElementById('registerNameField')?.value?.trim();
