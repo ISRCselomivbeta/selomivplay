@@ -2003,6 +2003,50 @@
 .trade-new {
     animation: newTradePulse 2s infinite;
 }        
+
+/* ===== ESTILOS PARA STREAMING ===== */
+.stat-icon-small {
+    font-size: 1.5rem;
+    color: var(--neon-green);
+    margin-bottom: 0.25rem;
+}
+
+.stat-value-small {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.stat-label-small {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+#streamingRewardIndicator {
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.rewarded-badge {
+    background: rgba(0, 255, 136, 0.2);
+    color: var(--neon-green);
+    border: 1px solid var(--neon-green);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: bold;
+}        
+        
     </style>
 </head>
 <body>
@@ -2275,6 +2319,32 @@
                     </tbody>
                 </table>
             </div>
+            <!-- ===== ESTATÍSTICAS DE STREAMING ===== -->
+<div class="card bg-dark border-info mb-3">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i> Ganhos por Streaming</h6>
+        <span class="badge bg-light text-dark" id="totalStreamingEarnings">R$ 0,00</span>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-4">
+                <div class="stat-icon-small"><i class="bi bi-music-note-beamed text-info"></i></div>
+                <div class="stat-value-small" id="streamingSongsCount">0</div>
+                <div class="stat-label-small">Músicas ouvidas</div>
+            </div>
+            <div class="col-4">
+                <div class="stat-icon-small"><i class="bi bi-clock text-info"></i></div>
+                <div class="stat-value-small" id="streamingMinutesCount">0</div>
+                <div class="stat-label-small">Minutos</div>
+            </div>
+            <div class="col-4">
+                <div class="stat-icon-small"><i class="bi bi-trophy text-info"></i></div>
+                <div class="stat-value-small" id="streamingRank">#0</div>
+                <div class="stat-label-small">Ranking</div>
+            </div>
+        </div>
+    </div>
+</div>
         </section>
 
         <!-- Best Investments Section -->
@@ -2655,6 +2725,16 @@
 
 <!-- ===== ADICIONE ESTE DIV APÓS O youtube-container-expanded ===== -->
 <div id="playerStatus" class="mt-2 small text-center"></div>
+
+                <!-- ===== INDICADOR DE GANHOS POR STREAMING ===== -->
+<div id="streamingRewardIndicator" class="mt-2 text-center" style="display: none;">
+    <div class="alert alert-success bg-success bg-opacity-10 border-success py-1 px-2 d-inline-flex align-items-center gap-2 rounded-pill">
+        <i class="bi bi-cash-stack text-success"></i>
+        <span id="streamingRewardAmount" class="fw-bold text-success">+0 SELO COIN</span>
+        <span class="text-muted small">|</span>
+        <span id="streamingMusicName" class="small text-success">Música atual</span>
+    </div>
+</div>
 <!-- ===== FIM ===== -->
                 
                 <!-- Controles Expandidos -->
@@ -4560,7 +4640,14 @@ function initializeApp() {
             updateBalanceDisplay();
         }
     }, 30000);
-}
+    
+    // ✅ ADICIONAR: Atualizar estatísticas de streaming a cada minuto
+    setInterval(() => {
+        if (state.currentUser) {
+            loadStreamingStats();
+        }
+    }, 60000);
+}    
 
 // ========== CARREGAR DADOS ==========
 async function loadAllData() {
@@ -5475,6 +5562,19 @@ async function registerRealStreamingReward(track, currentTime, duration) {
         return;
     }
     
+    // Verificar se já recebeu recompensa desta música
+    const musicRewardKey = `reward_${track.id}_${state.currentUser.id}`;
+    const hasReceivedReward = localStorage.getItem(musicRewardKey);
+    
+    if (hasReceivedReward) {
+        console.log('⏭️ Recompensa já foi paga para esta música:', track.titulo);
+        const realTimeStatus = document.getElementById('realTimeStatus');
+        if (realTimeStatus) {
+            realTimeStatus.innerHTML = '<span class="text-warning"><i class="bi bi-check-circle"></i> Recompensa já recebida</span>';
+        }
+        return;
+    }
+    
     console.log(`🎵 STREAMING REAL: 30s completos em "${track.titulo}"! Registrando...`);
     showToast(`⏱️ 30 segundos de "${track.titulo}"!`, 'info');
     
@@ -5494,9 +5594,22 @@ async function registerRealStreamingReward(track, currentTime, duration) {
         
         if (result?.success) {
             const rewardAmount = result.data?.reward || 1;
-            showToast(`✅ +${rewardAmount} SELO COIN por streaming!`, 'success');
+            
+            // Salvar que já recebeu recompensa
+            localStorage.setItem(musicRewardKey, 'true');
+            
+            // MOSTRAR INDICADOR DE GANHO
+            showStreamingReward(rewardAmount, track.titulo);
+            
+            // Atualizar status em tempo real
+            const realTimeStatus = document.getElementById('realTimeStatus');
+            if (realTimeStatus) {
+                realTimeStatus.innerHTML = `<span class="text-success"><i class="bi bi-cash-stack"></i> +${rewardAmount} SELO COIN recebido!</span>`;
+            }
+            
             await updateBalanceDisplay();
             await loadLedger(true);
+            await loadStreamingStats(); // Atualizar estatísticas
             updateMusicRealStats(track);
         } else {
             console.log('⚠️ API não registrou streaming:', result?.message);
@@ -5508,6 +5621,57 @@ async function registerRealStreamingReward(track, currentTime, duration) {
         showToast('❌ Falha na conexão', 'error');
     }
 }
+
+// ========== GERENCIAMENTO DE GANHOS POR STREAMING ==========
+
+// Mostrar indicador de ganho
+function showStreamingReward(amount, musicTitle) {
+    const indicator = document.getElementById('streamingRewardIndicator');
+    const amountEl = document.getElementById('streamingRewardAmount');
+    const musicEl = document.getElementById('streamingMusicName');
+    
+    if (indicator && amountEl && musicEl) {
+        amountEl.textContent = `+${amount} SELO COIN`;
+        musicEl.textContent = musicTitle.length > 30 ? musicTitle.substring(0, 27) + '...' : musicTitle;
+        
+        indicator.style.display = 'block';
+        
+        // Esconder após 5 segundos
+        setTimeout(() => {
+            indicator.style.display = 'none';
+        }, 5000);
+    }
+}
+
+// Carregar estatísticas de streaming
+async function loadStreamingStats() {
+    if (!state.currentUser) return;
+    
+    try {
+        const result = await callAPI('get_streaming_stats', { user_id: state.currentUser.id });
+        
+        if (result?.success && result.data) {
+            // Atualizar indicadores
+            const earningsEl = document.getElementById('totalStreamingEarnings');
+            const songsEl = document.getElementById('streamingSongsCount');
+            const minutesEl = document.getElementById('streamingMinutesCount');
+            const rankEl = document.getElementById('streamingRank');
+            
+            if (earningsEl) earningsEl.textContent = formatCurrency(result.data.total_earnings || 0);
+            if (songsEl) songsEl.textContent = result.data.songs_count || 0;
+            
+            const minutes = Math.floor((result.data.total_seconds || 0) / 60);
+            if (minutesEl) minutesEl.textContent = minutes;
+            
+            if (rankEl) rankEl.textContent = `#${result.data.rank || 0}`;
+            
+            // Salvar no estado
+            state.streamingStats = result.data;
+        }
+    } catch (error) {
+        console.error('Erro ao carregar estatísticas de streaming:', error);
+    }
+}    
 
 function updateMusicRealStats(track) {
     const musicIndex = state.playlist.findIndex(m => m.id === track.id);
@@ -6044,7 +6208,21 @@ function openInvestModal(trackIndex) {
     document.getElementById('investTrackTitle').textContent = track.titulo || 'Sem título';
     document.getElementById('investTrackArtist').textContent = track.artista || 'Artista Desconhecido';
     document.getElementById('investUnitPriceDisplay').textContent = formatCurrency(track.valor_acao || 0);
-    document.getElementById('investAvailableBalanceDisplay').textContent = formatCurrency(state.userBalance);
+    
+    // Mostrar saldo com info de streaming
+    const balanceEl = document.getElementById('investAvailableBalanceDisplay');
+    const streamingEarnings = state.streamingStats?.total_earnings || 0;
+    
+    if (streamingEarnings > 0) {
+        balanceEl.innerHTML = `${formatCurrency(state.userBalance)} 
+            <small class="text-success d-block" style="font-size: 0.7rem;">
+                <i class="bi bi-cash-stack"></i> 
+                Inclui ${formatCurrency(streamingEarnings)} de streaming
+            </small>`;
+    } else {
+        balanceEl.textContent = formatCurrency(state.userBalance);
+    }
+    
     document.getElementById('investQuantityField').value = 1;
     const totalShares = (track.percentual_disponivel || 0) / 0.01;
     const availableShares = Math.max(0, totalShares - (track.acoes_vendidas || 0));
@@ -6588,7 +6766,29 @@ async function updateBalanceDisplay() {
         
         if (result?.success && result.data) {
             state.userBalance = result.data.saldo_disponivel || 0;
-            el.textContent = formatCurrency(state.userBalance);
+            
+            // Buscar ganhos de streaming
+            let streamingEarnings = 0;
+            try {
+                const streamingResult = await callAPI('get_streaming_stats', { user_id: state.currentUser.id });
+                streamingEarnings = streamingResult?.success ? streamingResult.data?.total_earnings || 0 : 0;
+            } catch (e) {
+                console.log('Streaming stats não disponível ainda');
+            }
+            
+            // Mostrar saldo com detalhamento
+            if (streamingEarnings > 0) {
+                el.innerHTML = `
+                    ${formatCurrency(state.userBalance)}
+                    <small class="d-block text-success" style="font-size: 0.6rem;">
+                        <i class="bi bi-cash-stack"></i> 
+                        ${formatCurrency(streamingEarnings)} de streaming
+                    </small>
+                `;
+            } else {
+                el.textContent = formatCurrency(state.userBalance);
+            }
+            
             console.log('💰 Saldo atualizado:', state.userBalance);
         } else {
             el.textContent = formatCurrency(state.userBalance);
@@ -6598,7 +6798,6 @@ async function updateBalanceDisplay() {
         el.textContent = formatCurrency(state.userBalance);
     }
 }
-
 function updateUserInterface() { 
     if (!state.currentUser) return; 
     const badge = document.getElementById('userBadge'); 
