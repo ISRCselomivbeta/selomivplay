@@ -2138,11 +2138,9 @@
                 <input type="url" id="registerLinkField" class="form-control-custom" placeholder="YouTube, Spotify, etc.">
                 <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
             </div>
-            
             <button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn">
-                <i class="bi bi-person-plus"></i> Solicitar Cadastro
-            </button>
-            
+    <i class="bi bi-person-plus"></i> Solicitar Cadastro
+</button>
             <p class="text-center text-muted">
                 Já tem conta? <a href="javascript:void(0)" class="auth-link" onclick="showLoginForm()">Fazer login</a>
             </p>
@@ -4615,7 +4613,71 @@ async function handleLogin() {
         hideLoading();
     }
 }
+// ========== REGISTER COM CONFIRMAÇÃO DE EMAIL ==========
+async function handleRegister() {
+    const name = document.getElementById('registerNameField')?.value?.trim();
+    const email = document.getElementById('registerEmailField')?.value?.trim();
+    const password = document.getElementById('registerPasswordField')?.value?.trim();
+    const type = document.getElementById('registerTypeField')?.value;
+    const link = document.getElementById('registerLinkField')?.value?.trim() || '';
+    const registerBtn = document.getElementById('registerBtn');
 
+    if (!name || !email || !password || !type) { 
+        showToast('Preencha todos os campos obrigatórios', 'error'); 
+        return; 
+    }
+    if (password.length < 6) { 
+        showToast('A senha deve ter no mínimo 6 caracteres', 'error'); 
+        return; 
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { 
+        showToast('Digite um e-mail válido', 'error'); 
+        return; 
+    }
+
+    registerBtn.disabled = true;
+    registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
+    showLoading('Criando conta...');
+
+    try {
+        const result = await callAPI('register', { 
+            nome: name, 
+            email, 
+            senha: password, 
+            tipo: type, 
+            workLink: link,
+            confirm_url: window.location.origin + '/confirm-email.html'
+        });
+        
+        if (result?.success) {
+            showToast('Cadastro realizado! Verifique seu email para confirmar.', 'success');
+            
+            // Limpar formulário
+            document.getElementById('registerNameField').value = '';
+            document.getElementById('registerEmailField').value = '';
+            document.getElementById('registerPasswordField').value = '';
+            document.getElementById('registerTypeField').value = '';
+            document.getElementById('registerLinkField').value = '';
+            
+            // Voltar para login
+            showLoginForm();
+            
+            setTimeout(() => {
+                showToast(`✉️ Enviamos um email de confirmação para ${email}`, 'info', 5000);
+            }, 1000);
+            
+        } else {
+            showToast(result?.message || 'Erro ao cadastrar', 'error');
+        }
+    } catch (error) {
+        console.error('Erro no registro:', error);
+        showToast('Erro ao criar conta', 'error');
+    } finally {
+        registerBtn.disabled = false;
+        registerBtn.innerHTML = '<i class="bi bi-person-plus"></i> Solicitar Cadastro';
+        hideLoading();
+    }
+}
 // ========== REENVIAR EMAIL DE CONFIRMAÇÃO ==========
 async function resendConfirmationEmail() {
     const email = document.getElementById('loginEmailField')?.value?.trim();
