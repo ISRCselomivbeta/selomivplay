@@ -2591,8 +2591,11 @@
     <div class="player-bar">
         <div class="player-track-info">
             <div class="track-image-container">
-                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Crect width='56' height='56' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='14' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
-                        class="track-image" 
+<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Crect width='56' height='56' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='14' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
+     class="track-image" 
+     alt="Album Art" 
+     id="playerAlbumArt"
+     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%2256%22 height%3D%2256%22 viewBox%3D%220 0 56 56%22%3E%3Crect width%3D%2256%22 height%3D%2256%22 fill%3D%22%23111418%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2214%22 fill%3D%22%2300ff88%22%3EMIV%3C/text%3E%3C/svg%3E'">                        class="track-image" 
                         alt="Album Art" 
                         id="playerAlbumArt"
                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'56\' height=\'56\' viewBox=\'0 0 56 56\'%3E%3Crect width=\'56\' height=\'56\' fill=\'%23111418\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'14\' fill=\'%2300ff88\'%3EMIV%3C/text%3E%3C/svg%3E'">                    
@@ -2688,8 +2691,11 @@
         <div class="row">
             <div class="col-md-4 mb-4 mb-md-0">
                 <div class="text-center">
-                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
-                         class="expanded-album-art img-fluid rounded-3 mb-3" 
+<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
+     class="expanded-album-art img-fluid rounded-3 mb-3" 
+     alt="Album Art" 
+     id="expandedAlbumArt"
+     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%22300%22 height%3D%22300%22 viewBox%3D%220 0 300 300%22%3E%3Crect width%3D%22300%22 height%3D%22300%22 fill%3D%22%23111418%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2224%22 fill%3D%22%2300ff88%22%3EMIV%3C/text%3E%3C/svg%3E'"/>                         class="expanded-album-art img-fluid rounded-3 mb-3" 
                          alt="Album Art" 
                          id="expandedAlbumArt"
                          onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\' viewBox=\'0 0 300 300\'%3E%3Crect width=\'300\' height=\'300\' fill=\'%23111418\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'24\' fill=\'%2300ff88\'%3EMIV%3C/text%3E%3C/svg%3E'"/>
@@ -3507,12 +3513,12 @@
 
     // ========== PLACEHOLDERS ==========
     const PLACEHOLDERS = {
-        MIV_56: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'56\' height=\'56\' viewBox=\'0 0 56 56\'%3E%3Crect width=\'56\' height=\'56\' fill=\'%23111418\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'14\' fill=\'%2300ff88\'%3EMIV%3C/text%3E%3C/svg%3E',
-        MIV_300: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\' viewBox=\'0 0 300 300\'%3E%3Crect width=\'300\' height=\'300\' fill=\'%23111418\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'24\' fill=\'%2300ff88\'%3EMIV%3C/text%3E%3C/svg%3E',
-        EXT_56: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'56\' height=\'56\' viewBox=\'0 0 56 56\'%3E%3Crect width=\'56\' height=\'56\' fill=\'%23111418\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'14\' fill=\'%23ff6b6b\'%3EEXT%3C/text%3E%3C/svg%3E',
-        EXT_300: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\' viewBox=\'0 0 300 300\'%3E%3Crect width=\'300\' height=\'300\' fill=\'%23111418\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'24\' fill=\'%23ff6b6b\'%3EEXT%3C/text%3E%3C/svg%3E',
-        PLAYLIST: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\' viewBox=\'0 0 60 60\'%3E%3Crect width=\'60\' height=\'60\' fill=\'%2300ff88\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'24\' fill=\'%23000000\'%3E♪%3C/text%3E%3C/svg%3E'
-    };
+    MIV_56: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%2256%22 height%3D%2256%22 viewBox%3D%220 0 56 56%22%3E%3Crect width%3D%2256%22 height%3D%2256%22 fill%3D%22%23111418%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2214%22 fill%3D%22%2300ff88%22%3EMIV%3C/text%3E%3C/svg%3E',
+    MIV_300: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%22300%22 height%3D%22300%22 viewBox%3D%220 0 300 300%22%3E%3Crect width%3D%22300%22 height%3D%22300%22 fill%3D%22%23111418%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2224%22 fill%3D%22%2300ff88%22%3EMIV%3C/text%3E%3C/svg%3E',
+    EXT_56: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%2256%22 height%3D%2256%22 viewBox%3D%220 0 56 56%22%3E%3Crect width%3D%2256%22 height%3D%2256%22 fill%3D%22%23111418%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2214%22 fill%3D%22%23ff6b6b%22%3EEXT%3C/text%3E%3C/svg%3E',
+    EXT_300: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%22300%22 height%3D%22300%22 viewBox%3D%220 0 300 300%22%3E%3Crect width%3D%22300%22 height%3D%22300%22 fill%3D%22%23111418%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2224%22 fill%3D%22%23ff6b6b%22%3EEXT%3C/text%3E%3C/svg%3E',
+    PLAYLIST: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%2260%22 height%3D%2260%22 viewBox%3D%220 0 60 60%22%3E%3Crect width%3D%2260%22 height%3D%2260%22 fill%3D%22%2300ff88%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2224%22 fill%3D%22%23000000%22%3E%E2%99%AA%3C/text%3E%3C/svg%3E'
+};
 
     // ========== ESTADO GLOBAL ==========
 const state = {
@@ -4790,7 +4796,7 @@ async function loadAllData() {
             
             return `<div class="music-card" onclick="playTrack(${index})">
                 <div class="position-relative">
-                    <img src="${coverImage}" class="music-cover" alt="${track.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <img src="${coverImage}" class="music-cover" alt="${track.titulo || 'Música'}" onerror="this.onerror=null; this.src='${PLACEHOLDERS.MIV_300.replace(/'/g, '%27')}'">
                     ${percentSold >= 90 ? `<div class="position-absolute top-0 end-0 m-2"><span class="badge ${badgeClass}">Esgotando</span></div>` : ''}
                     <div class="position-absolute top-0 start-0 m-2">
                         <button class="favorite-btn ${isFavorite ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${index})">
@@ -4900,7 +4906,7 @@ function renderExternalMarketplace() {
                 <img src="${thumbnailUrl}" 
                      class="music-cover" 
                      alt="${track.titulo || 'Música Externa'}" 
-                     onerror="this.src='${PLACEHOLDERS.EXT_300}'">
+                     onerror="this.onerror=null; this.src='${PLACEHOLDERS.EXT_300.replace(/'/g, '%27')}'">
                 <div class="external-music-badge">
                     <i class="bi bi-globe"></i> Bolsa Externa
                 </div>
