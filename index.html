@@ -4883,14 +4883,14 @@ function renderExternalMarketplace() {
     container.innerHTML = state.externalPlaylist.map((track, index) => {
         const progressPercent = Math.min(100, ((track.vendas_atuais || 0) / (track.meta_vendas || 1000000) * 100));
         
-        // ===== FORÇAR THUMBNAIL DO YOUTUBE =====
-        let thumbnailUrl = PLACEHOLDERS.EXT_300; // Fallback
+        // ===== CORREÇÃO: PRIORIZAR THUMBNAIL DO YOUTUBE =====
+        let thumbnailUrl = PLACEHOLDERS.EXT_300; // Fallback padrão
         
-        // Tentar extrair do YouTube
+        // 1. TENTAR EXTRAIR DO YOUTUBE (PRIORIDADE MÁXIMA)
         if (track.link_youtube) {
             console.log(`🔗 Link do YouTube: ${track.link_youtube}`);
             
-            // Extrair ID diretamente (sem função)
+            // Extrair ID do YouTube
             let videoId = '';
             const url = track.link_youtube;
             
@@ -4900,18 +4900,22 @@ function renderExternalMarketplace() {
                 videoId = url.split('watch?v=')[1].split('&')[0];
             } else if (url.includes('embed/')) {
                 videoId = url.split('embed/')[1].split('?')[0];
+            } else if (url.includes('shorts/')) {
+                videoId = url.split('shorts/')[1].split('?')[0];
             }
             
             if (videoId && videoId.length === 11) {
-                thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`; // Usar hqdefault que é mais confiável
-                console.log(`✅ ID encontrado: ${videoId}, thumbnail: ${thumbnailUrl}`);
-            } else {
-                console.log(`❌ Não foi possível extrair ID de: ${url}`);
+                thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                console.log(`✅ Thumbnail do YouTube: ${thumbnailUrl}`);
             }
         }
         
-        // Se tiver thumbnail na planilha, usar (mas YouTube tem prioridade)
-        if (track.link_thumbnail && typeof track.link_thumbnail === 'string' && track.link_thumbnail.trim() !== '') {
+        // 2. SE TIVER THUMBNAIL VÁLIDA NA PLANILHA (E NÃO FOR UM NÚMERO), USAR
+        if (track.link_thumbnail && 
+            typeof track.link_thumbnail === 'string' && 
+            track.link_thumbnail.trim() !== '' &&
+            !/^\d+$/.test(track.link_thumbnail.trim())) { // IGNORAR SE FOR SÓ NÚMEROS
+            
             thumbnailUrl = track.link_thumbnail;
             console.log(`📁 Usando thumbnail da planilha: ${thumbnailUrl}`);
         }
