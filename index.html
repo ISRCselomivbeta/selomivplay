@@ -78,10 +78,6 @@
             margin: 0 auto 1.5rem;
         }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
         /* Auth Screen */
         .auth-screen {
             position: fixed;
@@ -845,12 +841,6 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
         }
-
-        .play-large-btn {
-            padding: 1rem 3rem;
-            font-size: 1.125rem;
-        }
-
         .action-btn {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1355,17 +1345,7 @@
             color: var(--text-light);
             font-weight: 700;
             margin-bottom: 0;
-        }
-        
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.25rem;
-        }
-        
+        }        
         .modal-body {
             padding: 1.5rem;
         }
@@ -1472,16 +1452,7 @@
             opacity: 0.5;
         }
         
-        /* Progress Loading */
-        .progress-loading {
-            height: 4px;
-            background: rgba(0, 255, 136, 0.2);
-            border-radius: 2px;
-            overflow: hidden;
-            margin: 1rem auto;
-            max-width: 200px;
-        }
-        
+        /* Progress Loading */        
         .progress-loading-bar {
             height: 100%;
             background: linear-gradient(90deg, var(--neon-green), #00cc6a);
@@ -1489,12 +1460,7 @@
             width: 0%;
             animation: loading 2s infinite;
         }
-        
-        @keyframes loading {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(400%); }
-        }
-        
+              
         /* Badges */
         .badge-success {
             background: rgba(0, 255, 136, 0.2);
@@ -2788,8 +2754,8 @@
             </div>
         </div>
     </div>
-</section>  <!-- FIM DO PLAYER EXPANDIDO -->
-
+</section>  <!-- FIM DA SEÇÃO DE NEGOCIAÇÕES -->
+        
 <!-- MINHAS NEGOCIAÇÕES SECTION -->
 <section id="tradesSection" class="section">
     <div class="section-header">
@@ -6529,12 +6495,7 @@ function showLoginForm() {
     document.getElementById('registerForm').style.display = 'none'; 
     document.getElementById('loginForm').style.display = 'block'; 
 }
-
-function formatDate(d) { 
-    if (!d) return '-'; 
-    return new Date(d).toLocaleDateString('pt-BR'); 
-}
-
+    
 async function updateBalanceDisplay() {
     const el = document.getElementById('currentBalance');
     if (!el) return;
