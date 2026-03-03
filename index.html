@@ -2149,7 +2149,11 @@
         </div>
     </div>
 </div>
-
+<p class="text-center mb-2">
+    <a href="javascript:void(0)" class="auth-link small" onclick="resendConfirmationEmail()">
+        <i class="bi bi-envelope"></i> Reenviar email de confirmação
+    </a>
+</p>
 <!-- Main Application -->
 <div id="mainApp" class="main-app">
     <!-- Sidebar -->
@@ -4571,61 +4575,194 @@ function getFallbackData(action, data) {
         }
     }
 
-    // ========== REGISTER CORRIGIDO ==========
-    async function handleRegister() {
-        const name = document.getElementById('registerNameField')?.value?.trim();
-        const email = document.getElementById('registerEmailField')?.value?.trim();
-        const password = document.getElementById('registerPasswordField')?.value?.trim();
-        const type = document.getElementById('registerTypeField')?.value;
-        const link = document.getElementById('registerLinkField')?.value?.trim() || '';
-        const registerBtn = document.getElementById('registerBtn');
+// ========== REGISTER COM CONFIRMAÇÃO DE EMAIL ==========
+async function handleRegister() {
+    const name = document.getElementById('registerNameField')?.value?.trim();
+    const email = document.getElementById('registerEmailField')?.value?.trim();
+    const password = document.getElementById('registerPasswordField')?.value?.trim();
+    const type = document.getElementById('registerTypeField')?.value;
+    const link = document.getElementById('registerLinkField')?.value?.trim() || '';
+    const registerBtn = document.getElementById('registerBtn');
 
-        if (!name || !email || !password || !type) { 
-            showToast('Preencha todos os campos obrigatórios', 'error'); 
-            return; 
-        }
-        if (password.length < 6) { 
-            showToast('A senha deve ter no mínimo 6 caracteres', 'error'); 
-            return; 
-        }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { 
-            showToast('Digite um e-mail válido', 'error'); 
-            return; 
-        }
-
-        registerBtn.disabled = true;
-        registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
-        showLoading('Criando conta...');
-
-        try {
-            const result = await callAPI('register', { 
-                nome: name, 
-                email, 
-                senha: password, 
-                tipo: type, 
-                workLink: link 
-            });
-            
-            if (result?.success) {
-                showToast('Cadastro solicitado! Aguarde aprovação.', 'success');
-                showLoginForm();
-                document.getElementById('registerNameField').value = '';
-                document.getElementById('registerEmailField').value = '';
-                document.getElementById('registerPasswordField').value = '';
-                document.getElementById('registerTypeField').value = '';
-                document.getElementById('registerLinkField').value = '';
-            } else {
-                showToast(result?.message || 'Erro ao cadastrar', 'error');
-            }
-        } catch (error) {
-            console.error('Erro no registro:', error);
-            showToast('Erro ao criar conta', 'error');
-        } finally {
-            registerBtn.disabled = false;
-            registerBtn.innerHTML = '<i class="bi bi-person-plus"></i> Solicitar Cadastro';
-            hideLoading();
-        }
+    if (!name || !email || !password || !type) { 
+        showToast('Preencha todos os campos obrigatórios', 'error'); 
+        return; 
     }
+    if (password.length < 6) { 
+        showToast('A senha deve ter no mínimo 6 caracteres', 'error'); 
+        return; 
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { 
+        showToast('Digite um e-mail válido', 'error'); 
+        return; 
+    }
+
+    registerBtn.disabled = true;
+    registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
+    showLoading('Criando conta...');
+
+    try {
+        const result = await callAPI('register', { 
+            nome: name, 
+            email, 
+            senha: password, 
+            tipo: type, 
+            workLink: link,
+            // IMPORTANTE: URL de confirmação
+            confirm_url: window.location.origin + '/confirm-email.html'
+        });
+        
+        if (result?.success) {
+            // Mostrar mensagem de confirmação de email
+            showToast('Cadastro realizado! Verifique seu email para confirmar.', 'success');
+            
+            // Limpar formulário
+            document.getElementById('registerNameField').value = '';
+            document.getElementById('registerEmailField').value = '';
+            document.getElementById('registerPasswordField').value = '';
+            document.getElementById('registerTypeField').value = '';
+            document.getElementById('registerLinkField').value = '';
+            
+            // Voltar para login
+            showLoginForm();
+            
+            // Mostrar mensagem detalhada
+            setTimeout(() => {
+                showToast(`✉️ Enviamos um email de confirmação para ${email}`, 'info', 5000);
+            }, 1000);
+            
+        } else {
+            showToast(result?.message || 'Erro ao cadastrar', 'error');
+        }
+    } catch (error) {
+        console.error('Erro no registro:', error);
+        showToast('Erro ao criar conta', 'error');
+    } finally {
+        registerBtn.disabled = false;
+        registerBtn.innerHTML = '<i class="bi bi-person-plus"></i> Solicitar Cadastro';
+        hideLoading();
+    }
+}
+
+// ========== VERIFICAR STATUS DE CONFIRMAÇÃO NO LOGIN ==========
+async function handleLogin() {
+    const email = document.getElementById('loginEmailField')?.value?.trim();
+    const password = document.getElementById('loginPasswordField')?.value?.trim();
+    const loginBtn = document.getElementById('loginBtn');
+    
+    if (!email || !password) { 
+        showToast('Preencha todos os campos', 'error'); 
+        return; 
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Autenticando...';
+    showLoading('Autenticando...');
+
+    try {
+        if (email === 'selomiv@gmail.com' && password === 'selomiv123') {
+            // Admin não precisa de confirmação
+            state.currentUser = { 
+                id: 'admin_master', 
+                nome: 'Administrador Master', 
+                email, 
+                tipo: 'admin', 
+                saldo: 1000000, 
+                favorite_music_ids: [] 
+            };
+            state.userBalance = 1000000;
+            state.favoriteMusicIds = [];
+            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+            localStorage.setItem('miv_session', Date.now().toString());
+            showToast('Login ADMIN realizado!', 'success');
+            document.getElementById('loginEmailField').value = '';
+            document.getElementById('loginPasswordField').value = '';
+            hideLoading();
+            initializeApp();
+            return;
+        }
+
+        const result = await callAPI('login', { email, password });
+        
+        if (result?.success && result?.data) {
+            // VERIFICAR SE EMAIL FOI CONFIRMADO
+            if (result.data.email_confirmado === false) {
+                showToast('❌ Por favor, confirme seu email antes de fazer login', 'error', 5000);
+                showToast(`✉️ Enviamos um link para ${email}`, 'info', 5000);
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
+                hideLoading();
+                return;
+            }
+            
+            state.currentUser = result.data;
+            state.userBalance = result.data.saldo || 0;
+            
+            if (result.data.favorite_music_ids) {
+                if (Array.isArray(result.data.favorite_music_ids)) {
+                    state.favoriteMusicIds = result.data.favorite_music_ids;
+                } else if (typeof result.data.favorite_music_ids === 'string') {
+                    state.favoriteMusicIds = result.data.favorite_music_ids.split(',').filter(id => id.trim() !== '');
+                } else {
+                    state.favoriteMusicIds = [];
+                }
+            } else {
+                state.favoriteMusicIds = [];
+            }
+            
+            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+            localStorage.setItem('miv_session', Date.now().toString());
+            showToast('Login realizado!', 'success');
+            document.getElementById('loginEmailField').value = '';
+            document.getElementById('loginPasswordField').value = '';
+            initializeApp();
+        } else {
+            showToast(result?.message || 'Credenciais inválidas', 'error');
+        }
+    } catch (error) {
+        console.error('Erro no login:', error);
+        showToast('Erro ao conectar com o servidor', 'error');
+    } finally {
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
+        hideLoading();
+    }
+}
+
+// ========== REENVIAR EMAIL DE CONFIRMAÇÃO ==========
+async function resendConfirmationEmail() {
+    const email = document.getElementById('loginEmailField')?.value?.trim();
+    
+    if (!email) {
+        showToast('Digite seu email primeiro', 'error');
+        return;
+    }
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('Digite um email válido', 'error');
+        return;
+    }
+    
+    showLoading('Enviando email...');
+    
+    try {
+        const result = await callAPI('resend_confirmation', { 
+            email,
+            confirm_url: window.location.origin + '/confirm-email.html'
+        });
+        
+        if (result?.success) {
+            showToast(`✉️ Novo link enviado para ${email}!`, 'success', 5000);
+        } else {
+            showToast(result?.message || 'Erro ao enviar email', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao reenviar:', error);
+        showToast('Erro ao enviar email', 'error');
+    } finally {
+        hideLoading();
+    }
+}
 
 // ========== INICIALIZAÇÃO ==========
 function initializeApp() {
