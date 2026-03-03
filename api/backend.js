@@ -42,7 +42,14 @@ export default async function handler(req, res) {
     
     const data = await response.json();
     console.log('✅ Resposta do GAS:', data);
-    
+ // 🔴 COLOQUE O CÓDIGO AQUI - LOG DETALHADO
+    console.log('📊 Dados retornados:', {
+      action: action,
+      success: data.success,
+      data_size: JSON.stringify(data).length,
+      timestamp: new Date().toISOString()
+    });
+    // 🔴 FIM DO CÓDIGO    
     // Retornar a resposta do GAS (sem modificar)
     res.status(200).json(data);
     
