@@ -4347,11 +4347,6 @@ async function callAPI(action, data = {}) {
     data.user_id = state.currentUser.id;
   }
 
-  // ✅ Adiciona user_id automaticamente
-  if (state?.currentUser?.id && !data.user_id) {
-    data.user_id = state.currentUser.id;
-  }
-
   try {
     // ✅ URL CORRIGIDA - Usa o endpoint correto do Vercel
     const baseUrl = window.location.origin;
