@@ -4878,27 +4878,42 @@ function renderExternalMarketplace() {
         return;
     }
     
+    console.log('🎵 Dados da Bolsa Externa:', state.externalPlaylist);
+    
     container.innerHTML = state.externalPlaylist.map((track, index) => {
         const progressPercent = Math.min(100, ((track.vendas_atuais || 0) / (track.meta_vendas || 1000000) * 100));
         
-        // ===== EXTRAIR THUMBNAIL DO YOUTUBE - VERSÃO CORRIGIDA =====
-        let thumbnailUrl = PLACEHOLDERS.EXT_300; // Fallback padrão
+        // ===== FORÇAR THUMBNAIL DO YOUTUBE =====
+        let thumbnailUrl = PLACEHOLDERS.EXT_300; // Fallback
         
-        // 1. Verificar se link_thumbnail existe e é uma string válida
+        // Tentar extrair do YouTube
+        if (track.link_youtube) {
+            console.log(`🔗 Link do YouTube: ${track.link_youtube}`);
+            
+            // Extrair ID diretamente (sem função)
+            let videoId = '';
+            const url = track.link_youtube;
+            
+            if (url.includes('youtu.be/')) {
+                videoId = url.split('youtu.be/')[1].split('?')[0].split('&')[0];
+            } else if (url.includes('watch?v=')) {
+                videoId = url.split('watch?v=')[1].split('&')[0];
+            } else if (url.includes('embed/')) {
+                videoId = url.split('embed/')[1].split('?')[0];
+            }
+            
+            if (videoId && videoId.length === 11) {
+                thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`; // Usar hqdefault que é mais confiável
+                console.log(`✅ ID encontrado: ${videoId}, thumbnail: ${thumbnailUrl}`);
+            } else {
+                console.log(`❌ Não foi possível extrair ID de: ${url}`);
+            }
+        }
+        
+        // Se tiver thumbnail na planilha, usar (mas YouTube tem prioridade)
         if (track.link_thumbnail && typeof track.link_thumbnail === 'string' && track.link_thumbnail.trim() !== '') {
             thumbnailUrl = track.link_thumbnail;
-            console.log(`✅ Usando thumbnail da planilha para: ${track.titulo}`);
-        } 
-        // 2. Se não tiver, extrair do link do YouTube
-        else if (track.link_youtube && typeof track.link_youtube === 'string') {
-            const videoId = extractYouTubeId(track.link_youtube);
-            if (videoId) {
-                // Tentar maxresdefault (maior qualidade)
-                thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-                console.log(`🎬 Thumbnail gerada para: ${track.titulo} (ID: ${videoId})`);
-            } else {
-                console.log(`⚠️ Não foi possível extrair ID do YouTube: ${track.link_youtube}`);
-            }
+            console.log(`📁 Usando thumbnail da planilha: ${thumbnailUrl}`);
         }
         
         return `<div class="music-card external-investment-card" onclick="playExternalTrack(${index})">
@@ -4935,7 +4950,6 @@ function renderExternalMarketplace() {
         </div>`;
     }).join('');
 }
-
 function renderPortfolio() {
     const container = document.getElementById('portfolioContent');
     if (!container) return;
