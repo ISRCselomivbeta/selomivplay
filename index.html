@@ -4886,18 +4886,23 @@ function renderExternalMarketplace() {
     container.innerHTML = state.externalPlaylist.map((track, index) => {
         const progressPercent = Math.min(100, ((track.vendas_atuais || 0) / (track.meta_vendas || 1000000) * 100));
         
-        // ===== USAR THUMBNAIL DA PLANILHA OU EXTRAIR =====
-        let thumbnailUrl = PLACEHOLDERS.EXT_300;
+        // ===== EXTRAIR THUMBNAIL DO YOUTUBE - VERSÃO MELHORADA =====
+        let thumbnailUrl = PLACEHOLDERS.EXT_300; // Fallback padrão
         
-        // Se já tiver thumbnail na planilha, usar
-        if (track.link_thumbnail) {
+        // 1. Tentar usar thumbnail da planilha (se existir e não for vazia)
+        if (track.link_thumbnail && track.link_thumbnail.trim() !== '') {
             thumbnailUrl = track.link_thumbnail;
+            console.log(`✅ Usando thumbnail da planilha para: ${track.titulo}`);
         } 
-        // Se não tiver, extrair do link_youtube
+        // 2. Se não tiver, extrair do link do YouTube
         else if (track.link_youtube) {
             const videoId = extractYouTubeId(track.link_youtube);
             if (videoId) {
+                // Tentar maxresdefault (maior qualidade)
                 thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+                console.log(`🎬 Thumbnail gerada para: ${track.titulo} (ID: ${videoId})`);
+            } else {
+                console.log(`⚠️ Não foi possível extrair ID do YouTube: ${track.link_youtube}`);
             }
         }
         
@@ -4906,6 +4911,7 @@ function renderExternalMarketplace() {
                 <img src="${thumbnailUrl}" 
                      class="music-cover" 
                      alt="${track.titulo || 'Música Externa'}" 
+                     loading="lazy"
                      onerror="this.onerror=null; this.src='${PLACEHOLDERS.EXT_300.replace(/'/g, '%27')}'">
                 <div class="external-music-badge">
                     <i class="bi bi-globe"></i> Bolsa Externa
@@ -5813,23 +5819,40 @@ function extractYouTubeId(url) {
     if (!url || typeof url !== 'string') return null;
     
     try {
+        // Limpar a URL
+        url = url.toString().trim();
+        
+        // Padrões comuns de URLs do YouTube
         const patterns = [
             /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
             /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
-            /youtu\.be\/([^&\n?#]+)/
+            /youtu\.be\/([^&\n?#]+)/,
+            /youtube\.com\/shorts\/([^&\n?#]+)/,
+            /m\.youtube\.com\/watch\?v=([^&\n?#]+)/
         ];
         
         for (let pattern of patterns) {
             const match = url.match(pattern);
-            if (match && match[1]) return match[1];
+            if (match && match[1] && match[1].length === 11) {
+                console.log(`✅ ID extraído: ${match[1]}`);
+                return match[1];
+            }
         }
         
+        // Tentar extrair de URL padrão
         try {
             const urlObj = new URL(url);
-            if (urlObj.hostname.includes('youtu.be')) return urlObj.pathname.substring(1);
-            if (urlObj.hostname.includes('youtube.com')) return urlObj.searchParams.get('v');
+            if (urlObj.hostname.includes('youtu.be')) {
+                const id = urlObj.pathname.substring(1);
+                if (id && id.length === 11) return id;
+            }
+            if (urlObj.hostname.includes('youtube.com')) {
+                const id = urlObj.searchParams.get('v');
+                if (id && id.length === 11) return id;
+            }
         } catch (e) {}
         
+        console.log(`❌ Nenhum ID encontrado em: ${url}`);
         return null;
         
     } catch (error) {
