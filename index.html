@@ -4886,16 +4886,16 @@ function renderExternalMarketplace() {
     container.innerHTML = state.externalPlaylist.map((track, index) => {
         const progressPercent = Math.min(100, ((track.vendas_atuais || 0) / (track.meta_vendas || 1000000) * 100));
         
-        // ===== EXTRAIR THUMBNAIL DO YOUTUBE - VERSÃO MELHORADA =====
+        // ===== EXTRAIR THUMBNAIL DO YOUTUBE - VERSÃO CORRIGIDA =====
         let thumbnailUrl = PLACEHOLDERS.EXT_300; // Fallback padrão
         
-        // 1. Tentar usar thumbnail da planilha (se existir e não for vazia)
-        if (track.link_thumbnail && track.link_thumbnail.trim() !== '') {
+        // 1. Verificar se link_thumbnail existe e é uma string válida
+        if (track.link_thumbnail && typeof track.link_thumbnail === 'string' && track.link_thumbnail.trim() !== '') {
             thumbnailUrl = track.link_thumbnail;
             console.log(`✅ Usando thumbnail da planilha para: ${track.titulo}`);
         } 
         // 2. Se não tiver, extrair do link do YouTube
-        else if (track.link_youtube) {
+        else if (track.link_youtube && typeof track.link_youtube === 'string') {
             const videoId = extractYouTubeId(track.link_youtube);
             if (videoId) {
                 // Tentar maxresdefault (maior qualidade)
@@ -4912,7 +4912,7 @@ function renderExternalMarketplace() {
                      class="music-cover" 
                      alt="${track.titulo || 'Música Externa'}" 
                      loading="lazy"
-                     onerror="this.onerror=null; this.src='${PLACEHOLDERS.EXT_300.replace(/'/g, '%27')}'">
+                     onerror="this.onerror=null; this.src='${PLACEHOLDERS.EXT_300}'">
                 <div class="external-music-badge">
                     <i class="bi bi-globe"></i> Bolsa Externa
                 </div>
