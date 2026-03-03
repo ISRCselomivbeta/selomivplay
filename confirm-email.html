@@ -235,7 +235,21 @@
             document.getElementById('loadingState').style.display = 'none';
             document.getElementById('alreadyConfirmedState').style.display = 'block';
         }
+        // ========== VERIFICAR SE É CONTA ANTIGA ==========
+async function checkIfOldAccount(token) {
+    try {
+        const response = await fetch(`${API_URL}?action=check_old_account&token=${encodeURIComponent(token)}`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
         
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error('Erro ao verificar conta antiga:', error);
+        return { success: false };
+    }
+}
         // ========== INICIAR ==========
         document.addEventListener('DOMContentLoaded', confirmEmail);
     </script>
