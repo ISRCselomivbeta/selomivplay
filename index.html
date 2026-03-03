@@ -4868,18 +4868,66 @@ function playExternalTrack(index) {
     }
 }
 
-    function renderExternalMarketplace() {
-        const container = document.getElementById('externalContent');
-        if (!container) return;
-        if (!state.externalPlaylist?.length) {
-            container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-globe empty-icon"></i><h5 class="text-muted">Nenhuma música externa disponível</h5><p class="text-muted">Seja o primeiro a sugerir uma música!</p><button class="btn-miv btn-warning mt-3" onclick="openAddExternalMusicModal()"><i class="bi bi-plus-circle me-2"></i> Sugerir Música</button></div>';
-            return;
-        }
-        container.innerHTML = state.externalPlaylist.map((track, index) => {
-            const progressPercent = Math.min(100, ((track.vendas_atuais || 0) / (track.meta_vendas || 1000000) * 100));
-            return `<div class="music-card external-investment-card" onclick="playExternalTrack(${index})"><div class="position-relative"><img src="${PLACEHOLDERS.EXT_300}" class="music-cover" alt="${track.titulo || 'Música Externa'}" onerror="this.src='${PLACEHOLDERS.EXT_300}'"><div class="external-music-badge"><i class="bi bi-globe"></i> Bolsa Externa</div></div><div class="music-info"><h6 class="music-title">${track.titulo || 'Sem título'}</h6><p class="music-artist">${track.artista || 'Artista Desconhecido'}</p><div class="external-music-progress"><div class="external-music-progress-bar" style="width: ${progressPercent}%"></div></div><div class="music-meta"><span class="music-price text-warning">${formatCurrency(track.valor_acao || 0)}</span><span class="badge ${track.status === 'aguardando' ? 'status-aguardando' : 'status-aprovado'}">${track.status === 'aguardando' ? '⏳ Aguardando' : '✅ Ativo'}</span></div><div class="d-flex justify-content-between mt-2"><small class="text-muted">${formatCurrency(track.vendas_atuais || 0)} levantados</small><small class="text-muted">Meta: ${formatCurrency(track.meta_vendas || 1000000)}</small></div><button class="btn btn-warning btn-sm w-100 mt-2" onclick="event.stopPropagation(); openInvestExternalModal(${index})"><i class="bi bi-currency-dollar me-1"></i> Investir Antecipado</button></div></div>`;
-        }).join('');
+function renderExternalMarketplace() {
+    const container = document.getElementById('externalContent');
+    if (!container) return;
+    
+    if (!state.externalPlaylist?.length) {
+        container.innerHTML = '<div class="empty-state-actionable">...</div>';
+        return;
     }
+    
+    container.innerHTML = state.externalPlaylist.map((track, index) => {
+        const progressPercent = Math.min(100, ((track.vendas_atuais || 0) / (track.meta_vendas || 1000000) * 100));
+        
+        // ===== USAR THUMBNAIL DA PLANILHA OU EXTRAIR =====
+        let thumbnailUrl = PLACEHOLDERS.EXT_300;
+        
+        // Se já tiver thumbnail na planilha, usar
+        if (track.link_thumbnail) {
+            thumbnailUrl = track.link_thumbnail;
+        } 
+        // Se não tiver, extrair do link_youtube
+        else if (track.link_youtube) {
+            const videoId = extractYouTubeId(track.link_youtube);
+            if (videoId) {
+                thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+            }
+        }
+        
+        return `<div class="music-card external-investment-card" onclick="playExternalTrack(${index})">
+            <div class="position-relative">
+                <img src="${thumbnailUrl}" 
+                     class="music-cover" 
+                     alt="${track.titulo || 'Música Externa'}" 
+                     onerror="this.src='${PLACEHOLDERS.EXT_300}'">
+                <div class="external-music-badge">
+                    <i class="bi bi-globe"></i> Bolsa Externa
+                </div>
+            </div>
+            <div class="music-info">
+                <h6 class="music-title">${track.titulo || 'Sem título'}</h6>
+                <p class="music-artist">${track.artista || 'Artista Desconhecido'}</p>
+                <div class="external-music-progress">
+                    <div class="external-music-progress-bar" style="width: ${progressPercent}%"></div>
+                </div>
+                <div class="music-meta">
+                    <span class="music-price text-warning">${formatCurrency(track.valor_acao || 0)}</span>
+                    <span class="badge ${track.status === 'aguardando' ? 'status-aguardando' : 'status-aprovado'}">
+                        ${track.status === 'aguardando' ? '⏳ Aguardando' : '✅ Ativo'}
+                    </span>
+                </div>
+                <div class="d-flex justify-content-between mt-2">
+                    <small class="text-muted">${formatCurrency(track.vendas_atuais || 0)} levantados</small>
+                    <small class="text-muted">Meta: ${formatCurrency(track.meta_vendas || 1000000)}</small>
+                </div>
+                <button class="btn btn-warning btn-sm w-100 mt-2" onclick="event.stopPropagation(); openInvestExternalModal(${index})">
+                    <i class="bi bi-currency-dollar me-1"></i> Investir Antecipado
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
 
 function renderPortfolio() {
     const container = document.getElementById('portfolioContent');
