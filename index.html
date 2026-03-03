@@ -4734,51 +4734,52 @@ async function loadAllData() {
         }).join('');
     }
 
-    function playExternalTrack(index) {
-        if (index < 0 || index >= state.externalPlaylist.length) {
-            showToast('Música não encontrada', 'error');
-            return;
-        }
-        
-        state.currentTrackIndex = index + 1000;
-        const track = state.externalPlaylist[index];
-        
-        const player = document.getElementById('playerSpotify');
-        if (player) player.style.display = 'flex';
-        
-        const playerTitle = document.getElementById('playerTitle');
-        const playerArtist = document.getElementById('playerArtist');
-        const playerAlbumArt = document.getElementById('playerAlbumArt');
-        
-        if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
-        if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
-        
-        if (playerAlbumArt) {
-            playerAlbumArt.src = PLACEHOLDERS.EXT_56;
-        }
-        
-        const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
-        updateFavoriteButton(isFavorite);
-        
-        if (track.link_youtube) {
-            const videoId = extractYouTubeId(track.link_youtube);
-            if (videoId) {
-                if (state.youtubeAPILoaded && window.YT) {
-                    initializeYouTubePlayer(videoId);
-                } else {
-                    loadYouTubeAPI();
-                    setTimeout(() => initializeYouTubePlayer(videoId), 1000);
-                }
+function playExternalTrack(index) {
+    if (index < 0 || index >= state.externalPlaylist.length) {
+        showToast('Música não encontrada', 'error');
+        return;
+    }
+    
+    state.currentTrackIndex = index + 1000;
+    const track = state.externalPlaylist[index];
+    
+    const player = document.getElementById('playerSpotify');
+    if (player) player.style.display = 'flex';
+    
+    const playerTitle = document.getElementById('playerTitle');
+    const playerArtist = document.getElementById('playerArtist');
+    const playerAlbumArt = document.getElementById('playerAlbumArt');
+    
+    if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
+    if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
+    
+    if (playerAlbumArt) {
+        playerAlbumArt.src = PLACEHOLDERS.EXT_56;
+    }
+    
+    const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+    updateFavoriteButton(isFavorite);
+    
+    if (track.link_youtube) {
+        const videoId = extractYouTubeId(track.link_youtube);
+        if (videoId) {
+            if (state.youtubeAPILoaded && window.YT) {
+                initializeYouTubePlayer(videoId);
+            } else {
+                loadYouTubeAPI();
+                setTimeout(() => initializeYouTubePlayer(videoId), 1000);
             }
         }
-        
-        state.isPlaying = true;
-        updatePlayerIcons();
-        
-        if (document.getElementById('playerExpanded')?.classList.contains('show')) {
-            updateExpandedPlayer();
-        }
     }
+    
+    state.isPlaying = true;
+    updatePlayerIcons();
+    
+    // CORREÇÃO: Verificar player expandido como seção
+    if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
+        updateExpandedPlayer();
+    }
+}
 
     function renderExternalMarketplace() {
         const container = document.getElementById('externalContent');
@@ -5256,7 +5257,7 @@ function playTrack(index) {
     state.isPlaying = true;
     updatePlayerIcons();
     
-    if (document.getElementById('playerExpanded')?.classList.contains('show')) {
+    if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
         updateExpandedPlayer();
     }
 }
@@ -5320,27 +5321,52 @@ function updateExpandedPlayer() {
     }
 }
 
+// ========== CARREGAR API DO YOUTUBE CORRIGIDA ==========
 function loadYouTubeAPI(callback) {
-    if (window.YT && YT.Player) {
+    // Se já estiver carregada, executa callback imediatamente
+    if (window.YT && YT.Player && state.youtubeAPILoaded) {
         console.log('✅ API do YouTube já carregada');
-        state.youtubeAPILoaded = true;
         if (callback) callback();
         return;
     }
     
-    console.log('📥 Carregando API do YouTube...');
+    console.log('📥 Carregando API do YouTube com HTTPS...');
     
-    window.onYouTubeIframeAPIReady = () => {
+    // Definir callback global ANTES de carregar o script
+    window.onYouTubeIframeAPIReady = function() {
         console.log('✅ API do YouTube carregada com sucesso');
         state.youtubeAPILoaded = true;
+        
+        // Garantir que o player seja inicializado se houver música tocando
+        if (state.currentTrackIndex >= 0 && state.playlist[state.currentTrackIndex]) {
+            const track = state.playlist[state.currentTrackIndex];
+            if (track && track.link_youtube) {
+                setTimeout(() => {
+                    const videoId = extractYouTubeId(track.link_youtube);
+                    if (videoId) initializeYouTubePlayer(videoId);
+                }, 500);
+            }
+        }
+        
         if (callback) callback();
     };
     
+    // Remover script antigo se existir para evitar duplicatas
+    const oldScript = document.querySelector('script[src*="youtube.com/iframe_api"]');
+    if (oldScript) oldScript.remove();
+    
+    // Criar novo script com HTTPS explícito
     const tag = document.createElement('script');
     tag.src = 'https://www.youtube.com/iframe_api';
     tag.async = true;
     tag.onload = () => console.log('📦 Script do YouTube carregado');
-    tag.onerror = (e) => console.error('❌ Erro ao carregar script do YouTube:', e);
+    tag.onerror = (e) => {
+        console.error('❌ Erro ao carregar script do YouTube:', e);
+        showToast('Erro ao carregar player do YouTube', 'error');
+        
+        // Tentar recarregar após 2 segundos
+        setTimeout(() => loadYouTubeAPI(callback), 2000);
+    };
     
     document.head.appendChild(tag);
 }
@@ -5614,6 +5640,7 @@ function initializeYouTubePlayer(videoId) {
     }
 }
 
+// ========== CRIAR PLAYER DO YOUTUBE CORRIGIDO ==========
 function createYouTubePlayer(elementId, videoId) {
     try {
         const element = document.getElementById(elementId);
@@ -5622,15 +5649,27 @@ function createYouTubePlayer(elementId, videoId) {
             return;
         }
         
+        // Limpar elemento
         element.innerHTML = '';
         
+        // Criar div para o player
         const playerDiv = document.createElement('div');
         playerDiv.id = 'yt-player-' + Date.now();
         element.appendChild(playerDiv);
         
         console.log('🎬 Criando player YouTube para:', videoId);
         
-        state.youtubePlayer = new YT.Player(playerDiv.id, {
+        // Destruir player antigo se existir
+        if (state.youtubePlayer && typeof state.youtubePlayer.destroy === 'function') {
+            try {
+                state.youtubePlayer.destroy();
+            } catch (e) {
+                console.warn('Erro ao destruir player antigo:', e);
+            }
+        }
+        
+        // Opções do player SEM o parâmetro 'host' problemático
+        const playerOptions = {
             width: '100%',
             height: '100%',
             videoId: videoId,
@@ -5642,125 +5681,106 @@ function createYouTubePlayer(elementId, videoId) {
                 showinfo: 0,
                 fs: 1,
                 playsinline: 1,
-                origin: window.location.origin,
+                origin: window.location.origin, // Importante para segurança
                 enablejsapi: 1,
                 widget_referrer: window.location.origin
             },
-            onReady: (event) => {
-                console.log('✅ YouTube Player pronto');
-                state.playerReady = true;
-                
-                const loadingEl = document.getElementById('playerLoadingExpanded');
-                if (loadingEl) loadingEl.style.display = 'none';
-                
-                event.target.setVolume(state.currentVolume);
-                if (state.isPlaying) event.target.playVideo();
-                
-                startStreamingMonitor();
-                
-                if (state.progressInterval) clearInterval(state.progressInterval);
-                state.progressInterval = setInterval(updatePlayerProgress, 1000);
-                
-                if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
-                    state.streamingTrackId = state.playlist[state.currentTrackIndex].id;
-                }
-            },
-            onStateChange: (event) => handlePlayerStateChange(event),
-            onError: (event) => {
-                console.error('❌ Erro no player YouTube:', event.data);
-                state.playerReady = false;
-                
-                const loadingEl = document.getElementById('playerLoadingExpanded');
-                if (loadingEl) loadingEl.style.display = 'none';
-                
-                const errorMessages = {
-                    2: 'ID do vídeo inválido',
-                    5: 'Erro no player HTML5',
-                    100: 'Vídeo não encontrado',
-                    101: 'Embedding não permitido',
-                    150: 'Embedding não permitido'
-                };
-                
-                showToast(errorMessages[event.data] || 'Erro ao carregar vídeo', 'error');
+            events: {
+                onReady: onPlayerReady,
+                onStateChange: onPlayerStateChange,
+                onError: onPlayerError
             }
-        });
+        };
+        
+        // Criar novo player
+        state.youtubePlayer = new YT.Player(playerDiv.id, playerOptions);
+        
     } catch (error) {
         console.error('❌ Erro ao criar player:', error);
         showToast('Erro ao inicializar player', 'error');
+        
+        const loadingEl = document.getElementById('playerLoadingExpanded');
+        if (loadingEl) {
+            loadingEl.innerHTML = `
+                <div class="loading-spinner"></div>
+                <span class="text-danger">Erro ao carregar vídeo</span>
+                <button class="btn btn-sm btn-outline-success mt-3" onclick="window.location.reload()">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Recarregar
+                </button>
+            `;
+        }
     }
 }
 
-function handlePlayerStateChange(event) {
+// ========== EVENTOS DO PLAYER CORRIGIDOS ==========
+function onPlayerReady(event) {
+    console.log('✅ YouTube Player pronto - evento disparado');
+    state.playerReady = true;
+    
     const loadingEl = document.getElementById('playerLoadingExpanded');
+    if (loadingEl) loadingEl.style.display = 'none';
     
-    state.isBuffering = (event.data === YT.PlayerState.BUFFERING);
+    // Configurar volume
+    try {
+        event.target.setVolume(state.currentVolume);
+    } catch (e) {
+        console.warn('Erro ao setar volume:', e);
+    }
     
-    const stateNames = {
-        [-1]: '🔵 Não iniciado',
-        0: '✅ Finalizado',
-        1: '▶️ Reproduzindo',
-        2: '⏸️ Pausado',
-        3: '⏳ Buffering',
-        5: '🎬 Video selecionado'
+    // Iniciar reprodução se necessário
+    if (state.isPlaying) {
+        try {
+            event.target.playVideo();
+        } catch (e) {
+            console.warn('Erro ao iniciar reprodução:', e);
+        }
+    }
+    
+    // Iniciar monitoramento
+    startStreamingMonitor();
+    
+    // Configurar intervalo de progresso
+    if (state.progressInterval) clearInterval(state.progressInterval);
+    state.progressInterval = setInterval(updatePlayerProgress, 1000);
+    
+    // Registrar música atual para streaming
+    if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
+        state.streamingTrackId = state.playlist[state.currentTrackIndex].id;
+    }
+    
+    showToast('Player pronto!', 'success');
+}
+
+function onPlayerError(event) {
+    console.error('❌ Erro no player YouTube:', event.data);
+    state.playerReady = false;
+    
+    const loadingEl = document.getElementById('playerLoadingExpanded');
+    if (loadingEl) loadingEl.style.display = 'none';
+    
+    const errorMessages = {
+        2: 'ID do vídeo inválido',
+        5: 'Erro no player HTML5',
+        100: 'Vídeo não encontrado ou removido',
+        101: 'Embedding não permitido pelo proprietário',
+        150: 'Embedding não permitido'
     };
     
-    console.log(`🎬 YouTube State: ${stateNames[event.data] || event.data}`);
+    const errorMsg = errorMessages[event.data] || 'Erro ao carregar vídeo';
+    showToast(errorMsg, 'error');
     
-    switch(event.data) {
-        case YT.PlayerState.PLAYING:
-            state.isPlaying = true;
-            state.isBuffering = false;
-            if (loadingEl) loadingEl.style.display = 'none';
-            state.streamingProgress = 0;
-            if (!state.streamingTimer) startStreamingMonitor();
-            
-            verifyYouTubeView().then(isReal => {
-                const realTimeStatus = document.getElementById('realTimeStatus');
-                if (realTimeStatus) {
-                    realTimeStatus.innerHTML = isReal ? 
-                        '<span class="text-success">✓ View sendo contada</span>' : 
-                        '<span class="text-warning">⚠️ Aguardando confirmação</span>';
-                }
-            });
-            break;
-            
-        case YT.PlayerState.PAUSED:
-            state.isPlaying = false;
-            state.isBuffering = false;
-            break;
-            
-        case YT.PlayerState.BUFFERING:
-            state.isBuffering = true;
-            if (loadingEl) loadingEl.style.display = 'flex';
-            showLoadingMessage('Carregando...', true);
-            break;
-            
-        case YT.PlayerState.ENDED:
-            state.isPlaying = false;
-            state.isBuffering = false;
-            state.streamingProgress = 0;
-            if (loadingEl) loadingEl.style.display = 'none';
-            hideLoadingMessage();
-            
-            if (state.isRepeat) {
-                event.target.playVideo();
-            } else {
-                playNext();
-            }
-            break;
-            
-        case YT.PlayerState.CUED:
-            state.playerReady = true;
-            state.isBuffering = false;
-            if (loadingEl) loadingEl.style.display = 'none';
-            hideLoadingMessage();
-            break;
+    // Tentar alternativa
+    if (loadingEl) {
+        loadingEl.innerHTML = `
+            <i class="bi bi-exclamation-triangle text-danger fs-1 mb-3"></i>
+            <span class="text-danger">${errorMsg}</span>
+            <button class="btn btn-sm btn-outline-success mt-3" onclick="window.location.reload()">
+                <i class="bi bi-arrow-clockwise me-2"></i>Recarregar
+            </button>
+        `;
+        loadingEl.style.display = 'flex';
     }
-    
-    updatePlayerIcons();
-    updateExpandedPlayer();
-}
-
+}    
 function updatePlayerProgress() {
     if (!state.youtubePlayer?.getCurrentTime) return;
     try {
@@ -6559,11 +6579,11 @@ function logout() {
     }
 }
 
+// ========== INICIALIZAÇÃO SEGURA ==========
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('SELO MIV v' + CONFIG.VERSION);
+    console.log('🚀 SELO MIV v' + CONFIG.VERSION);
     
-    loadYouTubeAPI();
-    
+    // Verificar se já tem usuário logado
     const stored = localStorage.getItem('miv_user');
     if (stored) {
         try {
@@ -6582,14 +6602,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.favoriteMusicIds = [];
             }
             
+            // Carregar API do YouTube em segundo plano
+            setTimeout(() => loadYouTubeAPI(), 2000);
+            
             initializeApp();
         } catch (e) { 
+            console.error('Erro ao restaurar sessão:', e);
             localStorage.removeItem('miv_user'); 
             localStorage.removeItem('miv_session'); 
             hideLoading(); 
         }
     } else {
         hideLoading();
+        // Pré-carregar API mesmo sem login
+        setTimeout(() => loadYouTubeAPI(), 3000);
     }
 });
 
