@@ -4841,7 +4841,7 @@ function playExternalTrack(index) {
     if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
     if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
     
-    // ===== CORREÇÃO: EXTRAIR THUMBNAIL DO YOUTUBE PARA O MINI PLAYER =====
+    // CORREÇÃO: EXTRAIR THUMBNAIL DO YOUTUBE PARA O MINI PLAYER
     if (playerAlbumArt) {
         let thumbnailUrl = PLACEHOLDERS.EXT_56;
         
@@ -4892,16 +4892,6 @@ function playExternalTrack(index) {
         updateExpandedPlayer();
     }
 }
-    
-    state.isPlaying = true;
-    updatePlayerIcons();
-    
-    // CORREÇÃO: Verificar player expandido como seção
-    if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
-        updateExpandedPlayer();
-    }
-}
-
 function renderExternalMarketplace() {
     const container = document.getElementById('externalContent');
     if (!container) return;
