@@ -3231,7 +3231,13 @@
                 <label for="externalYoutubeLinkField" class="text-muted mb-2 d-block">Link do YouTube *</label>
                 <input type="url" id="externalYoutubeLinkField" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
             </div>
-            
+            <!-- ===== NOVO CAMPO PARA LINK DA CAPA ===== -->
+<div class="form-group">
+    <label for="externalCoverField" class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
+    <input type="url" id="externalCoverField" class="form-control-custom" placeholder="https://exemplo.com/capa.jpg">
+    <small class="text-muted">Se não fornecido, usaremos a thumbnail do YouTube.</small>
+</div>
+<!-- ===== FIM DO NOVO CAMPO ===== -->
             <div class="form-group">
                 <label for="externalTitleField" class="text-muted mb-2 d-block">Título da Música *</label>
                 <input type="text" id="externalTitleField" class="form-control-custom" placeholder="Digite o título da música" required>
@@ -5209,6 +5215,7 @@ function renderFilteredMarketplace(filteredTracks) {
 // EXPOR FUNÇÕES DE FILTRO GLOBALMENTE
 window.filterMarketplace = filterMarketplace;
     // ========== RENDER EXTERNAL MARKETPLACE ==========
+// ========== RENDER EXTERNAL MARKETPLACE ==========
 function renderExternalMarketplace() {
     const container = document.getElementById('externalContent');
     if (!container) return;
@@ -5233,9 +5240,21 @@ function renderExternalMarketplace() {
         const metaVendas = track.meta_vendas || 1000000;
         const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
         
-        // Cover image
-        let coverImage = track.link_capa?.trim() || 
-            'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800';
+        // ===== LÓGICA CORRIGIDA PARA A IMAGEM DE CAPA =====
+        let coverImage = PLACEHOLDERS.EXT_300; // Fallback padrão
+        
+        // 1. PRIORIDADE MÁXIMA: Link da capa personalizado
+        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
+            coverImage = track.link_capa.trim();
+        } 
+        // 2. SEGUNDA OPÇÃO: Thumbnail do YouTube
+        else if (track.link_youtube) {
+            const videoId = extractYouTubeId(track.link_youtube);
+            if (videoId) {
+                coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            }
+        }
+        // 3. TERCEIRA OPÇÃO: Placeholder (já está definido)
         
         // Status badge
         let statusBadge = '';
@@ -7108,6 +7127,8 @@ async function submitExternalMusic() {
     const artist = document.getElementById('externalArtistField').value.trim();
     const price = parseFloat(document.getElementById('externalPriceField').value);
     const percent = parseFloat(document.getElementById('externalPercentField').value);
+    // ===== NOVO: Capturar o link da capa =====
+    const cover = document.getElementById('externalCoverField')?.value.trim() || '';
     const message = document.getElementById('externalMessageField')?.value.trim() || '';
     
     if (!youtube || !title || !artist || !price || !percent) { 
@@ -7125,12 +7146,14 @@ async function submitExternalMusic() {
     btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Enviando...';
     
     try {
+        // ===== MODIFICADO: Adicionar 'link_capa' aos dados enviados =====
         const result = await callAPI('suggest_external_music', { 
             link_youtube: youtube, 
             titulo: title, 
             artista: artist, 
             valor_acao: price, 
             percentual_disponivel: percent, 
+            link_capa: cover, // <-- NOVO CAMPO ENVIADO PARA API
             mensagem: message 
         });
         
@@ -7138,11 +7161,16 @@ async function submitExternalMusic() {
             showToast('Música sugerida!', 'success');
             closeModal('addExternalMusicModal');
             
+            // Limpar todos os campos
             document.getElementById('externalYoutubeLinkField').value = '';
             document.getElementById('externalTitleField').value = '';
             document.getElementById('externalArtistField').value = '';
             document.getElementById('externalPriceField').value = '10.00';
             document.getElementById('externalPercentField').value = '20';
+            // ===== NOVO: Limpar o campo da capa =====
+            if (document.getElementById('externalCoverField')) {
+                document.getElementById('externalCoverField').value = '';
+            }
             document.getElementById('externalMessageField').value = '';
             
             await loadExternalMarketplace(true);
