@@ -4841,8 +4841,32 @@ function playExternalTrack(index) {
     if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
     if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
     
+    // ===== CORREÇÃO: EXTRAIR THUMBNAIL DO YOUTUBE PARA O MINI PLAYER =====
     if (playerAlbumArt) {
-        playerAlbumArt.src = PLACEHOLDERS.EXT_56;
+        let thumbnailUrl = PLACEHOLDERS.EXT_56;
+        
+        // Tentar extrair do YouTube
+        if (track.link_youtube) {
+            let videoId = '';
+            const url = track.link_youtube;
+            
+            if (url.includes('youtu.be/')) {
+                videoId = url.split('youtu.be/')[1].split('?')[0].split('&')[0];
+            } else if (url.includes('watch?v=')) {
+                videoId = url.split('watch?v=')[1].split('&')[0];
+            } else if (url.includes('embed/')) {
+                videoId = url.split('embed/')[1].split('?')[0];
+            }
+            
+            if (videoId && videoId.length === 11) {
+                thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            }
+        }
+        
+        playerAlbumArt.src = thumbnailUrl;
+        playerAlbumArt.onerror = function() {
+            this.src = PLACEHOLDERS.EXT_56;
+        };
     }
     
     const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
@@ -4859,6 +4883,15 @@ function playExternalTrack(index) {
             }
         }
     }
+    
+    state.isPlaying = true;
+    updatePlayerIcons();
+    
+    // Atualizar player expandido se estiver ativo
+    if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
+        updateExpandedPlayer();
+    }
+}
     
     state.isPlaying = true;
     updatePlayerIcons();
@@ -5388,16 +5421,21 @@ function playTrack(index) {
     if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
     if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
     
-    if (playerAlbumArt) {
-        let coverUrl = PLACEHOLDERS.MIV_56;
-        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
-            coverUrl = track.link_capa.trim();
-        }
-        playerAlbumArt.src = coverUrl;
-        playerAlbumArt.onerror = function() {
-            this.src = PLACEHOLDERS.MIV_56;
-        };
+   // Dentro da função playTrack, substitua a parte do playerAlbumArt:
+
+if (playerAlbumArt) {
+    let coverUrl = PLACEHOLDERS.MIV_56;
+    
+    // Para músicas do MIV, usar capa da planilha
+    if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
+        coverUrl = track.link_capa.trim();
     }
+    
+    playerAlbumArt.src = coverUrl;
+    playerAlbumArt.onerror = function() {
+        this.src = PLACEHOLDERS.MIV_56;
+    };
+}
     
     const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
     updateFavoriteButton(isFavorite);
@@ -5426,10 +5464,13 @@ function updateExpandedPlayer() {
     if (state.currentTrackIndex < 0) return;
     
     let track;
+    let isExternal = false;
+    
     if (state.currentTrackIndex >= 1000) {
         const externalIndex = state.currentTrackIndex - 1000;
         if (externalIndex >= 0 && externalIndex < state.externalPlaylist.length) {
             track = state.externalPlaylist[externalIndex];
+            isExternal = true;
         }
     } else if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
         track = state.playlist[state.currentTrackIndex];
@@ -5451,14 +5492,38 @@ function updateExpandedPlayer() {
     if (expandedTitle) expandedTitle.textContent = track.titulo || 'Título desconhecido';
     if (expandedArtist) expandedArtist.textContent = track.artista || 'Artista desconhecido';
     
+    // ===== CORREÇÃO: THUMBNAIL PARA O PLAYER EXPANDIDO =====
     if (expandedAlbumArt) {
-        let coverUrl = PLACEHOLDERS.MIV_300;
-        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
-            coverUrl = track.link_capa.trim();
+        let coverUrl = isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300;
+        
+        if (isExternal) {
+            // Para músicas externas, priorizar YouTube
+            if (track.link_youtube) {
+                let videoId = '';
+                const url = track.link_youtube;
+                
+                if (url.includes('youtu.be/')) {
+                    videoId = url.split('youtu.be/')[1].split('?')[0].split('&')[0];
+                } else if (url.includes('watch?v=')) {
+                    videoId = url.split('watch?v=')[1].split('&')[0];
+                } else if (url.includes('embed/')) {
+                    videoId = url.split('embed/')[1].split('?')[0];
+                }
+                
+                if (videoId && videoId.length === 11) {
+                    coverUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`; // Melhor qualidade
+                }
+            }
+        } else {
+            // Para músicas do MIV, usar capa da planilha se existir
+            if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
+                coverUrl = track.link_capa.trim();
+            }
         }
+        
         expandedAlbumArt.src = coverUrl;
         expandedAlbumArt.onerror = function() {
-            this.src = PLACEHOLDERS.MIV_300;
+            this.src = isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300;
         };
     }
     
