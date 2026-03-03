@@ -5639,7 +5639,134 @@ function initializeYouTubePlayer(videoId) {
         createYouTubePlayer(playerDiv.id, videoId);
     }
 }
+// ========== EVENTOS DO PLAYER CORRIGIDOS ==========
+function onPlayerReady(event) {
+    console.log('✅ YouTube Player pronto - evento disparado');
+    state.playerReady = true;
+    
+    const loadingEl = document.getElementById('playerLoadingExpanded');
+    if (loadingEl) loadingEl.style.display = 'none';
+    
+    // Configurar volume
+    try {
+        event.target.setVolume(state.currentVolume);
+    } catch (e) {
+        console.warn('Erro ao setar volume:', e);
+    }
+    
+    // Iniciar reprodução se necessário
+    if (state.isPlaying) {
+        try {
+            event.target.playVideo();
+        } catch (e) {
+            console.warn('Erro ao iniciar reprodução:', e);
+        }
+    }
+    
+    // Iniciar monitoramento
+    startStreamingMonitor();
+    
+    // Configurar intervalo de progresso
+    if (state.progressInterval) clearInterval(state.progressInterval);
+    state.progressInterval = setInterval(updatePlayerProgress, 1000);
+    
+    // Registrar música atual para streaming
+    if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
+        state.streamingTrackId = state.playlist[state.currentTrackIndex].id;
+    }
+    
+    showToast('Player pronto!', 'success');
+}
 
+function onPlayerStateChange(event) {
+    const loadingEl = document.getElementById('playerLoadingExpanded');
+    
+    state.isBuffering = (event.data === YT.PlayerState.BUFFERING);
+    
+    const stateNames = {
+        [-1]: '🔵 Não iniciado',
+        0: '✅ Finalizado',
+        1: '▶️ Reproduzindo',
+        2: '⏸️ Pausado',
+        3: '⏳ Buffering',
+        5: '🎬 Video selecionado'
+    };
+    
+    console.log(`🎬 YouTube State: ${stateNames[event.data] || event.data}`);
+    
+    switch(event.data) {
+        case YT.PlayerState.PLAYING:
+            state.isPlaying = true;
+            state.isBuffering = false;
+            if (loadingEl) loadingEl.style.display = 'none';
+            state.streamingProgress = 0;
+            if (!state.streamingTimer) startStreamingMonitor();
+            break;
+            
+        case YT.PlayerState.PAUSED:
+            state.isPlaying = false;
+            state.isBuffering = false;
+            break;
+            
+        case YT.PlayerState.BUFFERING:
+            state.isBuffering = true;
+            if (loadingEl) loadingEl.style.display = 'flex';
+            break;
+            
+        case YT.PlayerState.ENDED:
+            state.isPlaying = false;
+            state.isBuffering = false;
+            state.streamingProgress = 0;
+            if (loadingEl) loadingEl.style.display = 'none';
+            
+            if (state.isRepeat) {
+                event.target.playVideo();
+            } else {
+                playNext();
+            }
+            break;
+            
+        case YT.PlayerState.CUED:
+            state.playerReady = true;
+            state.isBuffering = false;
+            if (loadingEl) loadingEl.style.display = 'none';
+            break;
+    }
+    
+    updatePlayerIcons();
+    updateExpandedPlayer();
+}
+
+function onPlayerError(event) {
+    console.error('❌ Erro no player YouTube:', event.data);
+    state.playerReady = false;
+    
+    const loadingEl = document.getElementById('playerLoadingExpanded');
+    if (loadingEl) loadingEl.style.display = 'none';
+    
+    const errorMessages = {
+        2: 'ID do vídeo inválido',
+        5: 'Erro no player HTML5',
+        100: 'Vídeo não encontrado ou removido',
+        101: 'Embedding não permitido pelo proprietário',
+        150: 'Embedding não permitido'
+    };
+    
+    const errorMsg = errorMessages[event.data] || 'Erro ao carregar vídeo';
+    showToast(errorMsg, 'error');
+    
+    // Tentar alternativa
+    if (loadingEl) {
+        loadingEl.innerHTML = `
+            <i class="bi bi-exclamation-triangle text-danger fs-1 mb-3"></i>
+            <span class="text-danger">${errorMsg}</span>
+            <button class="btn btn-sm btn-outline-success mt-3" onclick="window.location.reload()">
+                <i class="bi bi-arrow-clockwise me-2"></i>Recarregar
+            </button>
+        `;
+        loadingEl.style.display = 'flex';
+    }
+}
 // ========== CRIAR PLAYER DO YOUTUBE CORRIGIDO ==========
 function createYouTubePlayer(elementId, videoId) {
     try {
@@ -5711,76 +5838,6 @@ function createYouTubePlayer(elementId, videoId) {
         }
     }
 }
-
-// ========== EVENTOS DO PLAYER CORRIGIDOS ==========
-function onPlayerReady(event) {
-    console.log('✅ YouTube Player pronto - evento disparado');
-    state.playerReady = true;
-    
-    const loadingEl = document.getElementById('playerLoadingExpanded');
-    if (loadingEl) loadingEl.style.display = 'none';
-    
-    // Configurar volume
-    try {
-        event.target.setVolume(state.currentVolume);
-    } catch (e) {
-        console.warn('Erro ao setar volume:', e);
-    }
-    
-    // Iniciar reprodução se necessário
-    if (state.isPlaying) {
-        try {
-            event.target.playVideo();
-        } catch (e) {
-            console.warn('Erro ao iniciar reprodução:', e);
-        }
-    }
-    
-    // Iniciar monitoramento
-    startStreamingMonitor();
-    
-    // Configurar intervalo de progresso
-    if (state.progressInterval) clearInterval(state.progressInterval);
-    state.progressInterval = setInterval(updatePlayerProgress, 1000);
-    
-    // Registrar música atual para streaming
-    if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
-        state.streamingTrackId = state.playlist[state.currentTrackIndex].id;
-    }
-    
-    showToast('Player pronto!', 'success');
-}
-
-function onPlayerError(event) {
-    console.error('❌ Erro no player YouTube:', event.data);
-    state.playerReady = false;
-    
-    const loadingEl = document.getElementById('playerLoadingExpanded');
-    if (loadingEl) loadingEl.style.display = 'none';
-    
-    const errorMessages = {
-        2: 'ID do vídeo inválido',
-        5: 'Erro no player HTML5',
-        100: 'Vídeo não encontrado ou removido',
-        101: 'Embedding não permitido pelo proprietário',
-        150: 'Embedding não permitido'
-    };
-    
-    const errorMsg = errorMessages[event.data] || 'Erro ao carregar vídeo';
-    showToast(errorMsg, 'error');
-    
-    // Tentar alternativa
-    if (loadingEl) {
-        loadingEl.innerHTML = `
-            <i class="bi bi-exclamation-triangle text-danger fs-1 mb-3"></i>
-            <span class="text-danger">${errorMsg}</span>
-            <button class="btn btn-sm btn-outline-success mt-3" onclick="window.location.reload()">
-                <i class="bi bi-arrow-clockwise me-2"></i>Recarregar
-            </button>
-        `;
-        loadingEl.style.display = 'flex';
-    }
-}    
 function updatePlayerProgress() {
     if (!state.youtubePlayer?.getCurrentTime) return;
     try {
