@@ -8334,92 +8334,146 @@ window.acceptTradeOffer = acceptTradeOffer;
 window.declineTradeOffer = declineTradeOffer;
 window.cancelTradeOffer = cancelTradeOffer;
 // ========== FUNÇÃO PARA ABRIR MODAL DE PRIVACIDADE ==========
-// ========== FUNÇÃO PARA ABRIR MODAL DE PRIVACIDADE ==========
+// ========== FUNÇÃO PARA ABRIR POLÍTICA DE PRIVACIDADE ==========
 window.openPrivacyModal = function() {
     console.log('📄 Abrindo política de privacidade');
     
-    // MÉTODO 1: Toast (se existir)
+    // MÉTODO 1: Alert (100% garantido)
+    alert('📄 Política de Privacidade SELO MIV\n\nNossa política de privacidade está sendo elaborada conforme a LGPD (Lei Geral de Proteção de Dados).\n\n✅ Em breve disponível completa no site!\n\n© 2026 SELO MIV');
+    
+    // MÉTODO 2: Toast (se existir)
     if (typeof showToast === 'function') {
-        showToast('📄 Política de Privacidade - Em breve disponível', 'info', 5000);
+        showToast('📄 Política de Privacidade - Em breve', 'info', 4000);
     }
     
-    // MÉTODO 2: Alert (funciona sempre)
+    // MÉTODO 3: Modal personalizado (fallback)
     setTimeout(() => {
-        alert('📄 Política de Privacidade\n\nEm breve disponível no SELO MIV.');
-    }, 100);
-    
-    // MÉTODO 3: Modal (se existir)
-    const modal = document.getElementById('privacyModal');
-    if (modal && typeof showModal === 'function') {
-        showModal('privacyModal');
-    } else {
-        // Se não tiver modal, cria um temporário
         criarModalPrivacidade();
-    }
+    }, 200);
 };
 
-// Função auxiliar para criar modal temporário
+// Função auxiliar para criar modal (garantia extra)
 function criarModalPrivacidade() {
-    // Remove modal antigo se existir
-    const oldModal = document.getElementById('tempPrivacyModal');
-    if (oldModal) oldModal.remove();
+    // Verifica se já existe
+    if (document.getElementById('modal-privacidade')) return;
     
-    // Cria overlay
+    // Criar overlay
     const overlay = document.createElement('div');
-    overlay.id = 'tempPrivacyModal';
+    overlay.id = 'modal-privacidade';
     overlay.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.8);
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 99999;
+        z-index: 999999;
+        backdrop-filter: blur(5px);
     `;
     
-    // Cria conteúdo
-    const content = document.createElement('div');
-    content.style.cssText = `
+    // Criar conteúdo
+    const modal = document.createElement('div');
+    modal.style.cssText = `
         background: #111418;
-        border: 1px solid #00ff88;
-        border-radius: 1rem;
-        padding: 2rem;
-        max-width: 500px;
+        border: 2px solid #00ff88;
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 450px;
         width: 90%;
-        color: white;
-        position: relative;
+        text-align: center;
+        box-shadow: 0 20px 40px rgba(0, 255, 136, 0.2);
+        animation: slideIn 0.3s ease;
     `;
     
-    content.innerHTML = `
-        <h3 style="color: #00ff88; margin-bottom: 1rem;">
-            <i class="bi bi-shield-lock"></i> Política de Privacidade
-        </h3>
-        <p style="margin-bottom: 1rem; line-height: 1.6;">
-            A Política de Privacidade do SELO MIV está sendo elaborada 
-            com base na LGPD (Lei Geral de Proteção de Dados).
-        </p>
-        <p style="margin-bottom: 1.5rem; color: #00ff88;">
-            ⚡ Em breve disponível!
-        </p>
-        <button onclick="this.closest('#tempPrivacyModal').remove()" 
-                style="
-                    background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
-                    border: none;
-                    border-radius: 0.75rem;
-                    color: #000;
-                    font-weight: 700;
-                    padding: 0.75rem 1.5rem;
-                    cursor: pointer;
-                    width: 100%;
-                ">
-            Fechar
-        </button>
+    // Adicionar animação
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Ícone
+    const icon = document.createElement('div');
+    icon.innerHTML = '<i class="bi bi-shield-lock" style="font-size: 60px; color: #00ff88;"></i>';
+    icon.style.marginBottom = '20px';
+    
+    // Título
+    const title = document.createElement('h3');
+    title.textContent = 'Política de Privacidade';
+    title.style.cssText = `
+        color: #00ff88;
+        font-size: 24px;
+        margin-bottom: 15px;
+        font-weight: bold;
     `;
     
-    overlay.appendChild(content);
+    // Texto
+    const text = document.createElement('p');
+    text.innerHTML = `
+        Estamos elaborando nossa Política de Privacidade<br>
+        com base na <strong>LGPD (Lei Geral de Proteção de Dados)</strong>.<br><br>
+        <span style="color: #00ff88; font-size: 18px;">⚡ Em breve disponível!</span>
+    `;
+    text.style.cssText = `
+        color: #e0e0e0;
+        line-height: 1.6;
+        margin-bottom: 25px;
+        font-size: 16px;
+    `;
+    
+    // Botão
+    const button = document.createElement('button');
+    button.innerHTML = '<i class="bi bi-check-circle"></i> Entendi';
+    button.style.cssText = `
+        background: linear-gradient(135deg, #00ff88, #00cc6a);
+        border: none;
+        border-radius: 50px;
+        color: #000;
+        font-weight: bold;
+        font-size: 16px;
+        padding: 12px 30px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    `;
+    
+    button.onmouseover = () => {
+        button.style.transform = 'scale(1.05)';
+        button.style.boxShadow = '0 10px 20px rgba(0, 255, 136, 0.3)';
+    };
+    
+    button.onmouseout = () => {
+        button.style.transform = 'scale(1)';
+        button.style.boxShadow = 'none';
+    };
+    
+    button.onclick = () => {
+        document.body.removeChild(overlay);
+    };
+    
+    // Montar tudo
+    modal.appendChild(icon);
+    modal.appendChild(title);
+    modal.appendChild(text);
+    modal.appendChild(button);
+    overlay.appendChild(modal);
+    
+    // Adicionar ao body
     document.body.appendChild(overlay);
 }
 
