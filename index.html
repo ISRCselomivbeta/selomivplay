@@ -1,3 +1,6 @@
+
+
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -2446,39 +2449,33 @@
         <div class="mb-3">
             <a href="javascript:void(0)" onclick="openTermsModal()" class="auth-link" style="display: inline-flex; align-items: center; gap: 5px;">
                 <i class="bi bi-file-earmark-text"></i>
-<!-- ===== NOVA SEÇÃO: TERMOS DE USO (CORRETO AQUI) ===== -->
-<div class="terms-checkbox">
-    <div class="mb-3">
-        <a href="javascript:void(0)" onclick="openTermsModal()" class="auth-link" style="display: inline-flex; align-items: center; gap: 5px;">
-            <i class="bi bi-file-earmark-text"></i>
-            Ler Termos de Uso
-        </a>
-        <span class="text-muted mx-2">|</span>
-        <a href="javascript:void(0)" onclick="openPrivacyModal()" class="auth-link" style="display: inline-flex; align-items: center; gap: 5px;">
-            <i class="bi bi-shield-lock"></i>
-            Política de Privacidade
-        </a>
+                Ler Termos de Uso
+            </a>
+            <span class="text-muted mx-2">|</span>
+            <a href="javascript:void(0)" onclick="openPrivacyModal()" class="auth-link" style="display: inline-flex; align-items: center; gap: 5px;">
+                <i class="bi bi-shield-lock"></i>
+                Política de Privacidade
+            </a>
+        </div>
+        
+        <label class="terms-label">
+            <input type="checkbox" id="acceptTermsField" required>
+            <span>
+                Li e concordo com os 
+                <a href="javascript:void(0)" onclick="openTermsModal()" class="auth-link">Termos de Uso</a> 
+                e a 
+                <a href="javascript:void(0)" onclick="openPrivacyModal()" class="auth-link">Política de Privacidade</a> 
+                do SELO MIV. Declaro ter 18 anos ou mais e estar ciente dos riscos dos investimentos em direitos musicais.
+            </span>
+        </label>
+        
+        <label class="terms-label" style="margin-top: 15px;">
+            <input type="checkbox" id="acceptMarketingField">
+            <span class="text-muted" style="font-size: 0.9rem;">
+                Aceito receber comunicações sobre novidades, ofertas e recomendações personalizadas. (Opcional)
+            </span>
+        </label>
     </div>
-    
-    <label class="terms-label">
-        <input type="checkbox" id="acceptTermsField" required>
-        <span>
-            Li e concordo com os 
-            <a href="/TERMOS DE USO - SELO MIV PLATFORM.pdf" target="_blank" class="auth-link">Termos de Uso</a> 
-            e a 
-            <a href="javascript:void(0)" onclick="openPrivacyModal()" class="auth-link">Política de Privacidade</a> 
-            do SELO MIV. Declaro ter 18 anos ou mais e estar ciente dos riscos dos investimentos em direitos musicais.
-        </span>
-    </label>
-    
-    <label class="terms-label" style="margin-top: 15px;">
-        <input type="checkbox" id="acceptMarketingField">
-        <span class="text-muted" style="font-size: 0.9rem;">
-            Aceito receber comunicações sobre novidades, ofertas e recomendações personalizadas. (Opcional)
-        </span>
-    </label>
-</div>
-<!-- ===== FIM DA NOVA SEÇÃO ===== -->
     <!-- ===== FIM DA NOVA SEÇÃO ===== -->            
             <button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn">
     <i class="bi bi-person-plus"></i> Solicitar Cadastro
@@ -5071,7 +5068,8 @@ async function handleLogin() {
         loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
         hideLoading();
     }
-}// ========== REGISTER COM CONFIRMAÇÃO DE EMAIL E TERMOS ==========
+}
+// Modificar a função handleRegister para ter DUAS validações
 async function handleRegister() {
     const name = document.getElementById('registerNameField')?.value?.trim();
     const email = document.getElementById('registerEmailField')?.value?.trim();
@@ -5096,7 +5094,7 @@ async function handleRegister() {
         return; 
     }
     
-    // ===== VALIDAÇÃO DO TERMO (DUPLA SEGURANÇA) =====
+    // VALIDAÇÃO DO TERMO (DUPLA SEGURANÇA)
     if (!acceptTerms) {
         showToast('Você precisa aceitar os Termos de Uso para continuar', 'error');
         return;
@@ -5125,8 +5123,7 @@ async function handleRegister() {
             accepted_terms: true,
             terms_version: '6.0.0',
             terms_accepted_at: new Date().toISOString(),
-            accepted_marketing: acceptMarketing,
-            terms_pdf: '/TERMOS DE USO - SELO MIV PLATFORM.pdf'
+            accepted_marketing: acceptMarketing
         });
         
         if (result?.success) {
@@ -8339,19 +8336,5 @@ window.declineTradeOffer = declineTradeOffer;
 window.cancelTradeOffer = cancelTradeOffer;
 
 </script> <!-- FIM DO SCRIPT -->
-    <!-- ===== FOOTER COM LINK PARA TERMOS ===== -->
-<footer class="mt-5 pt-4 border-top border-secondary">
-    <div class="text-center text-muted">
-        <p>SELO MIV © 2026</p>
-        <div class="d-flex justify-content-center gap-3">
-            <a href="/TERMOS DE USO - SELO MIV PLATFORM.pdf" target="_blank" class="text-muted text-decoration-none">
-                <i class="bi bi-file-text"></i> Termos de Uso
-            </a>
-            <a href="#" class="text-muted text-decoration-none" onclick="openPrivacyModal()">
-                <i class="bi bi-shield-check"></i> Privacidade
-            </a>
-        </div>
-    </div>
-</footer>
 </body>
 </html>
