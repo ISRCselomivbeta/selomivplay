@@ -1,22 +1,3713 @@
-// ========== CONFIGURAÇÃO ==========
-const CONFIG = {
-    API_URL: 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
-    DEV_MODE: false,
-    VERSION: '6.0.0',
-    MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
-    BLOCKCHAIN_ENABLED: true
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SELO MIV - Plataforma de Investimento em Música com Blockchain">
+    <meta name="theme-color" content="#00ff88">
+    <title>SELO MIV | Fintech Musical Blockchain</title>
+    
+    <!-- PERMITIR COMUNICAÇÃO COM YOUTUBE E GOOGLE APPS SCRIPT -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://script.google.com https://script.googleusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com;">
+
+    <!-- Bootstrap 5.3.0 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- YouTube Iframe API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <style>
+        /* ========== CSS COMPLETO ========== */
+        :root {
+            --neon-green: #00ff88;
+            --miv-blue: #0072ff;
+            --bg-dark: #07090c;
+            --bg-card: #111418;
+            --border: #1e2329;
+            --text-light: #f8f9fa;
+            --text-muted: #6c757d;
+            --spotify-green: #1DB954;
+            --player-height: 90px;
+            --player-expanded-height: 100vh;
+            --blockchain-purple: #9b59b6;
+            --royalty-gold: #f1c40f;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding-bottom: var(--player-height);
+        }
+        
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+        
+        .loading-content {
+            text-align: center;
+        }
+        
+        .loading-spinner {
+            width: 4rem;
+            height: 4rem;
+            border: 0.25rem solid rgba(0, 255, 136, 0.3);
+            border-top-color: var(--neon-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+        
+        /* Auth Screen */
+        .auth-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #0c0e12 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 9998;
+            overflow-y: auto;
+        }
+        
+        .auth-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .auth-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .logo-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        
+        .logo-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 50%;
+            margin-bottom: 1.5rem;
+            border: 2px solid var(--neon-green);
+        }
+        
+        .logo-icon i {
+            font-size: 2.5rem;
+            color: var(--neon-green);
+        }
+        
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        
+        .form-control-custom {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            color: var(--text-light);
+            padding: 0.875rem 1rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .form-control-custom:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--neon-green);
+            color: var(--text-light);
+            box-shadow: 0 0 0 0.25rem rgba(0, 255, 136, 0.25);
+            outline: none;
+        }
+        
+        .form-control-custom::placeholder {
+            color: var(--text-muted);
+        }
+        
+        /* Buttons */
+        .btn-miv {
+            background: linear-gradient(135deg, var(--neon-green) 0%, #00cc6a 100%);
+            border: none;
+            border-radius: 0.75rem;
+            color: #000;
+            font-weight: 700;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+        }
+        
+        .btn-miv:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
+        }
+        
+        .btn-miv:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-blockchain {
+            background: linear-gradient(135deg, var(--blockchain-purple) 0%, #8e44ad 100%);
+            border: none;
+            border-radius: 0.75rem;
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-blockchain:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(155, 89, 182, 0.3);
+        }
+        
+        .auth-link {
+            color: var(--neon-green);
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.3s ease;
+        }
+        
+        .auth-link:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+        
+        /* Main App */
+        .main-app {
+            display: none;
+            min-height: 100vh;
+        }
+        
+        .app-header {
+            background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, rgba(7, 9, 12, 0.8) 100%);
+            backdrop-filter: blur(10px);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .saldo-display h6 {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .saldo-display h4 {
+            color: var(--neon-green);
+            font-weight: 700;
+            margin-bottom: 0;
+        }
+        
+        .user-badge {
+            background: var(--neon-green);
+            color: #000;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        /* Sidebar - CORRIGIDO */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 300px;
+    height: 100vh;
+    background: #000;
+    border-right: 1px solid var(--border);
+    z-index: 10000; /* Aumentado para 10000 */
+    transition: left 0.3s ease;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+.sidebar.open {
+    left: 0;
+    z-index: 10001; /* Ainda maior quando aberta */
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar-close {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.25rem;
+}
+
+.nav-menu {
+    list-style: none;
+    padding: 0;
+}
+
+.nav-item {
+    margin-bottom: 0.5rem;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover, .nav-link.active {
+    background: rgba(0, 255, 136, 0.1);
+    color: var(--neon-green);
+}
+
+.nav-link i {
+    font-size: 1.25rem;
+}
+        /* Sections */
+        .section {
+            display: none;
+            padding: 1.5rem;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .section.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-title {
+            color: var(--text-light);
+            font-weight: 700;
+            margin-bottom: 0;
+        }
+        
+        /* Music Grid */
+        .music-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .music-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .music-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--neon-green);
+            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.1);
+        }
+        
+        .music-cover {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+        
+        .music-info {
+            padding: 1rem;
+        }
+        
+        .music-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--text-light);
+        }
+        
+        .music-artist {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .music-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .music-price {
+            color: var(--neon-green);
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+        
+        .music-percent {
+            background: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        /* Player MIV - Melhorado */
+        .player-miv {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: var(--player-height);
+            background: rgba(18, 18, 18, 0.98);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .player-miv:hover {
+            background: rgba(30, 30, 30, 0.98);
+        }
+
+        .player-bar {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+        }
+
+        .player-track-info {
+            flex: 0 0 25%;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 180px;
+        }
+
+        .track-image-container {
+            position: relative;
+            width: 56px;
+            height: 56px;
+            flex-shrink: 0;
+        }
+
+        .track-image {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .track-image-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            cursor: pointer;
+        }
+
+        .track-image-overlay:hover {
+            opacity: 1;
+        }
+
+        .track-image-overlay i {
+            font-size: 1.5rem;
+            color: var(--neon-green);
+        }
+
+        .track-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .track-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-light);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 0.125rem;
+        }
+
+        .track-artist {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .track-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-left: 0.5rem;
+        }
+
+        .player-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            width: 36px;
+            height: 36px;
+        }
+
+        .player-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-light);
+        }
+
+        .player-btn.favorite-btn.active {
+            color: #ffc107;
+        }
+
+        .player-controls-center {
+            flex: 1;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-buttons {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            width: 32px;
+            height: 32px;
+        }
+
+        .control-btn:hover {
+            color: var(--text-light);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .control-btn.active {
+            color: var(--neon-green);
+        }
+
+        .control-btn.shuffle-btn.active,
+        .control-btn.repeat-btn.active {
+            color: var(--neon-green);
+        }
+
+        .control-btn.play-btn {
+            width: 48px;
+            height: 48px;
+            background: var(--neon-green);
+            color: #000;
+            font-size: 1.25rem;
+        }
+
+        .control-btn.play-btn:hover {
+            background: #00cc6a;
+            transform: scale(1.05);
+        }
+
+        .control-btn.prev-btn,
+        .control-btn.next-btn {
+            font-size: 1.25rem;
+        }
+
+        .progress-container {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--neon-green);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s linear;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            background: var(--neon-green);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .progress-bar:hover .progress-fill::after {
+            opacity: 1;
+        }
+
+        .progress-handle {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 12px;
+            height: 12px;
+            background: var(--neon-green);
+            border-radius: 50%;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .progress-bar:hover .progress-handle {
+            opacity: 1;
+        }
+
+        .time-current,
+        .time-total {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            min-width: 40px;
+        }
+
+        .time-current {
+            text-align: right;
+        }
+
+        .time-total {
+            text-align: left;
+        }
+
+        .player-controls-right {
+            flex: 0 0 25%;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 1rem;
+            min-width: 180px;
+        }
+
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .volume-slider-container {
+            width: 100px;
+        }
+
+        .volume-slider {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .volume-slider-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: var(--neon-green);
+            border-radius: 2px;
+            width: 80%;
+        }
+
+        /* Player Expanded - Melhorado */
+        .player-expanded {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            z-index: 10000;
+            display: none;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .player-expanded.show {
+            display: block;
+        }
+
+        .expanded-header {
+            padding: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, transparent 100%);
+        }
+
+        .expanded-track-info {
+            display: flex;
+            gap: 2rem;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .expanded-album-art {
+            width: 300px;
+            height: 300px;
+            border-radius: 12px;
+            object-fit: cover;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            flex-shrink: 0;
+        }
+
+        .expanded-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .expanded-type {
+            font-size: 0.875rem;
+            color: var(--neon-green);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .expanded-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--text-light);
+            margin: 0 0 1rem 0;
+            line-height: 1.1;
+        }
+
+        .expanded-artist {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .expanded-meta {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .meta-item i {
+            color: var(--neon-green);
+        }
+
+        .expanded-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .play-large-btn {
+            background: linear-gradient(135deg, var(--neon-green) 0%, #00cc6a 100%);
+            border: none;
+            border-radius: 2rem;
+            color: #000;
+            font-weight: 700;
+            padding: 0.875rem 2rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .play-large-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
+        }
+        .action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            color: var(--text-light);
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .favorite-large-btn.active {
+            background: rgba(255, 193, 7, 0.2);
+            border-color: #ffc107;
+            color: #ffc107;
+        }
+
+        .close-expanded {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: var(--text-light);
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .close-expanded:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+
+        .expanded-content {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .youtube-container-expanded {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        #youtubePlayerExpanded {
+            width: 100%;
+            height: 100%;
+        }
+
+        .player-loading {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            gap: 1rem;
+        }
+
+        .track-info-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-title i {
+            color: var(--neon-green);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-5px);
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .info-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .info-icon i {
+            font-size: 1.5rem;
+            color: var(--neon-green);
+        }
+
+        .info-content {
+            flex: 1;
+        }
+
+        .info-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-light);
+        }
+
+        .invest-cta {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 114, 255, 0.1) 100%);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .invest-cta h4 {
+            font-size: 1.5rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+
+        .invest-cta p {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .invest-large-btn {
+            padding: 1rem 2.5rem;
+            font-size: 1.125rem;
+        }
+
+        .expanded-controls {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 2rem;
+        }
+
+        .expanded-controls-top {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .expanded-controls-top .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2rem;
+            padding: 0.75rem 1.5rem;
+            width: auto;
+            height: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .expanded-controls-top .control-btn.active {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--neon-green);
+        }
+
+        .queue-info {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        .queue-info i {
+            color: var(--neon-green);
+        }
+
+        .expanded-progress-container {
+            margin-bottom: 2rem;
+        }
+
+        .expanded-progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+        }
+
+        .expanded-progress-fill {
+            height: 100%;
+            background: var(--neon-green);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .expanded-time-display {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .expanded-controls-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+        }
+
+        .expanded-controls-bottom .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2rem;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            width: auto;
+            height: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .expanded-controls-bottom .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .play-large-btn-expanded {
+            background: var(--neon-green) !important;
+            color: #000 !important;
+            padding: 1.25rem 3rem !important;
+            font-size: 1.125rem !important;
+            font-weight: 700 !important;
+        }
+
+        .play-large-btn-expanded:hover {
+            background: #00cc6a !important;
+            transform: scale(1.05) !important;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .expanded-title {
+                font-size: 2.5rem;
+            }
+            
+            .expanded-album-art {
+                width: 200px;
+                height: 200px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .player-bar {
+                flex-direction: column;
+                height: auto;
+                padding: 1rem 0;
+                gap: 1rem;
+            }
+            
+            .player-track-info,
+            .player-controls-center,
+            .player-controls-right {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .player-track-info {
+                order: 1;
+            }
+            
+            .player-controls-center {
+                order: 2;
+            }
+            
+            .player-controls-right {
+                order: 3;
+            }
+            
+            .expanded-track-info {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            
+            .expanded-album-art {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .expanded-title {
+                font-size: 2rem;
+            }
+            
+            .expanded-meta {
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            
+            .expanded-actions {
+                justify-content: center;
+            }
+            
+            .player-miv {
+                height: auto;
+                min-height: var(--player-height);
+                padding: 0.5rem 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .player-miv {
+                padding: 0 1rem;
+            }
+            
+            .expanded-title {
+                font-size: 1.75rem;
+            }
+            
+            .expanded-album-art {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .expanded-controls-top {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .queue-info {
+                margin-left: 0;
+            }
+        }
+        
+        /* Portfolio */
+        .portfolio-summary {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 123, 255, 0.1) 100%);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        .portfolio-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--neon-green);
+            margin: 0.5rem 0;
+        }
+        
+        /* Ledger */
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .ledger-table th {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .ledger-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .ledger-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        /* Artist Stats */
+        .artist-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .stat-icon {
+            font-size: 2rem;
+            color: var(--neon-green);
+            margin-bottom: 1rem;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-light);
+            margin: 0.5rem 0;
+        }
+        
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+        
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-overlay {
+    z-index: 10002 !important; /* Maior que o player (9999) e sidebar (10001) */
+}
+
+.modal-content {
+    position: relative;
+    z-index: 10003 !important;
+}
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+        
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            color: var(--text-light);
+            font-weight: 700;
+            margin-bottom: 0;
+        }        
+        .modal-body {
+            padding: 1.5rem;
+        }
+        
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+        
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1300;
+            max-width: 350px;
+        }
+        
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .toast.success {
+            border-color: var(--neon-green);
+            background: rgba(0, 255, 136, 0.1);
+        }
+        
+        .toast.error {
+            border-color: #ff3232;
+            background: rgba(255, 50, 50, 0.1);
+        }
+        
+        .toast.warning {
+            border-color: #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+        }
+        
+        .toast.info {
+            border-color: #0dcaf0;
+            background: rgba(13, 202, 240, 0.1);
+        }
+        
+        .toast-icon {
+            font-size: 1.25rem;
+        }
+        
+        .toast.success .toast-icon {
+            color: var(--neon-green);
+        }
+        
+        .toast.error .toast-icon {
+            color: #ff3232;
+        }
+        
+        .toast.warning .toast-icon {
+            color: #ffc107;
+        }
+        
+        .toast.info .toast-icon {
+            color: #0dcaf0;
+        }
+        
+        .toast-message {
+            flex: 1;
+            color: var(--text-light);
+        }
+        
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }
+        
+        .empty-state-actionable {
+            text-align: center;
+            padding: 2rem 1rem;
+            border: 2px dashed var(--border);
+            border-radius: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        /* Progress Loading */        
+        .progress-loading-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--neon-green), #00cc6a);
+            border-radius: 2px;
+            width: 0%;
+            animation: loading 2s infinite;
+        }
+              
+        /* Badges */
+        .badge-success {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--neon-green);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+        
+        .badge-warning {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+        
+        .badge-danger {
+            background: rgba(255, 50, 50, 0.2);
+            color: #ff3232;
+            border: 1px solid rgba(255, 50, 50, 0.3);
+        }
+        
+        .badge-info {
+            background: rgba(13, 202, 240, 0.2);
+            color: #0dcaf0;
+            border: 1px solid rgba(13, 202, 240, 0.3);
+        }
+        
+        .investment-score {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: rgba(0, 123, 255, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .top-investment-card {
+            border: 2px solid var(--neon-green);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Playlist */
+        .playlist-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .playlist-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .playlist-cover {
+            width: 60px;
+            height: 60px;
+            border-radius: 0.5rem;
+            object-fit: cover;
+            background: linear-gradient(135deg, var(--neon-green), var(--miv-blue));
+        }
+        
+        /* Favorite Button */
+        .favorite-btn {
+            background: none;
+            border: none;
+            color: #ffc107;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .favorite-btn:hover {
+            transform: scale(1.2);
+        }
+        
+        .favorite-btn.active {
+            color: #ff3232;
+        }
+        
+        /* Withdrawal Status */
+        .withdrawal-status {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .status-pendente {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+        }
+        
+        .status-confirmado {
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--neon-green);
+        }
+        
+        .status-processando {
+            background: rgba(13, 202, 240, 0.1);
+            color: #0dcaf0;
+        }
+        
+        .status-concluido {
+            background: rgba(108, 117, 125, 0.1);
+            color: var(--text-muted);
+        }
+        
+        /* Contract View */
+        .contract-view {
+            background: white;
+            color: #000;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            font-family: 'Courier New', monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        /* External Music */
+        .external-music-badge {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 10;
+        }
+        
+        .external-music-progress {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+        
+        .external-music-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .external-investment-card {
+            border: 2px dashed #ff6b6b;
+            animation: pulse 2s infinite;
+        }
+        
+        .external-music-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+        
+        .status-aguardando {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+        
+        .status-aprovado {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--neon-green);
+        }
+        
+        .status-rejeitado {
+            background: rgba(255, 50, 50, 0.2);
+            color: #ff3232;
+        }
+        
+        /* Spin Animation */
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        /* ===== NOVOS ESTILOS ===== */
+        /* ===== NOVOS ESTILOS ===== */
+
+/* ADICIONE AQUI OS ESTILOS DO SPOTIFY */
+:root {
+    --spotify-green: #1DB954;
+    --spotify-black: #191414;
+    --spotify-card: #181818;
+    --spotify-card-hover: #282828;
+    --spotify-text: #b3b3b3;
+}
+
+/* Estilo do card Spotify */
+.spotify-card {
+    background: var(--spotify-card);
+    border: none;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.spotify-card:hover {
+    background: var(--spotify-card-hover);
+    transform: translateY(-8px);
+}
+
+.spotify-card:hover .play-overlay {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.spotify-cover {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1/1;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.spotify-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.play-overlay {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: var(--spotify-green);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.play-overlay:hover {
+    transform: scale(1.05);
+    background: #1ed760;
+}
+
+.spotify-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotify-artist {
+    font-size: 14px;
+    color: var(--spotify-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotify-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--spotify-text);
+}
+
+.spotify-price {
+    color: var(--spotify-green);
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.spotify-elo {
+    background: rgba(29, 185, 84, 0.2);
+    color: var(--spotify-green);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Botão de investir estilizado */
+.btn-invest {
+    width: 100%;
+    margin-top: 12px;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid rgba(29, 185, 84, 0.3);
+    border-radius: 20px;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.btn-invest:hover {
+    background: #1DB954;
+    border-color: #1DB954;
+    transform: scale(1.02);
+}
+
+/* Empty state Spotify */
+.empty-state-spotify {
+    text-align: center;
+    padding: 4rem 1rem;
+    background: linear-gradient(180deg, #1a1a1a 0%, #000 100%);
+    border-radius: 12px;
+}
+
+/* Filtros do marketplace */
+.marketplace-filters {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    background: #2a2a2a;
+    border: none;
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    color: #b3b3b3;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.filter-btn:hover {
+    background: #3a3a3a;
+    color: white;
+}
+
+.filter-btn.active {
+    background: #1DB954;
+    color: black;
+}
+        /* ELO System */
+        .elo-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin: 2px;
+            color: #000;
+            z-index: 10;
+        }
+        
+        .elo-ranking-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .elo-ranking-table th {
+            background: rgba(0,255,136,0.1);
+            color: var(--neon-green);
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid var(--neon-green);
+        }
+        
+        .elo-ranking-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-light);
+        }
+        
+        .elo-ranking-table tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .elo-trend-up { color: #00ff88; }
+        .elo-trend-down { color: #ff4444; }
+        .elo-trend-stable { color: #ffc107; }
+
+        /* Blockchain */
+        .blockchain-badge {
+            background: var(--blockchain-purple);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .blockchain-hash {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--blockchain-purple);
+            background: rgba(155, 89, 182, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        
+        .blockchain-verified {
+            color: var(--neon-green);
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .blockchain-pending {
+            color: #ffc107;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        /* Adicione ao final do seu CSS */
+#blockchainVisualization {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+    min-height: 200px;
+}
+
+#blockchainVisualization .card {
+    transition: transform 0.3s ease;
+}
+
+#blockchainVisualization .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(155, 89, 182, 0.3);
+}
+
+.progress-loading {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-loading-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-green), #00cc6a);
+    border-radius: 2px;
+    width: 0%;
+    animation: loading 2s infinite;
+}
+
+@keyframes loading {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+}
+
+        /* Artist Management */
+        .music-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .music-action-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-muted);
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .music-action-btn:hover {
+            background: var(--border);
+            color: var(--text-light);
+        }
+        
+        .music-action-btn.edit:hover {
+            border-color: #007bff;
+            color: #007bff;
+        }
+        
+        .music-action-btn.pause:hover {
+            border-color: #ffc107;
+            color: #ffc107;
+        }
+        
+        .music-action-btn.delete:hover {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .status-active {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+        }
+        
+        .status-paused {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid #ffc107;
+        }
+        
+        .status-deleted {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+        /* Player Expandido como Seção */
+#playerExpandedSection {
+    padding-bottom: 100px; /* Espaço para o mini player */
+}
+
+#playerExpandedSection .expanded-album-art {
+    max-width: 300px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1/1;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+#playerExpandedSection .youtube-container-expanded {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+#playerExpandedSection .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+#playerExpandedSection .info-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: transform 0.3s ease;
+}
+
+#playerExpandedSection .info-card:hover {
+    transform: translateY(-5px);
+    background: rgba(0, 255, 136, 0.1);
+}
+
+#playerExpandedSection .info-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 255, 136, 0.1);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+#playerExpandedSection .info-icon i {
+    font-size: 1.25rem;
+    color: var(--neon-green);
+}
+
+#playerExpandedSection .expanded-controls {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+#playerExpandedSection .expanded-progress-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+#playerExpandedSection .expanded-progress-fill {
+    height: 100%;
+    background: var(--neon-green);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+@media (max-width: 768px) {
+    #playerExpandedSection .info-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    #playerExpandedSection .expanded-controls-bottom {
+        flex-wrap: wrap;
+    }
+}
+
+        
+/* ===== SISTEMA DE NEGOCIAÇÃO ===== */
+.trade-offer-card {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(0, 123, 255, 0.05) 100%);
+    border-left: 4px solid #00ff88;
+    transition: all 0.3s ease;
+}
+
+.trade-offer-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 255, 136, 0.1);
+}
+
+.trade-offer-card.pending {
+    border-left-color: #ffc107;
+}
+
+.trade-offer-card.accepted {
+    border-left-color: #28a745;
+}
+
+.trade-offer-card.declined {
+    border-left-color: #dc3545;
+    opacity: 0.7;
+}
+
+.user-search-result {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-search-result:hover {
+    background: rgba(0, 255, 136, 0.1);
+    transform: translateX(5px);
+}
+
+.trade-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 10;
+}
+
+.trade-badge.pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid #ffc107;
+}
+
+.trade-badge.accepted {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+/* Modal de negociação maior */
+#tradeModal .modal-content {
+    max-width: 600px;
+}
+
+/* Animação para novas ofertas */
+@keyframes newTradePulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+}
+
+.trade-new {
+    animation: newTradePulse 2s infinite;
+}        
+
+/* ===== ESTILOS PARA STREAMING ===== */
+.stat-icon-small {
+    font-size: 1.5rem;
+    color: var(--neon-green);
+    margin-bottom: 0.25rem;
+}
+
+.stat-value-small {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.stat-label-small {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+#streamingRewardIndicator {
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.rewarded-badge {
+    background: rgba(0, 255, 136, 0.2);
+    color: var(--neon-green);
+    border: 1px solid var(--neon-green);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: bold;
+}        
+        
+    </style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loadingScreen" class="loading-screen">
+    <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <h4 class="text-success mb-2">SELO MIV</h4>
+        <p class="text-muted" id="loadingMessage">Conectando ao servidor...</p>
+        <div class="progress-loading">
+            <div class="progress-loading-bar"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Authentication Screen -->
+<div id="authScreen" class="auth-screen">
+    <div class="auth-card">
+        <div class="logo-header">
+            <div class="logo-icon">
+                <i class="bi bi-shield-lock"></i>
+            </div>
+            <h2 class="text-white mb-2">SELO MIV</h2>
+            <p class="text-muted">Plataforma de Investimento em Música com Blockchain</p>
+        </div>
+
+        <!-- Login Form -->
+        <div id="loginForm">
+            <div id="loginMessage" class="alert d-none"></div>
+            
+            <div class="form-group">
+                <label for="loginEmailField" class="text-muted mb-2">E-mail</label>
+                <input type="email" id="loginEmailField" class="form-control-custom" placeholder="Digite seu e-mail" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="loginPasswordField" class="text-muted mb-2">Senha</label>
+                <input type="password" id="loginPasswordField" class="form-control-custom" placeholder="Digite sua senha" required>
+            </div>
+            
+            <button class="btn-miv mb-3" onclick="handleLogin()" id="loginBtn">
+                <i class="bi bi-box-arrow-in-right"></i> Entrar
+            </button>
+            
+            <p class="text-center mb-3">
+    <a href="/reset-password.html" class="auth-link small">
+        <i class="bi bi-question-circle"></i> Esqueceu sua senha?
+    </a>
+</p>
+            <p class="text-center text-muted">
+                Novo por aqui? <a href="javascript:void(0)" class="auth-link" onclick="showRegisterForm()">Criar conta</a>
+            </p>
+        </div>
+
+        <!-- Register Form -->
+        <div id="registerForm" style="display: none;">
+            <div id="registerMessage" class="alert d-none"></div>
+            
+            <div class="form-group">
+                <label for="registerNameField" class="text-muted mb-2">Nome completo</label>
+                <input type="text" id="registerNameField" class="form-control-custom" placeholder="Digite seu nome completo" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="registerEmailField" class="text-muted mb-2">E-mail</label>
+                <input type="email" id="registerEmailField" class="form-control-custom" placeholder="Digite seu e-mail" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="registerPasswordField" class="text-muted mb-2">Senha (mínimo 6 caracteres)</label>
+                <input type="password" id="registerPasswordField" class="form-control-custom" placeholder="Digite sua senha" required minlength="6">
+            </div>
+            
+            <div class="form-group">
+                <label for="registerTypeField" class="text-muted mb-2">Selecione seu perfil</label>
+                <select id="registerTypeField" class="form-control-custom" onchange="toggleArtistField()">
+                    <option value="">Selecione seu perfil...</option>
+                    <option value="ouvinte">🎧 Ouvinte/Investidor</option>
+                    <option value="artista">🎤 Artista</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="artistLinkField" style="display: none;">
+                <label for="registerLinkField" class="text-muted mb-2">Link do seu trabalho</label>
+                <input type="url" id="registerLinkField" class="form-control-custom" placeholder="YouTube, Spotify, etc.">
+                <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
+            </div>
+            <button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn">
+    <i class="bi bi-person-plus"></i> Solicitar Cadastro
+</button>
+            <p class="text-center text-muted">
+                Já tem conta? <a href="javascript:void(0)" class="auth-link" onclick="showLoginForm()">Fazer login</a>
+            </p>
+        </div>
+    </div>
+</div>
+<p class="text-center mb-2">
+    <a href="javascript:void(0)" class="auth-link small" onclick="resendConfirmationEmail()">
+        <i class="bi bi-envelope"></i> Reenviar email de confirmação
+    </a>
+</p>
+<!-- Main Application -->
+<div id="mainApp" class="main-app">
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h4 class="text-white mb-0">🎵 MIV PRO</h4>
+            <button class="sidebar-close" onclick="toggleSidebar()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="#" class="nav-link active" onclick="changeSection('marketplace')">
+                    <i class="bi bi-house"></i> <span>Marketplace</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="changeSection('portfolio')">
+                    <i class="bi bi-briefcase"></i> <span>Portfólio</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="changeSection('ledger')">
+                    <i class="bi bi-receipt"></i> <span>Extrato</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="changeSection('investments')">
+                    <i class="bi bi-graph-up-arrow"></i> <span>Melhores Investimentos</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="changeSection('playlists')">
+                    <i class="bi bi-music-note-list"></i> <span>Playlists</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="changeSection('external')">
+                    <i class="bi bi-globe text-warning"></i> <span class="text-warning">Bolsa Externa</span>
+                </a>
+            </li>
+            <li class="nav-item" id="artistNavItem" style="display: none;">
+                <a href="#" class="nav-link" onclick="changeSection('artist')">
+                    <i class="bi bi-mic"></i> <span>Painel Artista</span>
+                </a>
+            </li>
+            <li class="nav-item">
+<a href="#" class="nav-link" onclick="window.openBlockchainExplorer()">
+    <i class="bi bi-link-45deg text-purple"></i> <span class="text-purple">Blockchain Explorer</span>
+</a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="openAddBalanceModal()">
+                    <i class="bi bi-plus-circle text-success"></i> <span class="text-success">Adicionar Saldo</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="openWithdrawalModal()">
+                    <i class="bi bi-cash-coin text-info"></i> <span class="text-info">Solicitar Saque</span>
+                </a>
+            </li>
+            <li class="nav-item">
+    <a href="#" class="nav-link" onclick="openPlayerExpanded()">
+        <i class="bi bi-music-player text-success"></i> <span class="text-success">Player Expandido</span>
+    </a>
+</li>
+            <li class="nav-item">
+    <a href="#" class="nav-link" onclick="changeSection('trades')">
+        <i class="bi bi-arrow-left-right text-info"></i> 
+        <span class="text-info">Negociações</span>
+        <span class="badge bg-info ms-auto" id="menuTradeBadge" style="display: none;">0</span>
+    </a>
+</li>
+            <li class="nav-item">
+                <a href="#" class="nav-link text-danger" onclick="logout()">
+                    <i class="bi bi-box-arrow-right"></i> <span>Sair</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Main Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="d-flex align-items-center">
+                <button class="btn text-white me-3" onclick="toggleSidebar()">
+                    <i class="bi bi-list fs-3"></i>
+                </button>
+                <div class="saldo-display">
+                    <h6>CRÉDITO DISPONÍVEL</h6>
+                    <h4 id="currentBalance">R$ 0,00</h4>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="blockchain-badge" id="blockchainStatus">⛓️ Blockchain Ativa</span>
+                <div class="user-badge" id="userBadge">Ouvinte</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+<!-- Marketplace Section -->
+<section id="marketplaceSection" class="section active">
+    <div class="section-header">
+        <h2 class="section-title">
+            Marketplace Musical
+        </h2>
+        <div class="marketplace-filters">
+            <button class="filter-btn active" onclick="filterMarketplace('all')">Todos</button>
+            <button class="filter-btn" onclick="filterMarketplace('trending')">🔥 Trending</button>
+            <button class="filter-btn" onclick="filterMarketplace('new')">🆕 Novidades</button>
+            <button class="filter-btn" onclick="filterMarketplace('invest')">💰 Top Investimentos</button>
+        </div>
+        <div>
+            <small class="text-muted">Taxa 0% em compras</small>
+            <button class="btn btn-sm btn-outline-warning ms-2" onclick="showELORanking()">
+                <i class="bi bi-trophy-fill"></i> Ranking ELO
+            </button>
+            <button class="btn btn-sm btn-outline-success ms-2" onclick="loadMarketplace(true)">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+    </div>
+    <div id="marketplaceContent" class="music-grid">
+        <!-- Music cards will be loaded here -->
+    </div>
+</section>
+        <!-- Portfolio Section -->
+        <section id="portfolioSection" class="section">
+            <div class="portfolio-summary">
+                <h6 class="text-muted">VALOR TOTAL DA CARTEIRA</h6>
+                <div class="portfolio-value" id="portfolioValue">R$ 0,00</div>
+                <small class="text-muted" id="portfolioUpdateTime">Atualizado em tempo real</small>
+                <div class="mt-2 blockchain-verified">
+                    <i class="bi bi-shield-check"></i> Todos os ativos registrados na blockchain
+                </div>
+            </div>
+            <div class="section-header">
+                <h2 class="section-title">📊 Meus Ativos</h2>
+                <span class="badge bg-secondary" id="assetsCount">0 ativos</span>
+            </div>
+            <div id="portfolioContent">
+                <!-- Portfolio assets will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Ledger Section -->
+        <section id="ledgerSection" class="section">
+            <div class="section-header">
+                <h2 class="section-title">📋 Histórico de Transações</h2>
+                <div>
+                    <button class="btn btn-sm btn-outline-success" onclick="loadLedger(true)">
+                        <i class="bi bi-arrow-clockwise"></i> Atualizar
+                    </button>
+                    <button class="btn btn-sm btn-outline-info ms-2" onclick="exportExtrato()">
+                        <i class="bi bi-download"></i> Exportar
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="ledger-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th class="text-end">Valor</th>
+                            <th>Contrato</th>
+                            <th>Blockchain</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ledgerContent">
+                        <!-- Transactions will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+            <!-- ===== ESTATÍSTICAS DE STREAMING ===== -->
+<div class="card bg-dark border-info mb-3">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i> Ganhos por Streaming</h6>
+        <span class="badge bg-light text-dark" id="totalStreamingEarnings">R$ 0,00</span>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-4">
+                <div class="stat-icon-small"><i class="bi bi-music-note-beamed text-info"></i></div>
+                <div class="stat-value-small" id="streamingSongsCount">0</div>
+                <div class="stat-label-small">Músicas ouvidas</div>
+            </div>
+            <div class="col-4">
+                <div class="stat-icon-small"><i class="bi bi-clock text-info"></i></div>
+                <div class="stat-value-small" id="streamingMinutesCount">0</div>
+                <div class="stat-label-small">Minutos</div>
+            </div>
+            <div class="col-4">
+                <div class="stat-icon-small"><i class="bi bi-trophy text-info"></i></div>
+                <div class="stat-value-small" id="streamingRank">#0</div>
+                <div class="stat-label-small">Ranking</div>
+            </div>
+        </div>
+    </div>
+</div>
+        </section>
+
+        <!-- Best Investments Section -->
+        <section id="investmentsSection" class="section">
+            <div class="section-header">
+                <h2 class="section-title">📈 Melhores Investimentos</h2>
+                <div>
+                    <small class="text-muted">Baseado em algoritmo ELO</small>
+                    <button class="btn btn-sm btn-outline-success ms-2" onclick="loadTopInvestments(true)">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-info bg-dark border-info mb-3">
+                <i class="bi bi-lightbulb me-2"></i>
+                Nosso algoritmo ELO analisa vendas, disponibilidade e potencial de retorno para indicar os melhores investimentos.
+            </div>
+            <div id="investmentsContent" class="music-grid">
+                <!-- Top investments will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Playlists Section -->
+        <section id="playlistsSection" class="section">
+            <div class="section-header">
+                <h2 class="section-title">🎶 Minhas Playlists</h2>
+                <div>
+                    <button class="btn-miv btn-sm" onclick="openCreatePlaylistModal()">
+                        <i class="bi bi-plus-circle"></i> Nova Playlist
+                    </button>
+                </div>
+            </div>
+            <div id="playlistsContent">
+                <!-- Playlists will be loaded here -->
+            </div>
+            <div class="mt-4">
+                <h5 class="section-title">⭐ Músicas Favoritas</h5>
+                <div id="favoritesContent" class="music-grid">
+                    <!-- Favorite music will be loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Bolsa Externa Section -->
+        <section id="externalSection" class="section">
+            <div class="section-header">
+                <h2 class="section-title">🌐 Bolsa Externa</h2>
+                <div>
+                    <button class="btn-miv btn-sm" onclick="openAddExternalMusicModal()">
+                        <i class="bi bi-plus-circle"></i> Sugerir Música
+                    </button>
+                    <button class="btn btn-sm btn-outline-success ms-2" onclick="loadExternalMarketplace(true)">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-warning bg-dark border-warning mb-3">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Investimento Antecipado:</strong> Músicas que ainda não são do SELO MIV. Se atingirem 1 milhão em vendas, o artista pode aceitar entrar no SELO. Se recusar, você recebe seu investimento de volta com desconto de 0,99% pela especulação.
+            </div>
+            <div id="externalContent" class="music-grid">
+                <!-- External music will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Artist Panel Section -->
+        <section id="artistSection" class="section">
+            <div class="section-header">
+                <h2 class="section-title">🎤 Painel Artista</h2>
+                <div>
+                    <button class="btn-miv btn-sm" onclick="openAddMusicModal()">
+                        <i class="bi bi-plus-circle"></i> Nova Música
+                    </button>
+                    <button class="btn btn-sm btn-outline-info ms-2" onclick="loadArtistData(true)">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="artist-stats">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="bi bi-music-note-beamed"></i>
+                    </div>
+                    <div class="stat-value" id="artistMusicCount">0</div>
+                    <div class="stat-label">Músicas Cadastradas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="bi bi-cash-coin"></i>
+                    </div>
+                    <div class="stat-value" id="artistRoyalties">R$ 0,00</div>
+                    <div class="stat-label">Royalties Acumulados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="bi bi-bar-chart"></i>
+                    </div>
+                    <div class="stat-value" id="artistSharesSold">0</div>
+                    <div class="stat-label">Ações Vendidas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="bi bi-currency-exchange"></i>
+                    </div>
+                    <div class="stat-value" id="artistMonthlyEarnings">R$ 0,00</div>
+                    <div class="stat-label">Receita Mensal</div>
+                </div>
+            </div>
+            <h5 class="mb-3">Minhas Músicas</h5>
+            <div id="artistMusicContent" class="music-grid">
+                <!-- Artist's music will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Blockchain Explorer Section -->
+<section id="blockchainSection" class="section">
+    <div class="section-header">
+        <h2 class="section-title"><i class="bi bi-link-45deg text-purple me-2"></i> Blockchain Explorer</h2>
+        <div>
+            <button class="btn btn-sm btn-outline-purple" onclick="loadBlockchainData()">
+                <i class="bi bi-arrow-clockwise"></i> Atualizar
+            </button>
+        </div>
+    </div>
+    
+    <div class="alert alert-info bg-dark border-purple mb-4">
+        <i class="bi bi-info-circle me-2"></i>
+        Todos os contratos e transações são registrados permanentemente na blockchain SELO MIV.
+        Cada bloco contém o hash do bloco anterior, garantindo imutabilidade.
+    </div>
+    
+    <!-- Blockchain Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-link"></i></div>
+                <div class="stat-value" id="blockchainContractsCount">0</div>
+                <div class="stat-label">Contratos</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-arrow-left-right"></i></div>
+                <div class="stat-value" id="blockchainTransactionsCount">0</div>
+                <div class="stat-label">Transações</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-shield-check"></i></div>
+                <div class="stat-value" id="blockchainLastBlock">0</div>
+                <div class="stat-label">Blocos</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-clock-history"></i></div>
+                <div class="stat-value" id="blockchainLastUpdate">-</div>
+                <div class="stat-label">Último bloco</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Últimos Contratos -->
+    <div class="card bg-dark border-purple mb-4">
+        <div class="card-header bg-purple text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i> Últimos Contratos</h5>
+            <span class="badge bg-light text-dark">Block #<span id="currentBlockNumber">0</span></span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="ledger-table">
+                    <thead>
+                        <tr>
+                            <th>Hash</th>
+                            <th>Timestamp</th>
+                            <th>Música</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Previous Hash</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blockchainContractsList">
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="bi bi-link-45deg fs-1 text-muted d-block mb-3"></i>
+                                <span class="text-muted">Nenhum contrato na blockchain</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Últimas Transações -->
+    <div class="card bg-dark border-purple">
+        <div class="card-header bg-purple text-white">
+            <h5 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i> Últimas Transações</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="ledger-table">
+                    <thead>
+                        <tr>
+                            <th>Hash</th>
+                            <th>Timestamp</th>
+                            <th>Tipo</th>
+                            <th>Detalhes</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blockchainTransactionsList">
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <i class="bi bi-arrow-left-right fs-1 text-muted d-block mb-3"></i>
+                                <span class="text-muted">Nenhuma transação na blockchain</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Blockchain Visualization -->
+    <div class="mt-4">
+        <h5 class="section-title">
+            <i class="bi bi-diagram-3 me-2"></i>
+            Visualização da Blockchain
+        </h5>
+        <div class="card bg-dark border-purple">
+            <div class="card-body">
+                <div id="blockchainVisualization" class="d-flex flex-wrap gap-3 justify-content-center">
+                    <!-- Blocks will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Player MIV (Mini Player) -->
+<div id="playerSpotify" class="player-miv" style="display: none;">
+    <div class="player-bar">
+        <div class="player-track-info">
+            <div class="track-image-container">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Crect width='56' height='56' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='14' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
+                     class="track-image" 
+                     alt="Album Art" 
+                     id="playerAlbumArt"
+                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800'">
+                
+                <div class="track-image-overlay" onclick="event.stopPropagation(); togglePlay()" id="trackImageOverlay">
+                    <i class="bi bi-play-fill" id="trackOverlayIcon"></i>
+                </div>
+            </div>
+            
+            <div class="track-details">
+                <div class="track-title" id="playerTitle">Nenhuma música tocando</div>
+                <div class="track-artist" id="playerArtist">Selecione uma música para começar</div>
+            </div>
+            
+            <div class="track-actions">
+                <button class="player-btn favorite-btn" onclick="event.stopPropagation(); toggleFavorite()" id="favoriteBtn" title="Favoritar">
+                    <i class="bi bi-star" id="favoriteIcon"></i>
+                </button>
+                <button class="player-btn" onclick="event.stopPropagation(); openInvestModalFromPlayer()" title="Investir">
+                    <i class="bi bi-currency-dollar"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="player-controls-center">
+            <div class="control-buttons">
+                <button class="control-btn shuffle-btn" onclick="event.stopPropagation(); toggleShuffle()" id="shuffleBtn" title="Aleatório">
+                    <i class="bi bi-shuffle" id="shuffleIcon"></i>
+                </button>
+                
+                <button class="control-btn prev-btn" onclick="event.stopPropagation(); playPrevious()" title="Anterior">
+                    <i class="bi bi-skip-backward-fill"></i>
+                </button>
+                
+                <button class="control-btn play-btn" onclick="event.stopPropagation(); togglePlay()" id="playPauseBtn" title="Play/Pause">
+                    <i class="bi bi-play-fill" id="playPauseIcon"></i>
+                </button>
+                
+                <button class="control-btn next-btn" onclick="event.stopPropagation(); playNext()" title="Próxima">
+                    <i class="bi bi-skip-forward-fill"></i>
+                </button>
+                
+                <button class="control-btn repeat-btn" onclick="event.stopPropagation(); toggleRepeat()" id="repeatBtn" title="Repetir">
+                    <i class="bi bi-repeat" id="repeatIcon"></i>
+                </button>
+            </div>
+            
+            <div class="progress-container" onclick="event.stopPropagation()">
+                <span class="time-current" id="currentTimeDisplay">0:00</span>
+                <div class="progress-bar" onclick="handleProgressClick(event)" id="progressContainer">
+                    <div class="progress-fill" id="playerProgressBar"></div>
+                    <div class="progress-handle" id="progressHandle"></div>
+                </div>
+                <span class="time-total" id="totalTimeDisplay">0:00</span>
+            </div>
+        </div>
+        
+        <div class="player-controls-right">
+            <button class="player-btn queue-btn" onclick="event.stopPropagation(); toggleQueue()" title="Fila de reprodução">
+                <i class="bi bi-music-note-list"></i>
+            </button>
+            
+            <div class="volume-container" onclick="event.stopPropagation()">
+                <button class="player-btn volume-btn" onclick="event.stopPropagation(); toggleMute()" title="Volume" id="volumeBtn">
+                    <i class="bi bi-volume-up" id="volumeIcon"></i>
+                </button>
+                <div class="volume-slider-container">
+                    <div class="volume-slider" onclick="handleVolumeClick(event)" id="volumeSlider">
+                        <div class="volume-slider-fill" id="volumeSliderBar"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="player-btn expand-btn" onclick="openPlayerExpanded()" title="Abrir player expandido">
+                <i class="bi bi-arrows-angle-expand" id="expandIcon"></i>
+            </button>
+        </div>
+    </div>
+</div>
+     <!-- Player Expandido como Seção (NOVA SEÇÃO) -->
+<section id="playerExpandedSection" class="section">
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="bi bi-music-player-fill me-2 text-success"></i>
+            Player Expandido
+        </h2>
+        <button class="btn btn-outline-success" onclick="closePlayerExpanded()">
+            <i class="bi bi-arrows-angle-contract me-2"></i>
+            Minimizar Player
+        </button>
+    </div>
+    
+    <div class="expanded-content">
+        <div class="row">
+            <div class="col-md-4 mb-4 mb-md-0">
+                <div class="text-center">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
+                         class="expanded-album-art img-fluid rounded-3 mb-3" 
+                         alt="Album Art" 
+                         id="expandedAlbumArt"  
+                         onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800'">
+                    
+                    <h3 class="expanded-title text-white" id="expandedTitle">Nenhuma música tocando</h3>
+                    <p class="expanded-artist text-muted" id="expandedArtist">Selecione uma música</p>
+                    
+                    <div class="expanded-meta d-flex justify-content-center gap-3 mb-3">
+                        <span class="meta-item">
+                            <i class="bi bi-music-note-beamed text-success"></i>
+                            <span id="expandedGenre">Música</span>
+                        </span>
+                        <span class="meta-item">
+                            <i class="bi bi-clock text-success"></i>
+                            <span id="expandedDuration">0:00</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <!-- YouTube Player -->
+                <div class="youtube-container-expanded mb-4">
+    <div id="youtubePlayerExpanded" style="width: 100%; height: 100%;"></div>
+    <!-- ===== SUBSTITUA O player-loading EXISTENTE POR ESTE ===== -->
+    <div class="player-loading" id="playerLoadingExpanded">
+        <div class="loading-spinner"></div>
+        <span id="loadingMessageText">Carregando vídeo...</span>
+        <div class="mt-2 small text-muted" id="realTimeStatus"></div>
+    </div>
+    <!-- ===== FIM ===== -->
+</div>
+
+<!-- ===== ADICIONE ESTE DIV APÓS O youtube-container-expanded ===== -->
+<div id="playerStatus" class="mt-2 small text-center"></div>
+
+                <!-- ===== INDICADOR DE GANHOS POR STREAMING ===== -->
+<div id="streamingRewardIndicator" class="mt-2 text-center" style="display: none;">
+    <div class="alert alert-success bg-success bg-opacity-10 border-success py-1 px-2 d-inline-flex align-items-center gap-2 rounded-pill">
+        <i class="bi bi-cash-stack text-success"></i>
+        <span id="streamingRewardAmount" class="fw-bold text-success">+0 SELO COIN</span>
+        <span class="text-muted small">|</span>
+        <span id="streamingMusicName" class="small text-success">Música atual</span>
+    </div>
+</div>
+<!-- ===== FIM ===== -->
+                
+                <!-- Controles Expandidos -->
+                <div class="expanded-controls bg-dark p-4 rounded-3">
+                    <div class="expanded-progress-container mb-4">
+                        <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
+                            <div class="expanded-progress-fill" id="expandedProgressBar"></div>
+                        </div>
+                        <div class="expanded-time-display d-flex justify-content-between mt-2">
+                            <span id="expandedCurrentTime" class="text-muted">0:00</span>
+                            <span id="expandedTotalTime" class="text-muted">0:00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="expanded-controls-bottom d-flex justify-content-center align-items-center gap-4">
+                        <button class="btn btn-outline-success" onclick="playPrevious()">
+                            <i class="bi bi-skip-backward-fill"></i>
+                        </button>
+                        
+                        <button class="btn btn-success btn-lg rounded-circle" onclick="togglePlay()" id="expandedPlayPauseBtn" style="width: 60px; height: 60px;">
+                            <i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i>
+                        </button>
+                        
+                        <button class="btn btn-outline-success" onclick="playNext()">
+                            <i class="bi bi-skip-forward-fill"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="expanded-controls-top d-flex justify-content-center gap-3 mt-4">
+                        <button class="btn btn-outline-success" onclick="toggleShuffle()" id="expandedShuffleBtn">
+                            <i class="bi bi-shuffle me-2"></i>Aleatório
+                        </button>
+                        
+                        <button class="btn btn-outline-success" onclick="toggleRepeat()" id="expandedRepeatBtn">
+                            <i class="bi bi-repeat me-2"></i>Repetir
+                        </button>
+                        
+                        <button class="btn btn-outline-success" onclick="toggleFavorite()" id="expandedFavoriteBtn">
+                            <i class="bi bi-star" id="expandedFavoriteIcon"></i>
+                        </button>
+                        
+                        <button class="btn btn-success" onclick="openInvestModalFromPlayer()">
+                            <i class="bi bi-currency-dollar me-2"></i>Investir
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Informações da Música -->
+                <div class="track-info-section mt-4">
+                    <h4 class="text-white mb-3">
+                        <i class="bi bi-info-circle text-success me-2"></i>
+                        Sobre esta música
+                    </h4>
+                    
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-cash-coin"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Valor por ação</div>
+                                <div class="info-value text-success" id="expandedPrice">R$ 0,00</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-percent"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Disponível</div>
+                                <div class="info-value text-success" id="expandedAvailable">0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-graph-up-arrow"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Retorno</div>
+                                <div class="info-value text-success" id="expandedReturn">0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Investidores</div>
+                                <div class="info-value text-success" id="expandedInvestors">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>  <!-- FIM DA SEÇÃO DE NEGOCIAÇÕES -->
+        
+<!-- MINHAS NEGOCIAÇÕES SECTION -->
+<section id="tradesSection" class="section">
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="bi bi-arrow-left-right me-2 text-info"></i>
+            Minhas Negociações
+        </h2>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-info" onclick="loadTradeOffers()" id="refreshTradesBtn">
+                <i class="bi bi-arrow-clockwise me-1"></i> Atualizar
+            </button>
+            <span class="badge bg-info" id="pendingTradesCount">0 pendentes</span>
+        </div>
+    </div>
+    
+    <!-- Abas -->
+    <ul class="nav nav-tabs border-0 mb-3" id="tradeTabs">
+        <li class="nav-item">
+            <a class="nav-link text-muted active" href="#" onclick="switchTradeTab('received')">
+                <i class="bi bi-inbox me-1"></i> Recebidas
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-muted" href="#" onclick="switchTradeTab('sent')">
+                <i class="bi bi-send me-1"></i> Enviadas
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-muted" href="#" onclick="switchTradeTab('history')">
+                <i class="bi bi-clock-history me-1"></i> Histórico
+            </a>
+        </li>
+    </ul>
+    
+    <!-- Lista de negociações -->
+    <div id="tradesList" class="mt-3">
+        <!-- Loading -->
+        <div id="tradesLoading" style="display: none;" class="text-center py-5">
+            <div class="spinner-border text-info mb-3"></div>
+            <p class="text-muted">Carregando negociações...</p>
+        </div>
+        
+        <!-- Empty state -->
+        <div id="tradesEmpty" class="empty-state-actionable">
+            <i class="bi bi-arrow-left-right empty-icon text-info"></i>
+            <h5 class="text-muted">Nenhuma negociação</h5>
+            <p class="text-muted">Você ainda não tem negociações ativas</p>
+            <button class="btn btn-outline-info mt-3" onclick="changeSection('portfolio')">
+                <i class="bi bi-briefcase me-2"></i> Ver meu portfólio
+            </button>
+        </div>
+        
+        <!-- Lista dinâmica -->
+        <div id="tradesContainer"></div>
+    </div>
+</section>
+
+<!-- Invest Modal -->
+<div id="investModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-currency-dollar me-2"></i> Investir em Música</h5>
+            <button class="modal-close" onclick="closeModal('investModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="text-center mb-4">
+                <h6 id="investTrackTitle" class="fw-bold">Título da Música</h6>
+                <p class="text-muted" id="investTrackArtist">Artista</p>
+                <div class="blockchain-verified mt-2">
+                    <i class="bi bi-shield-check"></i> Registro na blockchain
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="investUnitPriceDisplay" class="text-muted mb-2">Valor por ação:</label>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="fw-bold fs-5" id="investUnitPriceDisplay">R$ 0,00</span>
+                    <span class="badge bg-success" id="investSharesAvailable">Disponível: 0 ações</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="investQuantityField" class="text-muted mb-2">Quantidade de ações:</label>
+                <div class="input-group">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)">
+                        <i class="bi bi-dash"></i>
+                    </button>
+                    <input type="number" id="investQuantityField" class="form-control-custom text-center" value="1" min="1" oninput="updateInvestmentTotal()">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(1)">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="investTotalPriceDisplay" class="text-muted mb-2">Valor total do investimento:</label>
+                <div class="fw-bold fs-4 text-success" id="investTotalPriceDisplay">R$ 0,00</div>
+            </div>
+            
+            <div class="alert alert-info bg-dark border-info mt-3">
+                <i class="bi bi-info-circle me-2"></i> 
+                Saldo disponível: <span id="investAvailableBalanceDisplay" class="fw-bold">R$ 0,00</span>
+            </div>
+
+            <div class="blockchain-hash mt-3" id="investBlockchainPreview">
+                ⛓️ Hash da transação: Será gerado após a confirmação
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('investModal')">Cancelar</button>
+            <button class="btn btn-miv" onclick="confirmInvestment()" id="confirmInvestBtn">
+                <i class="bi bi-check-circle me-2"></i> Confirmar Investimento
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Invest External Modal -->
+<div id="investExternalModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-globe me-2 text-warning"></i> Investir em Música Externa</h5>
+            <button class="modal-close" onclick="closeModal('investExternalModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="text-center mb-4">
+                <h6 id="investExternalTitleDisplay" class="fw-bold">Título da Música</h6>
+                <p class="text-muted" id="investExternalArtistDisplay">Artista</p>
+                <span class="badge bg-warning">Bolsa Externa</span>
+            </div>
+            
+            <div class="alert alert-warning bg-dark border-warning mb-3">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Investimento Antecipado:</strong> Esta música ainda não é do SELO MIV.
+            </div>
+            
+            <div class="form-group">
+                <label for="investExternalUnitPriceDisplay" class="text-muted mb-2">Valor por ação:</label>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="fw-bold fs-5" id="investExternalUnitPriceDisplay">R$ 0,00</span>
+                    <span class="badge bg-warning" id="investExternalSharesAvailable">Disponível: 0 ações</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="investExternalQuantityField" class="text-muted mb-2">Quantidade de ações:</label>
+                <div class="input-group">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustExternalQuantity(-1)">
+                        <i class="bi bi-dash"></i>
+                    </button>
+                    <input type="number" id="investExternalQuantityField" class="form-control-custom text-center" value="1" min="1" oninput="updateExternalInvestmentTotal()">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustExternalQuantity(1)">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="investExternalTotalPriceDisplay" class="text-muted mb-2">Valor total do investimento:</label>
+                <div class="fw-bold fs-4 text-warning" id="investExternalTotalPriceDisplay">R$ 0,00</div>
+            </div>
+            
+            <div class="form-group">
+                <div class="external-music-progress">
+                    <div class="external-music-progress-bar" id="investExternalProgressBar"></div>
+                </div>
+                <div class="d-flex justify-content-between mt-2">
+                    <small class="text-muted" id="investExternalCurrentSales">Vendas atuais: R$ 0</small>
+                    <small class="text-muted" id="investExternalTargetSales">Meta: R$ 1.000.000</small>
+                </div>
+            </div>
+            
+            <div class="alert alert-info bg-dark border-info mt-3">
+                <i class="bi bi-info-circle me-2"></i> 
+                Saldo disponível: <span id="investExternalBalanceDisplay" class="fw-bold">R$ 0,00</span>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('investExternalModal')">Cancelar</button>
+            <button class="btn btn-warning" onclick="confirmExternalInvestment()" id="confirmExternalInvestBtn">
+                <i class="bi bi-check-circle me-2"></i> Confirmar Investimento
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add External Music Modal -->
+<div id="addExternalMusicModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-globe me-2 text-warning"></i> Sugerir Música</h5>
+            <button class="modal-close" onclick="closeModal('addExternalMusicModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="alert alert-info bg-dark border-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                Sugira músicas do YouTube para investimento antecipado.
+            </div>
+            
+            <div class="form-group">
+                <label for="externalYoutubeLinkField" class="text-muted mb-2 d-block">Link do YouTube *</label>
+                <input type="url" id="externalYoutubeLinkField" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
+            </div>
+            <!-- ===== NOVO CAMPO PARA LINK DA CAPA ===== -->
+<div class="form-group">
+    <label for="externalCoverField" class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
+    <input type="url" id="externalCoverField" class="form-control-custom" placeholder="https://exemplo.com/capa.jpg">
+    <small class="text-muted">Se não fornecido, usaremos a thumbnail do YouTube.</small>
+</div>
+<!-- ===== FIM DO NOVO CAMPO ===== -->
+            <div class="form-group">
+                <label for="externalTitleField" class="text-muted mb-2 d-block">Título da Música *</label>
+                <input type="text" id="externalTitleField" class="form-control-custom" placeholder="Digite o título da música" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="externalArtistField" class="text-muted mb-2 d-block">Artista *</label>
+                <input type="text" id="externalArtistField" class="form-control-custom" placeholder="Nome do artista" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="externalPriceField" class="text-muted mb-2 d-block">Valor por Ação Sugerido *</label>
+                <input type="number" id="externalPriceField" class="form-control-custom" value="10.00" min="1" step="0.01" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="externalPercentField" class="text-muted mb-2 d-block">Porcentagem para Investimento *</label>
+                <div class="input-group">
+                    <input type="number" id="externalPercentField" class="form-control-custom" value="20" min="1" max="100" required>
+                    <span class="input-group-text bg-dark text-white border-secondary">%</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="externalMessageField" class="text-muted mb-2 d-block">Mensagem para o Artista (opcional)</label>
+                <textarea id="externalMessageField" class="form-control-custom" rows="3" placeholder="Por que você acha que esta música tem potencial?"></textarea>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addExternalMusicModal')">Cancelar</button>
+            <button class="btn btn-warning" onclick="submitExternalMusic()" id="submitExternalBtn">
+                <i class="bi bi-send me-2"></i> Sugerir Música
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Music Modal -->
+<div id="addMusicModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-music-note-beamed me-2"></i> Cadastrar Nova Música</h5>
+            <button class="modal-close" onclick="closeModal('addMusicModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="musicTitleField" class="text-muted mb-2 d-block">Título da Música *</label>
+                <input type="text" id="musicTitleField" class="form-control-custom" placeholder="Digite o título da música" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="musicGenreField" class="text-muted mb-2 d-block">Gênero Musical *</label>
+                <select id="musicGenreField" class="form-control-custom" required>
+                    <option value="">Selecione um gênero</option>
+                    <option value="POP">🎵 POP</option>
+                    <option value="HIPHOP_RAP">🎤 HIP HOP / RAP</option>
+                    <option value="ROCK">🤘 ROCK</option>
+                    <option value="ELETRONICA">⚡ ELETRÔNICA</option>
+                    <option value="MPB">🎸 MPB</option>
+                    <option value="SERTANEJO">🎶 SERTANEJO</option>
+                    <option value="FUNK">💃 FUNK</option>
+                    <option value="OUTRO">🎼 OUTRO</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="musicYoutubeField" class="text-muted mb-2 d-block">Link do YouTube *</label>
+                <input type="url" id="musicYoutubeField" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
+            </div>
+            
+            <div class="form-group">
+                <label for="musicCoverField" class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
+                <input type="url" id="musicCoverField" class="form-control-custom" placeholder="https://exemplo.com/capa.jpg">
+            </div>
+            
+            <div class="form-group">
+                <label for="musicPriceField" class="text-muted mb-2 d-block">Valor por Ação *</label>
+                <input type="number" id="musicPriceField" class="form-control-custom" value="10.00" min="1" step="0.01" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="musicPercentField" class="text-muted mb-2 d-block">Percentual Disponível *</label>
+                <div class="input-group">
+                    <input type="number" id="musicPercentField" class="form-control-custom" value="20" min="1" max="100" required>
+                    <span class="input-group-text bg-dark text-white border-secondary">%</span>
+                </div>
+            </div>
+            
+            <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" id="musicTermsField" required>
+                <label class="form-check-label text-muted" for="musicTermsField">
+                    Aceito os termos de distribuição e compartilhamento de royalties
+                </label>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addMusicModal')">Cancelar</button>
+            <button class="btn-miv" onclick="registerMusic()" id="registerMusicBtn">
+                <i class="bi bi-save me-2"></i> Cadastrar Música
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Music Modal -->
+<div id="editMusicModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i> Editar Música</h5>
+            <button class="modal-close" onclick="closeModal('editMusicModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <input type="hidden" id="editMusicId">
+            
+            <div class="form-group">
+                <label for="editMusicTitleField" class="text-muted mb-2 d-block">Título da Música *</label>
+                <input type="text" id="editMusicTitleField" class="form-control-custom" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMusicGenreField" class="text-muted mb-2 d-block">Gênero Musical *</label>
+                <select id="editMusicGenreField" class="form-control-custom" required>
+                    <option value="POP">🎵 POP</option>
+                    <option value="HIPHOP_RAP">🎤 HIP HOP / RAP</option>
+                    <option value="ROCK">🤘 ROCK</option>
+                    <option value="ELETRONICA">⚡ ELETRÔNICA</option>
+                    <option value="MPB">🎸 MPB</option>
+                    <option value="SERTANEJO">🎶 SERTANEJO</option>
+                    <option value="FUNK">💃 FUNK</option>
+                    <option value="OUTRO">🎼 OUTRO</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMusicYoutubeField" class="text-muted mb-2 d-block">Link do YouTube *</label>
+                <input type="url" id="editMusicYoutubeField" class="form-control-custom" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMusicCoverField" class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
+                <input type="url" id="editMusicCoverField" class="form-control-custom">
+            </div>
+            
+            <div class="form-group">
+                <label for="editMusicPriceField" class="text-muted mb-2 d-block">Valor por Ação *</label>
+                <input type="number" id="editMusicPriceField" class="form-control-custom" min="1" step="0.01" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMusicPercentField" class="text-muted mb-2 d-block">Percentual Disponível *</label>
+                <div class="input-group">
+                    <input type="number" id="editMusicPercentField" class="form-control-custom" min="1" max="100" required>
+                    <span class="input-group-text bg-dark text-white border-secondary">%</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="text-muted mb-2 d-block">Status da Música</label>
+                <select id="editMusicStatusField" class="form-control-custom">
+                    <option value="active">✅ Ativa</option>
+                    <option value="paused">⏸️ Pausada</option>
+                    <option value="deleted">🗑️ Solicitar Exclusão</option>
+                </select>
+                <small class="text-muted">Ao pausar, a música não aparecerá no marketplace</small>
+            </div>
+            
+            <div class="blockchain-hash mt-3" id="editMusicBlockchainInfo">
+                ⛓️ As alterações serão registradas na blockchain
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('editMusicModal')">Cancelar</button>
+            <button class="btn btn-miv" onclick="updateMusic()" id="updateMusicBtn">
+                <i class="bi bi-save me-2"></i> Salvar Alterações
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Balance Modal -->
+<div id="addBalanceModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-wallet2 me-2"></i> Adicionar Saldo</h5>
+            <button class="modal-close" onclick="closeModal('addBalanceModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="balanceAmountField" class="text-muted mb-2 d-block">Valor para adicionar</label>
+                <div class="btn-group w-100 mb-3" role="group">
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(50)">R$ 50</button>
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(100)">R$ 100</button>
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(200)">R$ 200</button>
+                    <button type="button" class="btn btn-outline-success" onclick="setBalanceAmount(500)">R$ 500</button>
+                </div>
+                <input type="number" id="balanceAmountField" class="form-control-custom" value="100" min="10" step="10" oninput="validateBalanceAmount()">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addBalanceModal')">Cancelar</button>
+            <button class="btn btn-miv" onclick="processBalanceAdd()" id="processPaymentBtn">
+                <i class="bi bi-currency-dollar me-2"></i> Ir para Pagamento
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Withdrawal Modal -->
+<div id="withdrawalModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i> Solicitar Saque</h5>
+            <button class="modal-close" onclick="closeModal('withdrawalModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="withdrawalAmountField" class="text-muted mb-2 d-block">Valor para sacar</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark text-white border-secondary">R$</span>
+                    <input type="number" id="withdrawalAmountField" class="form-control-custom" value="0" min="10" step="10" oninput="validateWithdrawalAmount()">
+                </div>
+                <small class="text-muted">Valor máximo disponível: <span id="maxWithdrawalDisplay">R$ 0,00</span></small>
+            </div>
+            
+            <div class="form-group">
+                <label for="withdrawalMethodField" class="text-muted mb-2 d-block">Método de pagamento *</label>
+                <select id="withdrawalMethodField" class="form-control-custom" required>
+                    <option value="">Selecione...</option>
+                    <option value="PIX">PIX</option>
+                    <option value="TED">TED/DOC</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="bankDetailsField" class="text-muted mb-2 d-block">Dados bancários</label>
+                <textarea id="bankDetailsField" class="form-control-custom" rows="3" placeholder="Banco, Agência, Conta, CPF/CNPJ, Nome do titular"></textarea>
+            </div>
+
+            <div class="blockchain-hash mt-3">
+                ⛓️ Transação será registrada na blockchain
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('withdrawalModal')">Cancelar</button>
+            <button class="btn btn-miv" onclick="requestWithdrawal()" id="requestWithdrawalBtn">
+                <i class="bi bi-send me-2"></i> Solicitar Saque
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Create Playlist Modal -->
+<div id="createPlaylistModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-music-note-list me-2"></i> Criar Nova Playlist</h5>
+            <button class="modal-close" onclick="closeModal('createPlaylistModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="playlistNameField" class="text-muted mb-2 d-block">Nome da Playlist *</label>
+                <input type="text" id="playlistNameField" class="form-control-custom" placeholder="Ex: Rock Favorito, Chillout, etc." required>
+            </div>
+            
+            <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" id="playlistPublicField">
+                <label class="form-check-label text-muted" for="playlistPublicField">
+                    Playlist pública (outros usuários podem ver)
+                </label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('createPlaylistModal')">Cancelar</button>
+            <button class="btn-miv" onclick="createPlaylist()" id="createPlaylistBtn">
+                <i class="bi bi-plus-circle me-2"></i> Criar Playlist
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Contract View Modal -->
+<div id="contractModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-file-earmark-text me-2"></i> Contrato de Investimento</h5>
+            <button class="modal-close" onclick="closeModal('contractModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="contract-view" id="contractContent">
+                <!-- Contract content will be loaded here -->
+            </div>
+            <div class="blockchain-hash mt-3" id="contractBlockchainHash">
+                ⛓️ Hash: 0x...
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('contractModal')">Fechar</button>
+            <button class="btn btn-miv" onclick="printContract()">
+                <i class="bi bi-printer me-2"></i> Imprimir
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ELO Ranking Modal -->
+<div id="eloRankingModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-trophy-fill me-2 text-warning"></i> Ranking ELO das Músicas</h5>
+            <button class="modal-close" onclick="closeModal('eloRankingModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="eloRankingContent">
+                <!-- Ranking will be loaded here -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('eloRankingModal')">Fechar</button>
+        </div>
+    </div>
+</div>
+        <!-- Trade Modal -->
+<div id="tradeModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2 text-info"></i> Negociar Ações</h5>
+            <button class="modal-close" onclick="closeModal('tradeModal')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="text-center mb-4">
+                <h6 id="tradeMusicTitle" class="fw-bold">Título da Música</h6>
+                <p class="text-muted" id="tradeMusicArtist">Artista</p>
+                <div class="d-flex justify-content-center gap-3 mt-2">
+                    <span class="badge bg-info">Você tem <span id="tradeSharesOwned">0</span> ações</span>
+                    <span class="badge bg-secondary">Preço atual: <span id="tradeCurrentPrice">R$ 0,00</span></span>
+                </div>
+            </div>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="bg-dark p-3 rounded-3 text-center border border-secondary">
+                        <small class="text-muted d-block">Valor investido</small>
+                        <span class="text-success fw-bold fs-5" id="tradeInvestedValue">R$ 0,00</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="bg-dark p-3 rounded-3 text-center border border-secondary">
+                        <small class="text-muted d-block">Valor atual</small>
+                        <span class="text-info fw-bold fs-5" id="tradeCurrentValue">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="text-muted mb-2 d-block">
+                    <i class="bi bi-person me-1"></i> Email do comprador
+                </label>
+                <input type="email" id="tradeBuyerEmail" class="form-control-custom" placeholder="email@exemplo.com" 
+                       onkeyup="searchUserByEmail()" autocomplete="off">
+                <div id="userSearchResults" class="mt-2 bg-dark border rounded-3" style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+            
+            <div class="form-group">
+                <label class="text-muted mb-2 d-block">
+                    <i class="bi bi-calculator me-1"></i> Quantidade de ações
+                </label>
+                <div class="input-group">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustTradeQuantity(-1)">
+                        <i class="bi bi-dash"></i>
+                    </button>
+                    <input type="number" id="tradeQuantity" class="form-control-custom text-center" value="1" min="1" 
+                           oninput="updateTradeCalculation()" style="font-size: 1.1rem;">
+                    <button class="btn btn-outline-secondary" type="button" onclick="adjustTradeQuantity(1)">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                </div>
+                <small class="text-muted" id="tradeMaxQuantity">Máximo disponível: 0 ações</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="text-muted mb-2 d-block">
+                    <i class="bi bi-coin me-1"></i> Preço por ação (SELO COIN)
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark text-white border-secondary">R$</span>
+                    <input type="number" id="tradePrice" class="form-control-custom" step="0.01" min="0.01" 
+                           value="10.00" oninput="updateTradeCalculation()" style="font-size: 1.1rem;">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="text-muted mb-2 d-block">
+                    <i class="bi bi-chat me-1"></i> Mensagem (opcional)
+                </label>
+                <textarea id="tradeMessage" class="form-control-custom" rows="2" 
+                          placeholder="Ex: Aceito negociar, podemos conversar sobre o preço..."></textarea>
+            </div>
+            
+            <div class="alert bg-dark border-info mt-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-info-circle text-info me-2"></i>
+                        <span class="text-muted">Total da negociação</span>
+                    </div>
+                    <span class="fw-bold fs-4 text-warning" id="tradeTotalDisplay">R$ 0,00</span>
+                </div>
+                <div class="mt-2 small text-muted">
+                    <i class="bi bi-shield-check me-1"></i> Transação protegida pela blockchain
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('tradeModal')">Cancelar</button>
+            <button class="btn btn-info" onclick="createTradeOffer()" id="createTradeBtn">
+                <i class="bi bi-send me-2"></i> Enviar Oferta
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+    // ========== CONFIGURAÇÃO ==========
+    const CONFIG = {
+        API_URL: 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
+        DEV_MODE: false,
+        VERSION: '6.0.0',
+        MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
+        BLOCKCHAIN_ENABLED: true
+    };
+
+    // ========== PLACEHOLDERS ==========
+    const PLACEHOLDERS = {
+    MIV_56: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%2256%22 height%3D%2256%22 viewBox%3D%220 0 56 56%22%3E%3Crect width%3D%2256%22 height%3D%2256%22 fill%3D%22%23111418%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2214%22 fill%3D%22%2300ff88%22%3EMIV%3C/text%3E%3C/svg%3E',
+    MIV_300: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%22300%22 height%3D%22300%22 viewBox%3D%220 0 300 300%22%3E%3Crect width%3D%22300%22 height%3D%22300%22 fill%3D%22%23111418%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2224%22 fill%3D%22%2300ff88%22%3EMIV%3C/text%3E%3C/svg%3E',
+    EXT_56: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%2256%22 height%3D%2256%22 viewBox%3D%220 0 56 56%22%3E%3Crect width%3D%2256%22 height%3D%2256%22 fill%3D%22%23111418%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2214%22 fill%3D%22%23ff6b6b%22%3EEXT%3C/text%3E%3C/svg%3E',
+    EXT_300: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%22300%22 height%3D%22300%22 viewBox%3D%220 0 300 300%22%3E%3Crect width%3D%22300%22 height%3D%22300%22 fill%3D%22%23111418%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2224%22 fill%3D%22%23ff6b6b%22%3EEXT%3C/text%3E%3C/svg%3E',
+    PLAYLIST: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%2260%22 height%3D%2260%22 viewBox%3D%220 0 60 60%22%3E%3Crect width%3D%2260%22 height%3D%2260%22 fill%3D%22%2300ff88%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2224%22 fill%3D%22%23000000%22%3E%E2%99%AA%3C/text%3E%3C/svg%3E'
 };
 
-// ========== PLACEHOLDERS ==========
-const PLACEHOLDERS = {
-    MIV_56: 'data:image/svg+xml,%3Csvg...',
-    MIV_300: 'data:image/svg+xml,%3Csvg...',
-    EXT_56: 'data:image/svg+xml,%3Csvg...',
-    EXT_300: 'data:image/svg+xml,%3Csvg...',
-    PLAYLIST: 'data:image/svg+xml,%3Csvg...'
-};
-
-// ========== ESTADO GLOBAL ==========
+    // ========== ESTADO GLOBAL ==========
 const state = {
     currentUser: null,
     userBalance: 0,
@@ -43,65 +3734,15 @@ const state = {
         transactions: [],
         lastBlock: 0
     },
+    // ===== NOVAS PROPRIEDADES =====
     streamingTimer: null,
     streamingProgress: 0,
     streamingTrackId: null,
     streamingLastReward: 0,
     isBuffering: false,
     playerReady: false
-};
-
-// ========== COLE AQUI O CÓDIGO DE CONTROLE DE REQUISIÇÕES ==========
-// ========== CONTROLE DE REQUISIÇÕES ==========
-const requestControl = {
-    lastSaldo: 0,
-    lastStreaming: 0,
-    lastExtrato: 0,
-    lastReset: Date.now(),
-    saldoCount: 0,
-    streamingCount: 0,
-    extratoCount: 0,
-    MIN_INTERVAL: 30000, // 30 segundos mínimo entre requisições
-    MAX_REQUESTS_PER_HOUR: 100
-};
-
-// Função para verificar se pode fazer requisição
-function canMakeRequest(type) {
-    const now = Date.now();
-    const last = requestControl[`last${type}`];
-    const count = requestControl[`${type.toLowerCase()}Count`];
-    
-    // Resetar contador a cada hora
-    if (now - requestControl.lastReset > 3600000) {
-        requestControl.saldoCount = 0;
-        requestControl.streamingCount = 0;
-        requestControl.extratoCount = 0;
-        requestControl.lastReset = now;
-    }
-    
-    // Verificar intervalo mínimo
-    if (now - last < requestControl.MIN_INTERVAL) {
-        console.log(`⏳ Bloqueado: ${type} - muito rápido (${Math.round((now - last)/1000)}s desde última)`);
-        return false;
-    }
-    
-    // Verificar limite por hora
-    if (count > requestControl.MAX_REQUESTS_PER_HOUR) {
-        console.log(`⚠️ Limite excedido: ${type} - ${count} requisições na última hora`);
-        return false;
-    }
-    
-    return true;
-}
-
-// Função para registrar requisição
-function registerRequest(type) {
-    requestControl[`last${type}`] = Date.now();
-    requestControl[`${type.toLowerCase()}Count`]++;
-}
-// ========== FIM DO CÓDIGO DE CONTROLE DE REQUISIÇÕES ==========
-
-// ========== FUNÇÕES UTILITÁRIAS (DEFINIR PRIMEIRO) ==========
+}; // <-- A chave de fechamento DEVE estar aqui
+    // ========== FUNÇÕES UTILITÁRIAS (DEFINIR PRIMEIRO) ==========
 function formatCurrency(value) {
     if (value === null || value === undefined || isNaN(value)) value = 0;
     return new Intl.NumberFormat('pt-BR', {
@@ -406,8 +4047,6 @@ window.loadBlockchainData = async function() {
         renderBlockchainVisualization(gerarBlocosSimulados(5));
     }
 };
-
-// ... TODO O RESTO DO SEU CÓDIGO CONTINUA IGUAL ...
 
 // ===== FUNÇÕES AUXILIARES =====
 function gerarBlocosSimulados(quantidade = 10) {
