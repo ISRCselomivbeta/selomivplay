@@ -1314,7 +1314,14 @@
             opacity: 1;
             visibility: visible;
         }
-        
+        .modal-overlay {
+    z-index: 10002 !important; /* Maior que o player (9999) e sidebar (10001) */
+}
+
+.modal-content {
+    position: relative;
+    z-index: 10003 !important;
+}
         .modal-content {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -5487,13 +5494,25 @@ function renderPortfolio() {
                     profitPerc = valorInvestido > 0 ? (profitVal / valorInvestido * 100) : 0;
                 }
                 
+                // ===== LÓGICA CORRIGIDA PARA IMAGEM DE CAPA =====
                 let coverImage = PLACEHOLDERS.MIV_300;
+                
+                // PRIORIDADE 1: Link da capa da música
                 if (music.link_capa && typeof music.link_capa === 'string' && music.link_capa.trim() !== '') {
                     coverImage = music.link_capa.trim();
+                } 
+                // PRIORIDADE 2: Thumbnail do YouTube
+                else if (music.link_youtube) {
+                    const videoId = extractYouTubeId(music.link_youtube);
+                    if (videoId) {
+                        coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                    }
                 }
+                // PRIORIDADE 3: Placeholder (já definido)
                 
                 return `<div class="music-card">
-                    <img src="${coverImage}" class="music-cover" alt="${music.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <img src="${coverImage}" class="music-cover" alt="${music.titulo || 'Música'}" 
+                         onerror="this.onerror=null; this.src='${PLACEHOLDERS.MIV_300}'">
                     <div class="music-info">
                         <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
                         <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
@@ -5535,7 +5554,6 @@ function renderPortfolio() {
         </div>
     `;
 }
-
 function updatePortfolioValue() {
     const el = document.getElementById('portfolioValue');
     if (!el) return;
