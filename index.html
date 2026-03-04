@@ -8333,150 +8333,37 @@ window.switchTradeTab = switchTradeTab;
 window.acceptTradeOffer = acceptTradeOffer;
 window.declineTradeOffer = declineTradeOffer;
 window.cancelTradeOffer = cancelTradeOffer;
-// ========== FUNÇÃO PARA ABRIR MODAL DE PRIVACIDADE ==========
-// ========== FUNÇÃO PARA ABRIR POLÍTICA DE PRIVACIDADE ==========
+// ========== FUNÇÃO PARA ABRIR POLÍTICA DE PRIVACIDADE (CORRIGIDA) ==========
 window.openPrivacyModal = function() {
-    console.log('📄 Abrindo política de privacidade');
+    console.log('📄 Abrindo Política de Privacidade real em nova aba...');
     
-    // MÉTODO 1: Alert (100% garantido)
-    alert('📄 Política de Privacidade SELO MIV\n\nNossa política de privacidade está sendo elaborada conforme a LGPD (Lei Geral de Proteção de Dados).\n\n✅ Em breve disponível completa no site!\n\n© 2026 SELO MIV');
+    // Link direto para o documento da Política de Privacidade (modo de visualização)
+    const privacyDocUrl = 'https://docs.google.com/document/d/1e8Ym1e6etPpzJVFJ6IZ3dYgS4nknOrE-4Bnp54IqhFc/preview'; // Use /preview para uma experiência mais limpa
     
-    // MÉTODO 2: Toast (se existir)
-    if (typeof showToast === 'function') {
-        showToast('📄 Política de Privacidade - Em breve', 'info', 4000);
+    // Tenta abrir o link em uma nova aba
+    const newWindow = window.open(privacyDocUrl, '_blank', 'noopener,noreferrer');
+    
+    // Verifica se o popup foi bloqueado pelo navegador
+    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+        // Se o popup foi bloqueado, informa o usuário e oferece um link direto
+        showToast('⚠️ Pop-up bloqueado. Clique no link para abrir.', 'warning', 5000);
+        
+        // Cria um alerta mais visível como fallback
+        const fallbackMessage = `
+            📄 Para visualizar nossa Política de Privacidade completa, clique no link abaixo:
+            
+            ${privacyDocUrl}
+            
+            Você pode copiar e colar este link no seu navegador.
+        `;
+        alert(fallbackMessage);
+    } else {
+        showToast('📄 Abrindo Política de Privacidade...', 'info', 3000);
     }
-    
-    // MÉTODO 3: Modal personalizado (fallback)
-    setTimeout(() => {
-        criarModalPrivacidade();
-    }, 200);
 };
 
-// Função auxiliar para criar modal (garantia extra)
-function criarModalPrivacidade() {
-    // Verifica se já existe
-    if (document.getElementById('modal-privacidade')) return;
-    
-    // Criar overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'modal-privacidade';
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.9);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 999999;
-        backdrop-filter: blur(5px);
-    `;
-    
-    // Criar conteúdo
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        background: #111418;
-        border: 2px solid #00ff88;
-        border-radius: 20px;
-        padding: 30px;
-        max-width: 450px;
-        width: 90%;
-        text-align: center;
-        box-shadow: 0 20px 40px rgba(0, 255, 136, 0.2);
-        animation: slideIn 0.3s ease;
-    `;
-    
-    // Adicionar animação
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideIn {
-            from {
-                transform: translateY(-50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-    `;
-    document.head.appendChild(style);
-    
-    // Ícone
-    const icon = document.createElement('div');
-    icon.innerHTML = '<i class="bi bi-shield-lock" style="font-size: 60px; color: #00ff88;"></i>';
-    icon.style.marginBottom = '20px';
-    
-    // Título
-    const title = document.createElement('h3');
-    title.textContent = 'Política de Privacidade';
-    title.style.cssText = `
-        color: #00ff88;
-        font-size: 24px;
-        margin-bottom: 15px;
-        font-weight: bold;
-    `;
-    
-    // Texto
-    const text = document.createElement('p');
-    text.innerHTML = `
-        Estamos elaborando nossa Política de Privacidade<br>
-        com base na <strong>LGPD (Lei Geral de Proteção de Dados)</strong>.<br><br>
-        <span style="color: #00ff88; font-size: 18px;">⚡ Em breve disponível!</span>
-    `;
-    text.style.cssText = `
-        color: #e0e0e0;
-        line-height: 1.6;
-        margin-bottom: 25px;
-        font-size: 16px;
-    `;
-    
-    // Botão
-    const button = document.createElement('button');
-    button.innerHTML = '<i class="bi bi-check-circle"></i> Entendi';
-    button.style.cssText = `
-        background: linear-gradient(135deg, #00ff88, #00cc6a);
-        border: none;
-        border-radius: 50px;
-        color: #000;
-        font-weight: bold;
-        font-size: 16px;
-        padding: 12px 30px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    `;
-    
-    button.onmouseover = () => {
-        button.style.transform = 'scale(1.05)';
-        button.style.boxShadow = '0 10px 20px rgba(0, 255, 136, 0.3)';
-    };
-    
-    button.onmouseout = () => {
-        button.style.transform = 'scale(1)';
-        button.style.boxShadow = 'none';
-    };
-    
-    button.onclick = () => {
-        document.body.removeChild(overlay);
-    };
-    
-    // Montar tudo
-    modal.appendChild(icon);
-    modal.appendChild(title);
-    modal.appendChild(text);
-    modal.appendChild(button);
-    overlay.appendChild(modal);
-    
-    // Adicionar ao body
-    document.body.appendChild(overlay);
-}
-
+// Opcional: Se quiser usar o link para download do PDF, use este:
+// const privacyPdfUrl = 'https://docs.google.com/document/d/1e8Ym1e6etPpzJVFJ6IZ3dYgS4nknOrE-4Bnp54IqhFc/export?format=pdf';
 </script> <!-- FIM DO SCRIPT -->
 </body>
 </html>
