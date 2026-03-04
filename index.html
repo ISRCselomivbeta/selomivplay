@@ -8333,6 +8333,19 @@ window.switchTradeTab = switchTradeTab;
 window.acceptTradeOffer = acceptTradeOffer;
 window.declineTradeOffer = declineTradeOffer;
 window.cancelTradeOffer = cancelTradeOffer;
+// ========== FUNÇÃO PARA ABRIR MODAL DE PRIVACIDADE ==========
+window.openPrivacyModal = function() {
+    // Mostra um toast informativo
+    showToast('📄 Política de Privacidade - Em breve disponível', 'info');
+    
+    // Se você já tiver um modal de privacidade (linhas ~2600), use:
+    // showModal('privacyModal');
+};
+
+// ========== FUNÇÃO PARA FECHAR MODAL DE PRIVACIDADE (se existir) ==========
+window.closePrivacyModal = function() {
+    closeModal('privacyModal');
+};    
 
 </script> <!-- FIM DO SCRIPT -->
 </body>
