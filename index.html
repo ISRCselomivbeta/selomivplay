@@ -8335,17 +8335,20 @@ window.declineTradeOffer = declineTradeOffer;
 window.cancelTradeOffer = cancelTradeOffer;
 // ========== FUNÇÃO PARA ABRIR MODAL DE PRIVACIDADE ==========
 window.openPrivacyModal = function() {
-    // Mostra um toast informativo
-    showToast('📄 Política de Privacidade - Em breve disponível', 'info');
+    console.log('📄 Abrindo política de privacidade');
     
-    // Se você já tiver um modal de privacidade (linhas ~2600), use:
-    // showModal('privacyModal');
+    // Verifica se a função showToast existe
+    if (typeof showToast === 'function') {
+        showToast('📄 Política de Privacidade - Em breve disponível', 'info');
+    } else {
+        alert('📄 Política de Privacidade - Em breve disponível');
+    }
+    
+    // Se quiser abrir um modal, descomente:
+    // if (document.getElementById('privacyModal')) {
+    //     showModal('privacyModal');
+    // }
 };
-
-// ========== FUNÇÃO PARA FECHAR MODAL DE PRIVACIDADE (se existir) ==========
-window.closePrivacyModal = function() {
-    closeModal('privacyModal');
-};    
 
 </script> <!-- FIM DO SCRIPT -->
 </body>
