@@ -2441,35 +2441,40 @@
                 <input type="url" id="registerLinkField" class="form-control-custom" placeholder="YouTube, Spotify, etc.">
                 <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
             </div>
-<!-- ===== NOVA SEÇÃO: TERMOS DE USO (CORRETO AQUI) ===== -->
 <!-- ===== TERMOS DE USO (VERSÃO SIMPLES) ===== -->
+<!-- ===== TERMOS DE USO (CORRIGIDO) ===== -->
 <div class="terms-checkbox">
     <div class="mb-3">
-        <a href="/TERMOS DE USO - SELO MIV PLATFORM.pdf" target="_blank" class="auth-link">
-            <i class="bi bi-file-earmark-text"></i> Ler Termos de Uso (PDF)
+        <a href="/TERMOS DE USO - SELO MIV PLATFORM.pdf" target="_blank" class="auth-link" style="display: inline-flex; align-items: center; gap: 5px;">
+            <i class="bi bi-file-earmark-text"></i>
+            Ler Termos de Uso (PDF)
         </a>
         <span class="text-muted mx-2">|</span>
-        <a href="javascript:void(0)" onclick="openPrivacyModal()" class="auth-link">
-            <i class="bi bi-shield-lock"></i> Política de Privacidade
+        <a href="javascript:void(0)" onclick="openPrivacyModal()" class="auth-link" style="display: inline-flex; align-items: center; gap: 5px;">
+            <i class="bi bi-shield-lock"></i>
+            Política de Privacidade
         </a>
     </div>
     
     <label class="terms-label">
         <input type="checkbox" id="acceptTermsField" required>
         <span>
-            Li e concordo com os 
+            <strong class="text-white">Li e concordo</strong> com os 
             <a href="/TERMOS DE USO - SELO MIV PLATFORM.pdf" target="_blank" class="auth-link">Termos de Uso</a> 
             e a 
-            <a href="javascript:void(0)" onclick="openPrivacyModal()" class="auth-link">Política de Privacidade</a>.
-            Declaro ter 18 anos ou mais.
+            <a href="javascript:void(0)" onclick="openPrivacyModal()" class="auth-link">Política de Privacidade</a> 
+            do SELO MIV. Declaro ter 18 anos ou mais e estar ciente dos riscos dos investimentos em direitos musicais.
         </span>
     </label>
     
     <label class="terms-label" style="margin-top: 15px;">
         <input type="checkbox" id="acceptMarketingField">
-        <span class="text-muted">Aceito receber comunicações (opcional)</span>
+        <span class="text-muted" style="font-size: 0.9rem;">
+            Aceito receber comunicações sobre novidades, ofertas e recomendações personalizadas. (Opcional)
+        </span>
     </label>
 </div>
+<!-- ===== FIM DOS TERMOS ===== -->
     <!-- ===== FIM DA NOVA SEÇÃO ===== -->            
             <button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn">
     <i class="bi bi-person-plus"></i> Solicitar Cadastro
