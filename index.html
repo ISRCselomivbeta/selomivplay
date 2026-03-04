@@ -2690,6 +2690,49 @@
         font-size: 12px;
     }
 }
+        /* ===== GRID RESPONSIVO - CORREÇÃO DO TAMANHO DOS CARDS ===== */
+.spotify-grid {
+    display: grid;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+/* PC GRANDE - 6 cards */
+@media (min-width: 1400px) {
+    .spotify-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
+/* PC MÉDIO - 5 cards */
+@media (min-width: 1200px) and (max-width: 1399px) {
+    .spotify-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+/* NOTEBOOK - 4 cards */
+@media (min-width: 992px) and (max-width: 1199px) {
+    .spotify-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* TABLET - 3 cards */
+@media (min-width: 768px) and (max-width: 991px) {
+    .spotify-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+}
+
+/* CELULAR - 2 cards (igual Spotify) */
+@media (max-width: 767px) {
+    .spotify-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+}
 /* ===== CARD PARA SUGERIR MÚSICA ===== */
 .suggest-card {
     background: #181818;
