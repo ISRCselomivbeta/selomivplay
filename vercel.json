@@ -6,7 +6,7 @@
       "use": "@vercel/static"
     },
     {
-      "src": "api/backend.js",
+      "src": "api/**/*.js",
       "use": "@vercel/node"
     }
   ],
@@ -29,7 +29,7 @@
     },
     {
       "src": "/termos-de-uso.pdf",
-      "dest": "/public/termos-de-uso.pdf"
+      "dest": "/public/TERMOS DE USO - SELO MIV PLATFORM.pdf"
     },
     {
       "src": "/(.*)",
