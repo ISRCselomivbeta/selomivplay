@@ -3742,8 +3742,58 @@ const state = {
     isBuffering: false,
     playerReady: false
 }; // <-- A chave de fechamento DEVE estar aqui
+
+// ========== CONTROLE DE REQUISIÇÕES ==========
+const requestControl = {
+    lastSaldo: 0,
+    lastStreaming: 0,
+    lastExtrato: 0,
+    lastReset: Date.now(),
+    saldoCount: 0,
+    streamingCount: 0,
+    extratoCount: 0,
+    MIN_INTERVAL: 30000, // 30 segundos mínimo entre requisições
+    MAX_REQUESTS_PER_HOUR: 100
+};
+
+// Função para verificar se pode fazer requisição
+function canMakeRequest(type) {
+    const now = Date.now();
+    const last = requestControl[`last${type}`];
+    const count = requestControl[`${type.toLowerCase()}Count`];
+    
+    // Resetar contador a cada hora
+    if (now - requestControl.lastReset > 3600000) {
+        requestControl.saldoCount = 0;
+        requestControl.streamingCount = 0;
+        requestControl.extratoCount = 0;
+        requestControl.lastReset = now;
+    }
+    
+    // Verificar intervalo mínimo
+    if (now - last < requestControl.MIN_INTERVAL) {
+        console.log(`⏳ Bloqueado: ${type} - muito rápido (${Math.round((now - last)/1000)}s desde última)`);
+        return false;
+    }
+    
+    // Verificar limite por hora
+    if (count > requestControl.MAX_REQUESTS_PER_HOUR) {
+        console.log(`⚠️ Limite excedido: ${type} - ${count} requisições na última hora`);
+        return false;
+    }
+    
+    return true;
+}
+
+// Função para registrar requisição
+function registerRequest(type) {
+    requestControl[`last${type}`] = Date.now();
+    requestControl[`${type.toLowerCase()}Count`]++;
+}
+// ========== FIM DO CONTROLE DE REQUISIÇÕES ==========
+
     // ========== FUNÇÕES UTILITÁRIAS (DEFINIR PRIMEIRO) ==========
-function formatCurrency(value) {
+function formatCurrency(value) {    // ========== FUNÇÕES UTILITÁRIAS (DEFINIR PRIMEIRO) ==========
     if (value === null || value === undefined || isNaN(value)) value = 0;
     return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
