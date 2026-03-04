@@ -2349,541 +2349,6 @@
     font-size: 0.9rem;
     line-height: 1.4;
 }
-/* ===== CSS COMPLETO PARA VISUAL SPOTIFY ===== */
-
-/* Container principal do marketplace */
-.marketplace-spotify {
-    padding: 0 4px;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-}
-
-/* Cabeçalho das seções - IGUAL AO SPOTIFY */
-.section-header-spotify {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    padding: 0 8px;
-}
-
-.section-header-spotify h2 {
-    color: white;
-    font-size: 24px;
-    font-weight: 700;
-    margin: 0;
-}
-
-.section-header-spotify a {
-    color: #b3b3b3;
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: none;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: color 0.2s ease;
-}
-
-.section-header-spotify a:hover {
-    color: white;
-    text-decoration: underline;
-}
-
-/* Grid de cards - EXATAMENTE COMO O SPOTIFY */
-.spotify-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 20px;
-    margin-bottom: 32px;
-    padding: 0 8px;
-}
-
-/* Card individual - CÓPIA FIEL DO SPOTIFY */
-.spotify-card {
-    background: #181818;
-    border: none;
-    border-radius: 8px;
-    padding: 16px;
-    transition: background-color 0.3s ease;
-    cursor: pointer;
-    position: relative;
-    width: 100%;
-}
-
-.spotify-card:hover {
-    background: #282828;
-}
-
-.spotify-card:hover .play-overlay {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* Container da imagem - proporção 1:1 */
-.spotify-cover {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 1/1;
-    border-radius: 6px;
-    overflow: hidden;
-    margin-bottom: 16px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-}
-
-.spotify-cover img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-
-/* Overlay de play - BOTÃO VERDE DO SPOTIFY */
-.play-overlay {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    background: #1db954;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: black;
-    font-size: 24px;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-    opacity: 0;
-    transform: translateY(8px);
-    transition: all 0.3s ease;
-    cursor: pointer;
-    border: none;
-    z-index: 10;
-}
-
-.play-overlay:hover {
-    transform: scale(1.05) translateY(0);
-    background: #1ed760;
-}
-
-/* Título da música */
-.spotify-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: white;
-    margin: 0 0 4px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Artista/subtítulo */
-.spotify-artist {
-    font-size: 14px;
-    color: #b3b3b3;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.spotify-artist .text-white {
-    color: white !important;
-}
-
-/* Badge de artista (para "Elzo Henschell • Artista") */
-.artist-badge {
-    display: inline-block;
-    background: rgba(255,255,255,0.1);
-    border-radius: 4px;
-    padding: 4px 8px;
-    margin-top: 8px;
-    font-size: 12px;
-    color: #b3b3b3;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-}
-
-.artist-badge i {
-    color: #1db954;
-    margin-right: 4px;
-}
-
-/* Badge de percentual disponível */
-.spotify-card .badge {
-    background: rgba(29, 185, 84, 0.2);
-    color: #1db954;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 12px;
-    margin-top: 8px;
-    display: inline-block;
-}
-
-/* Seção recomendado - IGUAL AO SPOTIFY */
-.recommended-section {
-    margin-top: 24px;
-    padding: 0 8px;
-}
-
-.recommended-card {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 8px;
-    padding: 12px;
-    transition: background 0.3s ease;
-    cursor: pointer;
-    width: 100%;
-}
-
-.recommended-card:hover {
-    background: rgba(255,255,255,0.1);
-}
-
-.recommended-cover {
-    width: 60px;
-    height: 60px;
-    border-radius: 4px;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-.recommended-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.recommended-info h4 {
-    color: white;
-    font-size: 16px;
-    margin: 0 0 4px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.recommended-info p {
-    color: #b3b3b3;
-    font-size: 14px;
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.recommended-card .btn-success {
-    background: #1db954;
-    border: none;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.recommended-card .btn-success:hover {
-    background: #1ed760;
-    transform: scale(1.05);
-}
-
-/* Rodapé "Conexão com fio" */
-.connection-footer {
-    margin-top: 32px;
-    padding: 16px 8px;
-    border-top: 1px solid rgba(255,255,255,0.1);
-    color: #b3b3b3;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.connection-footer i {
-    color: #1db954;
-    font-size: 18px;
-}
-
-/* ===== RESPONSIVIDADE PARA CELULAR ===== */
-@media (max-width: 768px) {
-    .marketplace-spotify {
-        padding: 0;
-    }
-    
-    .section-header-spotify h2 {
-        font-size: 20px;
-    }
-    
-    .section-header-spotify a {
-        font-size: 12px;
-    }
-    
-    .spotify-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-        padding: 0 4px;
-    }
-    
-    .spotify-card {
-        padding: 12px;
-    }
-    
-    .play-overlay {
-        width: 40px;
-        height: 40px;
-        font-size: 20px;
-        bottom: 6px;
-        right: 6px;
-    }
-    
-    .spotify-title {
-        font-size: 14px;
-    }
-    
-    .spotify-artist {
-        font-size: 12px;
-    }
-    
-    .recommended-card {
-        padding: 8px;
-    }
-    
-    .recommended-cover {
-        width: 48px;
-        height: 48px;
-    }
-    
-    .recommended-info h4 {
-        font-size: 14px;
-    }
-    
-    .recommended-info p {
-        font-size: 12px;
-    }
-    
-    .connection-footer {
-        margin-top: 24px;
-        padding: 12px 8px;
-        font-size: 12px;
-    }
-}
-
-@media (max-width: 480px) {
-    .spotify-grid {
-        gap: 8px;
-    }
-    
-    .spotify-card {
-        padding: 8px;
-    }
-    
-    .play-overlay {
-        width: 36px;
-        height: 36px;
-        font-size: 18px;
-    }
-}
-
-/* Remove estilos conflitantes */
-.marketplace-filters,
-.filter-btn,
-.section-header {
-    /* Mantém os filtros funcionando, mas esconde se quiser */
-    /* display: none; /* Descomente se quiser esconder os filtros */
-}
-
-/* Garante que o grid não quebre */
-.music-grid.spotify-grid {
-    display: grid !important;
-}        
-/* ===== MARKETPLACE SPOTIFY - COMPLETO (PC E CELULAR) ===== */
-
-.marketplace-spotify {
-    width: 100%;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 16px;
-}
-
-/* Cabeçalho das seções */
-.section-header-spotify {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 24px 0 16px 0;
-}
-
-.section-header-spotify h2 {
-    color: white;
-    font-weight: 700;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.section-header-spotify a {
-    color: #b3b3b3;
-    font-weight: 600;
-    text-decoration: none;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: color 0.2s ease;
-}
-
-.section-header-spotify a:hover {
-    color: white;
-    text-decoration: underline;
-}
-
-/* Grid responsivo - muda conforme a tela */
-.spotify-grid {
-    display: grid;
-    gap: 20px;
-    margin-bottom: 24px;
-}
-
-/* PC (telas grandes) */
-@media (min-width: 1200px) {
-    .spotify-grid {
-        grid-template-columns: repeat(6, 1fr);
-    }
-}
-
-/* Notebook (telas médias) */
-@media (min-width: 992px) and (max-width: 1199px) {
-    .spotify-grid {
-        grid-template-columns: repeat(5, 1fr);
-    }
-}
-
-/* Tablet (telas pequenas) */
-@media (min-width: 768px) and (max-width: 991px) {
-    .spotify-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
-/* Celular (telas muito pequenas) */
-@media (max-width: 767px) {
-    .spotify-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-}
-
-/* Card padrão */
-.spotify-card {
-    background: #181818;
-    border-radius: 8px;
-    padding: 16px;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    position: relative;
-    width: 100%;
-}
-
-.spotify-card:hover {
-    background: #282828;
-    transform: translateY(-5px);
-}
-
-.spotify-card:active {
-    transform: scale(0.98);
-}
-
-/* Capa do card */
-.spotify-cover {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 1/1;
-    border-radius: 6px;
-    overflow: hidden;
-    margin-bottom: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-}
-
-.spotify-cover img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-
-/* Overlay de play - aparece no hover (PC) e no click (celular) */
-.play-overlay {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    background: #1db954;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: black;
-    font-size: 24px;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-    opacity: 0;
-    transform: translateY(8px);
-    transition: all 0.3s ease;
-    z-index: 10;
-}
-
-.spotify-card:hover .play-overlay {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.spotify-card:active .play-overlay {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.play-overlay:hover {
-    transform: scale(1.05);
-    background: #1ed760;
-}
-
-/* Título */
-.spotify-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: white;
-    margin: 0 0 4px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Artista */
-.spotify-artist {
-    font-size: 14px;
-    color: #b3b3b3;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Badge de percentual */
-.spotify-card .badge-custom {
-    background: rgba(29, 185, 84, 0.2);
-    color: #1db954;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 12px;
-    margin-top: 8px;
-    display: inline-block;
-}
-
-/* ===== BOLSA EXTERNA ===== */
 
 /* Badge da Bolsa Externa */
 .external-badge {
@@ -3225,7 +2690,106 @@
         font-size: 12px;
     }
 }
-        
+/* ===== CARD PARA SUGERIR MÚSICA ===== */
+.suggest-card {
+    background: #181818;
+    border: 2px dashed #ff6b6b;
+    border-radius: 8px;
+    padding: 24px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    height: 100%;
+    min-height: 200px;
+    transition: all 0.3s ease;
+}
+
+.suggest-card i {
+    font-size: 40px;
+    color: #ff6b6b;
+    margin-bottom: 12px;
+}
+
+.suggest-card h3 {
+    color: white;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.suggest-card p {
+    color: #b3b3b3;
+    font-size: 12px;
+}
+
+.suggest-card:hover {
+    background: #282828;
+    border-color: #ff6b6b;
+}
+
+/* ===== BOLSA EXTERNA ===== */
+.external-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(135deg, #ff6b6b, #ff4c4c);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 10px;
+    font-weight: 700;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+}
+
+.spotify-card.external-card {
+    border: 2px dashed rgba(255, 107, 107, 0.3);
+}
+
+.spotify-card.external-card:hover {
+    border-color: #ff6b6b;
+}
+
+.external-card .spotify-price {
+    color: #ff6b6b !important;
+}
+
+.external-progress {
+    margin-top: 12px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 10px;
+    color: #b3b3b3;
+}
+
+.progress-header span:last-child {
+    color: #ff6b6b;
+    font-weight: 600;
+}
+
+.progress-bar-bg {
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
+    width: 0%;
+    transition: width 0.3s ease;
+}        
         
     </style>
 </head>
@@ -3483,6 +3047,7 @@
         </div>
         
         <!-- Artistas e Playlists -->
+                <!-- Artistas e Playlists -->
         <div class="section-header-spotify" style="margin-top: 24px;">
             <h2>Artistas e Playlists</h2>
             <a href="#" onclick="changeSection('playlists')">Ver todas</a>
@@ -3491,6 +3056,20 @@
         <div id="artistsPlaylistsGrid" class="spotify-grid">
             <!-- Será preenchido com dados reais -->
         </div>
+        
+        <!-- ===== NOVO: BOLSA EXTERNA ===== -->
+        <div class="section-header-spotify" style="margin-top: 32px;">
+            <h2>
+                <i class="bi bi-globe" style="color: #ff6b6b; margin-right: 8px;"></i>
+                Bolsa Externa
+            </h2>
+            <a href="#" onclick="changeSection('external')">Ver todas</a>
+        </div>
+        
+        <div id="externalMarketplaceGrid" class="spotify-grid">
+            <!-- Músicas externas serão inseridas aqui -->
+        </div>
+        <!-- ===== FIM BOLSA EXTERNA ===== -->
         
         <!-- Recomendado para hoje -->
         <div class="recommended-section">
@@ -6211,111 +5790,162 @@ async function loadAllData() {
         }
     }
 
-// ========== RENDER MARKETPLACE COM VISUAL SPOTIFY E SEUS DADOS ==========
+// ========== RENDER MARKETPLACE COMPLETO (COM BOLSA EXTERNA) ==========
 function renderMarketplace() {
     const container = document.getElementById('marketplaceContent');
     const artistsGrid = document.getElementById('artistsPlaylistsGrid');
+    const externalGrid = document.getElementById('externalMarketplaceGrid');
     const recommendedCard = document.getElementById('recommendedCard');
-    
     if (!container) return;
     
+    // ===== 1. RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) =====
     if (!state.playlist || state.playlist.length === 0) {
         container.innerHTML = `
             <div class="empty-state-spotify" style="grid-column: 1/-1;">
                 <i class="bi bi-music-note-beamed" style="font-size: 4rem; color: #1DB954;"></i>
-                <h3 style="color: white; margin-top: 1rem;">Nenhuma música disponível</h3>
-                <p style="color: #b3b3b3;">As novidades chegarão em breve!</p>
+                <h3 style="color: white;">Nenhuma música disponível</h3>
             </div>
         `;
-        return;
-    }
-    
-    // PEGAR SEUS DADOS REAIS
-    const musicas = state.playlist;
-    
-    // ===== 1. PRIMEIRA LINHA: "Seus mixes mais ouvidos" (primeiras 3 músicas) =====
-    const mixes = musicas.slice(0, 3);
-    container.innerHTML = mixes.map((track, index) => {
-        // Pega a imagem real do seu site
-        let coverImage = track.link_capa?.trim() || 
-            'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800';
-        
-        return `
-        <div class="spotify-card" onclick="playTrack(${index})">
-            <div class="spotify-cover">
-                <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                     onerror="this.onerror=null; this.src='${PLACEHOLDERS.MIV_300.replace(/'/g, '%27')}'">
-                <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
-                    <i class="bi bi-play-fill"></i>
+    } else {
+        const mixes = state.playlist.slice(0, 3);
+        container.innerHTML = mixes.map((track, index) => {
+            let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+            
+            return `
+            <div class="spotify-card" onclick="playTrack(${index})">
+                <div class="spotify-cover">
+                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                         onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
+                        <i class="bi bi-play-fill"></i>
+                    </div>
+                </div>
+                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+                <p class="spotify-artist">
+                    ${track.artista || 'Artista'} <span class="text-white">e mais</span>
+                </p>
+                <div style="margin-top: 8px;">
+                    <span class="badge" style="background: rgba(29, 185, 84, 0.2); color: #1DB954;">
+                        ${track.percentual_disponivel || 0}% disponível
+                    </span>
                 </div>
             </div>
-            <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
-            <p class="spotify-artist">
-                ${track.artista || 'Artista'} <span class="text-white">e mais</span>
-            </p>
-            <div style="margin-top: 8px;">
-                <span class="badge" style="background: rgba(29, 185, 84, 0.2); color: #1DB954;">
-                    ${track.percentual_disponivel || 0}% disponível
-                </span>
-            </div>
-        </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
+    }
     
-    // ===== 2. SEGUNDA LINHA: "Artistas e Playlists" (próximas 4 músicas) =====
-    if (artistsGrid) {
-        const artists = musicas.slice(3, 7);
+    // ===== 2. RENDERIZAR ARTISTAS E PLAYLISTS =====
+    if (artistsGrid && state.playlist.length > 3) {
+        const artists = state.playlist.slice(3, 7);
         artistsGrid.innerHTML = artists.map((track, idx) => {
-            const originalIndex = idx + 3; // índice real na playlist
-            let coverImage = track.link_capa?.trim() || 
-                'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800';
+            const originalIndex = idx + 3;
+            let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
             
-            // Determinar se é álbum, playlist ou artista
-            let badge = '';
-            if (idx === 0) badge = 'Álbum';
-            else if (idx === 1) badge = 'Playlist';
-            else if (idx === 2) badge = 'Playlist';
-            else badge = 'Mixtape';
+            let badge = idx === 0 ? 'Álbum' : (idx === 1 ? 'Playlist' : (idx === 2 ? 'Playlist' : 'Mixtape'));
             
             return `
             <div class="spotify-card" onclick="playTrack(${originalIndex})">
                 <div class="spotify-cover">
                     <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                         onerror="this.onerror=null; this.src='${PLACEHOLDERS.MIV_300.replace(/'/g, '%27')}'">
+                         onerror="this.src='${PLACEHOLDERS.MIV_300}'">
                     <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${originalIndex})">
                         <i class="bi bi-play-fill"></i>
                     </div>
                 </div>
                 <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
                 <p class="spotify-artist">${badge} • ${track.artista?.substring(0, 15) || 'Artista'}</p>
-                ${idx === 0 ? `
-                <div class="artist-badge">
-                    <i class="bi bi-person-fill"></i> ${track.artista || 'Artista'} • Artista
-                </div>` : ''}
             </div>
             `;
         }).join('');
     }
     
-    // ===== 3. RECOMENDADO PARA HOJE (primeira música) =====
-    if (recommendedCard && musicas.length > 0) {
-        const primeira = musicas[0];
-        let coverImage = primeira.link_capa?.trim() || 
-            'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800';
+    // ===== 3. RENDERIZAR BOLSA EXTERNA =====
+    if (externalGrid) {
+        if (!state.externalPlaylist || state.externalPlaylist.length === 0) {
+            externalGrid.innerHTML = `
+                <div class="suggest-card" onclick="openAddExternalMusicModal()">
+                    <i class="bi bi-plus-circle"></i>
+                    <h3>Sugerir Música</h3>
+                    <p>Seja o primeiro a sugerir</p>
+                </div>
+            `;
+        } else {
+            const externas = state.externalPlaylist.slice(0, 4);
+            externalGrid.innerHTML = externas.map((track, index) => {
+                let coverImage = PLACEHOLDERS.EXT_300;
+                
+                if (track.link_capa?.trim()) {
+                    coverImage = track.link_capa.trim();
+                } else if (track.link_youtube) {
+                    const videoId = extractYouTubeId(track.link_youtube);
+                    if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                }
+                
+                const vendasAtuais = track.vendas_atuais || 0;
+                const metaVendas = track.meta_vendas || 1000000;
+                const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
+                
+                return `
+                <div class="spotify-card external-card" onclick="playExternalTrack(${index})">
+                    <div class="external-badge">
+                        <i class="bi bi-globe"></i> BOLSA EXTERNA
+                    </div>
+                    <div class="spotify-cover">
+                        <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                             onerror="this.src='${PLACEHOLDERS.EXT_300}'">
+                        <div class="play-overlay" onclick="event.stopPropagation(); playExternalTrack(${index})">
+                            <i class="bi bi-play-fill"></i>
+                        </div>
+                    </div>
+                    <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+                    <p class="spotify-artist">${track.artista || 'Artista'}</p>
+                    
+                    <div class="spotify-stats">
+                        <span class="spotify-elo" style="background: rgba(255,107,107,0.2); color: #ff6b6b;">
+                            🚀 Pré-lançamento
+                        </span>
+                        <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
+                    </div>
+                    
+                    <div class="external-progress">
+                        <div class="progress-header">
+                            <span>Progresso</span>
+                            <span>${progressPercent}%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: ${progressPercent}%;"></div>
+                        </div>
+                        <div class="progress-header" style="margin-top: 4px;">
+                            <span>${formatCurrency(vendasAtuais)}</span>
+                            <span>Meta: ${formatCurrency(metaVendas)}</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-invest" onclick="event.stopPropagation(); openInvestExternalModal(${index})" 
+                            style="border-color: #ff6b6b; color: #ff6b6b;">
+                        <i class="bi bi-coin me-1"></i> INVESTIR
+                    </button>
+                </div>
+                `;
+            }).join('');
+        }
+    }
+    
+    // ===== 4. RENDERIZAR RECOMENDADO =====
+    if (recommendedCard && state.playlist.length > 0) {
+        const primeira = state.playlist[0];
+        let coverImage = primeira.link_capa?.trim() || PLACEHOLDERS.MIV_300;
         
         recommendedCard.innerHTML = `
             <img src="${coverImage}" alt="${primeira.titulo}" class="recommended-cover"
-                 onerror="this.onerror=null; this.src='${PLACEHOLDERS.MIV_300.replace(/'/g, '%27')}'">
+                 onerror="this.src='${PLACEHOLDERS.MIV_300}'">
             <div class="recommended-info">
                 <h4>${primeira.titulo} • ${primeira.artista}</h4>
                 <p>Conexão com fio • ${formatCurrency(primeira.valor_acao || 0)} por ação</p>
             </div>
-            <div class="ms-auto">
-                <button class="btn btn-success btn-sm rounded-circle" onclick="playTrack(0)" 
-                        style="width: 40px; height: 40px;">
-                    <i class="bi bi-play-fill"></i>
-                </button>
-            </div>
+            <button class="btn-play" onclick="playTrack(0)">
+                <i class="bi bi-play-fill"></i>
+            </button>
         `;
     }
 }
