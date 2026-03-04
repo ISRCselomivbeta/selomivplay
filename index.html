@@ -2591,30 +2591,46 @@
     </header>
 
     <!-- Main Content -->
-<!-- Marketplace Section -->
+<!-- Marketplace Section - Estilo Spotify com dados reais -->
 <section id="marketplaceSection" class="section active">
-    <div class="section-header">
-        <h2 class="section-title">
-            Marketplace Musical
-        </h2>
-        <div class="marketplace-filters">
-            <button class="filter-btn active" onclick="filterMarketplace('all')">Todos</button>
-            <button class="filter-btn" onclick="filterMarketplace('trending')">🔥 Trending</button>
-            <button class="filter-btn" onclick="filterMarketplace('new')">🆕 Novidades</button>
-            <button class="filter-btn" onclick="filterMarketplace('invest')">💰 Top Investimentos</button>
+    <div class="marketplace-spotify">
+        <!-- Seus mixes mais ouvidos (seus dados) -->
+        <div class="section-header-spotify">
+            <h2>Seus mixes mais ouvidos</h2>
+            <a href="#" onclick="filterMarketplace('trending')">Mostrar tudo</a>
         </div>
-        <div>
-            <small class="text-muted">Taxa 0% em compras</small>
-            <button class="btn btn-sm btn-outline-warning ms-2" onclick="showELORanking()">
-                <i class="bi bi-trophy-fill"></i> Ranking ELO
-            </button>
-            <button class="btn btn-sm btn-outline-success ms-2" onclick="loadMarketplace(true)">
-                <i class="bi bi-arrow-clockwise"></i>
-            </button>
+        
+        <!-- Grid que será preenchido com seus dados -->
+        <div id="marketplaceContent" class="spotify-grid">
+            <!-- Os cards serão inseridos aqui pelo JavaScript -->
         </div>
-    </div>
-    <div id="marketplaceContent" class="music-grid">
-        <!-- Music cards will be loaded here -->
+        
+        <!-- Artistas e Playlists (segunda linha - também seus dados) -->
+        <div class="section-header-spotify" style="margin-top: 32px;">
+            <h2>Artistas e Playlists</h2>
+            <a href="#" onclick="changeSection('playlists')">Ver todas</a>
+        </div>
+        
+        <div id="artistsPlaylistsGrid" class="spotify-grid">
+            <!-- Será preenchido com dados reais -->
+        </div>
+        
+        <!-- Recomendado para hoje (primeira música) -->
+        <div class="recommended-section">
+            <div class="section-header-spotify">
+                <h2>Recomendado para hoje</h2>
+            </div>
+            
+            <div id="recommendedCard" class="recommended-card">
+                <!-- Será preenchido com a primeira música -->
+            </div>
+        </div>
+        
+        <!-- Conexão com fio -->
+        <div class="connection-footer">
+            <i class="bi bi-bluetooth"></i>
+            <span>Conexão com fio • SELO MIV Streaming</span>
+        </div>
     </div>
 </section>
         <!-- Portfolio Section -->
@@ -5318,14 +5334,17 @@ async function loadAllData() {
         }
     }
 
-// ========== RENDER MARKETPLACE SPOTIFY-STYLE ==========
+// ========== RENDER MARKETPLACE COM VISUAL SPOTIFY E SEUS DADOS ==========
 function renderMarketplace() {
     const container = document.getElementById('marketplaceContent');
+    const artistsGrid = document.getElementById('artistsPlaylistsGrid');
+    const recommendedCard = document.getElementById('recommendedCard');
+    
     if (!container) return;
     
     if (!state.playlist || state.playlist.length === 0) {
         container.innerHTML = `
-            <div class="empty-state-spotify">
+            <div class="empty-state-spotify" style="grid-column: 1/-1;">
                 <i class="bi bi-music-note-beamed" style="font-size: 4rem; color: #1DB954;"></i>
                 <h3 style="color: white; margin-top: 1rem;">Nenhuma música disponível</h3>
                 <p style="color: #b3b3b3;">As novidades chegarão em breve!</p>
@@ -5334,21 +5353,15 @@ function renderMarketplace() {
         return;
     }
     
-    container.innerHTML = state.playlist.map((track, index) => {
-        // ELO data
-        const eloRating = track.elo_rating || 1400;
-        const eloLevel = eloRating >= 2000 ? '🔥 Top' : 
-                        eloRating >= 1700 ? '📈 Trending' : '🎵 Nova';
-        
-        // Cover image
+    // PEGAR SEUS DADOS REAIS
+    const musicas = state.playlist;
+    
+    // ===== 1. PRIMEIRA LINHA: "Seus mixes mais ouvidos" (primeiras 3 músicas) =====
+    const mixes = musicas.slice(0, 3);
+    container.innerHTML = mixes.map((track, index) => {
+        // Pega a imagem real do seu site
         let coverImage = track.link_capa?.trim() || 
             'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800';
-        
-        // Percentual vendido
-        const percentSold = track.percentual_disponivel ? 
-            ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100).toFixed(0) : 0;
-        
-        const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
         
         return `
         <div class="spotify-card" onclick="playTrack(${index})">
@@ -5358,42 +5371,76 @@ function renderMarketplace() {
                 <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
                     <i class="bi bi-play-fill"></i>
                 </div>
-                <div class="position-absolute top-0 start-0 m-2" style="z-index: 5;">
-                    <button class="favorite-btn ${isFavorite ? 'active' : ''}" 
-                            onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${index})"
-                            style="background: rgba(0,0,0,0.5); border-radius: 50%; width: 32px; height: 32px;">
-                        <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}" style="color: #ffc107;"></i>
-                    </button>
-                </div>
             </div>
-            
-            <div class="spotify-title">${track.titulo || 'Sem título'}</div>
-            <div class="spotify-artist">${track.artista || 'Artista'}</div>
-            
-            <div class="spotify-stats">
-                <span class="spotify-elo">${eloLevel}</span>
-                <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
+            <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+            <p class="spotify-artist">
+                ${track.artista || 'Artista'} <span class="text-white">e mais</span>
+            </p>
+            <div style="margin-top: 8px;">
+                <span class="badge" style="background: rgba(29, 185, 84, 0.2); color: #1DB954;">
+                    ${track.percentual_disponivel || 0}% disponível
+                </span>
             </div>
-            
-            <div style="margin-top: 8px; position: relative;">
-                <div style="height: 4px; background: #282828; border-radius: 2px; overflow: hidden;">
-                    <div style="width: ${percentSold}%; height: 100%; background: #1DB954;"></div>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-                    <small style="color: #b3b3b3;">${percentSold}% vendido</small>
-                    <small style="color: #1DB954;">${track.acoes_disponiveis || 0} ações</small>
-                </div>
-            </div>
-            
-            <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})">
-                <i class="bi bi-currency-dollar me-1"></i> INVESTIR
-            </button>
-            
-            ${track.blockchain_hash ? 
-                '<div style="margin-top: 4px; text-align: right;"><span class="blockchain-badge">⛓️</span></div>' : ''}
         </div>
         `;
     }).join('');
+    
+    // ===== 2. SEGUNDA LINHA: "Artistas e Playlists" (próximas 4 músicas) =====
+    if (artistsGrid) {
+        const artists = musicas.slice(3, 7);
+        artistsGrid.innerHTML = artists.map((track, idx) => {
+            const originalIndex = idx + 3; // índice real na playlist
+            let coverImage = track.link_capa?.trim() || 
+                'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800';
+            
+            // Determinar se é álbum, playlist ou artista
+            let badge = '';
+            if (idx === 0) badge = 'Álbum';
+            else if (idx === 1) badge = 'Playlist';
+            else if (idx === 2) badge = 'Playlist';
+            else badge = 'Mixtape';
+            
+            return `
+            <div class="spotify-card" onclick="playTrack(${originalIndex})">
+                <div class="spotify-cover">
+                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                         onerror="this.onerror=null; this.src='${PLACEHOLDERS.MIV_300.replace(/'/g, '%27')}'">
+                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${originalIndex})">
+                        <i class="bi bi-play-fill"></i>
+                    </div>
+                </div>
+                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+                <p class="spotify-artist">${badge} • ${track.artista?.substring(0, 15) || 'Artista'}</p>
+                ${idx === 0 ? `
+                <div class="artist-badge">
+                    <i class="bi bi-person-fill"></i> ${track.artista || 'Artista'} • Artista
+                </div>` : ''}
+            </div>
+            `;
+        }).join('');
+    }
+    
+    // ===== 3. RECOMENDADO PARA HOJE (primeira música) =====
+    if (recommendedCard && musicas.length > 0) {
+        const primeira = musicas[0];
+        let coverImage = primeira.link_capa?.trim() || 
+            'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800';
+        
+        recommendedCard.innerHTML = `
+            <img src="${coverImage}" alt="${primeira.titulo}" class="recommended-cover"
+                 onerror="this.onerror=null; this.src='${PLACEHOLDERS.MIV_300.replace(/'/g, '%27')}'">
+            <div class="recommended-info">
+                <h4>${primeira.titulo} • ${primeira.artista}</h4>
+                <p>Conexão com fio • ${formatCurrency(primeira.valor_acao || 0)} por ação</p>
+            </div>
+            <div class="ms-auto">
+                <button class="btn btn-success btn-sm rounded-circle" onclick="playTrack(0)" 
+                        style="width: 40px; height: 40px;">
+                    <i class="bi bi-play-fill"></i>
+                </button>
+            </div>
+        `;
+    }
 }
 
     // ========== FUNÇÕES DE FILTRO DO MARKETPLACE ==========
