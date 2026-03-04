@@ -8334,21 +8334,94 @@ window.acceptTradeOffer = acceptTradeOffer;
 window.declineTradeOffer = declineTradeOffer;
 window.cancelTradeOffer = cancelTradeOffer;
 // ========== FUNÇÃO PARA ABRIR MODAL DE PRIVACIDADE ==========
+// ========== FUNÇÃO PARA ABRIR MODAL DE PRIVACIDADE ==========
 window.openPrivacyModal = function() {
     console.log('📄 Abrindo política de privacidade');
     
-    // Verifica se a função showToast existe
+    // MÉTODO 1: Toast (se existir)
     if (typeof showToast === 'function') {
-        showToast('📄 Política de Privacidade - Em breve disponível', 'info');
-    } else {
-        alert('📄 Política de Privacidade - Em breve disponível');
+        showToast('📄 Política de Privacidade - Em breve disponível', 'info', 5000);
     }
     
-    // Se quiser abrir um modal, descomente:
-    // if (document.getElementById('privacyModal')) {
-    //     showModal('privacyModal');
-    // }
+    // MÉTODO 2: Alert (funciona sempre)
+    setTimeout(() => {
+        alert('📄 Política de Privacidade\n\nEm breve disponível no SELO MIV.');
+    }, 100);
+    
+    // MÉTODO 3: Modal (se existir)
+    const modal = document.getElementById('privacyModal');
+    if (modal && typeof showModal === 'function') {
+        showModal('privacyModal');
+    } else {
+        // Se não tiver modal, cria um temporário
+        criarModalPrivacidade();
+    }
 };
+
+// Função auxiliar para criar modal temporário
+function criarModalPrivacidade() {
+    // Remove modal antigo se existir
+    const oldModal = document.getElementById('tempPrivacyModal');
+    if (oldModal) oldModal.remove();
+    
+    // Cria overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'tempPrivacyModal';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+    `;
+    
+    // Cria conteúdo
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: #111418;
+        border: 1px solid #00ff88;
+        border-radius: 1rem;
+        padding: 2rem;
+        max-width: 500px;
+        width: 90%;
+        color: white;
+        position: relative;
+    `;
+    
+    content.innerHTML = `
+        <h3 style="color: #00ff88; margin-bottom: 1rem;">
+            <i class="bi bi-shield-lock"></i> Política de Privacidade
+        </h3>
+        <p style="margin-bottom: 1rem; line-height: 1.6;">
+            A Política de Privacidade do SELO MIV está sendo elaborada 
+            com base na LGPD (Lei Geral de Proteção de Dados).
+        </p>
+        <p style="margin-bottom: 1.5rem; color: #00ff88;">
+            ⚡ Em breve disponível!
+        </p>
+        <button onclick="this.closest('#tempPrivacyModal').remove()" 
+                style="
+                    background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+                    border: none;
+                    border-radius: 0.75rem;
+                    color: #000;
+                    font-weight: 700;
+                    padding: 0.75rem 1.5rem;
+                    cursor: pointer;
+                    width: 100%;
+                ">
+            Fechar
+        </button>
+    `;
+    
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+}
 
 </script> <!-- FIM DO SCRIPT -->
 </body>
