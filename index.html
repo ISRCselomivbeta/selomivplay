@@ -2224,6 +2224,131 @@
     font-size: 10px;
     font-weight: bold;
 }        
+
+/* ===== TERMOS DE USO ===== */
+.terms-content {
+    color: #e0e0e0;
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+.terms-content h2 {
+    color: var(--neon-green);
+    font-size: 1.3rem;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid rgba(0,255,136,0.2);
+    padding-bottom: 8px;
+}
+
+.terms-content h3 {
+    color: #fff;
+    font-size: 1.1rem;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.terms-content p {
+    margin-bottom: 12px;
+}
+
+.terms-content ul, .terms-content ol {
+    padding-left: 25px;
+    margin-bottom: 15px;
+}
+
+.terms-content li {
+    margin-bottom: 5px;
+}
+
+.terms-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.terms-content th, .terms-content td {
+    padding: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    text-align: left;
+}
+
+.terms-content th {
+    background: rgba(0,255,136,0.1);
+    color: var(--neon-green);
+}
+
+.terms-checkbox {
+    border: 1px solid rgba(0,255,136,0.2);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
+    background: rgba(255,255,255,0.03);
+}
+
+.terms-checkbox:hover {
+    border-color: var(--neon-green);
+    transition: border-color 0.3s ease;
+}
+
+.terms-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.terms-label input[type="checkbox"] {
+    margin-top: 3px;
+    width: 18px;
+    height: 18px;
+}
+
+/* Melhorias para o checkbox */
+.terms-label input[type="checkbox"] {
+    accent-color: var(--neon-green);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.terms-label:hover {
+    background: rgba(0, 255, 136, 0.05);
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.terms-checkbox {
+    border: 1px solid rgba(0,255,136,0.2);
+    padding: 15px;
+    border-radius: 12px;
+    margin: 20px 0;
+    background: rgba(0,0,0,0.2);
+}
+
+.terms-checkbox .auth-link {
+    font-size: 0.9rem;
+}
+
+/* Destaque para links dentro dos termos */
+.terms-label .auth-link {
+    color: var(--neon-green);
+    text-decoration: underline;
+    text-decoration-color: rgba(0,255,136,0.3);
+}
+
+.terms-label .auth-link:hover {
+    text-decoration-color: var(--neon-green);
+}        
+
+.terms-label span {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
         
     </style>
 </head>
@@ -2316,6 +2441,39 @@
                 <input type="url" id="registerLinkField" class="form-control-custom" placeholder="YouTube, Spotify, etc.">
                 <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
             </div>
+<!-- ===== NOVA SEÇÃO: TERMOS DE USO (CORRETO AQUI) ===== -->
+    <div class="terms-checkbox">
+        <div class="mb-3">
+            <a href="javascript:void(0)" onclick="openTermsModal()" class="auth-link" style="display: inline-flex; align-items: center; gap: 5px;">
+                <i class="bi bi-file-earmark-text"></i>
+                Ler Termos de Uso
+            </a>
+            <span class="text-muted mx-2">|</span>
+            <a href="javascript:void(0)" onclick="openPrivacyModal()" class="auth-link" style="display: inline-flex; align-items: center; gap: 5px;">
+                <i class="bi bi-shield-lock"></i>
+                Política de Privacidade
+            </a>
+        </div>
+        
+        <label class="terms-label">
+            <input type="checkbox" id="acceptTermsField" required>
+            <span>
+                Li e concordo com os 
+                <a href="javascript:void(0)" onclick="openTermsModal()" class="auth-link">Termos de Uso</a> 
+                e a 
+                <a href="javascript:void(0)" onclick="openPrivacyModal()" class="auth-link">Política de Privacidade</a> 
+                do SELO MIV. Declaro ter 18 anos ou mais e estar ciente dos riscos dos investimentos em direitos musicais.
+            </span>
+        </label>
+        
+        <label class="terms-label" style="margin-top: 15px;">
+            <input type="checkbox" id="acceptMarketingField">
+            <span class="text-muted" style="font-size: 0.9rem;">
+                Aceito receber comunicações sobre novidades, ofertas e recomendações personalizadas. (Opcional)
+            </span>
+        </label>
+    </div>
+    <!-- ===== FIM DA NOVA SEÇÃO ===== -->            
             <button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn">
     <i class="bi bi-person-plus"></i> Solicitar Cadastro
 </button>
@@ -3686,7 +3844,67 @@
         </div>
     </div>
 </div>
+        <!-- TERMS MODAL -->
+        <div id="termsModal" class="modal-overlay">
+            <div class="modal-content" style="max-width: 800px; max-height: 80vh;">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-file-earmark-text me-2"></i> 
+                        Termos de Uso - SELO MIV
+                    </h5>
+                    <button class="modal-close" onclick="closeModal('termsModal')">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="modal-body" style="overflow-y: auto; max-height: 60vh; padding: 20px;">
+                    <div id="termsContent" class="terms-content">
+                        <!-- O conteúdo será carregado via JavaScript -->
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-success"></div>
+                            <p class="mt-3">Carregando Termos de Uso...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display: flex; justify-content: space-between;">
+                    <div>
+                        <small class="text-muted">Versão 6.0.0 - Atualizado em 04/03/2026</small>
+                    </div>
+                    <div>
+                        <button class="btn btn-secondary" onclick="closeModal('termsModal')">Fechar</button>
+                        <button class="btn btn-success" onclick="acceptTermsFromModal()">
+                            <i class="bi bi-check-circle me-2"></i>Concordo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <!-- PRIVACY MODAL -->
+        <div id="privacyModal" class="modal-overlay">
+            <div class="modal-content" style="max-width: 800px; max-height: 80vh;">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-shield-lock me-2"></i> 
+                        Política de Privacidade
+                    </h5>
+                    <button class="modal-close" onclick="closeModal('privacyModal')">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="modal-body" style="overflow-y: auto; max-height: 60vh; padding: 20px;">
+                    <div id="privacyContent">
+                        <!-- Conteúdo será carregado via JavaScript -->
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-info"></div>
+                            <p class="mt-3">Carregando Política de Privacidade...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal('privacyModal')">Fechar</button>
+                </div>
+            </div>
+        </div>
 <!-- JavaScript -->
 <script>
     // ========== CONFIGURAÇÃO ==========
@@ -4848,15 +5066,18 @@ async function handleLogin() {
         hideLoading();
     }
 }
-// ========== REGISTER COM CONFIRMAÇÃO DE EMAIL ==========
+// Modificar a função handleRegister para ter DUAS validações
 async function handleRegister() {
     const name = document.getElementById('registerNameField')?.value?.trim();
     const email = document.getElementById('registerEmailField')?.value?.trim();
     const password = document.getElementById('registerPasswordField')?.value?.trim();
     const type = document.getElementById('registerTypeField')?.value;
     const link = document.getElementById('registerLinkField')?.value?.trim() || '';
+    const acceptTerms = document.getElementById('acceptTermsField')?.checked;
+    const acceptMarketing = document.getElementById('acceptMarketingField')?.checked || false;
     const registerBtn = document.getElementById('registerBtn');
 
+    // Validações existentes
     if (!name || !email || !password || !type) { 
         showToast('Preencha todos os campos obrigatórios', 'error'); 
         return; 
@@ -4869,19 +5090,37 @@ async function handleRegister() {
         showToast('Digite um e-mail válido', 'error'); 
         return; 
     }
+    
+    // VALIDAÇÃO DO TERMO (DUPLA SEGURANÇA)
+    if (!acceptTerms) {
+        showToast('Você precisa aceitar os Termos de Uso para continuar', 'error');
+        return;
+    }
+
+    // Verificar se o checkbox realmente está marcado (redundante, mas seguro)
+    const termsCheckbox = document.getElementById('acceptTermsField');
+    if (!termsCheckbox || !termsCheckbox.checked) {
+        showToast('Marque a caixa de aceite dos Termos de Uso', 'error');
+        return;
+    }
 
     registerBtn.disabled = true;
     registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
     showLoading('Criando conta...');
 
     try {
+        // Incluir os termos aceitos no registro
         const result = await callAPI('register', { 
             nome: name, 
             email, 
             senha: password, 
             tipo: type, 
             workLink: link,
-            confirm_url: window.location.origin + '/confirm-email.html'
+            confirm_url: window.location.origin + '/confirm-email.html',
+            accepted_terms: true,
+            terms_version: '6.0.0',
+            terms_accepted_at: new Date().toISOString(),
+            accepted_marketing: acceptMarketing
         });
         
         if (result?.success) {
@@ -4893,8 +5132,9 @@ async function handleRegister() {
             document.getElementById('registerPasswordField').value = '';
             document.getElementById('registerTypeField').value = '';
             document.getElementById('registerLinkField').value = '';
+            document.getElementById('acceptTermsField').checked = false;
+            document.getElementById('acceptMarketingField').checked = false;
             
-            // Voltar para login
             showLoginForm();
             
             setTimeout(() => {
