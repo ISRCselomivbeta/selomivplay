@@ -29,11 +29,7 @@
     },
     {
       "src": "/termos-de-uso.pdf",
-      "dest": "/public/TERMOS DE USO - SELO MIV PLATFORM.pdf"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "/public/TERMOS%20DE%20USO%20-%20SELO%20MIV%20PLATFORM.pdf"
     }
   ]
 }
