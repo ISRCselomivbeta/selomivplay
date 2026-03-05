@@ -106,6 +106,12 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        
+        .small-text {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -118,6 +124,7 @@
             <h3 class="mb-3">Confirmando Email</h3>
             <div class="loading-spinner"></div>
             <p class="text-muted">Aguarde enquanto confirmamos seu email...</p>
+            <p class="small-text">Isso pode levar alguns segundos</p>
         </div>
         
         <!-- Success State -->
@@ -129,10 +136,11 @@
                 <i class="bi bi-check-circle-fill"></i>
             </div>
             <h3 class="mb-3">Email Confirmado!</h3>
-            <p class="text-muted mb-4" id="successMessage">Seu email foi confirmado com sucesso. Agora você pode fazer login na plataforma.</p>
+            <p class="text-muted mb-4" id="successMessage">Seu email foi confirmado com sucesso.</p>
             <a href="https://selomivplay.vercel.app" class="btn-miv">
                 <i class="bi bi-box-arrow-in-right me-2"></i>Ir para Login
             </a>
+            <p class="small-text mt-3">Redirecionando em 5 segundos...</p>
         </div>
         
         <!-- Error State -->
@@ -145,8 +153,8 @@
             </div>
             <h3 class="mb-3">Erro na Confirmação</h3>
             <p class="text-muted mb-4" id="errorMessage">O link de confirmação é inválido ou expirou.</p>
-            <a href="https://selomivplay.vercel.app/reset-password.html" class="btn-miv">
-                <i class="bi bi-envelope me-2"></i>Solicitar novo link
+            <a href="https://selomivplay.vercel.app" class="btn-miv">
+                <i class="bi bi-house me-2"></i>Voltar para o Início
             </a>
         </div>
         
@@ -159,10 +167,11 @@
                 <i class="bi bi-check-circle-fill"></i>
             </div>
             <h3 class="mb-3">Email Já Confirmado</h3>
-            <p class="text-muted mb-4">Este email já foi confirmado anteriormente. Você pode fazer login normalmente.</p>
+            <p class="text-muted mb-4">Este email já foi confirmado anteriormente.</p>
             <a href="https://selomivplay.vercel.app" class="btn-miv">
                 <i class="bi bi-box-arrow-in-right me-2"></i>Ir para Login
             </a>
+            <p class="small-text mt-3">Redirecionando em 3 segundos...</p>
         </div>
     </div>
 
@@ -176,20 +185,37 @@
             return urlParams.get('token');
         }
         
-        // ========== VERIFICAR SE É CONTA ANTIGA ==========
-        async function checkIfOldAccount(token) {
-            try {
-                const response = await fetch(`${API_URL}?action=check_old_account&token=${encodeURIComponent(token)}`, {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' }
-                });
-                
-                const result = await response.json();
-                return result;
-            } catch (error) {
-                console.error('Erro ao verificar conta antiga:', error);
-                return { success: false };
-            }
+        // ========== VALIDAR TOKEN ==========
+        function validateToken(token) {
+            return token && token.length >= 10;
+        }
+        
+        // ========== FUNÇÕES DE FEEDBACK ==========
+        function showSuccess(message) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('successState').style.display = 'block';
+            document.getElementById('successMessage').textContent = message || 'Email confirmado com sucesso!';
+            
+            // Redirecionar automaticamente após 5 segundos
+            setTimeout(() => {
+                window.location.href = 'https://selomivplay.vercel.app';
+            }, 5000);
+        }
+        
+        function showError(message) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message || 'Erro ao confirmar email';
+        }
+        
+        function showAlreadyConfirmed() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('alreadyConfirmedState').style.display = 'block';
+            
+            // Redirecionar automaticamente após 3 segundos
+            setTimeout(() => {
+                window.location.href = 'https://selomivplay.vercel.app';
+            }, 3000);
         }
         
         // ========== CONFIRMAR EMAIL ==========
@@ -201,62 +227,89 @@
                 return;
             }
             
+            if (!validateToken(token)) {
+                showError('Token de confirmação inválido');
+                return;
+            }
+            
+            // Timeout de segurança
+            const loadingTimeout = setTimeout(() => {
+                showError('Tempo limite excedido. Tente novamente.');
+            }, 10000);
+            
             try {
-                console.log('🔍 Confirmando email com token:', token);
+                console.log('🔍 Confirmando email com token:', token.substring(0, 10) + '...');
                 
-                // Primeiro verificar se é conta antiga
-                const oldCheck = await checkIfOldAccount(token);
-                
-                if (oldCheck.success && oldCheck.data?.is_old_account) {
-                    // É uma conta antiga - já está confirmada
-                    showAlreadyConfirmed('Esta é uma conta antiga. Seu email já está confirmado automaticamente.');
-                    return;
-                }
-                
-                // Chamar API para confirmar email (conta nova)
+                // Tentar confirmar diretamente
                 const response = await fetch(`${API_URL}?action=confirm_email&token=${encodeURIComponent(token)}`, {
                     method: 'GET',
-                    headers: { 'Accept': 'application/json' }
+                    headers: { 
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 
                 if (!response.ok) {
-                    throw new Error('Erro na confirmação');
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const result = await response.json();
                 console.log('✅ Resposta da API:', result);
                 
+                clearTimeout(loadingTimeout);
+                
                 if (result.success) {
                     if (result.data?.already_confirmed) {
-                        showAlreadyConfirmed(result.message || 'Email já estava confirmado');
+                        showAlreadyConfirmed();
                     } else {
-                        showSuccess(result.message || 'Email confirmado com sucesso!');
+                        showSuccess('Email confirmado com sucesso! Agora você pode fazer login.');
                     }
                 } else {
-                    showError(result.message || 'Erro ao confirmar email');
+                    // Se falhou, verificar se é conta antiga
+                    console.log('⚠️ Confirmação falhou, verificando se é conta antiga...');
+                    
+                    const oldCheckResponse = await fetch(`${API_URL}?action=check_old_account&token=${encodeURIComponent(token)}`, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    
+                    if (oldCheckResponse.ok) {
+                        const oldCheck = await oldCheckResponse.json();
+                        
+                        if (oldCheck.success && oldCheck.data?.is_old_account) {
+                            showAlreadyConfirmed();
+                            return;
+                        }
+                    }
+                    
+                    showError(result.message || 'Link de confirmação inválido ou expirado');
                 }
                 
             } catch (error) {
+                clearTimeout(loadingTimeout);
                 console.error('❌ Erro na confirmação:', error);
-                showError('Erro de conexão com o servidor');
+                
+                // Tentar fallback para conta antiga
+                try {
+                    const oldCheckResponse = await fetch(`${API_URL}?action=check_old_account&token=${encodeURIComponent(token)}`, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    
+                    if (oldCheckResponse.ok) {
+                        const oldCheck = await oldCheckResponse.json();
+                        
+                        if (oldCheck.success && oldCheck.data?.is_old_account) {
+                            showAlreadyConfirmed();
+                            return;
+                        }
+                    }
+                } catch (fallbackError) {
+                    console.error('Fallback também falhou:', fallbackError);
+                }
+                
+                showError('Erro de conexão com o servidor. Tente novamente mais tarde.');
             }
-        }
-        
-        function showSuccess(message) {
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('successState').style.display = 'block';
-            document.getElementById('successMessage').textContent = message;
-        }
-        
-        function showError(message) {
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('errorState').style.display = 'block';
-            document.getElementById('errorMessage').textContent = message;
-        }
-        
-        function showAlreadyConfirmed(message) {
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('alreadyConfirmedState').style.display = 'block';
         }
         
         // ========== INICIAR ==========
