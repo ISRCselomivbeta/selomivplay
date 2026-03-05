@@ -5431,40 +5431,7 @@ if (!state.playlist || state.playlist.length === 0) {
         </div>
         `;
     }).join('');
-}
-    // ===== ARTISTAS E PLAYLISTS (MESMO ESTILO) =====
-    if (artistsGrid && state.playlist && state.playlist.length > 3) {
-        const artistItems = state.playlist.slice(3, 7);
-        artistsGrid.innerHTML = artistItems.map((track, idx) => {
-            const originalIndex = idx + 3;
-            let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
-            const categories = ['Álbum', 'Playlist', 'Podcast', 'Rádio'];
-            const percentSold = track.percentual_disponivel ? 
-                Math.min(100, ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100)).toFixed(0) : 0;
-            
-            return `
-            <div class="spotify-card" onclick="playTrack(${originalIndex})">
-                <div class="spotify-cover">
-                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                         onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${originalIndex})">
-                        <i class="bi bi-play-fill"></i>
-                    </div>
-                </div>
-                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
-                <p class="spotify-artist">${categories[idx % categories.length]} • ${track.artista?.substring(0, 15) || 'Artista'}</p>
-                
-                <div class="spotify-stats">
-                    <span class="spotify-elo" style="background: rgba(29, 185, 84, 0.2); color: #1DB954;">
-                        ${percentSold}%
-                    </span>
-                    <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
-                </div>
-            </div>
-            `;
-        }).join('');
-    }
-    
+}    
     // ===== ARTISTAS E PLAYLISTS =====
     if (artistsGrid && state.playlist && state.playlist.length > 3) {
         const artistItems = state.playlist.slice(3, 7);
