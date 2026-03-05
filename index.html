@@ -33,85 +33,7 @@
             --blockchain-purple: #9b59b6;
             --royalty-gold: #f1c40f;
         }
-/* CORREÇÃO PARA TÍTULOS LONGOS - DESKTOP */
-@media (min-width: 768px) {
-    .spotify-card {
-        min-width: 0; /* Permite que o card encolha */
-        width: 100%;
-        overflow: hidden;
-    }
-    
-    .spotify-title {
-        font-size: 14px !important;
-        line-height: 1.3 !important;
-        margin-bottom: 4px !important;
-        white-space: normal !important; /* FORÇA QUEBRA DE LINHA */
-        word-wrap: break-word !important;
-        overflow-wrap: break-word !important;
-        max-height: 2.6em; /* Permite até 2 linhas */
-        display: -webkit-box;
-        -webkit-line-clamp: 2; /* Limita a 2 linhas */
-        -webkit-box-orient: vertical;
-        text-overflow: ellipsis;
-    }
-    
-    .spotify-artist {
-        font-size: 12px !important;
-        white-space: normal !important;
-        word-wrap: break-word !important;
-        max-height: 2.4em;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-    }
-    
-    /* Ajuste para o badge de status */
-    .status-aguardando,
-    .status-aprovado,
-    .status-rejeitado {
-        display: inline-block;
-        max-width: 100%;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 9px !important;
-    }
-    
-    /* Container do título para evitar overflow */
-    .spotify-card .text-container {
-        width: 100%;
-        overflow: hidden;
-    }
-}
-
-/* AJUSTE ESPECÍFICO PARA BOLSA EXTERNA */
-.external-card .spotify-title {
-    font-size: 13px !important;
-    margin-bottom: 2px !important;
-}
-
-.external-card .spotify-artist {
-    font-size: 11px !important;
-    margin-bottom: 2px !important;
-}
-
-/* Badge de status menor */
-.external-card .status-aguardando {
-    font-size: 8px !important;
-    padding: 2px 4px !important;
-    max-width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: inline-block;
-}
-
-/* Ajuste para o container do badge */
-.external-card div[style*="margin-top: 4px; margin-bottom: 8px;"] {
-    max-width: 100%;
-    overflow: hidden;
-}
-        
+       
         * {
             margin: 0;
             padding: 0;
@@ -1908,79 +1830,40 @@
             background: var(--spotify-green-hover);
             transform: scale(1.05);
         }
-      /* ===== CORREÇÕES PARA BOLSA EXTERNA ===== */
-#externalMarketplaceGrid.spotify-grid,
-#externalContent.spotify-grid {
-    display: grid !important;
-    gap: 24px !important;
-}
-
-/* CORREÇÃO: use a classe REAL do HTML */
-.external-investment-card {
-    border: 2px dashed rgba(255, 107, 107, 0.3) !important;
-    animation: pulse 2s infinite;
-    position: relative;
-}
-
-.external-investment-card:hover {
-    border-color: #ff6b6b !important;
-}
-
-/* Badge externo - usando a classe REAL */
-.external-music-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: linear-gradient(135deg, #ff6b6b, #ff4c4c);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 9px;
-    font-weight: 700;
-    z-index: 10;
-    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-}
-
-/* Botão play - corrigido para funcionar com a classe correta */
-.external-investment-card .play-overlay {
-    background: #ff6b6b !important;
-}
-
-.external-investment-card .btn-invest {
-    border-color: #ff6b6b !important;
-    color: #ff6b6b !important;
-}
-
-.external-investment-card .btn-invest:hover {
-    background: #ff6b6b !important;
-    color: white !important;
-}
-
-.external-progress {
-    margin-top: 8px;
-}
-
-.progress-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 2px;
-    font-size: 10px;
-    color: #b3b3b3;
-}
-
-.progress-bar-bg {
-    height: 3px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-.progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
-    width: 0%;
-    transition: width 0.3s ease;
-}
+        /* ===== CORREÇÕES PARA BOLSA EXTERNA ===== */
+        #externalMarketplaceGrid.spotify-grid,
+        #externalContent.spotify-grid {
+            display: grid !important;
+            gap: 24px !important;
+        }
+        .external-card {
+            border: 1px dashed rgba(255, 107, 107, 0.3) !important;
+        }
+        .external-card:hover {
+            border-color: #ff6b6b !important;
+        }
+        .external-progress {
+            margin-top: 8px;
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            font-size: 10px;
+            color: #b3b3b3;
+        }
+        .progress-bar-bg {
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
    
         /* ===== NOVAS CLASSES ADICIONADAS ===== */
         .blockchain-badge {
@@ -2369,266 +2252,6 @@
         padding: 1px 4px !important;
     }
 }
-        /* ===== CORREÇÃO PARA DESKTOP - CARDS DA BOLSA EXTERNA ===== */
-@media (min-width: 992px) {
-    /* Grid de 5 cards para desktop */
-    #externalContent.spotify-grid {
-        display: grid !important;
-        grid-template-columns: repeat(5, 1fr) !important;
-        gap: 20px !important;
-        padding: 20px !important;
-    }
-    
-    /* Card externo */
-    #externalContent .spotify-card.external-investment-card {
-        background: #181818 !important;
-        border: 2px dashed #ff6b6b !important;
-        border-radius: 8px !important;
-        padding: 16px !important;
-        transition: all 0.3s ease !important;
-        cursor: pointer !important;
-        width: 100% !important;
-        min-width: 0 !important;
-        display: flex !important;
-        flex-direction: column !important;
-    }
-    
-    #externalContent .spotify-card.external-investment-card:hover {
-        background: #282828 !important;
-        transform: translateY(-4px) !important;
-        border-color: #ff4c4c !important;
-    }
-    
-    /* Capa do álbum */
-    #externalContent .spotify-cover {
-        position: relative !important;
-        width: 100% !important;
-        aspect-ratio: 1/1 !important;
-        border-radius: 6px !important;
-        overflow: hidden !important;
-        margin-bottom: 12px !important;
-        background: #282828 !important;
-    }
-    
-    #externalContent .spotify-cover img {
-        width: 100% !important;
-        height: 100% !important;
-        object-fit: cover !important;
-        display: block !important;
-    }
-    
-    /* Badge externo */
-    #externalContent .external-music-badge {
-        position: absolute !important;
-        top: 8px !important;
-        right: 8px !important;
-        background: linear-gradient(135deg, #ff6b6b, #ff4c4c) !important;
-        color: white !important;
-        padding: 4px 8px !important;
-        border-radius: 12px !important;
-        font-size: 10px !important;
-        font-weight: 700 !important;
-        z-index: 10 !important;
-        box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3) !important;
-    }
-    
-    /* Botão play */
-    #externalContent .play-overlay {
-        position: absolute !important;
-        bottom: 8px !important;
-        right: 8px !important;
-        background: #ff6b6b !important;
-        width: 40px !important;
-        height: 40px !important;
-        border-radius: 50% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        color: white !important;
-        font-size: 20px !important;
-        opacity: 0 !important;
-        transition: all 0.3s ease !important;
-        z-index: 10 !important;
-    }
-    
-    #externalContent .spotify-card:hover .play-overlay {
-        opacity: 1 !important;
-        transform: scale(1.1) !important;
-    }
-    
-    /* Títulos */
-    #externalContent .spotify-title {
-        font-size: 15px !important;
-        font-weight: 700 !important;
-        color: white !important;
-        margin: 0 0 4px 0 !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        line-height: 1.3 !important;
-    }
-    
-    #externalContent .spotify-artist {
-        font-size: 13px !important;
-        color: #b3b3b3 !important;
-        margin: 0 0 8px 0 !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-    }
-    
-    /* Status badge */
-    #externalContent .status-aguardando {
-        background: rgba(255, 193, 7, 0.2) !important;
-        color: #ffc107 !important;
-        padding: 2px 8px !important;
-        border-radius: 12px !important;
-        font-size: 11px !important;
-        font-weight: 600 !important;
-        display: inline-block !important;
-        margin-bottom: 8px !important;
-        border: 1px solid rgba(255, 193, 7, 0.3) !important;
-    }
-    
-    /* Stats container */
-    #externalContent .spotify-stats {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        margin: 8px 0 !important;
-    }
-    
-    #externalContent .spotify-elo {
-        background: rgba(255, 107, 107, 0.2) !important;
-        color: #ff6b6b !important;
-        padding: 2px 8px !important;
-        border-radius: 12px !important;
-        font-size: 11px !important;
-        font-weight: 600 !important;
-    }
-    
-    #externalContent .spotify-price {
-        color: #ff6b6b !important;
-        font-size: 15px !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Barra de progresso */
-    #externalContent .external-progress {
-        margin: 8px 0 !important;
-    }
-    
-    #externalContent .progress-header {
-        display: flex !important;
-        justify-content: space-between !important;
-        margin-bottom: 4px !important;
-        font-size: 11px !important;
-        color: #b3b3b3 !important;
-    }
-    
-    #externalContent .progress-bar-bg {
-        height: 4px !important;
-        background: rgba(255, 255, 255, 0.1) !important;
-        border-radius: 2px !important;
-        overflow: hidden !important;
-    }
-    
-    #externalContent .progress-bar-fill {
-        height: 100% !important;
-        background: linear-gradient(90deg, #ff6b6b, #ff8e8e) !important;
-        transition: width 0.3s ease !important;
-    }
-    
-    /* Metadados */
-    #externalContent .music-meta {
-        display: flex !important;
-        justify-content: space-between !important;
-        margin: 8px 0 !important;
-        font-size: 11px !important;
-        color: #b3b3b3 !important;
-    }
-    
-    #externalContent .music-meta span {
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-    }
-    
-    /* Botão investir */
-    #externalContent .btn-invest {
-        width: 100% !important;
-        margin-top: 12px !important;
-        padding: 10px !important;
-        background: transparent !important;
-        border: 2px solid #ff6b6b !important;
-        border-radius: 30px !important;
-        color: #ff6b6b !important;
-        font-size: 13px !important;
-        font-weight: 700 !important;
-        letter-spacing: 0.5px !important;
-        transition: all 0.3s ease !important;
-        cursor: pointer !important;
-        text-transform: uppercase !important;
-    }
-    
-    #externalContent .btn-invest:hover {
-        background: #ff6b6b !important;
-        color: white !important;
-        transform: scale(1.02) !important;
-    }
-    
-    /* Blockchain badge */
-    #externalContent .blockchain-badge {
-        background: rgba(155, 89, 182, 0.2) !important;
-        color: #9b59b6 !important;
-        padding: 2px 6px !important;
-        border-radius: 8px !important;
-        font-size: 9px !important;
-        margin-top: 4px !important;
-        display: inline-block !important;
-    }
-}
-
-/* Ajuste para telas muito grandes */
-@media (min-width: 1400px) {
-    #externalContent.spotify-grid {
-        grid-template-columns: repeat(6, 1fr) !important;
-    }
-}
-
-/* Ajuste para tablets */
-@media (min-width: 768px) and (max-width: 991px) {
-    #externalContent.spotify-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 16px !important;
-    }
-}
-
-/* Ajuste para celular (2 cards) */
-@media (max-width: 767px) {
-    #externalContent.spotify-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 10px !important;
-        padding: 10px !important;
-    }
-    
-    #externalContent .spotify-card {
-        padding: 10px !important;
-    }
-    
-    #externalContent .spotify-title {
-        font-size: 12px !important;
-    }
-    
-    #externalContent .spotify-artist {
-        font-size: 10px !important;
-    }
-    
-    #externalContent .btn-invest {
-        font-size: 10px !important;
-        padding: 6px !important;
-    }
-}
     </style>
 </head>
 <body>
@@ -2903,7 +2526,7 @@
            
             <div class="connection-footer">
                 <i class="bi bi-bluetooth"></i>
-                <span> 🔒Conexão Segura ⛓️ Blockchain Ativa • SELO MIV Streaming</span>
+                <span>Conexão com fio • SELO MIV Streaming</span>
             </div>
         </div>
     </section>
@@ -5882,135 +5505,122 @@ function renderFilteredMarketplace(filteredTracks) {
 
     window.filterMarketplace = filterMarketplace;
 
-function renderExternalMarketplace() {
-    const container = document.getElementById('externalContent');
-    if (!container) return;
-    
-    if (!state.externalPlaylist || state.externalPlaylist.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state-spotify">
-                <i class="bi bi-globe" style="font-size: 4rem; color: #ff6b6b;"></i>
-                <h3 style="color: white; margin-top: 1rem;">Nenhuma música externa</h3>
-                <p style="color: #b3b3b3;">Seja o primeiro a sugerir uma música!</p>
-                <button class="btn-invest mt-3" style="background: #ff6b6b; border-color: #ff6b6b; color: white;" onclick="openAddExternalMusicModal()">
-                    <i class="bi bi-plus-circle me-1"></i> SUGERIR MÚSICA
-                </button>
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = state.externalPlaylist.map((track, index) => {
-        // ===== FUNÇÕES DE TRUNCAMENTO =====
-        const truncate = (text, maxLength) => {
-            if (!text) return '';
-            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-        };
+    function renderExternalMarketplace() {
+        const container = document.getElementById('externalContent');
+        if (!container) return;
         
-        // Truncar títulos para caber no card
-        const tituloTruncado = truncate(track.titulo || 'Sem título', 22);
-        const artistaTruncado = truncate(track.artista || 'Artista', 18);
-        const sugeridoPorTruncado = truncate(track.sugerido_por || 'Anônimo', 12);
-        
-        // Truncar status badge se necessário
-        let statusBadge = '';
-        let statusClass = '';
-        let statusText = '';
-        
-        if (track.status === 'aguardando') {
-            statusText = '⏳ Aguardando';
-            statusClass = 'status-aguardando';
-        } else if (track.status === 'aprovado') {
-            statusText = '✅ Aprovado';
-            statusClass = 'status-aprovado';
-        } else if (track.status === 'rejeitado') {
-            statusText = '❌ Rejeitado';
-            statusClass = 'status-rejeitado';
+        if (!state.externalPlaylist || state.externalPlaylist.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state-spotify">
+                    <i class="bi bi-globe" style="font-size: 4rem; color: #ff6b6b;"></i>
+                    <h3 style="color: white; margin-top: 1rem;">Nenhuma música externa</h3>
+                    <p style="color: #b3b3b3;">Seja o primeiro a sugerir uma música!</p>
+                    <button class="btn-invest mt-3" style="background: #ff6b6b; border-color: #ff6b6b; color: white;" onclick="openAddExternalMusicModal()">
+                        <i class="bi bi-plus-circle me-1"></i> SUGERIR MÚSICA
+                    </button>
+                </div>
+            `;
+            return;
         }
         
-        const vendasAtuais = track.vendas_atuais || 0;
-        const metaVendas = track.meta_vendas || 1000000;
-        const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
-        
-        let coverImage = PLACEHOLDERS.EXT_300;
-        
-        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
-            coverImage = track.link_capa.trim();
-        } else if (track.link_youtube) {
-            const videoId = extractYouTubeId(track.link_youtube);
-            if (videoId) {
-                coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        container.innerHTML = state.externalPlaylist.map((track, index) => {
+            const vendasAtuais = track.vendas_atuais || 0;
+            const metaVendas = track.meta_vendas || 1000000;
+            const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
+            
+            let coverImage = PLACEHOLDERS.EXT_300;
+            
+            if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
+                coverImage = track.link_capa.trim();
+            } else if (track.link_youtube) {
+                const videoId = extractYouTubeId(track.link_youtube);
+                if (videoId) {
+                    coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                }
             }
-        }
-        
-        return `
-        <div class="spotify-card external-investment-card" onclick="playExternalTrack(${index})" style="border: 2px dashed #ff6b6b;">
-            <div class="spotify-cover">
-                <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                     onerror="this.onerror=null; this.src='${PLACEHOLDERS.EXT_300.replace(/'/g, '%27')}'">
-                <div class="play-overlay" onclick="event.stopPropagation(); playExternalTrack(${index})" style="background: #ff6b6b;">
-                    <i class="bi bi-play-fill"></i>
-                </div>
-                <div class="external-music-badge">
-                    <i class="bi bi-globe"></i> BOLSA EXTERNA
-                </div>
-            </div>
             
-            <!-- TÍTULO TRUNCADO COM TITLE PARA VER COMPLETO NO HOVER -->
-            <div class="spotify-title" title="${track.titulo || ''}">${tituloTruncado}</div>
-            <div class="spotify-artist" title="${track.artista || ''}">${artistaTruncado}</div>
+            let statusBadge = '';
+            let statusClass = '';
+            if (track.status === 'aguardando') {
+                statusBadge = '⏳ Aguardando aprovação';
+                statusClass = 'status-aguardando';
+            } else if (track.status === 'aprovado') {
+                statusBadge = '✅ Aprovado';
+                statusClass = 'status-aprovado';
+            } else if (track.status === 'rejeitado') {
+                statusBadge = '❌ Rejeitado';
+                statusClass = 'status-rejeitado';
+            }
             
-            ${statusText ? `
-                <div style="margin-top: 4px; margin-bottom: 8px; max-width: 100%; overflow: hidden;">
-                    <span class="${statusClass}" style="padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: bold; display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${track.status === 'aguardando' ? 'Aguardando aprovação' : (track.status === 'aprovado' ? 'Aprovado' : 'Rejeitado')}">
-                        ${statusText}
+            return `
+            <div class="spotify-card external-investment-card" onclick="playExternalTrack(${index})" style="border: 2px dashed #ff6b6b;">
+                <div class="spotify-cover">
+                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                         onerror="this.onerror=null; this.src='${PLACEHOLDERS.EXT_300.replace(/'/g, '%27')}'">
+                    <div class="play-overlay" onclick="event.stopPropagation(); playExternalTrack(${index})" style="background: #ff6b6b;">
+                        <i class="bi bi-play-fill"></i>
+                    </div>
+                    <div class="external-music-badge">
+                        <i class="bi bi-globe"></i> BOLSA EXTERNA
+                    </div>
+                </div>
+                
+                <div class="spotify-title">${track.titulo || 'Sem título'}</div>
+                <div class="spotify-artist">${track.artista || 'Artista'}</div>
+                
+                ${statusBadge ? `
+                    <div style="margin-top: 4px; margin-bottom: 8px;">
+                        <span class="${statusClass}" style="padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold;">
+                            ${statusBadge}
+                        </span>
+                    </div>
+                ` : ''}
+                
+                <div class="spotify-stats">
+                    <span class="spotify-elo" style="background: rgba(255, 107, 107, 0.2); color: #ff6b6b;">
+                        🚀 Pré-lançamento
+                    </span>
+                    <span class="spotify-price" style="color: #ff6b6b;">
+                        <i class="bi bi-coin" style="font-size: 12px;"></i> 
+                        ${formatCurrency(track.valor_acao || 0)}
                     </span>
                 </div>
-            ` : ''}
-            
-            <div class="spotify-stats" style="margin-top: 4px;">
-                <span class="spotify-elo" style="background: rgba(255, 107, 107, 0.2); color: #ff6b6b; font-size: 9px; padding: 2px 4px;">
-                    🚀 Pré
-                </span>
-                <span class="spotify-price" style="color: #ff6b6b; font-size: 13px; font-weight: 700;">
-                    ${formatCurrency(track.valor_acao || 0)}
-                </span>
-            </div>
-            
-            <div style="margin-top: 6px; position: relative;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-                    <small style="color: #b3b3b3; font-size: 8px;">Progresso</small>
-                    <small style="color: #ff6b6b; font-size: 8px; font-weight: 600;">${progressPercent}%</small>
+                
+                <div style="margin-top: 8px; position: relative;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <small style="color: #b3b3b3;">Progresso para SELO MIV</small>
+                        <small style="color: #ff6b6b;">${progressPercent}%</small>
+                    </div>
+                    <div style="height: 4px; background: #282828; border-radius: 2px; overflow: hidden;">
+                        <div style="width: ${progressPercent}%; height: 100%; background: linear-gradient(90deg, #ff6b6b, #ff8e8e);"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                        <small style="color: #b3b3b3;">${formatCurrency(vendasAtuais)}</small>
+                        <small style="color: #ff6b6b;">Meta: ${formatCurrency(metaVendas)}</small>
+                    </div>
                 </div>
-                <div style="height: 3px; background: #282828; border-radius: 2px; overflow: hidden;">
-                    <div style="width: ${progressPercent}%; height: 100%; background: linear-gradient(90deg, #ff6b6b, #ff8e8e);"></div>
+                
+                <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px;">
+                    <span style="color: #b3b3b3;">
+                        <i class="bi bi-people"></i> ${track.sugerido_por || 'Anônimo'}
+                    </span>
+                    <span style="color: #b3b3b3;">
+                        <i class="bi bi-calendar"></i> ${new Date(track.data_sugestao || Date.now()).toLocaleDateString('pt-BR')}
+                    </span>
                 </div>
-                <div style="display: flex; justify-content: space-between; margin-top: 2px;">
-                    <small style="color: #b3b3b3; font-size: 7px;">${formatCurrency(vendasAtuais)}</small>
-                    <small style="color: #ff6b6b; font-size: 7px;">${formatCurrency(metaVendas)}</small>
-                </div>
+                
+                <button class="btn-invest" onclick="event.stopPropagation(); openInvestExternalModal(${index})" 
+                        style="border-color: #ff6b6b; color: #ff6b6b; margin-top: 12px;">
+                    <i class="bi bi-coin me-1"></i> INVESTIR ANTECIPADO
+                </button>
+                
+                ${track.blockchain_hash ? 
+                    '<div style="margin-top: 4px; text-align: right;"><span class="blockchain-badge">⛓️</span></div>' : ''}
             </div>
-            
-            <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 8px;">
-                <span style="color: #b3b3b3; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${track.sugerido_por || 'Anônimo'}">
-                    <i class="bi bi-people" style="font-size: 8px;"></i> ${sugeridoPorTruncado}
-                </span>
-                <span style="color: #b3b3b3;">
-                    <i class="bi bi-calendar" style="font-size: 8px;"></i> ${new Date(track.data_sugestao || Date.now()).toLocaleDateString('pt-BR')}
-                </span>
-            </div>
-            
-            <button class="btn-invest" onclick="event.stopPropagation(); openInvestExternalModal(${index})" 
-                    style="border-color: #ff6b6b; color: #ff6b6b; margin-top: 8px; font-size: 9px; padding: 4px;">
-                <i class="bi bi-coin me-1" style="font-size: 9px;"></i> INVESTIR
-            </button>
-            
-            ${track.blockchain_hash ? 
-                '<div style="margin-top: 2px; text-align: right;"><span class="blockchain-badge" style="font-size: 7px; padding: 1px 4px;">⛓️</span></div>' : ''}
-        </div>
-        `;
-    }).join('');
-}
+            `;
+        }).join('');
+    }
+
     function playExternalTrack(index) {
         if (index < 0 || index >= state.externalPlaylist.length) {
             showToast('Música não encontrada', 'error');
