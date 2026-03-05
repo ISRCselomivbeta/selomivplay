@@ -5108,7 +5108,7 @@ function renderMarketplace() {
     
     if (!container) return;
     
-    // ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) - SEM ESTILOS INLINE =====
+   // ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) - SEM ESTILOS INLINE =====
 if (!state.playlist || state.playlist.length === 0) {
     container.innerHTML = `
         <div class="empty-state-spotify" style="grid-column: 1/-1;">
@@ -5133,7 +5133,7 @@ if (!state.playlist || state.playlist.length === 0) {
                 <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
                     <i class="bi bi-play-fill"></i>
                 </div>
-                <div class="position-absolute top-0 start-0 m-2" style="z-index: 5;">
+                <div class="position-absolute top-0 start-0 m-2">
                     <button class="favorite-btn ${isFavorite ? 'active' : ''}" 
                             onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${index})">
                         <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}"></i>
@@ -5154,7 +5154,7 @@ if (!state.playlist || state.playlist.length === 0) {
         </div>
         `;
     }).join('');
-}    
+}
     // ===== ARTISTAS E PLAYLISTS =====
     if (artistsGrid && state.playlist && state.playlist.length > 3) {
         const artistItems = state.playlist.slice(3, 7);
