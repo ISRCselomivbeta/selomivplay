@@ -1908,40 +1908,79 @@
             background: var(--spotify-green-hover);
             transform: scale(1.05);
         }
-        /* ===== CORREÇÕES PARA BOLSA EXTERNA ===== */
-        #externalMarketplaceGrid.spotify-grid,
-        #externalContent.spotify-grid {
-            display: grid !important;
-            gap: 24px !important;
-        }
-        .external-card {
-            border: 1px dashed rgba(255, 107, 107, 0.3) !important;
-        }
-        .external-card:hover {
-            border-color: #ff6b6b !important;
-        }
-        .external-progress {
-            margin-top: 8px;
-        }
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2px;
-            font-size: 10px;
-            color: #b3b3b3;
-        }
-        .progress-bar-bg {
-            height: 3px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        .progress-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
+      /* ===== CORREÇÕES PARA BOLSA EXTERNA ===== */
+#externalMarketplaceGrid.spotify-grid,
+#externalContent.spotify-grid {
+    display: grid !important;
+    gap: 24px !important;
+}
+
+/* CORREÇÃO: use a classe REAL do HTML */
+.external-investment-card {
+    border: 2px dashed rgba(255, 107, 107, 0.3) !important;
+    animation: pulse 2s infinite;
+    position: relative;
+}
+
+.external-investment-card:hover {
+    border-color: #ff6b6b !important;
+}
+
+/* Badge externo - usando a classe REAL */
+.external-music-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(135deg, #ff6b6b, #ff4c4c);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 9px;
+    font-weight: 700;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+}
+
+/* Botão play - corrigido para funcionar com a classe correta */
+.external-investment-card .play-overlay {
+    background: #ff6b6b !important;
+}
+
+.external-investment-card .btn-invest {
+    border-color: #ff6b6b !important;
+    color: #ff6b6b !important;
+}
+
+.external-investment-card .btn-invest:hover {
+    background: #ff6b6b !important;
+    color: white !important;
+}
+
+.external-progress {
+    margin-top: 8px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+    font-size: 10px;
+    color: #b3b3b3;
+}
+
+.progress-bar-bg {
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
+    width: 0%;
+    transition: width 0.3s ease;
+}
    
         /* ===== NOVAS CLASSES ADICIONADAS ===== */
         .blockchain-badge {
