@@ -354,74 +354,7 @@
             font-weight: 700;
             margin-bottom: 0;
         }
-        
-        /* Music Grid */
-        .music-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        
-        .music-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 1rem;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .music-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--neon-green);
-            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.1);
-        }
-        
-        .music-cover {
-            width: 100%;
-            height: 180px;
-            object-fit: cover;
-        }
-        
-        .music-info {
-            padding: 1rem;
-        }
-        
-        .music-title {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-            color: var(--text-light);
-        }
-        
-        .music-artist {
-            color: var(--text-muted);
-            font-size: 0.875rem;
-            margin-bottom: 0.75rem;
-        }
-        
-        .music-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        
-        .music-price {
-            color: var(--neon-green);
-            font-weight: 700;
-            font-size: 1.125rem;
-        }
-        
-        .music-percent {
-            background: rgba(0, 123, 255, 0.1);
-            color: #007bff;
-            padding: 0.25rem 0.75rem;
-            border-radius: 1rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-        
+            
         /* Player MIV - Melhorado */
         .player-miv {
             position: fixed;
@@ -2045,6 +1978,70 @@
         font-size: 16px;
     }
 }   
+/* ===== CORREÇÕES PARA BOLSA EXTERNA ===== */
+#externalMarketplaceGrid.spotify-grid,
+#externalContent.spotify-grid {
+    display: grid !important;
+    gap: 24px !important;
+}
+
+.external-card {
+    border: 1px dashed rgba(255, 107, 107, 0.3) !important;
+}
+
+.external-card:hover {
+    border-color: #ff6b6b !important;
+}
+
+.external-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(135deg, #ff6b6b, #ff4c4c);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 9px;
+    font-weight: 700;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+}
+
+.external-progress {
+    margin-top: 8px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+    font-size: 10px;
+    color: #b3b3b3;
+}
+
+.progress-bar-bg {
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
+    width: 0%;
+    transition: width 0.3s ease;
+}        
+    /* ===== DESATIVAR ESTILOS ANTIGOS ===== */
+        .music-grid, .music-card, .music-cover, .music-info, 
+        .music-title, .music-artist, .music-meta, .music-price, .music-percent {
+            all: unset !important;
+            display: none !important;
+        }
+        
         
     </style>
 </head>
@@ -2907,6 +2904,7 @@
             </div>
         </div>
     </div>
+    
 </section>  <!-- FIM DA SEÇÃO DE NEGOCIAÇÕES -->
         
 <!-- MINHAS NEGOCIAÇÕES SECTION -->
@@ -5730,93 +5728,179 @@ function renderTopInvestments() {
             </button>
         </div>`;
     }).join('');
-}
-    function renderPlaylists() {
-        const playlistsContainer = document.getElementById('playlistsContent');
-        const favoritesContainer = document.getElementById('favoritesContent');
-        if (playlistsContainer) {
-            if (state.userPlaylists?.length) {
-                playlistsContainer.innerHTML = state.userPlaylists.map(p => `<div class="playlist-item"><div class="playlist-cover"><img src="${PLACEHOLDERS.PLAYLIST}" width="60" height="60" alt="Playlist"></div><div class="flex-grow-1"><h6 class="mb-0">${p.nome}</h6><small class="text-muted">${p.publica ? 'Pública' : 'Privada'}</small></div><button class="btn btn-sm btn-outline-success"><i class="bi bi-play-fill"></i></button></div>`).join('');
-            } else {
-                playlistsContainer.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-music-note-list empty-icon"></i><h5 class="text-muted">Nenhuma playlist</h5><p class="text-muted">Crie sua primeira playlist</p><button class="btn-miv mt-3" onclick="openCreatePlaylistModal()"><i class="bi bi-plus-circle me-2"></i> Criar Playlist</button></div>';
-            }
-        }
-        if (favoritesContainer) {
-            const favoriteTracks = state.playlist.filter(t => state.favoriteMusicIds?.includes(t.id.toString()));
-            if (favoriteTracks.length) {
-                favoritesContainer.innerHTML = favoriteTracks.map((t, i) => {
-                    const trackIndex = state.playlist.findIndex(p => p.id === t.id);
-                    const coverImage = t.link_capa?.trim() ? t.link_capa : PLACEHOLDERS.MIV_300;
-                    
-                    // ELO data
-                    const eloRating = t.elo_rating || ELO.CONFIG.BASE_RATING;
-                    const eloLevel = ELO.getRatingLevel(eloRating);
-                    const eloColor = ELO.getRatingColor(eloRating);
-                    
-                    return `<div class="music-card" onclick="playTrack(${trackIndex})"><img src="${coverImage}" class="music-cover" alt="${t.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'"><div class="music-info"><h6 class="music-title">${t.titulo || 'Sem título'}</h6><p class="music-artist">${t.artista || 'Artista Desconhecido'}</p><div class="d-flex justify-content-between"><span class="music-price">${formatCurrency(t.valor_acao || 0)}</span><button class="favorite-btn active" onclick="event.stopPropagation(); toggleFavoriteMusic(\'${t.id}\', ${trackIndex})"><i class="bi bi-star-fill"></i></button></div><span class="elo-badge" style="background-color: ${eloColor};">${eloLevel}</span></div></div>`;
-                }).join('');
-            } else {
-                favoritesContainer.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-star empty-icon"></i><h5 class="text-muted">Nenhuma música favoritada</h5><p class="text-muted">Adicione músicas aos favoritos clicando na estrela</p></div>';
-            }
-        }
-    }
-
-    function renderArtistMusic(musics) {
-        const container = document.getElementById('artistMusicContent');
-        if (!container) return;
-        if (!musics?.length) {
-            container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-music-note-beamed empty-icon"></i><h5 class="text-muted">Nenhuma música cadastrada</h5><p class="text-muted">Cadastre sua primeira música para começar a receber investimentos!</p><button class="btn-miv mt-3" onclick="openAddMusicModal()"><i class="bi bi-plus-circle me-2"></i> Cadastrar Música</button></div>';
-            return;
-        }
-        container.innerHTML = musics.map(m => {
-            const percentSold = m.percentual_disponivel ? ((m.acoes_vendidas || 0) / (m.percentual_disponivel / 0.01) * 100).toFixed(1) : 0;
-            const coverImage = m.link_capa?.trim() ? m.link_capa : PLACEHOLDERS.MIV_300;
-            
-            let statusClass = 'status-active';
-            let statusText = '✅ Ativa';
-            if (m.status === 'paused') {
-                statusClass = 'status-paused';
-                statusText = '⏸️ Pausada';
-            } else if (m.status === 'deleted') {
-                statusClass = 'status-deleted';
-                statusText = '🗑️ Excluída';
-            }
-            
-            return `<div class="music-card">
-                <img src="${coverImage}" class="music-cover" alt="${m.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                <div class="music-info">
-                    <h6 class="music-title">${m.titulo || 'Sem título'}</h6>
-                    <p class="music-artist">${m.artista || 'Artista Desconhecido'}</p>
-                    <span class="status-badge ${statusClass}">${statusText}</span>
-                    <div class="music-meta">
-                        <span class="music-price">${formatCurrency(m.valor_acao || 0)}</span>
-                        <span class="badge badge-info">${percentSold}% vendido</span>
+}function renderPlaylists() {
+    const playlistsContainer = document.getElementById('playlistsContent');
+    const favoritesContainer = document.getElementById('favoritesContent');
+    
+    if (playlistsContainer) {
+        if (state.userPlaylists?.length) {
+            playlistsContainer.innerHTML = state.userPlaylists.map(p => `
+                <div class="playlist-item">
+                    <div class="playlist-cover">
+                        <img src="${PLACEHOLDERS.PLAYLIST}" width="60" height="60" alt="Playlist">
                     </div>
-                    <div class="d-flex justify-content-between mt-2">
-                        <small class="text-muted">Royalties: ${formatCurrency(m.royalties_acumulados || 0)}</small>
-                        <small class="text-success">+${m.rentabilidade_media || 0}% retorno</small>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-0">${p.nome}</h6>
+                        <small class="text-muted">${p.publica ? 'Pública' : 'Privada'}</small>
                     </div>
-                    <div class="music-actions">
-                        <button class="music-action-btn edit" onclick="event.stopPropagation(); openEditMusicModal('${m.id}')">
-                            <i class="bi bi-pencil"></i> Editar
-                        </button>
-                        ${m.status !== 'paused' ? 
-                            `<button class="music-action-btn pause" onclick="event.stopPropagation(); pauseMusic('${m.id}')">
-                                <i class="bi bi-pause-circle"></i> Pausar
-                            </button>` : 
-                            `<button class="music-action-btn pause" onclick="event.stopPropagation(); unpauseMusic('${m.id}')">
-                                <i class="bi bi-play-circle"></i> Reativar
-                            </button>`
-                        }
-                        <button class="music-action-btn delete" onclick="event.stopPropagation(); requestDeleteMusic('${m.id}')">
-                            <i class="bi bi-trash"></i> Excluir
-                        </button>
-                    </div>
-                    ${m.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ ' + m.blockchain_hash.substring(0, 10) + '...</div>' : ''}
+                    <button class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
                 </div>
-            </div>`;
-        }).join('');
+            `).join('');
+        } else {
+            playlistsContainer.innerHTML = `
+                <div class="empty-state-actionable">
+                    <i class="bi bi-music-note-list empty-icon"></i>
+                    <h5 class="text-muted">Nenhuma playlist</h5>
+                    <p class="text-muted">Crie sua primeira playlist</p>
+                    <button class="btn-miv mt-3" onclick="openCreatePlaylistModal()">
+                        <i class="bi bi-plus-circle me-2"></i> Criar Playlist
+                    </button>
+                </div>
+            `;
+        }
     }
+    
+    if (favoritesContainer) {
+        const favoriteTracks = state.playlist.filter(t => state.favoriteMusicIds?.includes(t.id.toString()));
+        
+        if (favoriteTracks.length) {
+            favoritesContainer.innerHTML = favoriteTracks.map((t) => {
+                const trackIndex = state.playlist.findIndex(p => p.id === t.id);
+                let coverImage = t.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+                
+                if (t.link_youtube) {
+                    const videoId = extractYouTubeId(t.link_youtube);
+                    if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                }
+                
+                const eloRating = t.elo_rating || 1400;
+                const eloLevel = eloRating >= 2000 ? '🔥 Top' : 
+                                eloRating >= 1700 ? '📈 Trending' : '🎵 Nova';
+                
+                return `
+                <div class="spotify-card" onclick="playTrack(${trackIndex})">
+                    <div class="spotify-cover">
+                        <img src="${coverImage}" alt="${t.titulo || 'Música'}" 
+                             onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                        <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${trackIndex})">
+                            <i class="bi bi-play-fill"></i>
+                        </div>
+                    </div>
+                    <h3 class="spotify-title">${t.titulo || 'Sem título'}</h3>
+                    <p class="spotify-artist">${t.artista || 'Artista'}</p>
+                    
+                    <div class="spotify-stats">
+                        <span class="spotify-elo">${eloLevel}</span>
+                        <span class="spotify-price">${formatCurrency(t.valor_acao || 0)}</span>
+                    </div>
+                    
+                    <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${trackIndex})">
+                        <i class="bi bi-currency-dollar me-1"></i> INVESTIR
+                    </button>
+                </div>`;
+            }).join('');
+        } else {
+            favoritesContainer.innerHTML = `
+                <div class="empty-state-actionable" style="grid-column: 1/-1;">
+                    <i class="bi bi-star empty-icon"></i>
+                    <h5 class="text-muted">Nenhuma música favoritada</h5>
+                    <p class="text-muted">Adicione músicas aos favoritos clicando na estrela</p>
+                </div>
+            `;
+        }
+    }
+}
+
+function renderArtistMusic(musics) {
+    const container = document.getElementById('artistMusicContent');
+    if (!container) return;
+    
+    if (!musics?.length) {
+        container.innerHTML = `
+            <div class="empty-state-actionable" style="grid-column: 1/-1;">
+                <i class="bi bi-music-note-beamed empty-icon"></i>
+                <h5 class="text-muted">Nenhuma música cadastrada</h5>
+                <p class="text-muted">Cadastre sua primeira música para começar a receber investimentos!</p>
+                <button class="btn-miv mt-3" onclick="openAddMusicModal()">
+                    <i class="bi bi-plus-circle me-2"></i> Cadastrar Música
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = musics.map(m => {
+        const percentSold = m.percentual_disponivel ? 
+            ((m.acoes_vendidas || 0) / (m.percentual_disponivel / 0.01) * 100).toFixed(1) : 0;
+        
+        let coverImage = m.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+        
+        if (m.link_youtube) {
+            const videoId = extractYouTubeId(m.link_youtube);
+            if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+        
+        let statusClass = 'status-active';
+        let statusText = '✅ Ativa';
+        if (m.status === 'paused') {
+            statusClass = 'status-paused';
+            statusText = '⏸️ Pausada';
+        } else if (m.status === 'deleted') {
+            statusClass = 'status-deleted';
+            statusText = '🗑️ Excluída';
+        }
+        
+        return `
+        <div class="spotify-card">
+            <div class="spotify-cover">
+                <img src="${coverImage}" alt="${m.titulo || 'Música'}" 
+                     onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                <div class="play-overlay" onclick="playTrack(${state.playlist.findIndex(p => p.id === m.id)})">
+                    <i class="bi bi-play-fill"></i>
+                </div>
+            </div>
+            <h3 class="spotify-title">${m.titulo || 'Sem título'}</h3>
+            <p class="spotify-artist">${m.artista || 'Artista'}</p>
+            
+            <div style="margin-top: 4px; margin-bottom: 8px;">
+                <span class="${statusClass}" style="padding: 2px 8px; border-radius: 12px; font-size: 10px;">
+                    ${statusText}
+                </span>
+            </div>
+            
+            <div class="spotify-stats">
+                <span class="spotify-elo">${percentSold}% vendido</span>
+                <span class="spotify-price">${formatCurrency(m.valor_acao || 0)}</span>
+            </div>
+            
+            <div style="margin-top: 8px; display: flex; justify-content: space-between;">
+                <small class="text-muted">Royalties: ${formatCurrency(m.royalties_acumulados || 0)}</small>
+                <small class="text-success">+${m.rentabilidade_media || 0}%</small>
+            </div>
+            
+            <div class="music-actions" style="margin-top: 12px;">
+                <button class="music-action-btn edit" onclick="event.stopPropagation(); openEditMusicModal('${m.id}')">
+                    <i class="bi bi-pencil"></i> Editar
+                </button>
+                ${m.status !== 'paused' ? 
+                    `<button class="music-action-btn pause" onclick="event.stopPropagation(); pauseMusic('${m.id}')">
+                        <i class="bi bi-pause-circle"></i> Pausar
+                    </button>` : 
+                    `<button class="music-action-btn pause" onclick="event.stopPropagation(); unpauseMusic('${m.id}')">
+                        <i class="bi bi-play-circle"></i> Reativar
+                    </button>`
+                }
+                <button class="music-action-btn delete" onclick="event.stopPropagation(); requestDeleteMusic('${m.id}')">
+                    <i class="bi bi-trash"></i> Excluir
+                </button>
+            </div>
+            
+            ${m.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ ' + m.blockchain_hash.substring(0, 10) + '...</div>' : ''}
+        </div>`;
+    }).join('');
+}
 
     // ========== ARTIST MANAGEMENT FUNCTIONS ==========
     function openEditMusicModal(musicId) {
