@@ -2330,6 +2330,266 @@
         padding: 1px 4px !important;
     }
 }
+        /* ===== CORREÇÃO PARA DESKTOP - CARDS DA BOLSA EXTERNA ===== */
+@media (min-width: 992px) {
+    /* Grid de 5 cards para desktop */
+    #externalContent.spotify-grid {
+        display: grid !important;
+        grid-template-columns: repeat(5, 1fr) !important;
+        gap: 20px !important;
+        padding: 20px !important;
+    }
+    
+    /* Card externo */
+    #externalContent .spotify-card.external-investment-card {
+        background: #181818 !important;
+        border: 2px dashed #ff6b6b !important;
+        border-radius: 8px !important;
+        padding: 16px !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    #externalContent .spotify-card.external-investment-card:hover {
+        background: #282828 !important;
+        transform: translateY(-4px) !important;
+        border-color: #ff4c4c !important;
+    }
+    
+    /* Capa do álbum */
+    #externalContent .spotify-cover {
+        position: relative !important;
+        width: 100% !important;
+        aspect-ratio: 1/1 !important;
+        border-radius: 6px !important;
+        overflow: hidden !important;
+        margin-bottom: 12px !important;
+        background: #282828 !important;
+    }
+    
+    #externalContent .spotify-cover img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        display: block !important;
+    }
+    
+    /* Badge externo */
+    #externalContent .external-music-badge {
+        position: absolute !important;
+        top: 8px !important;
+        right: 8px !important;
+        background: linear-gradient(135deg, #ff6b6b, #ff4c4c) !important;
+        color: white !important;
+        padding: 4px 8px !important;
+        border-radius: 12px !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        z-index: 10 !important;
+        box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3) !important;
+    }
+    
+    /* Botão play */
+    #externalContent .play-overlay {
+        position: absolute !important;
+        bottom: 8px !important;
+        right: 8px !important;
+        background: #ff6b6b !important;
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: white !important;
+        font-size: 20px !important;
+        opacity: 0 !important;
+        transition: all 0.3s ease !important;
+        z-index: 10 !important;
+    }
+    
+    #externalContent .spotify-card:hover .play-overlay {
+        opacity: 1 !important;
+        transform: scale(1.1) !important;
+    }
+    
+    /* Títulos */
+    #externalContent .spotify-title {
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        color: white !important;
+        margin: 0 0 4px 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        line-height: 1.3 !important;
+    }
+    
+    #externalContent .spotify-artist {
+        font-size: 13px !important;
+        color: #b3b3b3 !important;
+        margin: 0 0 8px 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    
+    /* Status badge */
+    #externalContent .status-aguardando {
+        background: rgba(255, 193, 7, 0.2) !important;
+        color: #ffc107 !important;
+        padding: 2px 8px !important;
+        border-radius: 12px !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        display: inline-block !important;
+        margin-bottom: 8px !important;
+        border: 1px solid rgba(255, 193, 7, 0.3) !important;
+    }
+    
+    /* Stats container */
+    #externalContent .spotify-stats {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin: 8px 0 !important;
+    }
+    
+    #externalContent .spotify-elo {
+        background: rgba(255, 107, 107, 0.2) !important;
+        color: #ff6b6b !important;
+        padding: 2px 8px !important;
+        border-radius: 12px !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+    }
+    
+    #externalContent .spotify-price {
+        color: #ff6b6b !important;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Barra de progresso */
+    #externalContent .external-progress {
+        margin: 8px 0 !important;
+    }
+    
+    #externalContent .progress-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        margin-bottom: 4px !important;
+        font-size: 11px !important;
+        color: #b3b3b3 !important;
+    }
+    
+    #externalContent .progress-bar-bg {
+        height: 4px !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-radius: 2px !important;
+        overflow: hidden !important;
+    }
+    
+    #externalContent .progress-bar-fill {
+        height: 100% !important;
+        background: linear-gradient(90deg, #ff6b6b, #ff8e8e) !important;
+        transition: width 0.3s ease !important;
+    }
+    
+    /* Metadados */
+    #externalContent .music-meta {
+        display: flex !important;
+        justify-content: space-between !important;
+        margin: 8px 0 !important;
+        font-size: 11px !important;
+        color: #b3b3b3 !important;
+    }
+    
+    #externalContent .music-meta span {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    
+    /* Botão investir */
+    #externalContent .btn-invest {
+        width: 100% !important;
+        margin-top: 12px !important;
+        padding: 10px !important;
+        background: transparent !important;
+        border: 2px solid #ff6b6b !important;
+        border-radius: 30px !important;
+        color: #ff6b6b !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.5px !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
+        text-transform: uppercase !important;
+    }
+    
+    #externalContent .btn-invest:hover {
+        background: #ff6b6b !important;
+        color: white !important;
+        transform: scale(1.02) !important;
+    }
+    
+    /* Blockchain badge */
+    #externalContent .blockchain-badge {
+        background: rgba(155, 89, 182, 0.2) !important;
+        color: #9b59b6 !important;
+        padding: 2px 6px !important;
+        border-radius: 8px !important;
+        font-size: 9px !important;
+        margin-top: 4px !important;
+        display: inline-block !important;
+    }
+}
+
+/* Ajuste para telas muito grandes */
+@media (min-width: 1400px) {
+    #externalContent.spotify-grid {
+        grid-template-columns: repeat(6, 1fr) !important;
+    }
+}
+
+/* Ajuste para tablets */
+@media (min-width: 768px) and (max-width: 991px) {
+    #externalContent.spotify-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 16px !important;
+    }
+}
+
+/* Ajuste para celular (2 cards) */
+@media (max-width: 767px) {
+    #externalContent.spotify-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        padding: 10px !important;
+    }
+    
+    #externalContent .spotify-card {
+        padding: 10px !important;
+    }
+    
+    #externalContent .spotify-title {
+        font-size: 12px !important;
+    }
+    
+    #externalContent .spotify-artist {
+        font-size: 10px !important;
+    }
+    
+    #externalContent .btn-invest {
+        font-size: 10px !important;
+        padding: 6px !important;
+    }
+}
     </style>
 </head>
 <body>
