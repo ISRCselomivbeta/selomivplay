@@ -1592,54 +1592,46 @@
             animation: spin 1s linear infinite;
         }
 
-        /* ===== SISTEMA ÚNICO - ESTILO SPOTIFY ===== */
-        :root {
-            --spotify-bg: #121212;
-            --spotify-card: #181818;
-            --spotify-card-hover: #282828;
-            --spotify-text: #b3b3b3;
-            --spotify-green: #1db954;
-            --spotify-green-hover: #1ed760;
-        }
+       /* ===== SISTEMA ÚNICO - ESTILO SPOTIFY ===== */
+:root {
+    --spotify-bg: #121212;
+    --spotify-card: #181818;
+    --spotify-card-hover: #282828;
+    --spotify-text: #b3b3b3;
+    --spotify-green: #1db954;
+    --spotify-green-hover: #1ed760;
+}
 
-/* ===== GRID RESPONSIVO CORRIGIDO ===== */
+/* ===== GRID RESPONSIVO ===== */
 .spotify-grid {
     display: grid;
     gap: 16px;
     margin-bottom: 32px;
 }
 
-/* PC GRANDE - 7 cards menores */
-@media (min-width: 1400px) {
-    .spotify-grid {
-        grid-template-columns: repeat(7, minmax(0, 1fr));
-    }
-    
-    .spotify-card {
-        padding: 12px !important;
-    }
-    
-    .spotify-cover {
-        margin-bottom: 8px !important;
-    }
-    
-    .spotify-title {
-        font-size: 14px !important;
-    }
-    
-    .spotify-artist {
-        font-size: 12px !important;
-    }
-    
-    .btn-invest {
-        font-size: 11px !important;
-        padding: 6px !important;
-        margin-top: 8px !important;
-    }
+/* ===== CARD PADRÃO ===== */
+.spotify-card {
+    background: var(--spotify-card);
+    border-radius: 6px;
+    padding: 16px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-        
-        /* Ajuste para botões de favorito */
+.spotify-card:hover {
+    background: var(--spotify-card-hover);
+    transform: translateY(-4px);
+}
+
+.spotify-card:hover .play-overlay {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ===== CAPA ===== */
 .spotify-cover {
     position: relative;
     width: 100%;
@@ -1650,56 +1642,353 @@
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 
-.position-absolute.top-0.start-0.m-2 {
-    position: absolute;
-    top: 8px !important;
-    left: 8px !important;
-    margin: 0 !important;
-    z-index: 10;
+.spotify-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
-.favorite-btn {
-    background: rgba(0,0,0,0.5);
+/* ===== BOTÃO PLAY ===== */
+.play-overlay {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: var(--spotify-green);
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
+    color: black;
+    font-size: 20px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.3s ease;
     border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    z-index: 5;
+}
+
+.play-overlay:hover {
+    transform: scale(1.05);
+    background: var(--spotify-green-hover);
+}
+
+/* ===== TÍTULO E ARTISTA ===== */
+.spotify-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotify-artist {
+    font-size: 14px;
+    color: var(--spotify-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ===== ESTATÍSTICAS ===== */
+.spotify-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.spotify-elo {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: rgba(29, 185, 84, 0.2);
+    color: var(--spotify-green);
+}
+
+.spotify-price {
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+}
+
+/* ===== BOTÃO FAVORITO ===== */
+.position-absolute {
+    position: absolute !important;
+    top: 8px !important;
+    left: 8px !important;
+    z-index: 10 !important;
+}
+
+.favorite-btn {
+    background: rgba(0, 0, 0, 0.6) !important;
+    border: none !important;
+    border-radius: 50% !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
 }
 
 .favorite-btn:hover {
-    transform: scale(1.1);
-    background: rgba(0,0,0,0.7);
+    background: rgba(0, 0, 0, 0.8) !important;
+    transform: scale(1.1) !important;
 }
 
 .favorite-btn i {
-    font-size: 16px;
-    color: #ffc107;
+    font-size: 16px !important;
+    color: #ffc107 !important;
 }
 
 .favorite-btn.active i {
-    color: #ffc107;
+    color: #ffc107 !important;
 }
 
-/* PC MÉDIO - 6 cards */
+/* ===== BOTÃO INVESTIR ===== */
+.btn-invest {
+    width: 100%;
+    margin-top: 12px;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid rgba(29, 185, 84, 0.3);
+    border-radius: 20px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.btn-invest:hover {
+    background: var(--spotify-green);
+    border-color: var(--spotify-green);
+    color: black;
+}
+
+/* ===== CARDS ESPECIAIS ===== */
+.spotify-card.external-card {
+    border: 1px dashed rgba(255, 107, 107, 0.3);
+}
+
+.spotify-card.external-card:hover {
+    border-color: #ff6b6b;
+}
+
+.external-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(135deg, #ff6b6b, #ff4c4c);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 9px;
+    font-weight: 700;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+}
+
+.external-card .btn-invest {
+    border-color: rgba(255, 107, 107, 0.3);
+    color: #ff6b6b;
+}
+
+.external-card .btn-invest:hover {
+    background: #ff6b6b;
+    border-color: #ff6b6b;
+    color: white;
+}
+
+/* ===== CARD SUGERIR ===== */
+.suggest-card {
+    background: var(--spotify-card);
+    border: 2px dashed #ff6b6b;
+    border-radius: 6px;
+    padding: 24px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    height: 100%;
+    min-height: 200px;
+}
+
+.suggest-card i {
+    font-size: 40px;
+    color: #ff6b6b;
+    margin-bottom: 12px;
+}
+
+.suggest-card h3 {
+    color: white;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.suggest-card p {
+    color: #b3b3b3;
+    font-size: 12px;
+}
+
+.suggest-card:hover {
+    background: var(--spotify-card-hover);
+}
+
+/* ===== CARD RECOMENDADO ===== */
+.recommended-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    padding: 16px;
+    transition: background 0.3s ease;
+    cursor: pointer;
+}
+
+.recommended-card:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.recommended-cover {
+    width: 70px;
+    height: 70px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.recommended-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.recommended-info h4 {
+    color: white;
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.recommended-info p {
+    color: #b3b3b3;
+    font-size: 14px;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.recommended-card .btn-play {
+    background: var(--spotify-green);
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: black;
+    font-size: 20px;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.recommended-card .btn-play:hover {
+    background: var(--spotify-green-hover);
+    transform: scale(1.05);
+}
+
+/* ===== BOLSA EXTERNA ===== */
+.external-progress {
+    margin-top: 8px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+    font-size: 10px;
+    color: #b3b3b3;
+}
+
+.progress-bar-bg {
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* ===== MEDIA QUERIES ===== */
+/* PC GRANDE */
+@media (min-width: 1400px) {
+    .spotify-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+    
+    .spotify-card {
+        padding: 12px;
+    }
+    
+    .spotify-cover {
+        margin-bottom: 8px;
+    }
+    
+    .spotify-title {
+        font-size: 14px;
+    }
+    
+    .spotify-artist {
+        font-size: 12px;
+    }
+    
+    .btn-invest {
+        font-size: 11px;
+        padding: 6px;
+        margin-top: 8px;
+    }
+}
+
+/* PC MÉDIO */
 @media (min-width: 1200px) and (max-width: 1399px) {
     .spotify-grid {
         grid-template-columns: repeat(6, minmax(0, 1fr));
     }
 }
 
-/* NOTEBOOK - 5 cards */
+/* NOTEBOOK */
 @media (min-width: 992px) and (max-width: 1199px) {
     .spotify-grid {
         grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 }
 
-/* TABLET - 4 cards */
+/* TABLET */
 @media (min-width: 768px) and (max-width: 991px) {
     .spotify-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1707,732 +1996,166 @@
     }
 }
 
-/* CELULAR - TAMANHO EXATO DO SPOTIFY */
+/* CELULAR - ÚNICA MEDIA QUERY */
 @media (max-width: 767px) {
     .spotify-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
+        margin-bottom: 24px;
     }
     
     .spotify-card {
-        padding: 8px !important;
+        padding: 8px;
     }
     
     .spotify-cover {
-        margin-bottom: 8px !important;
+        margin-bottom: 8px;
     }
     
     .spotify-title {
-        font-size: 14px !important;
-        font-weight: 600 !important;
-        margin-bottom: 4px !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 4px;
     }
     
     .spotify-artist {
-        font-size: 12px !important;
-        color: #b3b3b3 !important;
-        margin-bottom: 4px !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: 12px;
+        margin-bottom: 4px;
     }
     
     .play-overlay {
-        width: 40px !important;
-        height: 40px !important;
-        font-size: 20px !important;
-        bottom: 8px !important;
-        right: 8px !important;
-        background: var(--spotify-green) !important;
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        bottom: 8px;
+        right: 8px;
         opacity: 0;
         transform: translateY(8px);
     }
     
-    .spotify-card:hover .play-overlay {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    
     .btn-invest {
-        font-size: 12px !important;
-        padding: 6px !important;
-        margin-top: 8px !important;
-        border-radius: 16px !important;
-    }
-    
-    /* Barra de progresso */
-    .progress-bar-bg,
-    div[style*="height: 3px"],
-    div[style*="height: 2px"] {
-        height: 4px !important;
-        margin: 6px 0 !important;
-    }
-    
-    /* Badges */
-    .badge,
-    .spotify-badge {
-        font-size: 10px !important;
-        padding: 2px 6px !important;
+        font-size: 12px;
+        padding: 6px;
+        margin-top: 8px;
+        border-radius: 16px;
     }
     
     .spotify-price {
-        font-size: 13px !important;
-        font-weight: 600 !important;
+        font-size: 13px;
     }
     
     .spotify-elo {
-        font-size: 10px !important;
-        padding: 2px 6px !important;
+        font-size: 10px;
+        padding: 2px 6px;
     }
     
     .spotify-stats {
-        margin-top: 4px !important;
+        margin-top: 4px;
     }
     
-    /* Card recomendado */
-    .recommended-card {
-        padding: 12px !important;
-        gap: 12px !important;
+    .section {
+        padding: 12px;
     }
     
-    .recommended-cover {
-        width: 60px !important;
-        height: 60px !important;
-    }
-    
-    .recommended-info h4 {
-        font-size: 15px !important;
-        font-weight: 600 !important;
-        margin-bottom: 2px !important;
-    }
-    
-    .recommended-info p {
-        font-size: 12px !important;
-    }
-    
-    .recommended-card .btn-play {
-        width: 44px !important;
-        height: 44px !important;
-        font-size: 18px !important;
-    }
-    
-    /* Header */
-    .section-header-spotify h2 {
-        font-size: 18px !important;
-        font-weight: 700 !important;
-    }
-    
-    .section-header-spotify a {
-        font-size: 13px !important;
-    }
-    
-    /* Botões de favorito */
-    .favorite-btn[style*="width: 32px"] {
+    .favorite-btn {
         width: 28px !important;
         height: 28px !important;
     }
     
-    .favorite-btn[style*="width: 32px"] i {
+    .favorite-btn i {
         font-size: 14px !important;
     }
-    
-    /* Margens */
-    .section {
-        padding: 12px !important;
-    }
-    
-    .spotify-grid {
-        margin-bottom: 24px !important;
-    }
-}
-        /* CARD PADRÃO */
-        .spotify-card {
-            background: var(--spotify-card);
-            border-radius: 6px;
-            padding: 16px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .spotify-card:hover {
-            background: var(--spotify-card-hover);
-            transform: translateY(-4px);
-        }
-
-        .spotify-card:hover .play-overlay {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* CAPA */
-        .spotify-cover {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 1/1;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        }
-
-        .spotify-cover img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-
-        /* BOTÃO PLAY */
-        .play-overlay {
-            position: absolute;
-            bottom: 8px;
-            right: 8px;
-            background: var(--spotify-green);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: black;
-            font-size: 20px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-            opacity: 0;
-            transform: translateY(8px);
-            transition: all 0.3s ease;
-            border: none;
-        }
-
-        .play-overlay:hover {
-            transform: scale(1.05);
-            background: var(--spotify-green-hover);
-        }
-
-        /* TÍTULO */
-        .spotify-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: white;
-            margin: 0 0 4px 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* ARTISTA */
-        .spotify-artist {
-            font-size: 14px;
-            color: var(--spotify-text);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* BADGE DE PERCENTUAL */
-        .spotify-badge {
-            background: rgba(29, 185, 84, 0.2);
-            color: var(--spotify-green);
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 10px;
-            margin-top: 6px;
-            display: inline-block;
-        }
-
-        /* BOTÃO INVESTIR */
-        .btn-invest {
-            width: 100%;
-            margin-top: 12px;
-            padding: 8px;
-            background: transparent;
-            border: 1px solid rgba(29, 185, 84, 0.3);
-            border-radius: 20px;
-            color: white;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .btn-invest:hover {
-            background: var(--spotify-green);
-            border-color: var(--spotify-green);
-            color: black;
-        }
-
-        /* ===== CARDS ESPECIAIS ===== */
-        .spotify-card.external-card {
-            border: 1px dashed rgba(255, 107, 107, 0.3);
-        }
-
-        .spotify-card.external-card:hover {
-            border-color: #ff6b6b;
-        }
-
-        .external-badge {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: linear-gradient(135deg, #ff6b6b, #ff4c4c);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 9px;
-            font-weight: 700;
-            z-index: 20;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
-        }
-
-        .external-card .btn-invest {
-            border-color: rgba(255, 107, 107, 0.3);
-            color: #ff6b6b;
-        }
-
-        .external-card .btn-invest:hover {
-            background: #ff6b6b;
-            border-color: #ff6b6b;
-            color: white;
-        }
-
-        /* Card para Sugerir Música */
-        .suggest-card {
-            background: var(--spotify-card);
-            border: 2px dashed #ff6b6b;
-            border-radius: 6px;
-            padding: 24px 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            cursor: pointer;
-            height: 100%;
-            min-height: 200px;
-        }
-
-        .suggest-card i {
-            font-size: 40px;
-            color: #ff6b6b;
-            margin-bottom: 12px;
-        }
-
-        .suggest-card h3 {
-            color: white;
-            font-size: 16px;
-            margin-bottom: 4px;
-        }
-
-        .suggest-card p {
-            color: #b3b3b3;
-            font-size: 12px;
-        }
-
-        .suggest-card:hover {
-            background: var(--spotify-card-hover);
-        }
-
-        /* Card Recomendado */
-        .recommended-card {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 6px;
-            padding: 16px;
-            transition: background 0.3s ease;
-            cursor: pointer;
-        }
-
-        .recommended-card:hover {
-            background: rgba(255,255,255,0.1);
-        }
-
-        .recommended-cover {
-            width: 70px;
-            height: 70px;
-            border-radius: 4px;
-            object-fit: cover;
-            flex-shrink: 0;
-        }
-
-        .recommended-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .recommended-info h4 {
-            color: white;
-            font-size: 18px;
-            font-weight: 700;
-            margin: 0 0 4px 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .recommended-info p {
-            color: #b3b3b3;
-            font-size: 14px;
-            margin: 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .recommended-card .btn-play {
-            background: var(--spotify-green);
-            border: none;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: black;
-            font-size: 20px;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-        }
-
-        .recommended-card .btn-play:hover {
-            background: var(--spotify-green-hover);
-            transform: scale(1.05);
-        }
-
-        /* ===== CORREÇÕES PARA BOLSA EXTERNA ===== */
-        #externalMarketplaceGrid.spotify-grid,
-        #externalContent.spotify-grid {
-            display: grid !important;
-            gap: 24px !important;
-        }
-
-        .external-card {
-            border: 1px dashed rgba(255, 107, 107, 0.3) !important;
-        }
-
-        .external-card:hover {
-            border-color: #ff6b6b !important;
-        }
-
-        .external-progress {
-            margin-top: 8px;
-        }
-
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2px;
-            font-size: 10px;
-            color: #b3b3b3;
-        }
-
-        .progress-bar-bg {
-            height: 3px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
-            width: 0%;
-            transition: width 0.3s ease;
-        }        
-    
-        /* ===== NOVAS CLASSES ADICIONADAS ===== */
-        .blockchain-badge {
-            background: rgba(155, 89, 182, 0.2);
-            color: #9b59b6;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .text-purple {
-            color: #9b59b6 !important;
-        }
-
-        .border-purple {
-            border-color: #9b59b6 !important;
-        }
-
-        .bg-purple {
-            background-color: #9b59b6 !important;
-        }
-
-        .progress-loading {
-            width: 200px;
-            height: 4px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 2px;
-            overflow: hidden;
-            margin: 10px auto;
-        }
-
-        .blockchain-hash {
-            font-family: monospace;
-            font-size: 11px;
-            color: var(--text-muted);
-            word-break: break-all;
-        }
-
-        .blockchain-verified {
-            color: var(--neon-green);
-            font-size: 12px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .section-header-spotify {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .section-header-spotify h2 {
-            color: white;
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        .section-header-spotify a {
-            color: #b3b3b3;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .section-header-spotify a:hover {
-            text-decoration: underline;
-        }
-
-        .connection-footer {
-            margin-top: 40px;
-            padding: 20px 0;
-            color: #b3b3b3;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .empty-state-spotify {
-            grid-column: 1/-1;
-            text-align: center;
-            padding: 60px 20px;
-        }
-
-        .spotify-stats {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 8px;
-        }
-
-        .spotify-elo {
-            font-size: 12px;
-            padding: 2px 8px;
-            border-radius: 12px;
-            background: rgba(29, 185, 84, 0.2);
-            color: var(--spotify-green);
-        }
-
-        .spotify-price {
-            font-size: 14px;
-            font-weight: 700;
-            color: white;
-        }
-
-        .music-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        .music-action-btn {
-            flex: 1;
-            padding: 6px;
-            border: none;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .music-action-btn.edit {
-            background: rgba(13, 202, 240, 0.2);
-            color: #0dcaf0;
-        }
-
-        .music-action-btn.pause {
-            background: rgba(255, 193, 7, 0.2);
-            color: #ffc107;
-        }
-
-        .music-action-btn.delete {
-            background: rgba(255, 50, 50, 0.2);
-            color: #ff3232;
-        }
-
-        .music-action-btn:hover {
-            transform: translateY(-2px);
-            filter: brightness(1.2);
-        }
-
-        .status-active {
-            background: rgba(29, 185, 84, 0.2);
-            color: var(--spotify-green);
-        }
-
-        .status-paused {
-            background: rgba(255, 193, 7, 0.2);
-            color: #ffc107;
-        }
-
-        .status-deleted {
-            background: rgba(255, 50, 50, 0.2);
-            color: #ff3232;
-        }
-        
-        /* Trade Modal Styles */
-        .user-search-result {
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-        
-        .user-search-result:hover {
-            background: rgba(13, 202, 240, 0.1);
-        }
-        
-        .trade-offer-card {
-            transition: all 0.3s ease;
-        }
-        
-        .trade-offer-card:hover {
-            border-color: var(--neon-green) !important;
-        }
-        
-        .trade-offer-card.pending {
-            border-left: 4px solid #ffc107;
-        }
-        
-        .trade-offer-card.accepted {
-            border-left: 4px solid #28a745;
-        }
-        
-        .trade-offer-card.declined {
-            border-left: 4px solid #dc3545;
-        }
-        
-        /* Ranking ELO */
-        .elo-ranking-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .elo-ranking-table th {
-            background: rgba(255,255,255,0.05);
-            padding: 12px;
-            text-align: left;
-            color: var(--text-muted);
-            font-size: 12px;
-        }
-        
-        .elo-ranking-table td {
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        .elo-badge {
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: bold;
-            color: white;
-        }
-        
-        .elo-trend-up {
-            color: #28a745;
-        }
-        
-        .elo-trend-down {
-            color: #dc3545;
-        }
-        
-        .elo-trend-stable {
-            color: #ffc107;
-        }
-        
-        .btn-outline-purple {
-            color: #9b59b6;
-            border-color: #9b59b6;
-        }
-        
-        .btn-outline-purple:hover {
-            background-color: #9b59b6;
-            color: white;
-        }
-
-        /* ===== CORREÇÃO TAMANHO DOS CARDS ===== */
-
-/* Barra de progresso mais fina */
-.spotify-progress-bar {
-    height: 3px !important;
-    margin: 6px 0 !important;
 }
 
-.stat-icon-small {
-    font-size: 1.5rem;
+/* ===== NOVAS CLASSES ADICIONADAS ===== */
+.blockchain-badge {
+    background: rgba(155, 89, 182, 0.2);
+    color: #9b59b6;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.text-purple {
+    color: #9b59b6 !important;
+}
+
+.border-purple {
+    border-color: #9b59b6 !important;
+}
+
+.bg-purple {
+    background-color: #9b59b6 !important;
+}
+
+.progress-loading {
+    width: 200px;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 10px auto;
+}
+
+.blockchain-hash {
+    font-family: monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    word-break: break-all;
+}
+
+.blockchain-verified {
     color: var(--neon-green);
-    margin-bottom: 0.5rem;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
-.stat-value-small {
-    font-size: 1.25rem;
+.section-header-spotify {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-header-spotify h2 {
+    color: white;
+    font-size: 24px;
     font-weight: 700;
-    color: var(--text-light);
 }
 
-.stat-label-small {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+.section-header-spotify a {
+    color: #b3b3b3;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
 }
 
-.modal-close {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 1.5rem;
-    cursor: pointer;
-    padding: 0.25rem;
-    line-height: 1;
+.section-header-spotify a:hover {
+    text-decoration: underline;
 }
 
-.modal-close:hover {
-    color: var(--text-light);
-}        
-    </style>
-</head>
-<body>
+.connection-footer {
+    margin-top: 40px;
+    padding: 20px 0;
+    color: #b3b3b3;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
+.empty-state-spotify {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 60px 20px;
+}
+
+/* ===== ESTILOS EXISTENTES (manter o resto do seu CSS) ===== */
 <!-- Loading Screen -->
 <div id="loadingScreen" class="loading-screen">
     <div class="loading-content">
