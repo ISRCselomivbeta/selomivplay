@@ -1452,25 +1452,41 @@
             object-fit: cover;
             background: linear-gradient(135deg, var(--neon-green), var(--miv-blue));
         }
-        
-        /* Favorite Button */
-        .favorite-btn {
-            background: none;
-            border: none;
-            color: #ffc107;
-            font-size: 1.25rem;
-            cursor: pointer;
-            transition: transform 0.3s ease;
-        }
-        
-        .favorite-btn:hover {
-            transform: scale(1.2);
-        }
-        
-        .favorite-btn.active {
-            color: #ff3232;
-        }
-        
+        /* Estilo para o botão de favorito */
+.spotify-card .position-absolute {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 10;
+}
+
+.favorite-btn {
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.favorite-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+}
+
+.favorite-btn i {
+    font-size: 16px;
+    color: #ffc107;
+}
+
+.favorite-btn.active i {
+    color: #ffc107;
+}
         /* Withdrawal Status */
         .withdrawal-status {
             padding: 0.5rem 1rem;
@@ -1621,6 +1637,8 @@
         margin-top: 8px !important;
     }
 }
+
+        
         /* Ajuste para botões de favorito */
 .spotify-cover {
     position: relative;
@@ -5367,57 +5385,53 @@ function renderMarketplace() {
     
     if (!container) return;
     
-    // ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) - MESMO ESTILO DE ARTISTAS E PLAYLISTS =====
-    if (!state.playlist || state.playlist.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state-spotify" style="grid-column: 1/-1;">
-                <i class="bi bi-music-note-beamed" style="font-size: 2.5rem; color: #1DB954;"></i>
-                <h5 style="color: white; margin-top: 0.5rem; font-size: 16px;">Nenhuma música disponível</h5>
+    // ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) - SEM ESTILOS INLINE =====
+if (!state.playlist || state.playlist.length === 0) {
+    container.innerHTML = `
+        <div class="empty-state-spotify" style="grid-column: 1/-1;">
+            <i class="bi bi-music-note-beamed" style="font-size: 2.5rem; color: #1DB954;"></i>
+            <h5 style="color: white; margin-top: 0.5rem; font-size: 16px;">Nenhuma música disponível</h5>
+        </div>
+    `;
+} else {
+    const mixes = state.playlist.slice(0, 7);
+    container.innerHTML = mixes.map((track, index) => {
+        let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+        const percentSold = track.percentual_disponivel ? 
+            Math.min(100, ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100)).toFixed(0) : 0;
+        
+        const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+        
+        return `
+        <div class="spotify-card" onclick="playTrack(${index})">
+            <div class="spotify-cover">
+                <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                     onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
+                    <i class="bi bi-play-fill"></i>
+                </div>
+                <div class="position-absolute top-0 start-0 m-2" style="z-index: 5;">
+                    <button class="favorite-btn ${isFavorite ? 'active' : ''}" 
+                            onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${index})">
+                        <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}"></i>
+                    </button>
+                </div>
             </div>
+            <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+            <p class="spotify-artist">${track.artista || 'Artista'}</p>
+            
+            <div class="spotify-stats">
+                <span class="spotify-elo">${percentSold}%</span>
+                <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
+            </div>
+            
+            <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})">
+                <i class="bi bi-currency-dollar me-1"></i> INVESTIR
+            </button>
+        </div>
         `;
-    } else {
-        const mixes = state.playlist.slice(0, 7);
-        container.innerHTML = mixes.map((track, index) => {
-            let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
-            const percentSold = track.percentual_disponivel ? 
-                Math.min(100, ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100)).toFixed(0) : 0;
-            
-            const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
-            
-            return `
-            <div class="spotify-card" onclick="playTrack(${index})">
-                <div class="spotify-cover">
-                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                         onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
-                        <i class="bi bi-play-fill"></i>
-                    </div>
-                    <div class="position-absolute top-0 start-0 m-2" style="z-index: 5;">
-                        <button class="favorite-btn ${isFavorite ? 'active' : ''}" 
-                                onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${index})"
-                                style="background: rgba(0,0,0,0.5); border-radius: 50%; width: 32px; height: 32px; border: none; display: flex; align-items: center; justify-content: center;">
-                            <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}" style="color: #ffc107; font-size: 16px;"></i>
-                        </button>
-                    </div>
-                </div>
-                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
-                <p class="spotify-artist">${track.artista || 'Artista'}</p>
-                
-                <div class="spotify-stats">
-                    <span class="spotify-elo" style="background: rgba(29, 185, 84, 0.2); color: #1DB954;">
-                        ${percentSold}%
-                    </span>
-                    <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
-                </div>
-                
-                <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})">
-                    <i class="bi bi-currency-dollar me-1"></i> INVESTIR
-                </button>
-            </div>
-            `;
-        }).join('');
-    }
-    
+    }).join('');
+}
     // ===== ARTISTAS E PLAYLISTS (MESMO ESTILO) =====
     if (artistsGrid && state.playlist && state.playlist.length > 3) {
         const artistItems = state.playlist.slice(3, 7);
