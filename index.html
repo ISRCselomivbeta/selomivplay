@@ -1,3 +1,4 @@
+```html:disable-run
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -6,10 +7,9 @@
     <meta name="description" content="SELO MIV - Plataforma de Investimento em Música com Blockchain">
     <meta name="theme-color" content="#00ff88">
     <title>SELO MIV | Fintech Musical Blockchain</title>
-    
+   
     <!-- PERMITIR COMUNICAÇÃO COM YOUTUBE E GOOGLE APPS SCRIPT -->
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://script.google.com https://script.googleusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com;">
-
     <!-- Bootstrap 5.3.0 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -18,7 +18,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
     <!-- YouTube Iframe API -->
     <script src="https://www.youtube.com/iframe_api"></script>
-
     <style>
         /* ========== CSS COMPLETO CORRIGIDO ========== */
         :root {
@@ -35,13 +34,13 @@
             --blockchain-purple: #9b59b6;
             --royalty-gold: #f1c40f;
         }
-        
+       
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+       
         body {
             font-family: 'Outfit', sans-serif;
             background-color: var(--bg-dark);
@@ -50,7 +49,7 @@
             overflow-x: hidden;
             padding-bottom: var(--player-height);
         }
-        
+       
         /* Loading Screen */
         .loading-screen {
             position: fixed;
@@ -62,11 +61,11 @@
             z-index: 9999;
             transition: opacity 0.3s ease;
         }
-        
+       
         .loading-content {
             text-align: center;
         }
-        
+       
         .loading-spinner {
             width: 4rem;
             height: 4rem;
@@ -76,7 +75,7 @@
             animation: spin 1s linear infinite;
             margin: 0 auto 1.5rem;
         }
-        
+       
         /* Auth Screen */
         .auth-screen {
             position: fixed;
@@ -89,7 +88,7 @@
             z-index: 9998;
             overflow-y: auto;
         }
-        
+       
         .auth-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -101,16 +100,16 @@
             transform: translateY(0);
             transition: transform 0.3s ease;
         }
-        
+       
         .auth-card:hover {
             transform: translateY(-5px);
         }
-        
+       
         .logo-header {
             text-align: center;
             margin-bottom: 2.5rem;
         }
-        
+       
         .logo-icon {
             display: inline-flex;
             align-items: center;
@@ -122,17 +121,17 @@
             margin-bottom: 1.5rem;
             border: 2px solid var(--neon-green);
         }
-        
+       
         .logo-icon i {
             font-size: 2.5rem;
             color: var(--neon-green);
         }
-        
+       
         /* Forms */
         .form-group {
             margin-bottom: 1.25rem;
         }
-        
+       
         .form-control-custom {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border);
@@ -143,7 +142,7 @@
             transition: all 0.3s ease;
             width: 100%;
         }
-        
+       
         .form-control-custom:focus {
             background: rgba(255, 255, 255, 0.08);
             border-color: var(--neon-green);
@@ -151,11 +150,11 @@
             box-shadow: 0 0 0 0.25rem rgba(0, 255, 136, 0.25);
             outline: none;
         }
-        
+       
         .form-control-custom::placeholder {
             color: var(--text-muted);
         }
-        
+       
         /* Buttons */
         .btn-miv {
             background: linear-gradient(135deg, var(--neon-green) 0%, #00cc6a 100%);
@@ -173,18 +172,17 @@
             gap: 0.5rem;
             width: 100%;
         }
-        
+       
         .btn-miv:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
         }
-        
+       
         .btn-miv:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
-
         .btn-blockchain {
             background: linear-gradient(135deg, var(--blockchain-purple) 0%, #8e44ad 100%);
             border: none;
@@ -200,30 +198,30 @@
             justify-content: center;
             gap: 0.5rem;
         }
-        
+       
         .btn-blockchain:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(155, 89, 182, 0.3);
         }
-        
+       
         .auth-link {
             color: var(--neon-green);
             text-decoration: none;
             font-weight: 600;
             transition: opacity 0.3s ease;
         }
-        
+       
         .auth-link:hover {
             opacity: 0.8;
             text-decoration: underline;
         }
-        
+       
         /* Main App */
         .main-app {
             display: none;
             min-height: 100vh;
         }
-        
+       
         .app-header {
             background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, rgba(7, 9, 12, 0.8) 100%);
             backdrop-filter: blur(10px);
@@ -233,25 +231,25 @@
             top: 0;
             z-index: 1000;
         }
-        
+       
         .header-content {
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
-        
+       
         .saldo-display h6 {
             color: var(--text-muted);
             font-size: 0.75rem;
             margin-bottom: 0.25rem;
         }
-        
+       
         .saldo-display h4 {
             color: var(--neon-green);
             font-weight: 700;
             margin-bottom: 0;
         }
-        
+       
         .user-badge {
             background: var(--neon-green);
             color: #000;
@@ -260,7 +258,7 @@
             font-size: 0.75rem;
             font-weight: 700;
         }
-        
+       
         /* Sidebar */
         .sidebar {
             position: fixed;
@@ -275,12 +273,10 @@
             overflow-y: auto;
             padding: 1.5rem;
         }
-
         .sidebar.open {
             left: 0;
             z-index: 10001;
         }
-
         .sidebar-header {
             display: flex;
             justify-content: space-between;
@@ -289,7 +285,6 @@
             padding-bottom: 1rem;
             border-bottom: 1px solid var(--border);
         }
-
         .sidebar-close {
             background: none;
             border: none;
@@ -298,16 +293,13 @@
             cursor: pointer;
             padding: 0.25rem;
         }
-
         .nav-menu {
             list-style: none;
             padding: 0;
         }
-
         .nav-item {
             margin-bottom: 0.5rem;
         }
-
         .nav-link {
             display: flex;
             align-items: center;
@@ -318,45 +310,43 @@
             border-radius: 0.75rem;
             transition: all 0.3s ease;
         }
-
         .nav-link:hover, .nav-link.active {
             background: rgba(0, 255, 136, 0.1);
             color: var(--neon-green);
         }
-
         .nav-link i {
             font-size: 1.25rem;
         }
-        
+       
         /* Sections */
         .section {
             display: none;
             padding: 1.5rem;
             animation: fadeIn 0.3s ease;
         }
-        
+       
         .section.active {
             display: block;
         }
-        
+       
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
+       
         .section-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1.5rem;
         }
-        
+       
         .section-title {
             color: var(--text-light);
             font-weight: 700;
             margin-bottom: 0;
         }
-            
+           
         /* Player MIV */
         .player-miv {
             position: fixed;
@@ -375,11 +365,9 @@
             transition: all 0.3s ease;
             cursor: pointer;
         }
-
         .player-miv:hover {
             background: rgba(30, 30, 30, 0.98);
         }
-
         .player-bar {
             width: 100%;
             display: flex;
@@ -387,7 +375,6 @@
             justify-content: space-between;
             gap: 1.5rem;
         }
-
         .player-track-info {
             flex: 0 0 25%;
             display: flex;
@@ -395,14 +382,12 @@
             gap: 0.75rem;
             min-width: 180px;
         }
-
         .track-image-container {
             position: relative;
             width: 56px;
             height: 56px;
             flex-shrink: 0;
         }
-
         .track-image {
             width: 100%;
             height: 100%;
@@ -410,7 +395,6 @@
             object-fit: cover;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
-
         .track-image-overlay {
             position: absolute;
             inset: 0;
@@ -423,21 +407,17 @@
             transition: opacity 0.3s ease;
             cursor: pointer;
         }
-
         .track-image-overlay:hover {
             opacity: 1;
         }
-
         .track-image-overlay i {
             font-size: 1.5rem;
             color: var(--neon-green);
         }
-
         .track-details {
             flex: 1;
             min-width: 0;
         }
-
         .track-title {
             font-size: 0.875rem;
             font-weight: 600;
@@ -447,7 +427,6 @@
             text-overflow: ellipsis;
             margin-bottom: 0.125rem;
         }
-
         .track-artist {
             font-size: 0.75rem;
             color: var(--text-muted);
@@ -455,13 +434,11 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
         .track-actions {
             display: flex;
             gap: 0.5rem;
             margin-left: 0.5rem;
         }
-
         .player-btn {
             background: none;
             border: none;
@@ -477,16 +454,13 @@
             width: 36px;
             height: 36px;
         }
-
         .player-btn:hover {
             background: rgba(255, 255, 255, 0.1);
             color: var(--text-light);
         }
-
         .player-btn.favorite-btn.active {
             color: #ffc107;
         }
-
         .player-controls-center {
             flex: 1;
             max-width: 600px;
@@ -495,13 +469,11 @@
             align-items: center;
             gap: 0.5rem;
         }
-
         .control-buttons {
             display: flex;
             align-items: center;
             gap: 1rem;
         }
-
         .control-btn {
             background: none;
             border: none;
@@ -516,21 +488,17 @@
             width: 32px;
             height: 32px;
         }
-
         .control-btn:hover {
             color: var(--text-light);
             background: rgba(255, 255, 255, 0.1);
         }
-
         .control-btn.active {
             color: var(--neon-green);
         }
-
         .control-btn.shuffle-btn.active,
         .control-btn.repeat-btn.active {
             color: var(--neon-green);
         }
-
         .control-btn.play-btn {
             width: 48px;
             height: 48px;
@@ -538,24 +506,20 @@
             color: #000;
             font-size: 1.25rem;
         }
-
         .control-btn.play-btn:hover {
             background: #00cc6a;
             transform: scale(1.05);
         }
-
         .control-btn.prev-btn,
         .control-btn.next-btn {
             font-size: 1.25rem;
         }
-
         .progress-container {
             width: 100%;
             display: flex;
             align-items: center;
             gap: 0.75rem;
         }
-
         .progress-bar {
             flex: 1;
             height: 4px;
@@ -564,7 +528,6 @@
             cursor: pointer;
             position: relative;
         }
-
         .progress-fill {
             height: 100%;
             background: var(--neon-green);
@@ -573,7 +536,6 @@
             transition: width 0.1s linear;
             position: relative;
         }
-
         .progress-fill::after {
             content: '';
             position: absolute;
@@ -587,11 +549,9 @@
             opacity: 0;
             transition: opacity 0.2s ease;
         }
-
         .progress-bar:hover .progress-fill::after {
             opacity: 1;
         }
-
         .progress-handle {
             position: absolute;
             top: 50%;
@@ -603,26 +563,21 @@
             opacity: 0;
             pointer-events: none;
         }
-
         .progress-bar:hover .progress-handle {
             opacity: 1;
         }
-
         .time-current,
         .time-total {
             font-size: 0.75rem;
             color: var(--text-muted);
             min-width: 40px;
         }
-
         .time-current {
             text-align: right;
         }
-
         .time-total {
             text-align: left;
         }
-
         .player-controls-right {
             flex: 0 0 25%;
             display: flex;
@@ -631,17 +586,14 @@
             gap: 1rem;
             min-width: 180px;
         }
-
         .volume-container {
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
-
         .volume-slider-container {
             width: 100px;
         }
-
         .volume-slider {
             height: 4px;
             background: rgba(255, 255, 255, 0.1);
@@ -649,7 +601,6 @@
             cursor: pointer;
             position: relative;
         }
-
         .volume-slider-fill {
             position: absolute;
             left: 0;
@@ -659,7 +610,6 @@
             border-radius: 2px;
             width: 80%;
         }
-
         /* Player Expanded */
         .player-expanded {
             position: fixed;
@@ -670,11 +620,9 @@
             overflow-y: auto;
             animation: fadeIn 0.3s ease;
         }
-
         .player-expanded.show {
             display: block;
         }
-
         .expanded-header {
             padding: 2rem;
             display: flex;
@@ -682,14 +630,12 @@
             align-items: flex-start;
             background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, transparent 100%);
         }
-
         .expanded-track-info {
             display: flex;
             gap: 2rem;
             max-width: 1200px;
             width: 100%;
         }
-
         .expanded-album-art {
             width: 300px;
             height: 300px;
@@ -698,14 +644,12 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
             flex-shrink: 0;
         }
-
         .expanded-details {
             flex: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
-
         .expanded-type {
             font-size: 0.875rem;
             color: var(--neon-green);
@@ -714,7 +658,6 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-
         .expanded-title {
             font-size: 3.5rem;
             font-weight: 700;
@@ -722,19 +665,16 @@
             margin: 0 0 1rem 0;
             line-height: 1.1;
         }
-
         .expanded-artist {
             font-size: 1.5rem;
             color: var(--text-muted);
             margin-bottom: 2rem;
         }
-
         .expanded-meta {
             display: flex;
             gap: 2rem;
             margin-bottom: 2rem;
         }
-
         .meta-item {
             display: flex;
             align-items: center;
@@ -742,18 +682,15 @@
             color: var(--text-muted);
             font-size: 0.875rem;
         }
-
         .meta-item i {
             color: var(--neon-green);
         }
-
         .expanded-actions {
             display: flex;
             align-items: center;
             gap: 1rem;
             flex-wrap: wrap;
         }
-
         .play-large-btn {
             background: linear-gradient(135deg, var(--neon-green) 0%, #00cc6a 100%);
             border: none;
@@ -769,12 +706,11 @@
             justify-content: center;
             gap: 0.5rem;
         }
-
         .play-large-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
         }
-        
+       
         .action-btn {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -788,18 +724,15 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
-
         .action-btn:hover {
             background: rgba(255, 255, 255, 0.2);
             transform: scale(1.05);
         }
-
         .favorite-large-btn.active {
             background: rgba(255, 193, 7, 0.2);
             border-color: #ffc107;
             color: #ffc107;
         }
-
         .close-expanded {
             background: rgba(255, 255, 255, 0.1);
             border: none;
@@ -814,18 +747,15 @@
             transition: all 0.3s ease;
             flex-shrink: 0;
         }
-
         .close-expanded:hover {
             background: rgba(255, 255, 255, 0.2);
             transform: rotate(90deg);
         }
-
         .expanded-content {
             padding: 2rem;
             max-width: 1200px;
             margin: 0 auto;
         }
-
         .youtube-container-expanded {
             width: 100%;
             aspect-ratio: 16/9;
@@ -835,12 +765,10 @@
             margin-bottom: 3rem;
             position: relative;
         }
-
         #youtubePlayerExpanded {
             width: 100%;
             height: 100%;
         }
-
         .player-loading {
             position: absolute;
             inset: 0;
@@ -852,21 +780,18 @@
             color: var(--text-light);
             gap: 1rem;
         }
-
         .track-info-section {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 16px;
             padding: 2rem;
             margin-bottom: 3rem;
         }
-
         .info-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
             margin-bottom: 2rem;
         }
-
         .info-card {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
@@ -876,12 +801,10 @@
             gap: 1rem;
             transition: transform 0.3s ease;
         }
-
         .info-card:hover {
             transform: translateY(-5px);
             background: rgba(0, 255, 136, 0.1);
         }
-
         .info-icon {
             width: 48px;
             height: 48px;
@@ -892,28 +815,23 @@
             justify-content: center;
             flex-shrink: 0;
         }
-
         .info-icon i {
             font-size: 1.5rem;
             color: var(--neon-green);
         }
-
         .info-content {
             flex: 1;
         }
-
         .info-label {
             font-size: 0.875rem;
             color: var(--text-muted);
             margin-bottom: 0.25rem;
         }
-
         .info-value {
             font-size: 1.5rem;
             font-weight: 700;
             color: var(--text-light);
         }
-
         .invest-cta {
             text-align: center;
             padding: 2rem;
@@ -921,29 +839,24 @@
             border-radius: 12px;
             border: 1px solid rgba(0, 255, 136, 0.3);
         }
-
         .invest-cta h4 {
             font-size: 1.5rem;
             color: var(--text-light);
             margin-bottom: 1rem;
         }
-
         .invest-cta p {
             color: var(--text-muted);
             margin-bottom: 1.5rem;
         }
-
         .invest-large-btn {
             padding: 1rem 2.5rem;
             font-size: 1.125rem;
         }
-
         .expanded-controls {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 16px;
             padding: 2rem;
         }
-
         .expanded-controls-top {
             display: flex;
             align-items: center;
@@ -951,7 +864,6 @@
             margin-bottom: 2rem;
             flex-wrap: wrap;
         }
-
         .expanded-controls-top .control-btn {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 2rem;
@@ -962,12 +874,10 @@
             align-items: center;
             gap: 0.5rem;
         }
-
         .expanded-controls-top .control-btn.active {
             background: rgba(0, 255, 136, 0.2);
             color: var(--neon-green);
         }
-
         .queue-info {
             margin-left: auto;
             display: flex;
@@ -975,15 +885,12 @@
             gap: 0.5rem;
             color: var(--text-muted);
         }
-
         .queue-info i {
             color: var(--neon-green);
         }
-
         .expanded-progress-container {
             margin-bottom: 2rem;
         }
-
         .expanded-progress-bar {
             height: 6px;
             background: rgba(255, 255, 255, 0.1);
@@ -991,7 +898,6 @@
             cursor: pointer;
             margin-bottom: 0.5rem;
         }
-
         .expanded-progress-fill {
             height: 100%;
             background: var(--neon-green);
@@ -999,21 +905,18 @@
             width: 0%;
             transition: width 0.1s linear;
         }
-
         .expanded-time-display {
             display: flex;
             justify-content: space-between;
             color: var(--text-muted);
             font-size: 0.875rem;
         }
-
         .expanded-controls-bottom {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 2rem;
         }
-
         .expanded-controls-bottom .control-btn {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 2rem;
@@ -1025,12 +928,10 @@
             align-items: center;
             gap: 0.75rem;
         }
-
         .expanded-controls-bottom .control-btn:hover {
             background: rgba(255, 255, 255, 0.2);
             transform: translateY(-2px);
         }
-
         .play-large-btn-expanded {
             background: var(--neon-green) !important;
             color: #000 !important;
@@ -1038,111 +939,143 @@
             font-size: 1.125rem !important;
             font-weight: 700 !important;
         }
-
         .play-large-btn-expanded:hover {
             background: #00cc6a !important;
             transform: scale(1.05) !important;
         }
-
         /* Responsive */
         @media (max-width: 1024px) {
             .expanded-title {
                 font-size: 2.5rem;
             }
-            
+           
             .expanded-album-art {
                 width: 200px;
                 height: 200px;
             }
         }
-
         @media (max-width: 768px) {
+            :root {
+                --player-height: 220px; /* Aumente para caber o player em column (teste e ajuste: ~180-250px) */
+            }
+
+            body {
+                padding-bottom: var(--player-height); /* Corrige a sobreposição */
+            }
+
+            .player-miv {
+                height: auto; /* Já existe, mas garanta min-height */
+                min-height: var(--player-height);
+                padding: 0.5rem 1rem;
+            }
+
+            /* Garanta que o grid não overflow horizontal */
+            .spotify-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                padding: 0 0.5rem; /* Adicione padding lateral para evitar corte em telas pequenas */
+            }
+
+            /* Sidebar em mobile: reduza width para caber melhor */
+            .sidebar {
+                width: 80vw; /* Em vez de 300px fixo, use % da viewport */
+                left: -80vw;
+            }
+            .sidebar.open {
+                left: 0;
+            }
+
+            /* Expanded player: ajuste para evitar distorção */
+            .youtube-container-expanded {
+                aspect-ratio: 16/9;
+                height: auto; /* Deixe auto para não distorcer */
+            }
+
             .player-bar {
                 flex-direction: column;
                 height: auto;
                 padding: 1rem 0;
                 gap: 1rem;
             }
-            
+           
             .player-track-info,
             .player-controls-center,
             .player-controls-right {
                 width: 100%;
                 justify-content: center;
             }
-            
+           
             .player-track-info {
                 order: 1;
             }
-            
+           
             .player-controls-center {
                 order: 2;
             }
-            
+           
             .player-controls-right {
                 order: 3;
             }
-            
+           
             .expanded-track-info {
                 flex-direction: column;
                 align-items: center;
                 text-align: center;
             }
-            
+           
             .expanded-album-art {
                 width: 200px;
                 height: 200px;
             }
-            
+           
             .expanded-title {
                 font-size: 2rem;
             }
-            
+           
             .expanded-meta {
                 justify-content: center;
                 flex-wrap: wrap;
                 gap: 1rem;
             }
-            
+           
             .expanded-actions {
                 justify-content: center;
             }
-            
+           
             .player-miv {
                 height: auto;
                 min-height: var(--player-height);
                 padding: 0.5rem 1rem;
             }
         }
-
         @media (max-width: 480px) {
             .player-miv {
                 padding: 0 1rem;
             }
-            
+           
             .expanded-title {
                 font-size: 1.75rem;
             }
-            
+           
             .expanded-album-art {
                 width: 150px;
                 height: 150px;
             }
-            
+           
             .info-grid {
                 grid-template-columns: 1fr;
             }
-            
+           
             .expanded-controls-top {
                 flex-direction: column;
                 gap: 1rem;
             }
-            
+           
             .queue-info {
                 margin-left: 0;
             }
         }
-        
+       
         /* Portfolio */
         .portfolio-summary {
             background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 123, 255, 0.1) 100%);
@@ -1152,21 +1085,21 @@
             margin-bottom: 1.5rem;
             text-align: center;
         }
-        
+       
         .portfolio-value {
             font-size: 2.5rem;
             font-weight: 700;
             color: var(--neon-green);
             margin: 0.5rem 0;
         }
-        
+       
         /* Ledger */
         .ledger-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 1rem;
         }
-        
+       
         .ledger-table th {
             background: rgba(255, 255, 255, 0.05);
             color: var(--text-muted);
@@ -1175,16 +1108,16 @@
             padding: 1rem;
             border-bottom: 1px solid var(--border);
         }
-        
+       
         .ledger-table td {
             padding: 1rem;
             border-bottom: 1px solid var(--border);
         }
-        
+       
         .ledger-table tr:hover {
             background: rgba(255, 255, 255, 0.02);
         }
-        
+       
         /* Artist Stats */
         .artist-stats {
             display: grid;
@@ -1192,7 +1125,7 @@
             gap: 1rem;
             margin-bottom: 2rem;
         }
-        
+       
         .stat-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -1200,25 +1133,25 @@
             padding: 1.5rem;
             text-align: center;
         }
-        
+       
         .stat-icon {
             font-size: 2rem;
             color: var(--neon-green);
             margin-bottom: 1rem;
         }
-        
+       
         .stat-value {
             font-size: 2rem;
             font-weight: 700;
             color: var(--text-light);
             margin: 0.5rem 0;
         }
-        
+       
         .stat-label {
             color: var(--text-muted);
             font-size: 0.875rem;
         }
-        
+       
         /* Modals */
         .modal-overlay {
             position: fixed;
@@ -1232,12 +1165,12 @@
             visibility: hidden;
             transition: all 0.3s ease;
         }
-        
+       
         .modal-overlay.show {
             opacity: 1;
             visibility: visible;
         }
-        
+       
         .modal-content {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -1249,11 +1182,11 @@
             transform: translateY(20px);
             transition: transform 0.3s ease;
         }
-        
+       
         .modal-overlay.show .modal-content {
             transform: translateY(0);
         }
-        
+       
         .modal-header {
             padding: 1.5rem;
             border-bottom: 1px solid var(--border);
@@ -1261,17 +1194,17 @@
             justify-content: space-between;
             align-items: center;
         }
-        
+       
         .modal-title {
             color: var(--text-light);
             font-weight: 700;
             margin-bottom: 0;
-        }        
-        
+        }
+       
         .modal-body {
             padding: 1.5rem;
         }
-        
+       
         .modal-footer {
             padding: 1.5rem;
             border-top: 1px solid var(--border);
@@ -1279,7 +1212,7 @@
             justify-content: flex-end;
             gap: 1rem;
         }
-        
+       
         /* Toast */
         .toast-container {
             position: fixed;
@@ -1288,7 +1221,7 @@
             z-index: 1300;
             max-width: 350px;
         }
-        
+       
         .toast {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -1302,64 +1235,64 @@
             opacity: 0;
             transition: all 0.3s ease;
         }
-        
+       
         .toast.show {
             transform: translateX(0);
             opacity: 1;
         }
-        
+       
         .toast.success {
             border-color: var(--neon-green);
             background: rgba(0, 255, 136, 0.1);
         }
-        
+       
         .toast.error {
             border-color: #ff3232;
             background: rgba(255, 50, 50, 0.1);
         }
-        
+       
         .toast.warning {
             border-color: #ffc107;
             background: rgba(255, 193, 7, 0.1);
         }
-        
+       
         .toast.info {
             border-color: #0dcaf0;
             background: rgba(13, 202, 240, 0.1);
         }
-        
+       
         .toast-icon {
             font-size: 1.25rem;
         }
-        
+       
         .toast.success .toast-icon {
             color: var(--neon-green);
         }
-        
+       
         .toast.error .toast-icon {
             color: #ff3232;
         }
-        
+       
         .toast.warning .toast-icon {
             color: #ffc107;
         }
-        
+       
         .toast.info .toast-icon {
             color: #0dcaf0;
         }
-        
+       
         .toast-message {
             flex: 1;
             color: var(--text-light);
         }
-        
+       
         /* Empty States */
         .empty-state {
             text-align: center;
             padding: 3rem 1rem;
             color: var(--text-muted);
         }
-        
+       
         .empty-state-actionable {
             text-align: center;
             padding: 2rem 1rem;
@@ -1367,14 +1300,14 @@
             border-radius: 1rem;
             margin: 1rem 0;
         }
-        
+       
         .empty-icon {
             font-size: 3rem;
             margin-bottom: 1rem;
             opacity: 0.5;
         }
-        
-        /* Progress Loading */        
+       
+        /* Progress Loading */
         .progress-loading-bar {
             height: 100%;
             background: linear-gradient(90deg, var(--neon-green), #00cc6a);
@@ -1382,32 +1315,32 @@
             width: 0%;
             animation: loading 2s infinite;
         }
-              
+             
         /* Badges */
         .badge-success {
             background: rgba(0, 255, 136, 0.2);
             color: var(--neon-green);
             border: 1px solid rgba(0, 255, 136, 0.3);
         }
-        
+       
         .badge-warning {
             background: rgba(255, 193, 7, 0.2);
             color: #ffc107;
             border: 1px solid rgba(255, 193, 7, 0.3);
         }
-        
+       
         .badge-danger {
             background: rgba(255, 50, 50, 0.2);
             color: #ff3232;
             border: 1px solid rgba(255, 50, 50, 0.3);
         }
-        
+       
         .badge-info {
             background: rgba(13, 202, 240, 0.2);
             color: #0dcaf0;
             border: 1px solid rgba(13, 202, 240, 0.3);
         }
-        
+       
         .investment-score {
             display: inline-flex;
             align-items: center;
@@ -1418,18 +1351,18 @@
             font-size: 0.75rem;
             font-weight: 600;
         }
-        
+       
         .top-investment-card {
             border: 2px solid var(--neon-green);
             animation: pulse 2s infinite;
         }
-        
+       
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
-        
+       
         /* Playlist */
         .playlist-item {
             display: flex;
@@ -1440,11 +1373,11 @@
             cursor: pointer;
             transition: background 0.3s ease;
         }
-        
+       
         .playlist-item:hover {
             background: rgba(255, 255, 255, 0.05);
         }
-        
+       
         .playlist-cover {
             width: 60px;
             height: 60px;
@@ -1452,7 +1385,7 @@
             object-fit: cover;
             background: linear-gradient(135deg, var(--neon-green), var(--miv-blue));
         }
-        
+       
         /* Favorite Button */
         .favorite-btn {
             background: none;
@@ -1462,15 +1395,15 @@
             cursor: pointer;
             transition: transform 0.3s ease;
         }
-        
+       
         .favorite-btn:hover {
             transform: scale(1.2);
         }
-        
+       
         .favorite-btn.active {
             color: #ff3232;
         }
-        
+       
         /* Withdrawal Status */
         .withdrawal-status {
             padding: 0.5rem 1rem;
@@ -1478,27 +1411,27 @@
             font-size: 0.875rem;
             font-weight: 600;
         }
-        
+       
         .status-pendente {
             background: rgba(255, 193, 7, 0.1);
             color: #ffc107;
         }
-        
+       
         .status-confirmado {
             background: rgba(0, 255, 136, 0.1);
             color: var(--neon-green);
         }
-        
+       
         .status-processando {
             background: rgba(13, 202, 240, 0.1);
             color: #0dcaf0;
         }
-        
+       
         .status-concluido {
             background: rgba(108, 117, 125, 0.1);
             color: var(--text-muted);
         }
-        
+       
         /* Contract View */
         .contract-view {
             background: white;
@@ -1509,7 +1442,7 @@
             max-height: 400px;
             overflow-y: auto;
         }
-        
+       
         /* External Music */
         .external-music-badge {
             background: linear-gradient(135deg, #ff6b6b, #ee5a24);
@@ -1523,7 +1456,7 @@
             right: 8px;
             z-index: 10;
         }
-        
+       
         .external-music-progress {
             height: 4px;
             background: rgba(255, 255, 255, 0.1);
@@ -1531,7 +1464,7 @@
             margin: 8px 0;
             overflow: hidden;
         }
-        
+       
         .external-music-progress-bar {
             height: 100%;
             background: linear-gradient(90deg, #ff6b6b, #ee5a24);
@@ -1539,12 +1472,12 @@
             width: 0%;
             transition: width 0.3s ease;
         }
-        
+       
         .external-investment-card {
             border: 2px dashed #ff6b6b;
             animation: pulse 2s infinite;
         }
-        
+       
         .external-music-status {
             display: inline-flex;
             align-items: center;
@@ -1555,27 +1488,26 @@
             font-weight: bold;
             margin-top: 4px;
         }
-        
+       
         .status-aguardando {
             background: rgba(255, 193, 7, 0.2);
             color: #ffc107;
         }
-        
+       
         .status-aprovado {
             background: rgba(0, 255, 136, 0.2);
             color: var(--neon-green);
         }
-        
+       
         .status-rejeitado {
             background: rgba(255, 50, 50, 0.2);
             color: #ff3232;
         }
-        
+       
         /* Spin Animation */
         .spin {
             animation: spin 1s linear infinite;
         }
-
         /* ===== SISTEMA ÚNICO - ESTILO SPOTIFY ===== */
         :root {
             --spotify-bg: #121212;
@@ -1585,57 +1517,52 @@
             --spotify-green: #1db954;
             --spotify-green-hover: #1ed760;
         }
-
 /* ===== GRID RESPONSIVO CORRIGIDO ===== */
 .spotify-grid {
     display: grid;
     gap: 16px;
     margin-bottom: 32px;
 }
-
 /* PC GRANDE - 7 cards menores */
 @media (min-width: 1400px) {
     .spotify-grid {
         grid-template-columns: repeat(7, minmax(0, 1fr));
     }
-    
+   
     .spotify-card {
         padding: 12px !important;
     }
-    
+   
     .spotify-cover {
         margin-bottom: 8px !important;
     }
-    
+   
     .spotify-title {
         font-size: 14px !important;
     }
-    
+   
     .spotify-artist {
         font-size: 12px !important;
     }
-    
+   
     .btn-invest {
         font-size: 11px !important;
         padding: 6px !important;
         margin-top: 8px !important;
     }
 }
-
 /* PC MÉDIO - 6 cards */
 @media (min-width: 1200px) and (max-width: 1399px) {
     .spotify-grid {
         grid-template-columns: repeat(6, minmax(0, 1fr));
     }
 }
-
 /* NOTEBOOK - 5 cards */
 @media (min-width: 992px) and (max-width: 1199px) {
     .spotify-grid {
         grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 }
-
 /* TABLET - 4 cards */
 @media (min-width: 768px) and (max-width: 991px) {
     .spotify-grid {
@@ -1643,26 +1570,25 @@
         gap: 16px;
     }
 }
-
 /* CELULAR - 2 cards */
 @media (max-width: 767px) {
     .spotify-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
     }
-    
+   
     .spotify-card {
         padding: 8px !important;
     }
-    
+   
     .spotify-title {
         font-size: 12px !important;
     }
-    
+   
     .spotify-artist {
         font-size: 10px !important;
     }
-    
+   
     .play-overlay {
         width: 28px !important;
         height: 28px !important;
@@ -1682,17 +1608,14 @@
             width: 100%;
             box-sizing: border-box;
         }
-
         .spotify-card:hover {
             background: var(--spotify-card-hover);
             transform: translateY(-4px);
         }
-
         .spotify-card:hover .play-overlay {
             opacity: 1;
             transform: translateY(0);
         }
-
         /* CAPA */
         .spotify-cover {
             position: relative;
@@ -1703,14 +1626,12 @@
             margin-bottom: 12px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
-
         .spotify-cover img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
         }
-
         /* BOTÃO PLAY */
         .play-overlay {
             position: absolute;
@@ -1731,12 +1652,10 @@
             transition: all 0.3s ease;
             border: none;
         }
-
         .play-overlay:hover {
             transform: scale(1.05);
             background: var(--spotify-green-hover);
         }
-
         /* TÍTULO */
         .spotify-title {
             font-size: 16px;
@@ -1747,7 +1666,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
         /* ARTISTA */
         .spotify-artist {
             font-size: 14px;
@@ -1756,7 +1674,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
         /* BADGE DE PERCENTUAL */
         .spotify-badge {
             background: rgba(29, 185, 84, 0.2);
@@ -1768,7 +1685,6 @@
             margin-top: 6px;
             display: inline-block;
         }
-
         /* BOTÃO INVESTIR */
         .btn-invest {
             width: 100%;
@@ -1784,22 +1700,18 @@
             transition: all 0.3s ease;
             cursor: pointer;
         }
-
         .btn-invest:hover {
             background: var(--spotify-green);
             border-color: var(--spotify-green);
             color: black;
         }
-
         /* ===== CARDS ESPECIAIS ===== */
         .spotify-card.external-card {
             border: 1px dashed rgba(255, 107, 107, 0.3);
         }
-
         .spotify-card.external-card:hover {
             border-color: #ff6b6b;
         }
-
         .external-badge {
             position: absolute;
             top: 8px;
@@ -1816,18 +1728,15 @@
             gap: 4px;
             box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
         }
-
         .external-card .btn-invest {
             border-color: rgba(255, 107, 107, 0.3);
             color: #ff6b6b;
         }
-
         .external-card .btn-invest:hover {
             background: #ff6b6b;
             border-color: #ff6b6b;
             color: white;
         }
-
         /* Card para Sugerir Música */
         .suggest-card {
             background: var(--spotify-card);
@@ -1843,28 +1752,23 @@
             height: 100%;
             min-height: 200px;
         }
-
         .suggest-card i {
             font-size: 40px;
             color: #ff6b6b;
             margin-bottom: 12px;
         }
-
         .suggest-card h3 {
             color: white;
             font-size: 16px;
             margin-bottom: 4px;
         }
-
         .suggest-card p {
             color: #b3b3b3;
             font-size: 12px;
         }
-
         .suggest-card:hover {
             background: var(--spotify-card-hover);
         }
-
         /* Card Recomendado */
         .recommended-card {
             display: flex;
@@ -1876,11 +1780,9 @@
             transition: background 0.3s ease;
             cursor: pointer;
         }
-
         .recommended-card:hover {
             background: rgba(255,255,255,0.1);
         }
-
         .recommended-cover {
             width: 70px;
             height: 70px;
@@ -1888,12 +1790,10 @@
             object-fit: cover;
             flex-shrink: 0;
         }
-
         .recommended-info {
             flex: 1;
             min-width: 0;
         }
-
         .recommended-info h4 {
             color: white;
             font-size: 18px;
@@ -1903,7 +1803,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
         .recommended-info p {
             color: #b3b3b3;
             font-size: 14px;
@@ -1912,7 +1811,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
         .recommended-card .btn-play {
             background: var(--spotify-green);
             border: none;
@@ -1927,31 +1825,25 @@
             flex-shrink: 0;
             transition: all 0.3s ease;
         }
-
         .recommended-card .btn-play:hover {
             background: var(--spotify-green-hover);
             transform: scale(1.05);
         }
-
         /* ===== CORREÇÕES PARA BOLSA EXTERNA ===== */
         #externalMarketplaceGrid.spotify-grid,
         #externalContent.spotify-grid {
             display: grid !important;
             gap: 24px !important;
         }
-
         .external-card {
             border: 1px dashed rgba(255, 107, 107, 0.3) !important;
         }
-
         .external-card:hover {
             border-color: #ff6b6b !important;
         }
-
         .external-progress {
             margin-top: 8px;
         }
-
         .progress-header {
             display: flex;
             justify-content: space-between;
@@ -1959,21 +1851,19 @@
             font-size: 10px;
             color: #b3b3b3;
         }
-
         .progress-bar-bg {
             height: 3px;
             background: rgba(255,255,255,0.1);
             border-radius: 2px;
             overflow: hidden;
         }
-
         .progress-bar-fill {
             height: 100%;
             background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
             width: 0%;
             transition: width 0.3s ease;
-        }        
-    
+        }
+   
         /* ===== NOVAS CLASSES ADICIONADAS ===== */
         .blockchain-badge {
             background: rgba(155, 89, 182, 0.2);
@@ -1985,19 +1875,15 @@
             align-items: center;
             gap: 4px;
         }
-
         .text-purple {
             color: #9b59b6 !important;
         }
-
         .border-purple {
             border-color: #9b59b6 !important;
         }
-
         .bg-purple {
             background-color: #9b59b6 !important;
         }
-
         .progress-loading {
             width: 200px;
             height: 4px;
@@ -2006,14 +1892,12 @@
             overflow: hidden;
             margin: 10px auto;
         }
-
         .blockchain-hash {
             font-family: monospace;
             font-size: 11px;
             color: var(--text-muted);
             word-break: break-all;
         }
-
         .blockchain-verified {
             color: var(--neon-green);
             font-size: 12px;
@@ -2021,31 +1905,26 @@
             align-items: center;
             gap: 4px;
         }
-
         .section-header-spotify {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 16px;
         }
-
         .section-header-spotify h2 {
             color: white;
             font-size: 24px;
             font-weight: 700;
         }
-
         .section-header-spotify a {
             color: #b3b3b3;
             text-decoration: none;
             font-size: 14px;
             font-weight: 600;
         }
-
         .section-header-spotify a:hover {
             text-decoration: underline;
         }
-
         .connection-footer {
             margin-top: 40px;
             padding: 20px 0;
@@ -2055,20 +1934,17 @@
             align-items: center;
             gap: 10px;
         }
-
         .empty-state-spotify {
             grid-column: 1/-1;
             text-align: center;
             padding: 60px 20px;
         }
-
         .spotify-stats {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-top: 8px;
         }
-
         .spotify-elo {
             font-size: 12px;
             padding: 2px 8px;
@@ -2076,19 +1952,16 @@
             background: rgba(29, 185, 84, 0.2);
             color: var(--spotify-green);
         }
-
         .spotify-price {
             font-size: 14px;
             font-weight: 700;
             color: white;
         }
-
         .music-actions {
             display: flex;
             gap: 8px;
             margin-top: 12px;
         }
-
         .music-action-btn {
             flex: 1;
             padding: 6px;
@@ -2099,78 +1972,71 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
-
         .music-action-btn.edit {
             background: rgba(13, 202, 240, 0.2);
             color: #0dcaf0;
         }
-
         .music-action-btn.pause {
             background: rgba(255, 193, 7, 0.2);
             color: #ffc107;
         }
-
         .music-action-btn.delete {
             background: rgba(255, 50, 50, 0.2);
             color: #ff3232;
         }
-
         .music-action-btn:hover {
             transform: translateY(-2px);
             filter: brightness(1.2);
         }
-
         .status-active {
             background: rgba(29, 185, 84, 0.2);
             color: var(--spotify-green);
         }
-
         .status-paused {
             background: rgba(255, 193, 7, 0.2);
             color: #ffc107;
         }
-
         .status-deleted {
             background: rgba(255, 50, 50, 0.2);
             color: #ff3232;
         }
-        
+       
         /* Trade Modal Styles */
         .user-search-result {
             cursor: pointer;
             transition: background 0.3s ease;
         }
-        
+       
         .user-search-result:hover {
             background: rgba(13, 202, 240, 0.1);
         }
-        
+       
         .trade-offer-card {
             transition: all 0.3s ease;
         }
-        
+       
         .trade-offer-card:hover {
             border-color: var(--neon-green) !important;
         }
-        
+       
         .trade-offer-card.pending {
             border-left: 4px solid #ffc107;
         }
-        
+       
         .trade-offer-card.accepted {
             border-left: 4px solid #28a745;
         }
-        
+       
         .trade-offer-card.declined {
             border-left: 4px solid #dc3545;
         }
-        
+       
         /* Ranking ELO */
         .elo-ranking-table {
             width: 100%;
             border-collapse: collapse;
         }
-        
+       
         .elo-ranking-table th {
             background: rgba(255,255,255,0.05);
             padding: 12px;
@@ -2178,12 +2044,12 @@
             color: var(--text-muted);
             font-size: 12px;
         }
-        
+       
         .elo-ranking-table td {
             padding: 12px;
             border-bottom: 1px solid var(--border);
         }
-        
+       
         .elo-badge {
             padding: 2px 8px;
             border-radius: 12px;
@@ -2191,56 +2057,50 @@
             font-weight: bold;
             color: white;
         }
-        
+       
         .elo-trend-up {
             color: #28a745;
         }
-        
+       
         .elo-trend-down {
             color: #dc3545;
         }
-        
+       
         .elo-trend-stable {
             color: #ffc107;
         }
-        
+       
         .btn-outline-purple {
             color: #9b59b6;
             border-color: #9b59b6;
         }
-        
+       
         .btn-outline-purple:hover {
             background-color: #9b59b6;
             color: white;
         }
-
         /* ===== CORREÇÃO TAMANHO DOS CARDS ===== */
 .spotify-card {
     padding: 12px !important;
 }
-
 .spotify-cover {
     margin-bottom: 8px !important;
 }
-
 .spotify-title {
     font-size: 14px !important;
     line-height: 1.3 !important;
     margin-bottom: 2px !important;
 }
-
 .spotify-artist {
     font-size: 12px !important;
     margin-bottom: 4px !important;
 }
-
 .btn-invest {
     font-size: 11px !important;
     padding: 6px !important;
     margin-top: 8px !important;
     border-radius: 16px !important;
 }
-
 /* Ajuste para o overlay de play */
 .play-overlay {
     width: 32px !important;
@@ -2249,30 +2109,25 @@
     bottom: 6px !important;
     right: 6px !important;
 }
-
 /* Barra de progresso mais fina */
 .spotify-progress-bar {
     height: 3px !important;
     margin: 6px 0 !important;
 }
-
 .stat-icon-small {
     font-size: 1.5rem;
     color: var(--neon-green);
     margin-bottom: 0.5rem;
 }
-
 .stat-value-small {
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-light);
 }
-
 .stat-label-small {
     font-size: 0.75rem;
     color: var(--text-muted);
 }
-
 .modal-close {
     background: none;
     border: none;
@@ -2282,14 +2137,12 @@
     padding: 0.25rem;
     line-height: 1;
 }
-
 .modal-close:hover {
     color: var(--text-light);
-}        
+}
     </style>
 </head>
 <body>
-
 <!-- Loading Screen -->
 <div id="loadingScreen" class="loading-screen">
     <div class="loading-content">
@@ -2301,10 +2154,8 @@
         </div>
     </div>
 </div>
-
 <!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
-
 <!-- Authentication Screen -->
 <div id="authScreen" class="auth-screen">
     <div class="auth-card">
@@ -2315,25 +2166,24 @@
             <h2 class="text-white mb-2">SELO MIV</h2>
             <p class="text-muted">Plataforma de Investimento em Música com Blockchain</p>
         </div>
-
         <!-- Login Form -->
         <div id="loginForm">
             <div id="loginMessage" class="alert d-none"></div>
-            
+           
             <div class="form-group">
                 <label for="loginEmailField" class="text-muted mb-2">E-mail</label>
                 <input type="email" id="loginEmailField" class="form-control-custom" placeholder="Digite seu e-mail" required>
             </div>
-            
+           
             <div class="form-group">
                 <label for="loginPasswordField" class="text-muted mb-2">Senha</label>
                 <input type="password" id="loginPasswordField" class="form-control-custom" placeholder="Digite sua senha" required>
             </div>
-            
+           
             <button class="btn-miv mb-3" onclick="handleLogin()" id="loginBtn">
                 <i class="bi bi-box-arrow-in-right"></i> Entrar
             </button>
-            
+           
             <p class="text-center mb-3">
                 <a href="#" class="auth-link small" onclick="resendConfirmationEmail()">
                     <i class="bi bi-question-circle"></i> Esqueceu sua senha?
@@ -2343,26 +2193,25 @@
                 Novo por aqui? <a href="#" class="auth-link" onclick="showRegisterForm()">Criar conta</a>
             </p>
         </div>
-
         <!-- Register Form -->
         <div id="registerForm" style="display: none;">
             <div id="registerMessage" class="alert d-none"></div>
-            
+           
             <div class="form-group">
                 <label for="registerNameField" class="text-muted mb-2">Nome completo</label>
                 <input type="text" id="registerNameField" class="form-control-custom" placeholder="Digite seu nome completo" required>
             </div>
-            
+           
             <div class="form-group">
                 <label for="registerEmailField" class="text-muted mb-2">E-mail</label>
                 <input type="email" id="registerEmailField" class="form-control-custom" placeholder="Digite seu e-mail" required>
             </div>
-            
+           
             <div class="form-group">
                 <label for="registerPasswordField" class="text-muted mb-2">Senha (mínimo 6 caracteres)</label>
                 <input type="password" id="registerPasswordField" class="form-control-custom" placeholder="Digite sua senha" required minlength="6">
             </div>
-            
+           
             <div class="form-group">
                 <label for="registerTypeField" class="text-muted mb-2">Selecione seu perfil</label>
                 <select id="registerTypeField" class="form-control-custom" onchange="toggleArtistField()">
@@ -2371,13 +2220,12 @@
                     <option value="artista">🎤 Artista</option>
                 </select>
             </div>
-            
+           
             <div class="form-group" id="artistLinkField" style="display: none;">
                 <label for="registerLinkField" class="text-muted mb-2">Link do seu trabalho</label>
                 <input type="url" id="registerLinkField" class="form-control-custom" placeholder="YouTube, Spotify, etc.">
                 <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
             </div>
-
             <!-- ===== TERMOS DE USO ===== -->
             <div class="terms-checkbox">
                 <div class="mb-3">
@@ -2390,20 +2238,20 @@
                         Política de Privacidade
                     </a>
                 </div>
-                
+               
                 <label class="terms-label">
                     <input type="checkbox" id="acceptTermsField" required>
                     <span>
-                        <strong class="text-white">Li e concordo</strong> com os 
+                        <strong class="text-white">Li e concordo</strong> com os
                         <a href="#" onclick="openTermsModal()" class="text-muted text-decoration-none">
                             <i class="bi bi-file-text"></i> Termos de Uso
                         </a>
-                        e a 
-                        <a href="#" onclick="openPrivacyModal()" class="auth-link">Política de Privacidade</a> 
+                        e a
+                        <a href="#" onclick="openPrivacyModal()" class="auth-link">Política de Privacidade</a>
                         do SELO MIV. Declaro ter 18 anos ou mais e estar ciente dos riscos dos investimentos em direitos musicais.
                     </span>
                 </label>
-                
+               
                 <label class="terms-label" style="margin-top: 15px;">
                     <input type="checkbox" id="acceptMarketingField">
                     <span class="text-muted" style="font-size: 0.9rem;">
@@ -2412,7 +2260,7 @@
                 </label>
             </div>
             <!-- ===== FIM DOS TERMOS ===== -->
-            
+           
             <button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn">
                 <i class="bi bi-person-plus"></i> Solicitar Cadastro
             </button>
@@ -2427,7 +2275,6 @@
         </div>
     </div>
 </div>
-
 <!-- Main Application -->
 <div id="mainApp" class="main-app">
     <!-- Sidebar -->
@@ -2496,7 +2343,7 @@
             </li>
             <li class="nav-item">
                 <a href="#" class="nav-link" onclick="changeSection('trades')">
-                    <i class="bi bi-arrow-left-right text-info"></i> 
+                    <i class="bi bi-arrow-left-right text-info"></i>
                     <span class="text-info">Negociações</span>
                     <span class="badge bg-info ms-auto" id="menuTradeBadge" style="display: none;">0</span>
                 </a>
@@ -2508,7 +2355,6 @@
             </li>
         </ul>
     </div>
-
     <!-- Main Header -->
     <header class="app-header">
         <div class="header-content">
@@ -2527,7 +2373,6 @@
             </div>
         </div>
     </header>
-
     <!-- Marketplace Section -->
     <section id="marketplaceSection" class="section active">
         <div class="marketplace-spotify">
@@ -2535,18 +2380,18 @@
                 <h2>Seus mixes mais ouvidos</h2>
                 <a href="#" onclick="filterMarketplace('trending')">Mostrar tudo</a>
             </div>
-            
+           
             <div id="marketplaceContent" class="spotify-grid">
             </div>
-            
+           
             <div class="section-header-spotify" style="margin-top: 24px;">
                 <h2>Artistas e Playlists</h2>
                 <a href="#" onclick="changeSection('playlists')">Ver todas</a>
             </div>
-            
+           
             <div id="artistsPlaylistsGrid" class="spotify-grid">
             </div>
-            
+           
             <div class="section-header-spotify" style="margin-top: 32px;">
                 <h2>
                     <i class="bi bi-globe" style="color: #ff6b6b; margin-right: 8px;"></i>
@@ -2554,26 +2399,26 @@
                 </h2>
                 <a href="#" onclick="changeSection('external')">Ver todas</a>
             </div>
-            
+           
             <div id="externalMarketplaceGrid" class="spotify-grid">
             </div>
-            
+           
             <div class="recommended-section">
                 <div class="section-header-spotify">
                     <h2>Recomendado para hoje</h2>
                 </div>
-                
+               
                 <div id="recommendedCard" class="recommended-card">
                 </div>
             </div>
-            
+           
             <div class="connection-footer">
                 <i class="bi bi-bluetooth"></i>
                 <span>Conexão com fio • SELO MIV Streaming</span>
             </div>
         </div>
     </section>
-    
+   
     <!-- Portfolio Section -->
     <section id="portfolioSection" class="section">
         <div class="portfolio-summary">
@@ -2591,7 +2436,6 @@
         <div id="portfolioContent" class="spotify-grid">
         </div>
     </section>
-
     <!-- Ledger Section -->
     <section id="ledgerSection" class="section">
         <div class="section-header">
@@ -2620,7 +2464,7 @@
                 </tbody>
             </table>
         </div>
-        
+       
         <div class="card bg-dark border-info mb-3">
             <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i> Ganhos por Streaming</h6>
@@ -2647,7 +2491,6 @@
             </div>
         </div>
     </section>
-
     <!-- Best Investments Section -->
     <section id="investmentsSection" class="section">
         <div class="section-header">
@@ -2666,7 +2509,6 @@
         <div id="investmentsContent" class="spotify-grid">
         </div>
     </section>
-
     <!-- Playlists Section -->
     <section id="playlistsSection" class="section">
         <div class="section-header">
@@ -2685,7 +2527,6 @@
             </div>
         </div>
     </section>
-
     <!-- Bolsa Externa Section -->
     <section id="externalSection" class="section">
         <div class="section-header">
@@ -2706,7 +2547,6 @@
         <div id="externalContent" class="spotify-grid">
         </div>
     </section>
-
     <!-- Artist Panel Section -->
     <section id="artistSection" class="section">
         <div class="section-header">
@@ -2754,7 +2594,6 @@
         <div id="artistMusicContent" class="spotify-grid">
         </div>
     </section>
-
     <!-- Blockchain Explorer Section -->
     <section id="blockchainSection" class="section">
         <div class="section-header">
@@ -2765,13 +2604,13 @@
                 </button>
             </div>
         </div>
-        
+       
         <div class="alert alert-info bg-dark border-purple mb-4">
             <i class="bi bi-info-circle me-2"></i>
             Todos os contratos e transações são registrados permanentemente na blockchain SELO MIV.
             Cada bloco contém o hash do bloco anterior, garantindo imutabilidade.
         </div>
-        
+       
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="stat-card">
@@ -2802,7 +2641,7 @@
                 </div>
             </div>
         </div>
-        
+       
         <div class="card bg-dark border-purple mb-4">
             <div class="card-header bg-purple text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i> Últimos Contratos</h5>
@@ -2833,7 +2672,7 @@
                 </div>
             </div>
         </div>
-        
+       
         <div class="card bg-dark border-purple">
             <div class="card-header bg-purple text-white">
                 <h5 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i> Últimas Transações</h5>
@@ -2862,7 +2701,7 @@
                 </div>
             </div>
         </div>
-        
+       
         <div class="mt-4">
             <h5 class="section-title">
                 <i class="bi bi-diagram-3 me-2"></i>
@@ -2876,27 +2715,26 @@
             </div>
         </div>
     </section>
-
     <!-- Player MIV (Mini Player) -->
     <div id="playerSpotify" class="player-miv" style="display: none;">
         <div class="player-bar">
             <div class="player-track-info">
                 <div class="track-image-container">
-                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Crect width='56' height='56' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='14' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
-                         class="track-image" 
-                         alt="Album Art" 
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Crect width='56' height='56' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='14' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E"
+                         class="track-image"
+                         alt="Album Art"
                          id="playerAlbumArt">
-                    
+                   
                     <div class="track-image-overlay" onclick="event.stopPropagation(); togglePlay()" id="trackImageOverlay">
                         <i class="bi bi-play-fill" id="trackOverlayIcon"></i>
                     </div>
                 </div>
-                
+               
                 <div class="track-details">
                     <div class="track-title" id="playerTitle">Nenhuma música tocando</div>
                     <div class="track-artist" id="playerArtist">Selecione uma música para começar</div>
                 </div>
-                
+               
                 <div class="track-actions">
                     <button class="player-btn favorite-btn" onclick="event.stopPropagation(); toggleFavorite()" id="favoriteBtn" title="Favoritar">
                         <i class="bi bi-star" id="favoriteIcon"></i>
@@ -2906,30 +2744,30 @@
                     </button>
                 </div>
             </div>
-            
+           
             <div class="player-controls-center">
                 <div class="control-buttons">
                     <button class="control-btn shuffle-btn" onclick="event.stopPropagation(); toggleShuffle()" id="shuffleBtn" title="Aleatório">
                         <i class="bi bi-shuffle" id="shuffleIcon"></i>
                     </button>
-                    
+                   
                     <button class="control-btn prev-btn" onclick="event.stopPropagation(); playPrevious()" title="Anterior">
                         <i class="bi bi-skip-backward-fill"></i>
                     </button>
-                    
+                   
                     <button class="control-btn play-btn" onclick="event.stopPropagation(); togglePlay()" id="playPauseBtn" title="Play/Pause">
                         <i class="bi bi-play-fill" id="playPauseIcon"></i>
                     </button>
-                    
+                   
                     <button class="control-btn next-btn" onclick="event.stopPropagation(); playNext()" title="Próxima">
                         <i class="bi bi-skip-forward-fill"></i>
                     </button>
-                    
+                   
                     <button class="control-btn repeat-btn" onclick="event.stopPropagation(); toggleRepeat()" id="repeatBtn" title="Repetir">
                         <i class="bi bi-repeat" id="repeatIcon"></i>
                     </button>
                 </div>
-                
+               
                 <div class="progress-container" onclick="event.stopPropagation()">
                     <span class="time-current" id="currentTimeDisplay">0:00</span>
                     <div class="progress-bar" onclick="handleProgressClick(event)" id="progressContainer">
@@ -2939,12 +2777,12 @@
                     <span class="time-total" id="totalTimeDisplay">0:00</span>
                 </div>
             </div>
-            
+           
             <div class="player-controls-right">
                 <button class="player-btn queue-btn" onclick="event.stopPropagation(); toggleQueue()" title="Fila de reprodução">
                     <i class="bi bi-music-note-list"></i>
                 </button>
-                
+               
                 <div class="volume-container" onclick="event.stopPropagation()">
                     <button class="player-btn volume-btn" onclick="event.stopPropagation(); toggleMute()" title="Volume" id="volumeBtn">
                         <i class="bi bi-volume-up" id="volumeIcon"></i>
@@ -2955,14 +2793,14 @@
                         </div>
                     </div>
                 </div>
-                
+               
                 <button class="player-btn expand-btn" onclick="openPlayerExpanded()" title="Abrir player expandido">
                     <i class="bi bi-arrows-angle-expand" id="expandIcon"></i>
                 </button>
             </div>
         </div>
     </div>
-    
+   
     <!-- Player Expandido como Seção -->
     <section id="playerExpandedSection" class="section">
         <div class="section-header">
@@ -2975,19 +2813,19 @@
                 Minimizar Player
             </button>
         </div>
-        
+       
         <div class="expanded-content">
             <div class="row">
                 <div class="col-md-4 mb-4 mb-md-0">
                     <div class="text-center">
-                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E" 
-                             class="expanded-album-art img-fluid rounded-3 mb-3" 
-                             alt="Album Art" 
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E"
+                             class="expanded-album-art img-fluid rounded"
+                             alt="Album Art"
                              id="expandedAlbumArt">
-                        
+                       
                         <h3 class="expanded-title text-white" id="expandedTitle">Nenhuma música tocando</h3>
                         <p class="expanded-artist text-muted" id="expandedArtist">Selecione uma música</p>
-                        
+                       
                         <div class="expanded-meta d-flex justify-content-center gap-3 mb-3">
                             <span class="meta-item">
                                 <i class="bi bi-music-note-beamed text-success"></i>
@@ -3000,19 +2838,17 @@
                         </div>
                     </div>
                 </div>
-                
+               
                 <div class="col-md-8">
                     <div class="youtube-container-expanded mb-4">
                         <div id="youtubePlayerExpanded" style="width: 100%; height: 100%;"></div>
                         <div class="player-loading" id="playerLoadingExpanded">
                             <div class="loading-spinner"></div>
                             <span id="loadingMessageText">Carregando vídeo...</span>
-                            <div class="mt-2 small text-muted" id="realTimeStatus"></div>
+                            <span id="realTimeStatus"></span>
                         </div>
                     </div>
-
                     <div id="playerStatus" class="mt-2 small text-center"></div>
-
                     <div id="streamingRewardIndicator" class="mt-2 text-center" style="display: none;">
                         <div class="alert alert-success bg-success bg-opacity-10 border-success py-1 px-2 d-inline-flex align-items-center gap-2 rounded-pill">
                             <i class="bi bi-cash-stack text-success"></i>
@@ -3021,7 +2857,7 @@
                             <span id="streamingMusicName" class="small text-success">Música atual</span>
                         </div>
                     </div>
-                    
+                   
                     <div class="expanded-controls bg-dark p-4 rounded-3">
                         <div class="expanded-progress-container mb-4">
                             <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
@@ -3032,46 +2868,46 @@
                                 <span id="expandedTotalTime" class="text-muted">0:00</span>
                             </div>
                         </div>
-                        
+                       
                         <div class="expanded-controls-bottom d-flex justify-content-center align-items-center gap-4">
                             <button class="btn btn-outline-success" onclick="playPrevious()">
                                 <i class="bi bi-skip-backward-fill"></i>
                             </button>
-                            
+                           
                             <button class="btn btn-success btn-lg rounded-circle" onclick="togglePlay()" id="expandedPlayPauseBtn" style="width: 60px; height: 60px;">
                                 <i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i>
                             </button>
-                            
+                           
                             <button class="btn btn-outline-success" onclick="playNext()">
                                 <i class="bi bi-skip-forward-fill"></i>
                             </button>
                         </div>
-                        
+                       
                         <div class="expanded-controls-top d-flex justify-content-center gap-3 mt-4">
                             <button class="btn btn-outline-success" onclick="toggleShuffle()" id="expandedShuffleBtn">
                                 <i class="bi bi-shuffle me-2"></i>Aleatório
                             </button>
-                            
+                           
                             <button class="btn btn-outline-success" onclick="toggleRepeat()" id="expandedRepeatBtn">
                                 <i class="bi bi-repeat me-2"></i>Repetir
                             </button>
-                            
+                           
                             <button class="btn btn-outline-success" onclick="toggleFavorite()" id="expandedFavoriteBtn">
                                 <i class="bi bi-star" id="expandedFavoriteIcon"></i>
                             </button>
-                            
+                           
                             <button class="btn btn-success" onclick="openInvestModalFromPlayer()">
                                 <i class="bi bi-currency-dollar me-2"></i>Investir
                             </button>
                         </div>
                     </div>
-                    
+                   
                     <div class="track-info-section mt-4">
                         <h4 class="text-white mb-3">
                             <i class="bi bi-info-circle text-success me-2"></i>
                             Sobre esta música
                         </h4>
-                        
+                       
                         <div class="info-grid">
                             <div class="info-card">
                                 <div class="info-icon">
@@ -3082,7 +2918,7 @@
                                     <div class="info-value text-success" id="expandedPrice">R$ 0,00</div>
                                 </div>
                             </div>
-                            
+                           
                             <div class="info-card">
                                 <div class="info-icon">
                                     <i class="bi bi-percent"></i>
@@ -3092,7 +2928,7 @@
                                     <div class="info-value text-success" id="expandedAvailable">0%</div>
                                 </div>
                             </div>
-                            
+                           
                             <div class="info-card">
                                 <div class="info-icon">
                                     <i class="bi bi-graph-up-arrow"></i>
@@ -3102,7 +2938,7 @@
                                     <div class="info-value text-success" id="expandedReturn">0%</div>
                                 </div>
                             </div>
-                            
+                           
                             <div class="info-card">
                                 <div class="info-icon">
                                     <i class="bi bi-people"></i>
@@ -3118,7 +2954,7 @@
             </div>
         </div>
     </section>
-    
+   
     <!-- MINHAS NEGOCIAÇÕES SECTION -->
     <section id="tradesSection" class="section">
         <div class="section-header">
@@ -3133,7 +2969,7 @@
                 <span class="badge bg-info" id="pendingTradesCount">0 pendentes</span>
             </div>
         </div>
-        
+       
         <ul class="nav nav-tabs border-0 mb-3" id="tradeTabs">
             <li class="nav-item">
                 <a class="nav-link text-muted active" href="#" onclick="switchTradeTab('received')">
@@ -3151,13 +2987,13 @@
                 </a>
             </li>
         </ul>
-        
+       
         <div id="tradesList" class="mt-3">
             <div id="tradesLoading" style="display: none;" class="text-center py-5">
                 <div class="spinner-border text-info mb-3"></div>
                 <p class="text-muted">Carregando negociações...</p>
             </div>
-            
+           
             <div id="tradesEmpty" class="empty-state-actionable">
                 <i class="bi bi-arrow-left-right empty-icon text-info"></i>
                 <h5 class="text-muted">Nenhuma negociação</h5>
@@ -3166,12 +3002,11 @@
                     <i class="bi bi-briefcase me-2"></i> Ver meu portfólio
                 </button>
             </div>
-            
+           
             <div id="tradesContainer"></div>
         </div>
     </section>
 </div>
-
 <!-- Invest Modal -->
 <div id="investModal" class="modal-overlay">
     <div class="modal-content">
@@ -3181,7 +3016,7 @@
                 <i class="bi bi-x"></i>
             </button>
         </div>
-        
+       
         <div class="modal-body">
             <div class="text-center mb-4">
                 <h6 id="investTrackTitle" class="fw-bold">Título da Música</h6>
@@ -3190,7 +3025,7 @@
                     <i class="bi bi-shield-check"></i> Registro na blockchain
                 </div>
             </div>
-            
+           
             <div class="form-group">
                 <label for="investUnitPriceDisplay" class="text-muted mb-2">Valor por ação:</label>
                 <div class="d-flex align-items-center justify-content-between">
@@ -3198,7 +3033,7 @@
                     <span class="badge bg-success" id="investSharesAvailable">Disponível: 0 ações</span>
                 </div>
             </div>
-            
+           
             <div class="form-group">
                 <label for="investQuantityField" class="text-muted mb-2">Quantidade de ações:</label>
                 <div class="input-group">
@@ -3211,19 +3046,18 @@
                     </button>
                 </div>
             </div>
-            
+           
             <div class="form-group">
                 <label for="investTotalPriceDisplay" class="text-muted mb-2">Valor total do investimento:</label>
                 <div class="fw-bold fs-4 text-success" id="investTotalPriceDisplay">R$ 0,00</div>
             </div>
-            
+           
             <div class="alert alert-info bg-dark border-info mt-3">
-                <i class="bi bi-info-circle me-2"></i> 
+                <i class="bi bi-info-circle me-2"></i>
                 Saldo disponível: <span id="investAvailableBalanceDisplay" class="fw-bold">R$ 0,00</span>
             </div>
-
             <div class="blockchain-hash mt-3" id="investBlockchainPreview">
-                ⛓️ Hash da transação: Será gerado após a confirmação
+                    ⛓️ Hash da transação: Será gerado após a confirmação
             </div>
         </div>
         
