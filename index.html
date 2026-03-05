@@ -33,7 +33,85 @@
             --blockchain-purple: #9b59b6;
             --royalty-gold: #f1c40f;
         }
-       
+/* CORREÇÃO PARA TÍTULOS LONGOS - DESKTOP */
+@media (min-width: 768px) {
+    .spotify-card {
+        min-width: 0; /* Permite que o card encolha */
+        width: 100%;
+        overflow: hidden;
+    }
+    
+    .spotify-title {
+        font-size: 14px !important;
+        line-height: 1.3 !important;
+        margin-bottom: 4px !important;
+        white-space: normal !important; /* FORÇA QUEBRA DE LINHA */
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        max-height: 2.6em; /* Permite até 2 linhas */
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* Limita a 2 linhas */
+        -webkit-box-orient: vertical;
+        text-overflow: ellipsis;
+    }
+    
+    .spotify-artist {
+        font-size: 12px !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        max-height: 2.4em;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+    
+    /* Ajuste para o badge de status */
+    .status-aguardando,
+    .status-aprovado,
+    .status-rejeitado {
+        display: inline-block;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 9px !important;
+    }
+    
+    /* Container do título para evitar overflow */
+    .spotify-card .text-container {
+        width: 100%;
+        overflow: hidden;
+    }
+}
+
+/* AJUSTE ESPECÍFICO PARA BOLSA EXTERNA */
+.external-card .spotify-title {
+    font-size: 13px !important;
+    margin-bottom: 2px !important;
+}
+
+.external-card .spotify-artist {
+    font-size: 11px !important;
+    margin-bottom: 2px !important;
+}
+
+/* Badge de status menor */
+.external-card .status-aguardando {
+    font-size: 8px !important;
+    padding: 2px 4px !important;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+}
+
+/* Ajuste para o container do badge */
+.external-card div[style*="margin-top: 4px; margin-bottom: 8px;"] {
+    max-width: 100%;
+    overflow: hidden;
+}
+        
         * {
             margin: 0;
             padding: 0;
@@ -5505,122 +5583,135 @@ function renderFilteredMarketplace(filteredTracks) {
 
     window.filterMarketplace = filterMarketplace;
 
-    function renderExternalMarketplace() {
-        const container = document.getElementById('externalContent');
-        if (!container) return;
+function renderExternalMarketplace() {
+    const container = document.getElementById('externalContent');
+    if (!container) return;
+    
+    if (!state.externalPlaylist || state.externalPlaylist.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state-spotify">
+                <i class="bi bi-globe" style="font-size: 4rem; color: #ff6b6b;"></i>
+                <h3 style="color: white; margin-top: 1rem;">Nenhuma música externa</h3>
+                <p style="color: #b3b3b3;">Seja o primeiro a sugerir uma música!</p>
+                <button class="btn-invest mt-3" style="background: #ff6b6b; border-color: #ff6b6b; color: white;" onclick="openAddExternalMusicModal()">
+                    <i class="bi bi-plus-circle me-1"></i> SUGERIR MÚSICA
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = state.externalPlaylist.map((track, index) => {
+        // ===== FUNÇÕES DE TRUNCAMENTO =====
+        const truncate = (text, maxLength) => {
+            if (!text) return '';
+            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+        };
         
-        if (!state.externalPlaylist || state.externalPlaylist.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state-spotify">
-                    <i class="bi bi-globe" style="font-size: 4rem; color: #ff6b6b;"></i>
-                    <h3 style="color: white; margin-top: 1rem;">Nenhuma música externa</h3>
-                    <p style="color: #b3b3b3;">Seja o primeiro a sugerir uma música!</p>
-                    <button class="btn-invest mt-3" style="background: #ff6b6b; border-color: #ff6b6b; color: white;" onclick="openAddExternalMusicModal()">
-                        <i class="bi bi-plus-circle me-1"></i> SUGERIR MÚSICA
-                    </button>
-                </div>
-            `;
-            return;
+        // Truncar títulos para caber no card
+        const tituloTruncado = truncate(track.titulo || 'Sem título', 22);
+        const artistaTruncado = truncate(track.artista || 'Artista', 18);
+        const sugeridoPorTruncado = truncate(track.sugerido_por || 'Anônimo', 12);
+        
+        // Truncar status badge se necessário
+        let statusBadge = '';
+        let statusClass = '';
+        let statusText = '';
+        
+        if (track.status === 'aguardando') {
+            statusText = '⏳ Aguardando';
+            statusClass = 'status-aguardando';
+        } else if (track.status === 'aprovado') {
+            statusText = '✅ Aprovado';
+            statusClass = 'status-aprovado';
+        } else if (track.status === 'rejeitado') {
+            statusText = '❌ Rejeitado';
+            statusClass = 'status-rejeitado';
         }
         
-        container.innerHTML = state.externalPlaylist.map((track, index) => {
-            const vendasAtuais = track.vendas_atuais || 0;
-            const metaVendas = track.meta_vendas || 1000000;
-            const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
-            
-            let coverImage = PLACEHOLDERS.EXT_300;
-            
-            if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
-                coverImage = track.link_capa.trim();
-            } else if (track.link_youtube) {
-                const videoId = extractYouTubeId(track.link_youtube);
-                if (videoId) {
-                    coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                }
+        const vendasAtuais = track.vendas_atuais || 0;
+        const metaVendas = track.meta_vendas || 1000000;
+        const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
+        
+        let coverImage = PLACEHOLDERS.EXT_300;
+        
+        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
+            coverImage = track.link_capa.trim();
+        } else if (track.link_youtube) {
+            const videoId = extractYouTubeId(track.link_youtube);
+            if (videoId) {
+                coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
             }
-            
-            let statusBadge = '';
-            let statusClass = '';
-            if (track.status === 'aguardando') {
-                statusBadge = '⏳ Aguardando aprovação';
-                statusClass = 'status-aguardando';
-            } else if (track.status === 'aprovado') {
-                statusBadge = '✅ Aprovado';
-                statusClass = 'status-aprovado';
-            } else if (track.status === 'rejeitado') {
-                statusBadge = '❌ Rejeitado';
-                statusClass = 'status-rejeitado';
-            }
-            
-            return `
-            <div class="spotify-card external-investment-card" onclick="playExternalTrack(${index})" style="border: 2px dashed #ff6b6b;">
-                <div class="spotify-cover">
-                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                         onerror="this.onerror=null; this.src='${PLACEHOLDERS.EXT_300.replace(/'/g, '%27')}'">
-                    <div class="play-overlay" onclick="event.stopPropagation(); playExternalTrack(${index})" style="background: #ff6b6b;">
-                        <i class="bi bi-play-fill"></i>
-                    </div>
-                    <div class="external-music-badge">
-                        <i class="bi bi-globe"></i> BOLSA EXTERNA
-                    </div>
+        }
+        
+        return `
+        <div class="spotify-card external-investment-card" onclick="playExternalTrack(${index})" style="border: 2px dashed #ff6b6b;">
+            <div class="spotify-cover">
+                <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                     onerror="this.onerror=null; this.src='${PLACEHOLDERS.EXT_300.replace(/'/g, '%27')}'">
+                <div class="play-overlay" onclick="event.stopPropagation(); playExternalTrack(${index})" style="background: #ff6b6b;">
+                    <i class="bi bi-play-fill"></i>
                 </div>
-                
-                <div class="spotify-title">${track.titulo || 'Sem título'}</div>
-                <div class="spotify-artist">${track.artista || 'Artista'}</div>
-                
-                ${statusBadge ? `
-                    <div style="margin-top: 4px; margin-bottom: 8px;">
-                        <span class="${statusClass}" style="padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold;">
-                            ${statusBadge}
-                        </span>
-                    </div>
-                ` : ''}
-                
-                <div class="spotify-stats">
-                    <span class="spotify-elo" style="background: rgba(255, 107, 107, 0.2); color: #ff6b6b;">
-                        🚀 Pré-lançamento
-                    </span>
-                    <span class="spotify-price" style="color: #ff6b6b;">
-                        <i class="bi bi-coin" style="font-size: 12px;"></i> 
-                        ${formatCurrency(track.valor_acao || 0)}
-                    </span>
+                <div class="external-music-badge">
+                    <i class="bi bi-globe"></i> BOLSA EXTERNA
                 </div>
-                
-                <div style="margin-top: 8px; position: relative;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <small style="color: #b3b3b3;">Progresso para SELO MIV</small>
-                        <small style="color: #ff6b6b;">${progressPercent}%</small>
-                    </div>
-                    <div style="height: 4px; background: #282828; border-radius: 2px; overflow: hidden;">
-                        <div style="width: ${progressPercent}%; height: 100%; background: linear-gradient(90deg, #ff6b6b, #ff8e8e);"></div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-                        <small style="color: #b3b3b3;">${formatCurrency(vendasAtuais)}</small>
-                        <small style="color: #ff6b6b;">Meta: ${formatCurrency(metaVendas)}</small>
-                    </div>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px;">
-                    <span style="color: #b3b3b3;">
-                        <i class="bi bi-people"></i> ${track.sugerido_por || 'Anônimo'}
-                    </span>
-                    <span style="color: #b3b3b3;">
-                        <i class="bi bi-calendar"></i> ${new Date(track.data_sugestao || Date.now()).toLocaleDateString('pt-BR')}
-                    </span>
-                </div>
-                
-                <button class="btn-invest" onclick="event.stopPropagation(); openInvestExternalModal(${index})" 
-                        style="border-color: #ff6b6b; color: #ff6b6b; margin-top: 12px;">
-                    <i class="bi bi-coin me-1"></i> INVESTIR ANTECIPADO
-                </button>
-                
-                ${track.blockchain_hash ? 
-                    '<div style="margin-top: 4px; text-align: right;"><span class="blockchain-badge">⛓️</span></div>' : ''}
             </div>
-            `;
-        }).join('');
-    }
-
+            
+            <!-- TÍTULO TRUNCADO COM TITLE PARA VER COMPLETO NO HOVER -->
+            <div class="spotify-title" title="${track.titulo || ''}">${tituloTruncado}</div>
+            <div class="spotify-artist" title="${track.artista || ''}">${artistaTruncado}</div>
+            
+            ${statusText ? `
+                <div style="margin-top: 4px; margin-bottom: 8px; max-width: 100%; overflow: hidden;">
+                    <span class="${statusClass}" style="padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: bold; display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${track.status === 'aguardando' ? 'Aguardando aprovação' : (track.status === 'aprovado' ? 'Aprovado' : 'Rejeitado')}">
+                        ${statusText}
+                    </span>
+                </div>
+            ` : ''}
+            
+            <div class="spotify-stats" style="margin-top: 4px;">
+                <span class="spotify-elo" style="background: rgba(255, 107, 107, 0.2); color: #ff6b6b; font-size: 9px; padding: 2px 4px;">
+                    🚀 Pré
+                </span>
+                <span class="spotify-price" style="color: #ff6b6b; font-size: 13px; font-weight: 700;">
+                    ${formatCurrency(track.valor_acao || 0)}
+                </span>
+            </div>
+            
+            <div style="margin-top: 6px; position: relative;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                    <small style="color: #b3b3b3; font-size: 8px;">Progresso</small>
+                    <small style="color: #ff6b6b; font-size: 8px; font-weight: 600;">${progressPercent}%</small>
+                </div>
+                <div style="height: 3px; background: #282828; border-radius: 2px; overflow: hidden;">
+                    <div style="width: ${progressPercent}%; height: 100%; background: linear-gradient(90deg, #ff6b6b, #ff8e8e);"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 2px;">
+                    <small style="color: #b3b3b3; font-size: 7px;">${formatCurrency(vendasAtuais)}</small>
+                    <small style="color: #ff6b6b; font-size: 7px;">${formatCurrency(metaVendas)}</small>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 8px;">
+                <span style="color: #b3b3b3; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${track.sugerido_por || 'Anônimo'}">
+                    <i class="bi bi-people" style="font-size: 8px;"></i> ${sugeridoPorTruncado}
+                </span>
+                <span style="color: #b3b3b3;">
+                    <i class="bi bi-calendar" style="font-size: 8px;"></i> ${new Date(track.data_sugestao || Date.now()).toLocaleDateString('pt-BR')}
+                </span>
+            </div>
+            
+            <button class="btn-invest" onclick="event.stopPropagation(); openInvestExternalModal(${index})" 
+                    style="border-color: #ff6b6b; color: #ff6b6b; margin-top: 8px; font-size: 9px; padding: 4px;">
+                <i class="bi bi-coin me-1" style="font-size: 9px;"></i> INVESTIR
+            </button>
+            
+            ${track.blockchain_hash ? 
+                '<div style="margin-top: 2px; text-align: right;"><span class="blockchain-badge" style="font-size: 7px; padding: 1px 4px;">⛓️</span></div>' : ''}
+        </div>
+        `;
+    }).join('');
+}
     function playExternalTrack(index) {
         if (index < 0 || index >= state.externalPlaylist.length) {
             showToast('Música não encontrada', 'error');
