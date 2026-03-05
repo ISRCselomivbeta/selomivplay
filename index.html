@@ -1621,6 +1621,51 @@
         margin-top: 8px !important;
     }
 }
+        /* Ajuste para botões de favorito */
+.spotify-cover {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1/1;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.position-absolute.top-0.start-0.m-2 {
+    position: absolute;
+    top: 8px !important;
+    left: 8px !important;
+    margin: 0 !important;
+    z-index: 10;
+}
+
+.favorite-btn {
+    background: rgba(0,0,0,0.5);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.favorite-btn:hover {
+    transform: scale(1.1);
+    background: rgba(0,0,0,0.7);
+}
+
+.favorite-btn i {
+    font-size: 16px;
+    color: #ffc107;
+}
+
+.favorite-btn.active i {
+    color: #ffc107;
+}
 
 /* PC MÉDIO - 6 cards */
 @media (min-width: 1200px) and (max-width: 1399px) {
@@ -5322,7 +5367,7 @@ function renderMarketplace() {
     
     if (!container) return;
     
-    // ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) - CARDS MENORES =====
+    // ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) - MESMO ESTILO DE ARTISTAS E PLAYLISTS =====
     if (!state.playlist || state.playlist.length === 0) {
         container.innerHTML = `
             <div class="empty-state-spotify" style="grid-column: 1/-1;">
@@ -5337,35 +5382,70 @@ function renderMarketplace() {
             const percentSold = track.percentual_disponivel ? 
                 Math.min(100, ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100)).toFixed(0) : 0;
             
+            const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+            
             return `
-            <div class="spotify-card" onclick="playTrack(${index})" style="padding: 6px;">
-                <div class="spotify-cover" style="margin-bottom: 4px;">
+            <div class="spotify-card" onclick="playTrack(${index})">
+                <div class="spotify-cover">
                     <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
                          onerror="this.src='${PLACEHOLDERS.MIV_300}'">
                     <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
                         <i class="bi bi-play-fill"></i>
                     </div>
+                    <div class="position-absolute top-0 start-0 m-2" style="z-index: 5;">
+                        <button class="favorite-btn ${isFavorite ? 'active' : ''}" 
+                                onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${index})"
+                                style="background: rgba(0,0,0,0.5); border-radius: 50%; width: 32px; height: 32px; border: none; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}" style="color: #ffc107; font-size: 16px;"></i>
+                        </button>
+                    </div>
                 </div>
-                <h3 class="spotify-title" style="font-size: 11px; margin-bottom: 2px;">${track.titulo || 'Sem título'}</h3>
-                <p class="spotify-artist" style="font-size: 9px; margin-bottom: 2px;">${track.artista || 'Artista'}</p>
+                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+                <p class="spotify-artist">${track.artista || 'Artista'}</p>
                 
-                <div style="height: 2px; background: #282828; border-radius: 2px; margin: 3px 0; overflow: hidden;">
-                    <div style="width: ${percentSold}%; height: 100%; background: #1DB954;"></div>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
-                    <span class="badge" style="background: rgba(29, 185, 84, 0.2); color: #1DB954; font-size: 8px; padding: 2px 4px;">
+                <div class="spotify-stats">
+                    <span class="spotify-elo" style="background: rgba(29, 185, 84, 0.2); color: #1DB954;">
                         ${percentSold}%
                     </span>
-                    <span style="color: #b3b3b3; font-size: 10px;">
-                        ${formatCurrency(track.valor_acao || 0)}
-                    </span>
+                    <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
                 </div>
                 
-                <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})" 
-                        style="font-size: 9px; padding: 4px; margin-top: 4px;">
+                <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})">
                     <i class="bi bi-currency-dollar me-1"></i> INVESTIR
                 </button>
+            </div>
+            `;
+        }).join('');
+    }
+    
+    // ===== ARTISTAS E PLAYLISTS (MESMO ESTILO) =====
+    if (artistsGrid && state.playlist && state.playlist.length > 3) {
+        const artistItems = state.playlist.slice(3, 7);
+        artistsGrid.innerHTML = artistItems.map((track, idx) => {
+            const originalIndex = idx + 3;
+            let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+            const categories = ['Álbum', 'Playlist', 'Podcast', 'Rádio'];
+            const percentSold = track.percentual_disponivel ? 
+                Math.min(100, ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100)).toFixed(0) : 0;
+            
+            return `
+            <div class="spotify-card" onclick="playTrack(${originalIndex})">
+                <div class="spotify-cover">
+                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                         onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${originalIndex})">
+                        <i class="bi bi-play-fill"></i>
+                    </div>
+                </div>
+                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+                <p class="spotify-artist">${categories[idx % categories.length]} • ${track.artista?.substring(0, 15) || 'Artista'}</p>
+                
+                <div class="spotify-stats">
+                    <span class="spotify-elo" style="background: rgba(29, 185, 84, 0.2); color: #1DB954;">
+                        ${percentSold}%
+                    </span>
+                    <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
+                </div>
             </div>
             `;
         }).join('');
