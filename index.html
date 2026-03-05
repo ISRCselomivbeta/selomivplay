@@ -2139,6 +2139,74 @@
 .modal-close:hover {
     color: var(--text-light);
 }
+/* Melhorias para mobile */
+@media (max-width: 576px) {
+    .modal-content {
+        width: 95%;
+        margin: 10px;
+        max-height: 85vh;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    .btn-group {
+        flex-wrap: wrap;
+    }
+    
+    .btn-group .btn {
+        flex: 1 1 auto;
+        margin: 2px;
+        font-size: 0.8rem;
+        padding: 0.5rem;
+    }
+    
+    .form-control-custom {
+        font-size: 16px; /* Evita zoom automático no iOS */
+    }
+    
+    .spotify-card {
+        margin-bottom: 10px;
+    }
+    
+    /* Ajuste para inputs em mobile */
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+}
+@media (max-width: 768px) {
+    .btn, 
+    .btn-miv, 
+    .btn-invest,
+    .nav-link,
+    .player-btn,
+    .control-btn {
+        min-height: 44px; /* Tamanho mínimo recomendado para toque */
+        min-width: 44px;
+    }
+    
+    .play-overlay {
+        width: 44px !important;
+        height: 44px !important;
+    }
+    
+    /* Espaçamento para evitar toques acidentais */
+    .control-buttons {
+        gap: 0.75rem;
+    }
+    
+    .player-track-info {
+        padding: 0.5rem 0;
+    }
+}        
+        @media (max-width: 768px) {
+    .player-miv {
+        background: linear-gradient(to top, rgba(18,18,18,0.98), rgba(30,30,30,0.95));
+        backdrop-filter: blur(10px);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+}
     </style>
 </head>
 <body>
@@ -3034,17 +3102,17 @@
             </div>
            
             <div class="form-group">
-                <label for="investQuantityField" class="text-muted mb-2">Quantidade de ações:</label>
-                <div class="input-group">
-                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)">
-                        <i class="bi bi-dash"></i>
-                    </button>
-                    <input type="number" id="investQuantityField" class="form-control-custom text-center" value="1" min="
-oninput="updateInvestmentTotal()">
-                    
-                </div>
-            </div>
-           
+    <label for="investQuantityField" class="text-muted mb-2">Quantidade de ações:</label>
+    <div class="input-group">
+        <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)">
+            <i class="bi bi-dash"></i>
+        </button>
+        <input type="number" id="investQuantityField" class="form-control-custom text-center" value="1" min="1" oninput="updateInvestmentTotal()">
+        <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(1)">
+            <i class="bi bi-plus"></i>
+        </button>
+    </div>
+</div>
             <div class="form-group">
                 <label for="investTotalPriceDisplay" class="text-muted mb-2">Valor total do investimento:</label>
                 <div class="fw-bold fs-4 text-success" id="investTotalPriceDisplay">R$ 0,00</div>
