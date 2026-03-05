@@ -5328,54 +5328,62 @@
         }
     }
 
-// ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) - CARDS MENORES =====
-if (!state.playlist || state.playlist.length === 0) {
-    container.innerHTML = `
-        <div class="empty-state-spotify" style="grid-column: 1/-1;">
-            <i class="bi bi-music-note-beamed" style="font-size: 2.5rem; color: #1DB954;"></i>
-            <h5 style="color: white; margin-top: 0.5rem; font-size: 16px;">Nenhuma música disponível</h5>
-        </div>
-    `;
-} else {
-    const mixes = state.playlist.slice(0, 7);
-    container.innerHTML = mixes.map((track, index) => {
-        let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
-        const percentSold = track.percentual_disponivel ? 
-            Math.min(100, ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100)).toFixed(0) : 0;
-        
-        return `
-        <div class="spotify-card" onclick="playTrack(${index})" style="padding: 6px;">
-            <div class="spotify-cover" style="margin-bottom: 4px;">
-                <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                     onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
-                    <i class="bi bi-play-fill"></i>
-                </div>
+function renderMarketplace() {
+    const container = document.getElementById('marketplaceContent');
+    const artistsGrid = document.getElementById('artistsPlaylistsGrid');
+    const externalGrid = document.getElementById('externalMarketplaceGrid');
+    const recommendedCard = document.getElementById('recommendedCard');
+    
+    if (!container) return;
+    
+    // ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) - CARDS MENORES =====
+    if (!state.playlist || state.playlist.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state-spotify" style="grid-column: 1/-1;">
+                <i class="bi bi-music-note-beamed" style="font-size: 2.5rem; color: #1DB954;"></i>
+                <h5 style="color: white; margin-top: 0.5rem; font-size: 16px;">Nenhuma música disponível</h5>
             </div>
-            <h3 class="spotify-title" style="font-size: 11px; margin-bottom: 2px;">${track.titulo || 'Sem título'}</h3>
-            <p class="spotify-artist" style="font-size: 9px; margin-bottom: 2px;">${track.artista || 'Artista'}</p>
-            
-            <div style="height: 2px; background: #282828; border-radius: 2px; margin: 3px 0; overflow: hidden;">
-                <div style="width: ${percentSold}%; height: 100%; background: #1DB954;"></div>
-            </div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
-                <span class="badge" style="background: rgba(29, 185, 84, 0.2); color: #1DB954; font-size: 8px; padding: 2px 4px;">
-                    ${percentSold}%
-                </span>
-                <span style="color: #b3b3b3; font-size: 10px;">
-                    ${formatCurrency(track.valor_acao || 0)}
-                </span>
-            </div>
-            
-            <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})" 
-                    style="font-size: 9px; padding: 4px; margin-top: 4px;">
-                <i class="bi bi-currency-dollar me-1"></i> INVESTIR
-            </button>
-        </div>
         `;
-    }).join('');
-}
+    } else {
+        const mixes = state.playlist.slice(0, 7);
+        container.innerHTML = mixes.map((track, index) => {
+            let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+            const percentSold = track.percentual_disponivel ? 
+                Math.min(100, ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100)).toFixed(0) : 0;
+            
+            return `
+            <div class="spotify-card" onclick="playTrack(${index})" style="padding: 6px;">
+                <div class="spotify-cover" style="margin-bottom: 4px;">
+                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                         onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
+                        <i class="bi bi-play-fill"></i>
+                    </div>
+                </div>
+                <h3 class="spotify-title" style="font-size: 11px; margin-bottom: 2px;">${track.titulo || 'Sem título'}</h3>
+                <p class="spotify-artist" style="font-size: 9px; margin-bottom: 2px;">${track.artista || 'Artista'}</p>
+                
+                <div style="height: 2px; background: #282828; border-radius: 2px; margin: 3px 0; overflow: hidden;">
+                    <div style="width: ${percentSold}%; height: 100%; background: #1DB954;"></div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+                    <span class="badge" style="background: rgba(29, 185, 84, 0.2); color: #1DB954; font-size: 8px; padding: 2px 4px;">
+                        ${percentSold}%
+                    </span>
+                    <span style="color: #b3b3b3; font-size: 10px;">
+                        ${formatCurrency(track.valor_acao || 0)}
+                    </span>
+                </div>
+                
+                <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})" 
+                        style="font-size: 9px; padding: 4px; margin-top: 4px;">
+                    <i class="bi bi-currency-dollar me-1"></i> INVESTIR
+                </button>
+            </div>
+            `;
+        }).join('');
+    }
     
     // ===== ARTISTAS E PLAYLISTS =====
     if (artistsGrid && state.playlist && state.playlist.length > 3) {
@@ -5490,6 +5498,7 @@ if (!state.playlist || state.playlist.length === 0) {
             </button>
         `;
     }
+}
     function filterMarketplace(type) {
         let filtered = [...state.playlist];
         
