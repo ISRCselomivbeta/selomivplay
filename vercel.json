@@ -27,9 +27,9 @@
       "src": "/api/backend",
       "dest": "/api/backend.js"
     },
-    {
-      "src": "/termos-de-uso.pdf",
-      "dest": "/public/TERMOS%20DE%20USO%20-%20SELO%20MIV%20PLATFORM.pdf"
-    }
+  {
+  "src": "/termos-de-uso.pdf",
+  "dest": "/public/TERMOS%20DE%20USO%20-%20SELO%20MIV%20PLATFORM.pdf"
+}
   ]
 }
