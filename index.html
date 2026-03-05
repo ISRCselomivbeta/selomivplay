@@ -1,3 +1,4 @@
+```html:disable-run
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -955,7 +956,7 @@
         }
         @media (max-width: 768px) {
             :root {
-                --player-height: 220px; /* Aumente para caber o player em column (teste e ajuste: ~180-250px) */
+                --player-height: 250px; /* Ajustado para mais espaço no mobile */
             }
 
             body {
@@ -2413,7 +2414,7 @@
            
             <div class="connection-footer">
                 <i class="bi bi-bluetooth"></i>
-                <span>Conexão ⛓️ Blockchain Ativa • SELO MIV Streaming</span>
+                <span>Conexão com fio • SELO MIV Streaming</span>
             </div>
         </div>
     </section>
@@ -3039,10 +3040,9 @@
                     <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(-1)">
                         <i class="bi bi-dash"></i>
                     </button>
-                    <input type="number" id="investQuantityField" class="form-control-custom text-center" value="1" min="1" oninput="updateInvestmentTotal()">
-                    <button class="btn btn-outline-secondary" type="button" onclick="adjustQuantity(1)">
-                        <i class="bi bi-plus"></i>
-                    </button>
+                    <input type="number" id="investQuantityField" class="form-control-custom text-center" value="1" min="
+oninput="updateInvestmentTotal()">
+                    
                 </div>
             </div>
            
