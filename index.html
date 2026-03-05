@@ -1644,31 +1644,125 @@
     }
 }
 
-/* CELULAR - 2 cards */
+/* CELULAR - 2 cards bem menores */
 @media (max-width: 767px) {
     .spotify-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        gap: 8px;
     }
     
     .spotify-card {
-        padding: 8px !important;
+        padding: 6px !important;
+    }
+    
+    .spotify-cover {
+        margin-bottom: 4px !important;
     }
     
     .spotify-title {
-        font-size: 12px !important;
+        font-size: 11px !important;
+        line-height: 1.2 !important;
+        margin-bottom: 2px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .spotify-artist {
-        font-size: 10px !important;
+        font-size: 9px !important;
+        margin-bottom: 2px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .play-overlay {
-        width: 28px !important;
-        height: 28px !important;
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 12px !important;
+        bottom: 3px !important;
+        right: 3px !important;
+    }
+    
+    .btn-invest {
+        font-size: 9px !important;
+        padding: 4px !important;
+        margin-top: 4px !important;
+        border-radius: 12px !important;
+    }
+    
+    /* Barra de progresso mais fina ainda */
+    .progress-bar-bg,
+    div[style*="height: 3px"] {
+        height: 2px !important;
+        margin: 3px 0 !important;
+    }
+    
+    /* Badges menores */
+    .badge,
+    .spotify-badge,
+    .external-badge {
+        font-size: 8px !important;
+        padding: 2px 4px !important;
+    }
+    
+    .spotify-price {
+        font-size: 10px !important;
+    }
+    
+    .spotify-elo {
+        font-size: 8px !important;
+        padding: 1px 4px !important;
+    }
+    
+    /* Ajuste do card recomendado */
+    .recommended-card {
+        padding: 10px !important;
+        gap: 10px !important;
+    }
+    
+    .recommended-cover {
+        width: 50px !important;
+        height: 50px !important;
+    }
+    
+    .recommended-info h4 {
+        font-size: 13px !important;
+        margin-bottom: 2px !important;
+    }
+    
+    .recommended-info p {
+        font-size: 10px !important;
+    }
+    
+    .recommended-card .btn-play {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 16px !important;
+    }
+    
+    /* Ajuste do header */
+    .section-header-spotify h2 {
+        font-size: 16px !important;
+    }
+    
+    .section-header-spotify a {
+        font-size: 11px !important;
+    }
+    
+    /* Ajuste da barra de progresso externa */
+    .external-progress .progress-header {
+        font-size: 8px !important;
+    }
+    
+    /* Ícones menores */
+    .favorite-btn {
         font-size: 14px !important;
-        bottom: 4px !important;
-        right: 4px !important;
+    }
+    
+    .favorite-btn[style*="width: 32px"] {
+        width: 24px !important;
+        height: 24px !important;
     }
 }
         /* CARD PADRÃO */
@@ -5234,61 +5328,54 @@
         }
     }
 
-function renderMarketplace() {
-    const container = document.getElementById('marketplaceContent');
-    const artistsGrid = document.getElementById('artistsPlaylistsGrid');
-    const externalGrid = document.getElementById('externalMarketplaceGrid');
-    const recommendedCard = document.getElementById('recommendedCard');
-    if (!container) return;
-    
-    // ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) =====
-    if (!state.playlist || state.playlist.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state-spotify" style="grid-column: 1/-1;">
-                <i class="bi bi-music-note-beamed" style="font-size: 3rem; color: #1DB954;"></i>
-                <h4 style="color: white; margin-top: 0.5rem;">Nenhuma música disponível</h4>
+// ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) - CARDS MENORES =====
+if (!state.playlist || state.playlist.length === 0) {
+    container.innerHTML = `
+        <div class="empty-state-spotify" style="grid-column: 1/-1;">
+            <i class="bi bi-music-note-beamed" style="font-size: 2.5rem; color: #1DB954;"></i>
+            <h5 style="color: white; margin-top: 0.5rem; font-size: 16px;">Nenhuma música disponível</h5>
+        </div>
+    `;
+} else {
+    const mixes = state.playlist.slice(0, 7);
+    container.innerHTML = mixes.map((track, index) => {
+        let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+        const percentSold = track.percentual_disponivel ? 
+            Math.min(100, ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100)).toFixed(0) : 0;
+        
+        return `
+        <div class="spotify-card" onclick="playTrack(${index})" style="padding: 6px;">
+            <div class="spotify-cover" style="margin-bottom: 4px;">
+                <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                     onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
+                    <i class="bi bi-play-fill"></i>
+                </div>
             </div>
-        `;
-    } else {
-        const mixes = state.playlist.slice(0, 7);
-        container.innerHTML = mixes.map((track, index) => {
-            let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
-            const percentSold = track.percentual_disponivel ? 
-                Math.min(100, ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100)).toFixed(0) : 0;
+            <h3 class="spotify-title" style="font-size: 11px; margin-bottom: 2px;">${track.titulo || 'Sem título'}</h3>
+            <p class="spotify-artist" style="font-size: 9px; margin-bottom: 2px;">${track.artista || 'Artista'}</p>
             
-            return `
-            <div class="spotify-card" onclick="playTrack(${index})" style="padding: 12px;">
-                <div class="spotify-cover" style="margin-bottom: 8px;">
-                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                         onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
-                        <i class="bi bi-play-fill"></i>
-                    </div>
-                </div>
-                <h3 class="spotify-title" style="font-size: 14px; margin-bottom: 2px;">${track.titulo || 'Sem título'}</h3>
-                <p class="spotify-artist" style="font-size: 12px; margin-bottom: 4px;">${track.artista || 'Artista'}</p>
-                
-                <div style="height: 3px; background: #282828; border-radius: 2px; margin: 6px 0; overflow: hidden;">
-                    <div style="width: ${percentSold}%; height: 100%; background: #1DB954;"></div>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                    <span class="badge" style="background: rgba(29, 185, 84, 0.2); color: #1DB954; font-size: 10px; padding: 2px 6px;">
-                        ${percentSold}%
-                    </span>
-                    <span style="color: #b3b3b3; font-size: 11px;">
-                        ${formatCurrency(track.valor_acao || 0)}
-                    </span>
-                </div>
-                
-                <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})" 
-                        style="font-size: 11px; padding: 6px; margin-top: 8px;">
-                    <i class="bi bi-currency-dollar me-1"></i> INVESTIR
-                </button>
+            <div style="height: 2px; background: #282828; border-radius: 2px; margin: 3px 0; overflow: hidden;">
+                <div style="width: ${percentSold}%; height: 100%; background: #1DB954;"></div>
             </div>
-            `;
-        }).join('');
-    }
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+                <span class="badge" style="background: rgba(29, 185, 84, 0.2); color: #1DB954; font-size: 8px; padding: 2px 4px;">
+                    ${percentSold}%
+                </span>
+                <span style="color: #b3b3b3; font-size: 10px;">
+                    ${formatCurrency(track.valor_acao || 0)}
+                </span>
+            </div>
+            
+            <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})" 
+                    style="font-size: 9px; padding: 4px; margin-top: 4px;">
+                <i class="bi bi-currency-dollar me-1"></i> INVESTIR
+            </button>
+        </div>
+        `;
+    }).join('');
+}
     
     // ===== ARTISTAS E PLAYLISTS =====
     if (artistsGrid && state.playlist && state.playlist.length > 3) {
