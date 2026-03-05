@@ -1586,50 +1586,91 @@
             --spotify-green-hover: #1ed760;
         }
 
-        /* GRID RESPONSIVO */
-        .spotify-grid {
-            display: grid;
-            gap: 24px;
-            margin-bottom: 32px;
-        }
+/* ===== GRID RESPONSIVO CORRIGIDO ===== */
+.spotify-grid {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 32px;
+}
 
-        /* PC GRANDE - 7 cards */
-        @media (min-width: 1400px) {
-            .spotify-grid {
-                grid-template-columns: repeat(7, 1fr);
-            }
-        }
+/* PC GRANDE - 7 cards menores */
+@media (min-width: 1400px) {
+    .spotify-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+    
+    .spotify-card {
+        padding: 12px !important;
+    }
+    
+    .spotify-cover {
+        margin-bottom: 8px !important;
+    }
+    
+    .spotify-title {
+        font-size: 14px !important;
+    }
+    
+    .spotify-artist {
+        font-size: 12px !important;
+    }
+    
+    .btn-invest {
+        font-size: 11px !important;
+        padding: 6px !important;
+        margin-top: 8px !important;
+    }
+}
 
-        /* PC MÉDIO - 6 cards */
-        @media (min-width: 1200px) and (max-width: 1399px) {
-            .spotify-grid {
-                grid-template-columns: repeat(6, 1fr);
-            }
-        }
+/* PC MÉDIO - 6 cards */
+@media (min-width: 1200px) and (max-width: 1399px) {
+    .spotify-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
 
-        /* NOTEBOOK - 5 cards */
-        @media (min-width: 992px) and (max-width: 1199px) {
-            .spotify-grid {
-                grid-template-columns: repeat(5, 1fr);
-            }
-        }
+/* NOTEBOOK - 5 cards */
+@media (min-width: 992px) and (max-width: 1199px) {
+    .spotify-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
 
-        /* TABLET - 4 cards */
-        @media (min-width: 768px) and (max-width: 991px) {
-            .spotify-grid {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 20px;
-            }
-        }
+/* TABLET - 4 cards */
+@media (min-width: 768px) and (max-width: 991px) {
+    .spotify-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+    }
+}
 
-        /* CELULAR - 2 cards */
-        @media (max-width: 767px) {
-            .spotify-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
-            }
-        }
-
+/* CELULAR - 2 cards */
+@media (max-width: 767px) {
+    .spotify-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .spotify-card {
+        padding: 8px !important;
+    }
+    
+    .spotify-title {
+        font-size: 12px !important;
+    }
+    
+    .spotify-artist {
+        font-size: 10px !important;
+    }
+    
+    .play-overlay {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 14px !important;
+        bottom: 4px !important;
+        right: 4px !important;
+    }
+}
         /* CARD PADRÃO */
         .spotify-card {
             background: var(--spotify-card);
@@ -2172,6 +2213,79 @@
             background-color: #9b59b6;
             color: white;
         }
+
+        /* ===== CORREÇÃO TAMANHO DOS CARDS ===== */
+.spotify-card {
+    padding: 12px !important;
+}
+
+.spotify-cover {
+    margin-bottom: 8px !important;
+}
+
+.spotify-title {
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+    margin-bottom: 2px !important;
+}
+
+.spotify-artist {
+    font-size: 12px !important;
+    margin-bottom: 4px !important;
+}
+
+.btn-invest {
+    font-size: 11px !important;
+    padding: 6px !important;
+    margin-top: 8px !important;
+    border-radius: 16px !important;
+}
+
+/* Ajuste para o overlay de play */
+.play-overlay {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 16px !important;
+    bottom: 6px !important;
+    right: 6px !important;
+}
+
+/* Barra de progresso mais fina */
+.spotify-progress-bar {
+    height: 3px !important;
+    margin: 6px 0 !important;
+}
+
+.stat-icon-small {
+    font-size: 1.5rem;
+    color: var(--neon-green);
+    margin-bottom: 0.5rem;
+}
+
+.stat-value-small {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.stat-label-small {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: var(--text-light);
+}        
     </style>
 </head>
 <body>
@@ -2414,7 +2528,6 @@
         </div>
     </header>
 
-    <!-- Main Content -->
     <!-- Marketplace Section -->
     <section id="marketplaceSection" class="section active">
         <div class="marketplace-spotify">
@@ -3979,6 +4092,12 @@
         showModal('eloRankingModal');
     };
 
+    function getELOColor(rating) {
+        if (rating >= 2400) return '#ffd700';
+        if (rating >= 2000) return '#c0c0c0';
+        if (rating >= 1600) return '#cd7f32';
+        return '#6c757d';
+    }
     function getELOLevel(rating) {
         if (rating >= 2600) return '⚜️ Lenda';
         if (rating >= 2400) return '👑 Mestre';
@@ -3989,14 +4108,7 @@
         if (rating >= 1400) return '🔰 Bronze';
         return '🆚 Iniciante';
     }
-
-    function getELOColor(rating) {
-        if (rating >= 2400) return '#ffd700';
-        if (rating >= 2000) return '#c0c0c0';
-        if (rating >= 1600) return '#cd7f32';
-        return '#6c757d';
-    }
-
+    
     function getELOTrend(music) {
         if (!music.elo_history || music.elo_history.length < 2) return '➡️ Estável';
         const last = music.elo_history[music.elo_history.length - 1];
@@ -5122,161 +5234,176 @@
         }
     }
 
-    function renderMarketplace() {
-        const container = document.getElementById('marketplaceContent');
-        const artistsGrid = document.getElementById('artistsPlaylistsGrid');
-        const externalGrid = document.getElementById('externalMarketplaceGrid');
-        const recommendedCard = document.getElementById('recommendedCard');
-        if (!container) return;
-        
-        if (!state.playlist || state.playlist.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state-spotify" style="grid-column: 1/-1;">
-                    <i class="bi bi-music-note-beamed" style="font-size: 4rem; color: #1DB954;"></i>
-                    <h3 style="color: white;">Nenhuma música disponível</h3>
+function renderMarketplace() {
+    const container = document.getElementById('marketplaceContent');
+    const artistsGrid = document.getElementById('artistsPlaylistsGrid');
+    const externalGrid = document.getElementById('externalMarketplaceGrid');
+    const recommendedCard = document.getElementById('recommendedCard');
+    if (!container) return;
+    
+    // ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) =====
+    if (!state.playlist || state.playlist.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state-spotify" style="grid-column: 1/-1;">
+                <i class="bi bi-music-note-beamed" style="font-size: 3rem; color: #1DB954;"></i>
+                <h4 style="color: white; margin-top: 0.5rem;">Nenhuma música disponível</h4>
+            </div>
+        `;
+    } else {
+        const mixes = state.playlist.slice(0, 7);
+        container.innerHTML = mixes.map((track, index) => {
+            let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+            const percentSold = track.percentual_disponivel ? 
+                Math.min(100, ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100)).toFixed(0) : 0;
+            
+            return `
+            <div class="spotify-card" onclick="playTrack(${index})" style="padding: 12px;">
+                <div class="spotify-cover" style="margin-bottom: 8px;">
+                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                         onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
+                        <i class="bi bi-play-fill"></i>
+                    </div>
+                </div>
+                <h3 class="spotify-title" style="font-size: 14px; margin-bottom: 2px;">${track.titulo || 'Sem título'}</h3>
+                <p class="spotify-artist" style="font-size: 12px; margin-bottom: 4px;">${track.artista || 'Artista'}</p>
+                
+                <div style="height: 3px; background: #282828; border-radius: 2px; margin: 6px 0; overflow: hidden;">
+                    <div style="width: ${percentSold}%; height: 100%; background: #1DB954;"></div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                    <span class="badge" style="background: rgba(29, 185, 84, 0.2); color: #1DB954; font-size: 10px; padding: 2px 6px;">
+                        ${percentSold}%
+                    </span>
+                    <span style="color: #b3b3b3; font-size: 11px;">
+                        ${formatCurrency(track.valor_acao || 0)}
+                    </span>
+                </div>
+                
+                <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})" 
+                        style="font-size: 11px; padding: 6px; margin-top: 8px;">
+                    <i class="bi bi-currency-dollar me-1"></i> INVESTIR
+                </button>
+            </div>
+            `;
+        }).join('');
+    }
+    
+    // ===== ARTISTAS E PLAYLISTS =====
+    if (artistsGrid && state.playlist && state.playlist.length > 3) {
+        const artistItems = state.playlist.slice(3, 7);
+        artistsGrid.innerHTML = artistItems.map((track, idx) => {
+            const originalIndex = idx + 3;
+            let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+            const categories = ['Álbum', 'Playlist', 'Podcast', 'Rádio'];
+            
+            return `
+            <div class="spotify-card" onclick="playTrack(${originalIndex})">
+                <div class="spotify-cover">
+                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                         onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${originalIndex})">
+                        <i class="bi bi-play-fill"></i>
+                    </div>
+                </div>
+                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+                <p class="spotify-artist">${categories[idx % categories.length]} • ${track.artista?.substring(0, 15) || 'Artista'}</p>
+            </div>
+            `;
+        }).join('');
+    }
+    
+    // ===== BOLSA EXTERNA =====
+    if (externalGrid) {
+        if (!state.externalPlaylist || state.externalPlaylist.length === 0) {
+            externalGrid.innerHTML = `
+                <div class="suggest-card" onclick="openAddExternalMusicModal()">
+                    <i class="bi bi-plus-circle"></i>
+                    <h3>Sugerir Música</h3>
+                    <p>Seja o primeiro a sugerir</p>
                 </div>
             `;
         } else {
-            const mixes = state.playlist.slice(0, 3);
-            container.innerHTML = mixes.map((track, index) => {
-                let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+            const externas = state.externalPlaylist.slice(0, 4);
+            externalGrid.innerHTML = externas.map((track, index) => {
+                let coverImage = PLACEHOLDERS.EXT_300;
+                
+                if (track.link_capa?.trim()) {
+                    coverImage = track.link_capa.trim();
+                } else if (track.link_youtube) {
+                    const videoId = extractYouTubeId(track.link_youtube);
+                    if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                }
+                
+                const vendasAtuais = track.vendas_atuais || 0;
+                const metaVendas = track.meta_vendas || 1000000;
+                const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
                 
                 return `
-                <div class="spotify-card" onclick="playTrack(${index})">
+                <div class="spotify-card external-card" onclick="playExternalTrack(${index})">
+                    <div class="external-badge">
+                        <i class="bi bi-globe"></i> BOLSA EXTERNA
+                    </div>
                     <div class="spotify-cover">
                         <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                             onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                        <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
+                             onerror="this.src='${PLACEHOLDERS.EXT_300}'">
+                        <div class="play-overlay" onclick="event.stopPropagation(); playExternalTrack(${index})">
                             <i class="bi bi-play-fill"></i>
                         </div>
                     </div>
                     <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
-                    <p class="spotify-artist">
-                        ${track.artista || 'Artista'} <span class="text-white">e mais</span>
-                    </p>
-                    <div style="margin-top: 8px;">
-                        <span class="badge" style="background: rgba(29, 185, 84, 0.2); color: #1DB954;">
-                            ${track.percentual_disponivel || 0}% disponível
+                    <p class="spotify-artist">${track.artista || 'Artista'}</p>
+                    
+                    <div class="spotify-stats">
+                        <span class="spotify-elo" style="background: rgba(255,107,107,0.2); color: #ff6b6b;">
+                            🚀 Pré-lançamento
                         </span>
+                        <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
                     </div>
+                    
+                    <div class="external-progress">
+                        <div class="progress-header">
+                            <span>Progresso</span>
+                            <span>${progressPercent}%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: ${progressPercent}%;"></div>
+                        </div>
+                        <div class="progress-header" style="margin-top: 4px;">
+                            <span>${formatCurrency(vendasAtuais)}</span>
+                            <span>Meta: ${formatCurrency(metaVendas)}</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-invest" onclick="event.stopPropagation(); openInvestExternalModal(${index})" 
+                            style="border-color: #ff6b6b; color: #ff6b6b;">
+                        <i class="bi bi-coin me-1"></i> INVESTIR
+                    </button>
                 </div>
                 `;
             }).join('');
-        }
-        
-        if (artistsGrid && state.playlist.length > 3) {
-            const artists = state.playlist.slice(3, 7);
-            artistsGrid.innerHTML = artists.map((track, idx) => {
-                const originalIndex = idx + 3;
-                let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
-                
-                let badge = idx === 0 ? 'Álbum' : (idx === 1 ? 'Playlist' : (idx === 2 ? 'Playlist' : 'Mixtape'));
-                
-                return `
-                <div class="spotify-card" onclick="playTrack(${originalIndex})">
-                    <div class="spotify-cover">
-                        <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                             onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                        <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${originalIndex})">
-                            <i class="bi bi-play-fill"></i>
-                        </div>
-                    </div>
-                    <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
-                    <p class="spotify-artist">${badge} • ${track.artista?.substring(0, 15) || 'Artista'}</p>
-                </div>
-                `;
-            }).join('');
-        }
-        
-        if (externalGrid) {
-            if (!state.externalPlaylist || state.externalPlaylist.length === 0) {
-                externalGrid.innerHTML = `
-                    <div class="suggest-card" onclick="openAddExternalMusicModal()">
-                        <i class="bi bi-plus-circle"></i>
-                        <h3>Sugerir Música</h3>
-                        <p>Seja o primeiro a sugerir</p>
-                    </div>
-                `;
-            } else {
-                const externas = state.externalPlaylist.slice(0, 4);
-                externalGrid.innerHTML = externas.map((track, index) => {
-                    let coverImage = PLACEHOLDERS.EXT_300;
-                    
-                    if (track.link_capa?.trim()) {
-                        coverImage = track.link_capa.trim();
-                    } else if (track.link_youtube) {
-                        const videoId = extractYouTubeId(track.link_youtube);
-                        if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                    }
-                    
-                    const vendasAtuais = track.vendas_atuais || 0;
-                    const metaVendas = track.meta_vendas || 1000000;
-                    const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
-                    
-                    return `
-                    <div class="spotify-card external-card" onclick="playExternalTrack(${index})">
-                        <div class="external-badge">
-                            <i class="bi bi-globe"></i> BOLSA EXTERNA
-                        </div>
-                        <div class="spotify-cover">
-                            <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                                 onerror="this.src='${PLACEHOLDERS.EXT_300}'">
-                            <div class="play-overlay" onclick="event.stopPropagation(); playExternalTrack(${index})">
-                                <i class="bi bi-play-fill"></i>
-                            </div>
-                        </div>
-                        <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
-                        <p class="spotify-artist">${track.artista || 'Artista'}</p>
-                        
-                        <div class="spotify-stats">
-                            <span class="spotify-elo" style="background: rgba(255,107,107,0.2); color: #ff6b6b;">
-                                🚀 Pré-lançamento
-                            </span>
-                            <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
-                        </div>
-                        
-                        <div class="external-progress">
-                            <div class="progress-header">
-                                <span>Progresso</span>
-                                <span>${progressPercent}%</span>
-                            </div>
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill" style="width: ${progressPercent}%;"></div>
-                            </div>
-                            <div class="progress-header" style="margin-top: 4px;">
-                                <span>${formatCurrency(vendasAtuais)}</span>
-                                <span>Meta: ${formatCurrency(metaVendas)}</span>
-                            </div>
-                        </div>
-                        
-                        <button class="btn-invest" onclick="event.stopPropagation(); openInvestExternalModal(${index})" 
-                                style="border-color: #ff6b6b; color: #ff6b6b;">
-                            <i class="bi bi-coin me-1"></i> INVESTIR
-                        </button>
-                    </div>
-                    `;
-                }).join('');
-            }
-        }
-        
-        if (recommendedCard && state.playlist.length > 0) {
-            const primeira = state.playlist[0];
-            let coverImage = primeira.link_capa?.trim() || PLACEHOLDERS.MIV_300;
-            
-            recommendedCard.innerHTML = `
-                <img src="${coverImage}" alt="${primeira.titulo}" class="recommended-cover"
-                     onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                <div class="recommended-info">
-                    <h4>${primeira.titulo} • ${primeira.artista}</h4>
-                    <p>Conexão com fio • ${formatCurrency(primeira.valor_acao || 0)} por ação</p>
-                </div>
-                <button class="btn-play" onclick="playTrack(0)">
-                    <i class="bi bi-play-fill"></i>
-                </button>
-            `;
         }
     }
-
+    
+    // ===== RECOMENDADO =====
+    if (recommendedCard && state.playlist && state.playlist.length > 0) {
+        const primeira = state.playlist[0];
+        let coverImage = primeira.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+        
+        recommendedCard.innerHTML = `
+            <img src="${coverImage}" alt="${primeira.titulo}" class="recommended-cover"
+                 onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+            <div class="recommended-info">
+                <h4>${primeira.titulo} • ${primeira.artista}</h4>
+                <p>Conexão com fio • ${formatCurrency(primeira.valor_acao || 0)} por ação</p>
+            </div>
+            <button class="btn-play" onclick="playTrack(0)">
+                <i class="bi bi-play-fill"></i>
+            </button>
+        `;
+    }
+}
     function filterMarketplace(type) {
         let filtered = [...state.playlist];
         
@@ -5309,79 +5436,77 @@
         renderFilteredMarketplace(filtered);
     }
 
-    function renderFilteredMarketplace(filteredTracks) {
-        const container = document.getElementById('marketplaceContent');
-        if (!container) return;
-        
-        if (!filteredTracks || filteredTracks.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state-spotify">
-                    <i class="bi bi-filter" style="font-size: 4rem; color: #1DB954;"></i>
-                    <h3 style="color: white; margin-top: 1rem;">Nenhum resultado</h3>
-                    <p style="color: #b3b3b3;">Tente outro filtro</p>
-                </div>
-            `;
-            return;
-        }
-        
-        container.innerHTML = filteredTracks.map((track, index) => {
-            const originalIndex = state.playlist.findIndex(m => m.id === track.id);
-            const playIndex = originalIndex >= 0 ? originalIndex : index;
-            
-            const eloRating = track.elo_rating || 1400;
-            const eloLevel = eloRating >= 2000 ? '🔥 Top' : 
-                            eloRating >= 1700 ? '📈 Trending' : '🎵 Nova';
-            
-            let coverImage = track.link_capa?.trim() || 
-                'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800';
-            
-            const percentSold = track.percentual_disponivel ? 
-                ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100).toFixed(0) : 0;
-            
-            const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
-            
-            return `
-            <div class="spotify-card" onclick="playTrack(${playIndex})">
-                <div class="spotify-cover">
-                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
-                         onerror="this.onerror=null; this.src='${PLACEHOLDERS.MIV_300.replace(/'/g, '%27')}'">
-                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${playIndex})">
-                        <i class="bi bi-play-fill"></i>
-                    </div>
-                    <div class="position-absolute top-0 start-0 m-2" style="z-index: 5;">
-                        <button class="favorite-btn ${isFavorite ? 'active' : ''}" 
-                                onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${playIndex})"
-                                style="background: rgba(0,0,0,0.5); border-radius: 50%; width: 32px; height: 32px;">
-                            <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}" style="color: #ffc107;"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="spotify-title">${track.titulo || 'Sem título'}</div>
-                <div class="spotify-artist">${track.artista || 'Artista'}</div>
-                
-                <div class="spotify-stats">
-                    <span class="spotify-elo">${eloLevel}</span>
-                    <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
-                </div>
-                
-                <div style="margin-top: 8px; position: relative;">
-                    <div style="height: 4px; background: #282828; border-radius: 2px; overflow: hidden;">
-                        <div style="width: ${percentSold}%; height: 100%; background: #1DB954;"></div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-                        <small style="color: #b3b3b3;">${percentSold}% vendido</small>
-                        <small style="color: #1DB954;">${track.acoes_disponiveis || 0} ações</small>
-                    </div>
-                </div>
-                
-                <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${playIndex})">
-                    <i class="bi bi-currency-dollar me-1"></i> INVESTIR
-                </button>
+function renderFilteredMarketplace(filteredTracks) {
+    const container = document.getElementById('marketplaceContent');
+    if (!container) return;
+    
+    if (!filteredTracks || filteredTracks.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state-spotify">
+                <i class="bi bi-filter" style="font-size: 4rem; color: #1DB954;"></i>
+                <h3 style="color: white; margin-top: 1rem;">Nenhum resultado</h3>
+                <p style="color: #b3b3b3;">Tente outro filtro</p>
             </div>
-            `;
-        }).join('');
+        `;
+        return;
     }
+    
+    container.innerHTML = filteredTracks.map((track, index) => {
+        const originalIndex = state.playlist.findIndex(m => m.id === track.id);
+        const playIndex = originalIndex >= 0 ? originalIndex : index;
+        
+        const eloRating = track.elo_rating || 1400;
+        const eloLevel = eloRating >= 2000 ? '🔥 Top' : 
+                        eloRating >= 1700 ? '📈 Trending' : '🎵 Nova';
+        
+        let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+        const percentSold = track.percentual_disponivel ? 
+            ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100).toFixed(0) : 0;
+        
+        const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+        
+        return `
+        <div class="spotify-card" onclick="playTrack(${playIndex})">
+            <div class="spotify-cover">
+                <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
+                     onerror="this.onerror=null; this.src='${PLACEHOLDERS.MIV_300}'">
+                <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${playIndex})">
+                    <i class="bi bi-play-fill"></i>
+                </div>
+                <div class="position-absolute top-0 start-0 m-2" style="z-index: 5;">
+                    <button class="favorite-btn ${isFavorite ? 'active' : ''}" 
+                            onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${playIndex})"
+                            style="background: rgba(0,0,0,0.5); border-radius: 50%; width: 32px; height: 32px;">
+                        <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}" style="color: #ffc107;"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="spotify-title">${track.titulo || 'Sem título'}</div>
+            <div class="spotify-artist">${track.artista || 'Artista'}</div>
+            
+            <div class="spotify-stats">
+                <span class="spotify-elo">${eloLevel}</span>
+                <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
+            </div>
+            
+            <div style="margin-top: 8px; position: relative;">
+                <div style="height: 4px; background: #282828; border-radius: 2px; overflow: hidden;">
+                    <div style="width: ${percentSold}%; height: 100%; background: #1DB954;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                    <small style="color: #b3b3b3;">${percentSold}% vendido</small>
+                    <small style="color: #1DB954;">${track.acoes_disponiveis || 0} ações</small>
+                </div>
+            </div>
+            
+            <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${playIndex})">
+                <i class="bi bi-currency-dollar me-1"></i> INVESTIR
+            </button>
+        </div>
+        `;
+    }).join('');
+}
 
     window.filterMarketplace = filterMarketplace;
 
