@@ -130,7 +130,7 @@
             </div>
             <h3 class="mb-3">Email Confirmado!</h3>
             <p class="text-muted mb-4" id="successMessage">Seu email foi confirmado com sucesso. Agora você pode fazer login na plataforma.</p>
-            <a href="/" class="btn-miv">
+            <a href="https://selomivplay.vercel.app" class="btn-miv">
                 <i class="bi bi-box-arrow-in-right me-2"></i>Ir para Login
             </a>
         </div>
@@ -145,7 +145,7 @@
             </div>
             <h3 class="mb-3">Erro na Confirmação</h3>
             <p class="text-muted mb-4" id="errorMessage">O link de confirmação é inválido ou expirou.</p>
-            <a href="/reset-password.html" class="btn-miv">
+            <a href="https://selomivplay.vercel.app/reset-password.html" class="btn-miv">
                 <i class="bi bi-envelope me-2"></i>Solicitar novo link
             </a>
         </div>
@@ -160,7 +160,7 @@
             </div>
             <h3 class="mb-3">Email Já Confirmado</h3>
             <p class="text-muted mb-4">Este email já foi confirmado anteriormente. Você pode fazer login normalmente.</p>
-            <a href="/" class="btn-miv">
+            <a href="https://selomivplay.vercel.app" class="btn-miv">
                 <i class="bi bi-box-arrow-in-right me-2"></i>Ir para Login
             </a>
         </div>
@@ -168,7 +168,7 @@
 
     <script>
         // ========== CONFIGURAÇÃO ==========
-        const API_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
+        const API_URL = 'https://selomivplay.vercel.app/api/backend';
         
         // ========== EXTRAIR TOKEN DA URL ==========
         function getTokenFromUrl() {
@@ -176,55 +176,71 @@
             return urlParams.get('token');
         }
         
-// ========== CONFIRMAR EMAIL (COM SUPORTE A CONTAS ANTIGAS) ==========
-async function confirmEmail() {
-    const token = getTokenFromUrl();
-    
-    if (!token) {
-        showError('Token de confirmação não encontrado na URL');
-        return;
-    }
-    
-    try {
-        console.log('🔍 Confirmando email com token:', token);
-        
-        // Primeiro verificar se é conta antiga
-        const oldCheck = await checkIfOldAccount(token);
-        
-        if (oldCheck.success && oldCheck.data?.is_old_account) {
-            // É uma conta antiga - já está confirmada
-            showAlreadyConfirmed('Esta é uma conta antiga. Seu email já está confirmado automaticamente.');
-            return;
-        }
-        
-        // Chamar API para confirmar email (conta nova)
-        const response = await fetch(`${API_URL}?action=confirm_email&token=${encodeURIComponent(token)}`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Erro na confirmação');
-        }
-        
-        const result = await response.json();
-        console.log('✅ Resposta da API:', result);
-        
-        if (result.success) {
-            if (result.data?.already_confirmed) {
-                showAlreadyConfirmed(result.message || 'Email já estava confirmado');
-            } else {
-                showSuccess(result.message || 'Email confirmado com sucesso!');
+        // ========== VERIFICAR SE É CONTA ANTIGA ==========
+        async function checkIfOldAccount(token) {
+            try {
+                const response = await fetch(`${API_URL}?action=check_old_account&token=${encodeURIComponent(token)}`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                console.error('Erro ao verificar conta antiga:', error);
+                return { success: false };
             }
-        } else {
-            showError(result.message || 'Erro ao confirmar email');
         }
         
-    } catch (error) {
-        console.error('❌ Erro na confirmação:', error);
-        showError('Erro de conexão com o servidor');
-    }
-}
+        // ========== CONFIRMAR EMAIL ==========
+        async function confirmEmail() {
+            const token = getTokenFromUrl();
+            
+            if (!token) {
+                showError('Token de confirmação não encontrado na URL');
+                return;
+            }
+            
+            try {
+                console.log('🔍 Confirmando email com token:', token);
+                
+                // Primeiro verificar se é conta antiga
+                const oldCheck = await checkIfOldAccount(token);
+                
+                if (oldCheck.success && oldCheck.data?.is_old_account) {
+                    // É uma conta antiga - já está confirmada
+                    showAlreadyConfirmed('Esta é uma conta antiga. Seu email já está confirmado automaticamente.');
+                    return;
+                }
+                
+                // Chamar API para confirmar email (conta nova)
+                const response = await fetch(`${API_URL}?action=confirm_email&token=${encodeURIComponent(token)}`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro na confirmação');
+                }
+                
+                const result = await response.json();
+                console.log('✅ Resposta da API:', result);
+                
+                if (result.success) {
+                    if (result.data?.already_confirmed) {
+                        showAlreadyConfirmed(result.message || 'Email já estava confirmado');
+                    } else {
+                        showSuccess(result.message || 'Email confirmado com sucesso!');
+                    }
+                } else {
+                    showError(result.message || 'Erro ao confirmar email');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro na confirmação:', error);
+                showError('Erro de conexão com o servidor');
+            }
+        }
         
         function showSuccess(message) {
             document.getElementById('loadingState').style.display = 'none';
@@ -242,21 +258,7 @@ async function confirmEmail() {
             document.getElementById('loadingState').style.display = 'none';
             document.getElementById('alreadyConfirmedState').style.display = 'block';
         }
-        // ========== VERIFICAR SE É CONTA ANTIGA ==========
-async function checkIfOldAccount(token) {
-    try {
-        const response = await fetch(`${API_URL}?action=check_old_account&token=${encodeURIComponent(token)}`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        });
         
-        const result = await response.json();
-        return result;
-    } catch (error) {
-        console.error('Erro ao verificar conta antiga:', error);
-        return { success: false };
-    }
-}
         // ========== INICIAR ==========
         document.addEventListener('DOMContentLoaded', confirmEmail);
     </script>
