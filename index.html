@@ -1659,8 +1659,7 @@
             animation: spin 1s linear infinite;
         }
 
-        /* ===== NOVOS ESTILOS ===== */
-       /* ===== SPOTIFY CLONE - VISUAL EXATO (SUBSTITUA DAQUI PARA BAIXO) ===== */
+       /* ===== SISTEMA ÚNICO - ESTILO SPOTIFY PARA TODOS OS CARDS ===== */
 
 :root {
     --spotify-bg: #121212;
@@ -1671,53 +1670,17 @@
     --spotify-green-hover: #1ed760;
 }
 
-.marketplace-spotify {
-    background-color: var(--spotify-bg);
-    min-height: 100vh;
-    padding: 0 16px;
-}
-
-/* Cabeçalho das seções - EXATO DO SPOTIFY */
-.section-header-spotify {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 24px 0 16px 0;
-}
-
-.section-header-spotify h2 {
-    color: white;
-    font-size: 24px;
-    font-weight: 700;
-    margin: 0;
-}
-
-.section-header-spotify a {
-    color: #b3b3b3;
-    font-size: 12px;
-    font-weight: 700;
-    text-decoration: none;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.section-header-spotify a:hover {
-    color: white;
-    text-decoration: underline;
-}
-
-/* GRID PRINCIPAL */
+/* GRID RESPONSIVO IGUAL AO SPOTIFY */
 .spotify-grid {
     display: grid;
-    gap: 16px;
+    gap: 24px;
     margin-bottom: 32px;
 }
 
-/* PC GRANDE - 7 cards (igual Spotify) */
+/* PC GRANDE - 7 cards */
 @media (min-width: 1400px) {
     .spotify-grid {
         grid-template-columns: repeat(7, 1fr);
-        gap: 16px;
     }
 }
 
@@ -1739,7 +1702,7 @@
 @media (min-width: 768px) and (max-width: 991px) {
     .spotify-grid {
         grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
+        gap: 20px;
     }
 }
 
@@ -1747,22 +1710,25 @@
 @media (max-width: 767px) {
     .spotify-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
+        gap: 12px;
     }
 }
 
-/* CARD - EXATAMENTE IGUAL AO SPOTIFY */
+/* CARD PADRÃO - IGUAL SPOTIFY */
 .spotify-card {
     background: var(--spotify-card);
     border-radius: 6px;
     padding: 16px;
-    transition: background-color 0.3s ease;
+    transition: all 0.3s ease;
     cursor: pointer;
     position: relative;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .spotify-card:hover {
     background: var(--spotify-card-hover);
+    transform: translateY(-4px);
 }
 
 .spotify-card:hover .play-overlay {
@@ -1770,7 +1736,7 @@
     transform: translateY(0);
 }
 
-/* CAPA DO CARD */
+/* CAPA - Proporção 1:1 */
 .spotify-cover {
     position: relative;
     width: 100%;
@@ -1788,7 +1754,7 @@
     display: block;
 }
 
-/* OVERLAY DE PLAY - BOTÃO VERDE */
+/* BOTÃO PLAY */
 .play-overlay {
     position: absolute;
     bottom: 8px;
@@ -1806,7 +1772,6 @@
     opacity: 0;
     transform: translateY(8px);
     transition: all 0.3s ease;
-    cursor: pointer;
     border: none;
 }
 
@@ -1829,19 +1794,19 @@
 /* ARTISTA */
 .spotify-artist {
     font-size: 14px;
-    color: #b3b3b3;
+    color: var(--spotify-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 /* BADGE DE PERCENTUAL */
-.spotify-card .badge {
+.spotify-badge {
     background: rgba(29, 185, 84, 0.2);
     color: var(--spotify-green);
     font-size: 11px;
     font-weight: 600;
-    padding: 2px 6px;
+    padding: 2px 8px;
     border-radius: 10px;
     margin-top: 6px;
     display: inline-block;
@@ -1851,7 +1816,7 @@
 .btn-invest {
     width: 100%;
     margin-top: 12px;
-    padding: 6px;
+    padding: 8px;
     background: transparent;
     border: 1px solid rgba(29, 185, 84, 0.3);
     border-radius: 20px;
@@ -1866,26 +1831,12 @@
 .btn-invest:hover {
     background: var(--spotify-green);
     border-color: var(--spotify-green);
+    color: black;
 }
 
-/* ===== BOLSA EXTERNA ===== */
-.external-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: linear-gradient(135deg, #ff6b6b, #ff4c4c);
-    color: white;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 9px;
-    font-weight: 700;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
-}
+/* ===== CARDS ESPECIAIS ===== */
 
+/* Card da Bolsa Externa */
 .spotify-card.external-card {
     border: 1px dashed rgba(255, 107, 107, 0.3);
 }
@@ -1894,42 +1845,40 @@
     border-color: #ff6b6b;
 }
 
-.external-card .spotify-price {
-    color: #ff6b6b !important;
-}
-
-.external-progress {
-    margin-top: 8px;
-}
-
-.progress-header {
+.external-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(135deg, #ff6b6b, #ff4c4c);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 9px;
+    font-weight: 700;
+    z-index: 20;
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 2px;
-    font-size: 10px;
-    color: #b3b3b3;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
 }
 
-.progress-bar-bg {
-    height: 3px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 2px;
-    overflow: hidden;
+.external-card .btn-invest {
+    border-color: rgba(255, 107, 107, 0.3);
+    color: #ff6b6b;
 }
 
-.progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
-    width: 0%;
-    transition: width 0.3s ease;
+.external-card .btn-invest:hover {
+    background: #ff6b6b;
+    border-color: #ff6b6b;
+    color: white;
 }
 
-/* CARD PARA SUGERIR MÚSICA */
+/* Card para Sugerir Música */
 .suggest-card {
     background: var(--spotify-card);
-    border: 1px dashed #ff6b6b;
+    border: 2px dashed #ff6b6b;
     border-radius: 6px;
-    padding: 16px 8px;
+    padding: 24px 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1937,42 +1886,38 @@
     text-align: center;
     cursor: pointer;
     height: 100%;
-    min-height: 180px;
+    min-height: 200px;
 }
 
 .suggest-card i {
-    font-size: 32px;
+    font-size: 40px;
     color: #ff6b6b;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 .suggest-card h3 {
     color: white;
-    font-size: 14px;
+    font-size: 16px;
     margin-bottom: 4px;
 }
 
 .suggest-card p {
     color: #b3b3b3;
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .suggest-card:hover {
     background: var(--spotify-card-hover);
 }
 
-/* ===== RECOMENDADO PARA HOJE ===== */
-.recommended-section {
-    margin-top: 24px;
-}
-
+/* Card Recomendado */
 .recommended-card {
     display: flex;
     align-items: center;
     gap: 16px;
     background: rgba(255,255,255,0.05);
     border-radius: 6px;
-    padding: 12px;
+    padding: 16px;
     transition: background 0.3s ease;
     cursor: pointer;
 }
@@ -1982,8 +1927,8 @@
 }
 
 .recommended-cover {
-    width: 60px;
-    height: 60px;
+    width: 70px;
+    height: 70px;
     border-radius: 4px;
     object-fit: cover;
     flex-shrink: 0;
@@ -1996,7 +1941,7 @@
 
 .recommended-info h4 {
     color: white;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
     margin: 0 0 4px 0;
     white-space: nowrap;
@@ -2006,7 +1951,7 @@
 
 .recommended-info p {
     color: #b3b3b3;
-    font-size: 13px;
+    font-size: 14px;
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -2016,14 +1961,14 @@
 .recommended-card .btn-play {
     background: var(--spotify-green);
     border: none;
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: black;
-    font-size: 18px;
+    font-size: 20px;
     flex-shrink: 0;
     transition: all 0.3s ease;
 }
@@ -2033,33 +1978,22 @@
     transform: scale(1.05);
 }
 
-/* RODAPÉ */
-.connection-footer {
-    margin-top: 32px;
-    padding: 16px 0;
-    border-top: 1px solid rgba(255,255,255,0.1);
-    color: #b3b3b3;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.connection-footer i {
-    color: var(--spotify-green);
-    font-size: 16px;
+/* ===== REMOVER ESTILOS ANTIGOS QUE CAUSAM CONFLITO ===== */
+.music-grid,
+.music-card,
+.music-cover,
+.music-info,
+.music-title,
+.music-artist,
+.music-meta,
+.music-price,
+.music-percent {
+    /* Esses estilos não devem mais ser usados */
+    /* Mantenha apenas se necessário para compatibilidade */
 }
 
 /* ===== AJUSTES CELULAR ===== */
 @media (max-width: 767px) {
-    .section-header-spotify h2 {
-        font-size: 18px;
-    }
-    
-    .section-header-spotify a {
-        font-size: 11px;
-    }
-    
     .spotify-card {
         padding: 12px;
     }
@@ -2082,7 +2016,7 @@
     
     .btn-invest {
         font-size: 10px;
-        padding: 4px;
+        padding: 6px;
     }
     
     .external-badge {
@@ -2090,865 +2024,6 @@
         padding: 2px 6px;
         top: 6px;
         right: 6px;
-    }
-    
-    .recommended-cover {
-        width: 48px;
-        height: 48px;
-    }
-    
-    .recommended-info h4 {
-        font-size: 14px;
-    }
-    
-    .recommended-info p {
-        font-size: 11px;
-    }
-    
-    .recommended-card .btn-play {
-        width: 36px;
-        height: 36px;
-        font-size: 16px;
-    }
-}
-
-/* Filtros do marketplace */
-.marketplace-filters {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.filter-btn {
-    background: #2a2a2a;
-    border: none;
-    border-radius: 20px;
-    padding: 0.5rem 1rem;
-    color: #b3b3b3;
-    font-size: 0.875rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.filter-btn:hover {
-    background: #3a3a3a;
-    color: white;
-}
-
-.filter-btn.active {
-    background: #1DB954;
-    color: black;
-}
-        /* ELO System */
-        .elo-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: bold;
-            margin: 2px;
-            color: #000;
-            z-index: 10;
-        }
-        
-        .elo-ranking-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-            background: var(--bg-card);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        
-        .elo-ranking-table th {
-            background: rgba(0,255,136,0.1);
-            color: var(--neon-green);
-            padding: 12px;
-            text-align: left;
-            border-bottom: 2px solid var(--neon-green);
-        }
-        
-        .elo-ranking-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--border);
-            color: var(--text-light);
-        }
-        
-        .elo-ranking-table tr:hover {
-            background: rgba(255,255,255,0.05);
-        }
-        
-        .elo-trend-up { color: #00ff88; }
-        .elo-trend-down { color: #ff4444; }
-        .elo-trend-stable { color: #ffc107; }
-
-        /* Blockchain */
-        .blockchain-badge {
-            background: var(--blockchain-purple);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: bold;
-            margin-left: 5px;
-        }
-        
-        .blockchain-hash {
-            font-family: monospace;
-            font-size: 12px;
-            color: var(--blockchain-purple);
-            background: rgba(155, 89, 182, 0.1);
-            padding: 4px 8px;
-            border-radius: 4px;
-            word-break: break-all;
-        }
-        
-        .blockchain-verified {
-            color: var(--neon-green);
-            font-size: 12px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .blockchain-pending {
-            color: #ffc107;
-            font-size: 12px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        /* Adicione ao final do seu CSS */
-#blockchainVisualization {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    padding: 1rem;
-    min-height: 200px;
-}
-
-#blockchainVisualization .card {
-    transition: transform 0.3s ease;
-}
-
-#blockchainVisualization .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(155, 89, 182, 0.3);
-}
-
-.progress-loading {
-    height: 4px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-.progress-loading-bar {
-    height: 100%;
-    background: linear-gradient(90deg, var(--neon-green), #00cc6a);
-    border-radius: 2px;
-    width: 0%;
-    animation: loading 2s infinite;
-}
-
-@keyframes loading {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(400%); }
-}
-
-        /* Artist Management */
-        .music-actions {
-            display: flex;
-            gap: 5px;
-            margin-top: 10px;
-        }
-        
-        .music-action-btn {
-            background: none;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            color: var(--text-muted);
-            padding: 5px 10px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .music-action-btn:hover {
-            background: var(--border);
-            color: var(--text-light);
-        }
-        
-        .music-action-btn.edit:hover {
-            border-color: #007bff;
-            color: #007bff;
-        }
-        
-        .music-action-btn.pause:hover {
-            border-color: #ffc107;
-            color: #ffc107;
-        }
-        
-        .music-action-btn.delete:hover {
-            border-color: #ff4444;
-            color: #ff4444;
-        }
-        
-        .status-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: bold;
-            margin-left: 5px;
-        }
-        
-        .status-active {
-            background: rgba(0, 255, 136, 0.2);
-            color: var(--neon-green);
-            border: 1px solid var(--neon-green);
-        }
-        
-        .status-paused {
-            background: rgba(255, 193, 7, 0.2);
-            color: #ffc107;
-            border: 1px solid #ffc107;
-        }
-        
-        .status-deleted {
-            background: rgba(255, 68, 68, 0.2);
-            color: #ff4444;
-            border: 1px solid #ff4444;
-        }
-        /* Player Expandido como Seção */
-#playerExpandedSection {
-    padding-bottom: 100px; /* Espaço para o mini player */
-}
-
-#playerExpandedSection .expanded-album-art {
-    max-width: 300px;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1/1;
-    object-fit: cover;
-    border-radius: 12px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-}
-
-#playerExpandedSection .youtube-container-expanded {
-    width: 100%;
-    aspect-ratio: 16/9;
-    background: #000;
-    border-radius: 12px;
-    overflow: hidden;
-    position: relative;
-}
-
-#playerExpandedSection .info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-}
-
-#playerExpandedSection .info-card {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    padding: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    transition: transform 0.3s ease;
-}
-
-#playerExpandedSection .info-card:hover {
-    transform: translateY(-5px);
-    background: rgba(0, 255, 136, 0.1);
-}
-
-#playerExpandedSection .info-icon {
-    width: 40px;
-    height: 40px;
-    background: rgba(0, 255, 136, 0.1);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-#playerExpandedSection .info-icon i {
-    font-size: 1.25rem;
-    color: var(--neon-green);
-}
-
-#playerExpandedSection .expanded-controls {
-    background: rgba(255, 255, 255, 0.03);
-}
-
-#playerExpandedSection .expanded-progress-bar {
-    height: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
-    cursor: pointer;
-}
-
-#playerExpandedSection .expanded-progress-fill {
-    height: 100%;
-    background: var(--neon-green);
-    border-radius: 3px;
-    width: 0%;
-    transition: width 0.1s linear;
-}
-
-@media (max-width: 768px) {
-    #playerExpandedSection .info-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-    
-    #playerExpandedSection .expanded-controls-bottom {
-        flex-wrap: wrap;
-    }
-}
-
-        
-/* ===== SISTEMA DE NEGOCIAÇÃO ===== */
-.trade-offer-card {
-    background: linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(0, 123, 255, 0.05) 100%);
-    border-left: 4px solid #00ff88;
-    transition: all 0.3s ease;
-}
-
-.trade-offer-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(0, 255, 136, 0.1);
-}
-
-.trade-offer-card.pending {
-    border-left-color: #ffc107;
-}
-
-.trade-offer-card.accepted {
-    border-left-color: #28a745;
-}
-
-.trade-offer-card.declined {
-    border-left-color: #dc3545;
-    opacity: 0.7;
-}
-
-.user-search-result {
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.user-search-result:hover {
-    background: rgba(0, 255, 136, 0.1);
-    transform: translateX(5px);
-}
-
-.trade-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    padding: 4px 8px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: bold;
-    z-index: 10;
-}
-
-.trade-badge.pending {
-    background: rgba(255, 193, 7, 0.2);
-    color: #ffc107;
-    border: 1px solid #ffc107;
-}
-
-.trade-badge.accepted {
-    background: rgba(40, 167, 69, 0.2);
-    color: #28a745;
-    border: 1px solid #28a745;
-}
-
-/* Modal de negociação maior */
-#tradeModal .modal-content {
-    max-width: 600px;
-}
-
-/* Animação para novas ofertas */
-@keyframes newTradePulse {
-    0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
-}
-
-.trade-new {
-    animation: newTradePulse 2s infinite;
-}        
-
-/* ===== ESTILOS PARA STREAMING ===== */
-.stat-icon-small {
-    font-size: 1.5rem;
-    color: var(--neon-green);
-    margin-bottom: 0.25rem;
-}
-
-.stat-value-small {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--text-light);
-}
-
-.stat-label-small {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-}
-
-#streamingRewardIndicator {
-    animation: slideDown 0.3s ease;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.rewarded-badge {
-    background: rgba(0, 255, 136, 0.2);
-    color: var(--neon-green);
-    border: 1px solid var(--neon-green);
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: bold;
-}        
-
-/* ===== TERMOS DE USO ===== */
-.terms-content {
-    color: #e0e0e0;
-    line-height: 1.6;
-    font-size: 0.95rem;
-}
-
-.terms-content h2 {
-    color: var(--neon-green);
-    font-size: 1.3rem;
-    margin-top: 25px;
-    margin-bottom: 15px;
-    border-bottom: 1px solid rgba(0,255,136,0.2);
-    padding-bottom: 8px;
-}
-
-.terms-content h3 {
-    color: #fff;
-    font-size: 1.1rem;
-    margin-top: 20px;
-    margin-bottom: 10px;
-}
-
-.terms-content p {
-    margin-bottom: 12px;
-}
-
-.terms-content ul, .terms-content ol {
-    padding-left: 25px;
-    margin-bottom: 15px;
-}
-
-.terms-content li {
-    margin-bottom: 5px;
-}
-
-.terms-content table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 15px 0;
-    background: rgba(255,255,255,0.05);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.terms-content th, .terms-content td {
-    padding: 10px;
-    border: 1px solid rgba(255,255,255,0.1);
-    text-align: left;
-}
-
-.terms-content th {
-    background: rgba(0,255,136,0.1);
-    color: var(--neon-green);
-}
-
-.terms-checkbox {
-    border: 1px solid rgba(0,255,136,0.2);
-    padding: 15px;
-    border-radius: 8px;
-    margin-top: 20px;
-    background: rgba(255,255,255,0.03);
-}
-
-.terms-checkbox:hover {
-    border-color: var(--neon-green);
-    transition: border-color 0.3s ease;
-}
-
-.terms-label {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    cursor: pointer;
-}
-
-.terms-label input[type="checkbox"] {
-    margin-top: 3px;
-    width: 18px;
-    height: 18px;
-}
-
-/* Melhorias para o checkbox */
-.terms-label input[type="checkbox"] {
-    accent-color: var(--neon-green);
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-}
-
-.terms-label:hover {
-    background: rgba(0, 255, 136, 0.05);
-    border-radius: 4px;
-    transition: background 0.2s ease;
-}
-
-.terms-checkbox {
-    border: 1px solid rgba(0,255,136,0.2);
-    padding: 15px;
-    border-radius: 12px;
-    margin: 20px 0;
-    background: rgba(0,0,0,0.2);
-}
-
-.terms-checkbox .auth-link {
-    font-size: 0.9rem;
-}
-
-/* Destaque para links dentro dos termos */
-.terms-label .auth-link {
-    color: var(--neon-green);
-    text-decoration: underline;
-    text-decoration-color: rgba(0,255,136,0.3);
-}
-
-.terms-label .auth-link:hover {
-    text-decoration-color: var(--neon-green);
-}        
-
-.terms-label span {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    line-height: 1.4;
-}
-
-/* Badge da Bolsa Externa */
-.external-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: linear-gradient(135deg, #ff6b6b, #ff4c4c);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 16px;
-    font-size: 10px;
-    font-weight: 700;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
-    border: 1px solid rgba(255,255,255,0.2);
-    letter-spacing: 0.3px;
-}
-
-.external-badge i {
-    font-size: 10px;
-}
-
-/* Card da Bolsa Externa */
-.spotify-card.external-card {
-    border: 2px dashed rgba(255, 107, 107, 0.3);
-}
-
-.spotify-card.external-card:hover {
-    border-color: #ff6b6b;
-}
-
-/* Preço da Bolsa Externa */
-.external-card .spotify-price {
-    color: #ff6b6b !important;
-    font-weight: 700;
-}
-
-/* Barra de progresso da Bolsa Externa */
-.external-progress {
-    margin-top: 12px;
-}
-
-.progress-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 4px;
-    font-size: 10px;
-    color: #b3b3b3;
-}
-
-.progress-header span:last-child {
-    color: #ff6b6b;
-    font-weight: 600;
-}
-
-.progress-bar-bg {
-    height: 4px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-bottom: 4px;
-}
-
-.progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
-    width: 0%;
-    transition: width 0.3s ease;
-}
-
-/* Botão de investir */
-.btn-invest {
-    width: 100%;
-    margin-top: 12px;
-    padding: 8px;
-    background: transparent;
-    border: 1px solid rgba(29, 185, 84, 0.3);
-    border-radius: 20px;
-    color: white;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.btn-invest:hover {
-    background: #1DB954;
-    border-color: #1DB954;
-    transform: scale(1.02);
-}
-
-.external-card .btn-invest {
-    border-color: rgba(255, 107, 107, 0.3);
-    color: #ff6b6b;
-}
-
-.external-card .btn-invest:hover {
-    background: #ff6b6b;
-    border-color: #ff6b6b;
-    color: white;
-}
-
-/* Card para sugerir música (quando vazio) */
-.suggest-card {
-    background: #181818;
-    border: 2px dashed #ff6b6b;
-    border-radius: 8px;
-    padding: 24px 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    cursor: pointer;
-    height: 100%;
-    min-height: 200px;
-}
-
-.suggest-card i {
-    font-size: 40px;
-    color: #ff6b6b;
-    margin-bottom: 12px;
-}
-
-.suggest-card h3 {
-    color: white;
-    font-size: 16px;
-    margin-bottom: 4px;
-}
-
-.suggest-card p {
-    color: #b3b3b3;
-    font-size: 12px;
-}
-
-.suggest-card:hover {
-    background: #282828;
-    border-color: #ff6b6b;
-}
-
-/* ===== RECOMENDADO PARA HOJE ===== */
-.recommended-section {
-    margin-top: 32px;
-}
-
-.recommended-card {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 8px;
-    padding: 16px;
-    transition: background 0.3s ease;
-    cursor: pointer;
-}
-
-.recommended-card:hover {
-    background: rgba(255,255,255,0.1);
-}
-
-.recommended-cover {
-    width: 70px;
-    height: 70px;
-    border-radius: 6px;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-.recommended-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.recommended-info h4 {
-    color: white;
-    font-size: 18px;
-    font-weight: 700;
-    margin: 0 0 6px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.recommended-info p {
-    color: #b3b3b3;
-    font-size: 14px;
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.recommended-card .btn-play {
-    background: #1db954;
-    border: none;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: black;
-    font-size: 20px;
-    flex-shrink: 0;
-    transition: all 0.3s ease;
-}
-
-.recommended-card .btn-play:hover {
-    background: #1ed760;
-    transform: scale(1.05);
-}
-
-/* Rodapé */
-.connection-footer {
-    margin-top: 40px;
-    padding: 16px 0;
-    border-top: 1px solid rgba(255,255,255,0.1);
-    color: #b3b3b3;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.connection-footer i {
-    color: #1db954;
-    font-size: 18px;
-}
-
-/* ===== AJUSTES ESPECÍFICOS PARA CELULAR ===== */
-@media (max-width: 767px) {
-    .marketplace-spotify {
-        padding: 0 8px;
-    }
-    
-    .section-header-spotify h2 {
-        font-size: 18px;
-    }
-    
-    .section-header-spotify h2 i {
-        font-size: 20px;
-    }
-    
-    .section-header-spotify a {
-        font-size: 11px;
-    }
-    
-    .spotify-card {
-        padding: 10px;
-    }
-    
-    .play-overlay {
-        width: 32px;
-        height: 32px;
-        font-size: 16px;
-        bottom: 4px;
-        right: 4px;
-    }
-    
-    .spotify-title {
-        font-size: 13px;
-    }
-    
-    .spotify-artist {
-        font-size: 11px;
-    }
-    
-    .external-badge {
-        font-size: 8px;
-        padding: 3px 6px;
-        top: 4px;
-        right: 4px;
-    }
-    
-    .external-badge i {
-        font-size: 8px;
-    }
-    
-    .btn-invest {
-        font-size: 10px;
-        padding: 6px;
-        margin-top: 8px;
-    }
-    
-    .progress-header {
-        font-size: 9px;
-    }
-    
-    .recommended-card {
-        padding: 12px;
     }
     
     .recommended-cover {
@@ -2969,176 +2044,7 @@
         height: 36px;
         font-size: 16px;
     }
-    
-    .connection-footer {
-        font-size: 12px;
-        margin-top: 24px;
-    }
-}
-
-/* ===== AJUSTES PARA TABLET ===== */
-@media (min-width: 768px) and (max-width: 991px) {
-    .spotify-card {
-        padding: 14px;
-    }
-    
-    .play-overlay {
-        width: 40px;
-        height: 40px;
-        font-size: 20px;
-    }
-    
-    .spotify-title {
-        font-size: 14px;
-    }
-    
-    .spotify-artist {
-        font-size: 12px;
-    }
-}
-        /* ===== GRID RESPONSIVO - CORREÇÃO DO TAMANHO DOS CARDS ===== */
-.spotify-grid {
-    display: grid;
-    gap: 24px;
-    margin-bottom: 32px;
-}
-
-/* PC GRANDE - 6 cards */
-@media (min-width: 1400px) {
-    .spotify-grid {
-        grid-template-columns: repeat(6, 1fr);
-    }
-}
-
-/* PC MÉDIO - 5 cards */
-@media (min-width: 1200px) and (max-width: 1399px) {
-    .spotify-grid {
-        grid-template-columns: repeat(5, 1fr);
-    }
-}
-
-/* NOTEBOOK - 4 cards */
-@media (min-width: 992px) and (max-width: 1199px) {
-    .spotify-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
-/* TABLET - 3 cards */
-@media (min-width: 768px) and (max-width: 991px) {
-    .spotify-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-    }
-}
-
-/* CELULAR - 2 cards (igual Spotify) */
-@media (max-width: 767px) {
-    .spotify-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-}
-/* ===== CARD PARA SUGERIR MÚSICA ===== */
-.suggest-card {
-    background: #181818;
-    border: 2px dashed #ff6b6b;
-    border-radius: 8px;
-    padding: 24px 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    cursor: pointer;
-    height: 100%;
-    min-height: 200px;
-    transition: all 0.3s ease;
-}
-
-.suggest-card i {
-    font-size: 40px;
-    color: #ff6b6b;
-    margin-bottom: 12px;
-}
-
-.suggest-card h3 {
-    color: white;
-    font-size: 16px;
-    margin-bottom: 4px;
-}
-
-.suggest-card p {
-    color: #b3b3b3;
-    font-size: 12px;
-}
-
-.suggest-card:hover {
-    background: #282828;
-    border-color: #ff6b6b;
-}
-
-/* ===== BOLSA EXTERNA ===== */
-.external-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: linear-gradient(135deg, #ff6b6b, #ff4c4c);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 16px;
-    font-size: 10px;
-    font-weight: 700;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
-}
-
-.spotify-card.external-card {
-    border: 2px dashed rgba(255, 107, 107, 0.3);
-}
-
-.spotify-card.external-card:hover {
-    border-color: #ff6b6b;
-}
-
-.external-card .spotify-price {
-    color: #ff6b6b !important;
-}
-
-.external-progress {
-    margin-top: 12px;
-}
-
-.progress-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 4px;
-    font-size: 10px;
-    color: #b3b3b3;
-}
-
-.progress-header span:last-child {
-    color: #ff6b6b;
-    font-weight: 600;
-}
-
-.progress-bar-bg {
-    height: 4px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-bottom: 4px;
-}
-
-.progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
-    width: 0%;
-    transition: width 0.3s ease;
-}        
+}   
         
     </style>
 </head>
@@ -3452,8 +2358,7 @@
                 <h2 class="section-title">📊 Meus Ativos</h2>
                 <span class="badge bg-secondary" id="assetsCount">0 ativos</span>
             </div>
-            <div id="portfolioContent">
-                <!-- Portfolio assets will be loaded here -->
+<div id="portfolioContent" class="spotify-grid">                <!-- Portfolio assets will be loaded here -->
             </div>
         </section>
 
@@ -3529,7 +2434,7 @@
                 <i class="bi bi-lightbulb me-2"></i>
                 Nosso algoritmo ELO analisa vendas, disponibilidade e potencial de retorno para indicar os melhores investimentos.
             </div>
-            <div id="investmentsContent" class="music-grid">
+<div id="investmentsContent" class="spotify-grid">
                 <!-- Top investments will be loaded here -->
             </div>
         </section>
@@ -3549,7 +2454,7 @@
             </div>
             <div class="mt-4">
                 <h5 class="section-title">⭐ Músicas Favoritas</h5>
-                <div id="favoritesContent" class="music-grid">
+<div id="favoritesContent" class="spotify-grid">
                     <!-- Favorite music will be loaded here -->
                 </div>
             </div>
@@ -3572,8 +2477,8 @@
                 <i class="bi bi-exclamation-triangle me-2"></i>
                 <strong>Investimento Antecipado:</strong> Músicas que ainda não são do SELO MIV. Se atingirem 1 milhão em vendas, o artista pode aceitar entrar no SELO. Se recusar, você recebe seu investimento de volta com desconto de 0,99% pela especulação.
             </div>
-            <div id="externalContent" class="music-grid">
-                <!-- External music will be loaded here -->
+<div id="externalContent" class="spotify-grid">
+    <!-- External music will be loaded here -->
             </div>
         </section>
 
@@ -3621,8 +2526,8 @@
                 </div>
             </div>
             <h5 class="mb-3">Minhas Músicas</h5>
-            <div id="artistMusicContent" class="music-grid">
-                <!-- Artist's music will be loaded here -->
+<div id="artistMusicContent" class="spotify-grid">
+    <!-- Artist's music will be loaded here -->
             </div>
         </section>
 
@@ -6625,11 +5530,11 @@ function renderPortfolio() {
     document.getElementById('assetsCount').textContent = `${assets.length} ativo${assets.length !== 1 ? 's' : ''}`;
     
     if (!assets.length) {
-        container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-briefcase empty-icon"></i><h5 class="text-muted">Nenhum investimento</h5><p class="text-muted">Você ainda não investiu em nenhuma música</p><button class="btn-miv mt-3" onclick="changeSection(\'marketplace\')"><i class="bi bi-shop me-2"></i> Explorar Marketplace</button></div>';
+        container.innerHTML = '<div class="empty-state-actionable" style="grid-column: 1/-1;"><i class="bi bi-briefcase empty-icon"></i><h5 class="text-muted">Nenhum investimento</h5><p class="text-muted">Você ainda não investiu em nenhuma música</p><button class="btn-miv mt-3" onclick="changeSection(\'marketplace\')"><i class="bi bi-shop me-2"></i> Explorar Marketplace</button></div>';
         return;
     }
     
-    // Calcular totais com valorização REAL
+    // Calcular totais
     let totalInvestido = 0;
     let valorAtualTotal = 0;
     
@@ -6637,14 +5542,11 @@ function renderPortfolio() {
         const valorInvestido = asset.valor_total || 0;
         totalInvestido += valorInvestido;
         
-        // Buscar preço atual da música no marketplace
         const music = state.playlist.find(m => m.id === asset.music_id);
         if (music && music.valor_acao) {
-            // Valor atual = quantidade * preço atual da ação
             const valorAtual = (asset.quantidade || 0) * music.valor_acao;
             valorAtualTotal += valorAtual;
         } else {
-            // Se não encontrar a música, usar o valor investido
             valorAtualTotal += valorInvestido;
         }
     });
@@ -6652,8 +5554,9 @@ function renderPortfolio() {
     const profit = valorAtualTotal - totalInvestido;
     const profitPercent = totalInvestido > 0 ? (profit / totalInvestido * 100) : 0;
     
+    // Estatísticas
     container.innerHTML = `
-        <div class="artist-stats mb-4">
+        <div class="artist-stats mb-4" style="grid-column: 1/-1;">
             <div class="stat-card">
                 <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
                 <div class="stat-value">${formatCurrency(totalInvestido)}</div>
@@ -6672,82 +5575,71 @@ function renderPortfolio() {
                 <div class="stat-label">Lucro/Prejuízo</div>
             </div>
         </div>
-        <div class="music-grid">
-            ${assets.map((asset) => {
-                const music = state.playlist.find(m => m.id === asset.music_id) || {};
-                const valorInvestido = asset.valor_total || 0;
-                const quantidade = asset.quantidade || 0;
-                
-                // Calcular valor atual baseado no preço da música
-                let valorAtual = valorInvestido;
-                let profitVal = 0;
-                let profitPerc = 0;
-                
-                if (music.valor_acao) {
-                    valorAtual = quantidade * music.valor_acao;
-                    profitVal = valorAtual - valorInvestido;
-                    profitPerc = valorInvestido > 0 ? (profitVal / valorInvestido * 100) : 0;
-                }
-                
-                // ===== LÓGICA CORRIGIDA PARA IMAGEM DE CAPA =====
-                let coverImage = PLACEHOLDERS.MIV_300;
-                
-                // PRIORIDADE 1: Link da capa da música
-                if (music.link_capa && typeof music.link_capa === 'string' && music.link_capa.trim() !== '') {
-                    coverImage = music.link_capa.trim();
-                } 
-                // PRIORIDADE 2: Thumbnail do YouTube
-                else if (music.link_youtube) {
-                    const videoId = extractYouTubeId(music.link_youtube);
-                    if (videoId) {
-                        coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                    }
-                }
-                // PRIORIDADE 3: Placeholder (já definido)
-                
-                return `<div class="music-card">
-                    <img src="${coverImage}" class="music-cover" alt="${music.titulo || 'Música'}" 
-                         onerror="this.onerror=null; this.src='${PLACEHOLDERS.MIV_300}'">
-                    <div class="music-info">
-                        <h6 class="music-title">${music.titulo || 'Sem título'}</h6>
-                        <p class="music-artist">${music.artista || 'Artista Desconhecido'}</p>
-                        <div class="music-meta">
-                            <span class="music-price">${formatCurrency(valorInvestido)}</span>
-                            <span class="investment-score">
-                                <i class="bi bi-graph-up-arrow"></i> 
-                                ${profitPerc > 0 ? '+' : ''}${profitPerc.toFixed(1)}%
-                            </span>
-                        </div>
-                        <div class="d-flex justify-content-between mt-2">
-                            <small class="text-muted">Ações: ${quantidade}</small>
-                            <small class="${profitVal >= 0 ? 'text-success' : 'text-danger'}">
-                                ${profitVal >= 0 ? '▲' : '▼'} 
-                                ${formatCurrency(Math.abs(profitVal))}
-                            </small>
-                        </div>
-                        <div class="d-flex justify-content-between mt-1">
-                            <small class="text-muted">Preço atual:</small>
-                            <small class="text-success">${formatCurrency(music.valor_acao || 0)}</small>
-                        </div>
-                        
-                        <!-- BOTÃO DE NEGOCIAÇÃO -->
-                        <button class="btn btn-outline-info btn-sm w-100 mt-2" onclick="event.stopPropagation(); openTradeModal({
-                            music_id: '${asset.music_id}',
-                            music_title: '${music.titulo || ''}',
-                            artist: '${music.artista || ''}',
-                            quantidade: ${quantidade},
-                            valor_acao: ${music.valor_acao || 0},
-                            valor_investido: ${valorInvestido}
-                        })">
-                            <i class="bi bi-arrow-left-right me-1"></i> Negociar
-                        </button>
-                        
-                        ${asset.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ Hash: ' + asset.blockchain_hash.substring(0, 10) + '...</div>' : ''}
-                    </div>
-                </div>`;
-            }).join('')}
-        </div>
     `;
+    
+    // Cards dos ativos
+    container.innerHTML += assets.map((asset) => {
+        const music = state.playlist.find(m => m.id === asset.music_id) || {};
+        const valorInvestido = asset.valor_total || 0;
+        const quantidade = asset.quantidade || 0;
+        
+        let valorAtual = valorInvestido;
+        let profitVal = 0;
+        let profitPerc = 0;
+        
+        if (music.valor_acao) {
+            valorAtual = quantidade * music.valor_acao;
+            profitVal = valorAtual - valorInvestido;
+            profitPerc = valorInvestido > 0 ? (profitVal / valorInvestido * 100) : 0;
+        }
+        
+        let coverImage = PLACEHOLDERS.MIV_300;
+        if (music.link_capa?.trim()) {
+            coverImage = music.link_capa.trim();
+        } else if (music.link_youtube) {
+            const videoId = extractYouTubeId(music.link_youtube);
+            if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+        
+        const musicIndex = state.playlist.findIndex(m => m.id === music.id);
+        
+        return `
+        <div class="spotify-card" onclick="playTrack(${musicIndex})">
+            <div class="spotify-cover">
+                <img src="${coverImage}" alt="${music.titulo || 'Música'}" 
+                     onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${musicIndex})">
+                    <i class="bi bi-play-fill"></i>
+                </div>
+            </div>
+            <h3 class="spotify-title">${music.titulo || 'Sem título'}</h3>
+            <p class="spotify-artist">${music.artista || 'Artista'}</p>
+            
+            <div class="spotify-stats">
+                <span class="spotify-elo">${quantidade} ações</span>
+                <span class="spotify-price">${formatCurrency(valorAtual)}</span>
+            </div>
+            
+            <div style="margin-top: 8px;">
+                <span class="badge ${profitVal >= 0 ? 'badge-success' : 'badge-danger'}">
+                    ${profitVal >= 0 ? '+' : ''}${profitPerc.toFixed(1)}%
+                </span>
+            </div>
+            
+            <button class="btn-invest" onclick="event.stopPropagation(); openTradeModal({
+                music_id: '${asset.music_id}',
+                music_title: '${music.titulo || ''}',
+                artist: '${music.artista || ''}',
+                quantidade: ${quantidade},
+                valor_acao: ${music.valor_acao || 0},
+                valor_investido: ${valorInvestido}
+            })">
+                <i class="bi bi-arrow-left-right me-1"></i> NEGOCIAR
+            </button>
+            
+            ${asset.blockchain_hash ? '<div class="blockchain-hash mt-2">⛓️ ' + asset.blockchain_hash.substring(0, 10) + '...</div>' : ''}
+        </div>`;
+    }).join('');
 }
 function updatePortfolioValue() {
     const el = document.getElementById('portfolioValue');
@@ -6788,29 +5680,57 @@ function updatePortfolioValue() {
         }).join('');
     }
 
-    function renderTopInvestments() {
-        const container = document.getElementById('investmentsContent');
-        if (!container) return;
-        if (!state.topInvestments?.length) {
-            container.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-graph-up-arrow empty-icon"></i><h5 class="text-muted">Nenhuma recomendação</h5><p class="text-muted">As recomendações serão carregadas em breve</p></div>';
-            return;
-        }
-        container.innerHTML = state.topInvestments.map(i => {
-            let scoreColor = 'text-danger';
-            if (i.investment_score >= 80) scoreColor = 'text-success';
-            else if (i.investment_score >= 60) scoreColor = 'text-info';
-            else if (i.investment_score >= 40) scoreColor = 'text-warning';
-            const coverImage = i.link_capa?.trim() ? i.link_capa : PLACEHOLDERS.MIV_300;
-            
-            // ELO data
-            const eloRating = i.elo_rating || ELO.CONFIG.BASE_RATING;
-            const eloLevel = ELO.getRatingLevel(eloRating);
-            const eloColor = ELO.getRatingColor(eloRating);
-            
-            return `<div class="music-card top-investment-card"><img src="${coverImage}" class="music-cover" alt="${i.titulo || 'Música'}" onerror="this.src='${PLACEHOLDERS.MIV_300}'"><div class="music-info"><h6 class="music-title">${i.titulo || 'Sem título'}</h6><p class="music-artist">${i.artista || 'Artista Desconhecido'}</p><div class="music-meta"><span class="music-price">${formatCurrency(i.valor_acao || 0)}</span><span class="badge badge-success">Score: ${i.investment_score || 0}</span></div><div class="d-flex justify-content-between align-items-center mt-2"><small class="${scoreColor}"><i class="bi bi-star-fill"></i> ${i.recommendation || 'Boa oportunidade'}</small><small class="text-success">+${i.rentabilidade_media || 0}% retorno</small></div><div><span class="elo-badge" style="background-color: ${eloColor};">${eloLevel}</span></div></div></div>`;
-        }).join('');
+function renderTopInvestments() {
+    const container = document.getElementById('investmentsContent');
+    if (!container) return;
+    
+    if (!state.topInvestments?.length) {
+        container.innerHTML = '<div class="empty-state-actionable" style="grid-column: 1/-1;"><i class="bi bi-graph-up-arrow empty-icon"></i><h5 class="text-muted">Nenhuma recomendação</h5><p class="text-muted">As recomendações serão carregadas em breve</p></div>';
+        return;
     }
-
+    
+    container.innerHTML = state.topInvestments.map(i => {
+        const coverImage = i.link_capa?.trim() ? i.link_capa : PLACEHOLDERS.MIV_300;
+        
+        const eloRating = i.elo_rating || 1400;
+        const eloLevel = eloRating >= 2000 ? '🔥 Top' : 
+                        eloRating >= 1700 ? '📈 Trending' : '🎵 Nova';
+        
+        let scoreColor = 'text-danger';
+        if (i.investment_score >= 80) scoreColor = 'text-success';
+        else if (i.investment_score >= 60) scoreColor = 'text-info';
+        else if (i.investment_score >= 40) scoreColor = 'text-warning';
+        
+        const musicIndex = state.playlist.findIndex(m => m.id === i.id);
+        
+        return `
+        <div class="spotify-card top-investment-card" onclick="playTrack(${musicIndex})">
+            <div class="spotify-cover">
+                <img src="${coverImage}" alt="${i.titulo || 'Música'}" 
+                     onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${musicIndex})">
+                    <i class="bi bi-play-fill"></i>
+                </div>
+            </div>
+            <h3 class="spotify-title">${i.titulo || 'Sem título'}</h3>
+            <p class="spotify-artist">${i.artista || 'Artista'}</p>
+            
+            <div class="spotify-stats">
+                <span class="spotify-elo">${eloLevel}</span>
+                <span class="spotify-price">${formatCurrency(i.valor_acao || 0)}</span>
+            </div>
+            
+            <div style="margin-top: 8px;">
+                <span class="badge badge-success">Score: ${i.investment_score || 0}</span>
+                <span class="badge badge-info" style="margin-left: 4px;">+${i.rentabilidade_media || 0}%</span>
+            </div>
+            
+            <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${musicIndex})">
+                <i class="bi bi-currency-dollar me-1"></i> INVESTIR
+            </button>
+        </div>`;
+    }).join('');
+}
     function renderPlaylists() {
         const playlistsContainer = document.getElementById('playlistsContent');
         const favoritesContainer = document.getElementById('favoritesContent');
