@@ -1570,33 +1570,72 @@
     }
 }
 /* CELULAR - 2 cards */
+/* ===== GARANTIA PARA CELULAR - SEMPRE POR ÚLTIMO ===== */
 @media (max-width: 767px) {
-    .spotify-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-    }
-   
     .spotify-card {
         padding: 8px !important;
     }
-   
+    
+    .spotify-cover {
+        margin-bottom: 8px !important;
+    }
+    
     .spotify-title {
-        font-size: 12px !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        margin-bottom: 4px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
-   
+    
     .spotify-artist {
-        font-size: 10px !important;
+        font-size: 12px !important;
+        color: #b3b3b3 !important;
+        margin-bottom: 4px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
-   
+    
     .play-overlay {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 20px !important;
+        bottom: 8px !important;
+        right: 8px !important;
+    }
+    
+    .btn-invest {
+        font-size: 12px !important;
+        padding: 6px !important;
+        margin-top: 8px !important;
+        border-radius: 16px !important;
+    }
+    
+    .spotify-price {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+    }
+    
+    .spotify-elo {
+        font-size: 10px !important;
+        padding: 2px 6px !important;
+    }
+    
+    .spotify-stats {
+        margin-top: 4px !important;
+    }
+    
+    .favorite-btn {
         width: 28px !important;
         height: 28px !important;
+    }
+    
+    .favorite-btn i {
         font-size: 14px !important;
-        bottom: 4px !important;
-        right: 4px !important;
     }
 }
-
         
         /* CARD PADRÃO */
         .spotify-card {
@@ -5238,14 +5277,15 @@ function renderMarketplace() {
     const artistsGrid = document.getElementById('artistsPlaylistsGrid');
     const externalGrid = document.getElementById('externalMarketplaceGrid');
     const recommendedCard = document.getElementById('recommendedCard');
+    
     if (!container) return;
     
-    // ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) =====
+    // ===== RENDERIZAR MÚSICAS NORMAIS (SEUS MIXES) - SEM ESTILOS INLINE =====
     if (!state.playlist || state.playlist.length === 0) {
         container.innerHTML = `
             <div class="empty-state-spotify" style="grid-column: 1/-1;">
-                <i class="bi bi-music-note-beamed" style="font-size: 3rem; color: #1DB954;"></i>
-                <h4 style="color: white; margin-top: 0.5rem;">Nenhuma música disponível</h4>
+                <i class="bi bi-music-note-beamed" style="font-size: 2.5rem; color: #1DB954;"></i>
+                <h5 style="color: white; margin-top: 0.5rem; font-size: 16px;">Nenhuma música disponível</h5>
             </div>
         `;
     } else {
@@ -5255,33 +5295,32 @@ function renderMarketplace() {
             const percentSold = track.percentual_disponivel ? 
                 Math.min(100, ((track.acoes_vendidas || 0) / (track.percentual_disponivel / 0.01) * 100)).toFixed(0) : 0;
             
+            const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+            
             return `
-            <div class="spotify-card" onclick="playTrack(${index})" style="padding: 12px;">
-                <div class="spotify-cover" style="margin-bottom: 8px;">
+            <div class="spotify-card" onclick="playTrack(${index})">
+                <div class="spotify-cover">
                     <img src="${coverImage}" alt="${track.titulo}" loading="lazy"
                          onerror="this.src='${PLACEHOLDERS.MIV_300}'">
                     <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})">
                         <i class="bi bi-play-fill"></i>
                     </div>
+                    <div class="position-absolute top-0 start-0 m-2">
+                        <button class="favorite-btn ${isFavorite ? 'active' : ''}" 
+                                onclick="event.stopPropagation(); toggleFavoriteMusic('${track.id}', ${index})">
+                            <i class="bi ${isFavorite ? 'bi-star-fill' : 'bi-star'}"></i>
+                        </button>
+                    </div>
                 </div>
-                <h3 class="spotify-title" style="font-size: 14px; margin-bottom: 2px;">${track.titulo || 'Sem título'}</h3>
-                <p class="spotify-artist" style="font-size: 12px; margin-bottom: 4px;">${track.artista || 'Artista'}</p>
+                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+                <p class="spotify-artist">${track.artista || 'Artista'}</p>
                 
-                <div style="height: 3px; background: #282828; border-radius: 2px; margin: 6px 0; overflow: hidden;">
-                    <div style="width: ${percentSold}%; height: 100%; background: #1DB954;"></div>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                    <span class="badge" style="background: rgba(29, 185, 84, 0.2); color: #1DB954; font-size: 10px; padding: 2px 6px;">
-                        ${percentSold}%
-                    </span>
-                    <span style="color: #b3b3b3; font-size: 11px;">
-                        ${formatCurrency(track.valor_acao || 0)}
-                    </span>
+                <div class="spotify-stats">
+                    <span class="spotify-elo">${percentSold}%</span>
+                    <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
                 </div>
                 
-                <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})" 
-                        style="font-size: 11px; padding: 6px; margin-top: 8px;">
+                <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})">
                     <i class="bi bi-currency-dollar me-1"></i> INVESTIR
                 </button>
             </div>
@@ -6736,25 +6775,25 @@ function renderFilteredMarketplace(filteredTracks) {
         }
     }
 
-    function initializeYouTubePlayer(videoId) {
-        const playerElement = document.getElementById('youtubePlayerExpanded');
-        if (!playerElement) return;
-        
-        const loadingEl = document.getElementById('playerLoadingExpanded');
-        if (loadingEl) loadingEl.style.display = 'flex';
-        
-        playerElement.innerHTML = '';
-        
-        const playerDiv = document.createElement('div');
-        playerDiv.id = 'youtube-player-' + Date.now();
-        playerElement.appendChild(playerDiv);
-        
-        if (typeof YT === 'undefined' || !YT.Player) {
-            loadYouTubeAPI(() => createYouTubePlayer(playerDiv.id, videoId));
-        } else {
-            createYouTubePlayer(playerDiv.id, videoId);
-        }
+function initializeYouTubePlayer(videoId) {
+    const playerElement = document.getElementById('youtubePlayerExpanded');
+    if (!playerElement) return;
+    
+    const loadingEl = document.getElementById('playerLoadingExpanded');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    
+    playerElement.innerHTML = '';
+    
+    const playerDiv = document.createElement('div');
+    playerDiv.id = 'youtube-player-' + Date.now();
+    playerElement.appendChild(playerDiv);
+    
+    if (typeof YT === 'undefined' || !YT.Player) {
+        loadYouTubeAPI(() => createYouTubePlayer(playerDiv.id, videoId));
+    } else {
+        createYouTubePlayer(playerDiv.id, videoId);
     }
+}
 
     function onPlayerReady(event) {
         console.log('✅ YouTube Player pronto - evento disparado');
@@ -6878,71 +6917,72 @@ function renderFilteredMarketplace(filteredTracks) {
         }
     }
 
-    function createYouTubePlayer(elementId, videoId) {
-        try {
-            const element = document.getElementById(elementId);
-            if (!element) {
-                console.error('❌ Elemento do player não encontrado:', elementId);
-                return;
-            }
-            
-            element.innerHTML = '';
-            
-            const playerDiv = document.createElement('div');
-            playerDiv.id = 'yt-player-' + Date.now();
-            element.appendChild(playerDiv);
-            
-            console.log('🎬 Criando player YouTube para:', videoId);
-            
-            if (state.youtubePlayer && typeof state.youtubePlayer.destroy === 'function') {
-                try {
-                    state.youtubePlayer.destroy();
-                } catch (e) {
-                    console.warn('Erro ao destruir player antigo:', e);
-                }
-            }
-            
-            const playerOptions = {
-                width: '100%',
-                height: '100%',
-                videoId: videoId,
-                playerVars: {
-                    autoplay: 1,
-                    controls: 1,
-                    modestbranding: 1,
-                    rel: 0,
-                    showinfo: 0,
-                    fs: 1,
-                    playsinline: 1,
-                    origin: window.location.origin,
-                    enablejsapi: 1,
-                    widget_referrer: window.location.origin
-                },
-                events: {
-                    onReady: onPlayerReady,
-                    onStateChange: onPlayerStateChange,
-                    onError: onPlayerError
-                }
-            };
-            
-            state.youtubePlayer = new YT.Player(playerDiv.id, playerOptions);
-            
-        } catch (error) {
-            console.error('❌ Erro ao criar player:', error);
-            showToast('Erro ao inicializar player', 'error');
-            
-            const loadingEl = document.getElementById('playerLoadingExpanded');
-            if (loadingEl) {
-                loadingEl.innerHTML = `
-                    <div class="loading-spinner"></div>
-                    <span class="text-danger">Erro ao carregar vídeo</span>
-                    <button class="btn btn-sm btn-outline-success mt-3" onclick="window.location.reload()">
-                        <i class="bi bi-arrow-clockwise me-2"></i>Recarregar
-                    </button>
-                `;
+   function createYouTubePlayer(elementId, videoId) {
+    try {
+        const element = document.getElementById(elementId);
+        if (!element) {
+            console.error('❌ Elemento do player não encontrado:', elementId);
+            return;
+        }
+        
+        element.innerHTML = '';
+        
+        const playerDiv = document.createElement('div');
+        playerDiv.id = 'yt-player-' + Date.now();
+        element.appendChild(playerDiv);
+        
+        console.log('🎬 Criando player YouTube para:', videoId);
+        
+        if (state.youtubePlayer && typeof state.youtubePlayer.destroy === 'function') {
+            try {
+                state.youtubePlayer.destroy();
+            } catch (e) {
+                console.warn('Erro ao destruir player antigo:', e);
             }
         }
+        
+        // CONFIGURAÇÃO CORRETA para contabilizar visualizações
+        const playerOptions = {
+            width: '100%',
+            height: '100%',
+            videoId: videoId,
+            playerVars: {
+                autoplay: 0,  // ← MUDAR para 0 (não autoplay) - essencial para contagem
+                controls: 1,
+                modestbranding: 1,
+                rel: 0,
+                showinfo: 0,
+                fs: 1,
+                playsinline: 1,
+                origin: window.location.origin,
+                enablejsapi: 1,  // ← ESSENCIAL para contabilizar
+                widget_referrer: window.location.origin
+            },
+            events: {
+                onReady: onPlayerReady,
+                onStateChange: onPlayerStateChange,
+                onError: onPlayerError
+            }
+        };
+        
+        state.youtubePlayer = new YT.Player(playerDiv.id, playerOptions);
+        
+    } catch (error) {
+        console.error('❌ Erro ao criar player:', error);
+        showToast('Erro ao inicializar player', 'error');
+        
+        const loadingEl = document.getElementById('playerLoadingExpanded');
+        if (loadingEl) {
+            loadingEl.innerHTML = `
+                <div class="loading-spinner"></div>
+                <span class="text-danger">Erro ao carregar vídeo</span>
+                <button class="btn btn-sm btn-outline-success mt-3" onclick="window.location.reload()">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Recarregar
+                </button>
+            `;
+        }
     }
+}
 
     function updatePlayerProgress() {
         if (!state.youtubePlayer?.getCurrentTime) return;
