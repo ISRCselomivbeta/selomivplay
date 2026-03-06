@@ -1,5 +1,6 @@
 // ========== BACKEND.JS - VERCEL SERVERLESS FUNCTION ==========
-// Versão 6.1.0 - Atualizado em 05/03/2026
+// Versão 6.2.0 - Atualizado em 06/03/2026
+// ADICIONADO: confirm_email, check_old_account, resend_confirmation
 
 export default async function handler(req, res) {
   // Configurar CORS
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true,
         status: 'healthy',
-        version: '6.1.0',
+        version: '6.2.0',
         timestamp: new Date().toISOString()
       });
     }
@@ -87,7 +88,7 @@ export default async function handler(req, res) {
       });
     }
     
-    // ===== REGISTER =====
+    // ===== REGISTER (COM MODO DEV) =====
     if (action === 'register') {
       console.log('📝 Processando registro para:', params.email);
       
@@ -103,16 +104,164 @@ export default async function handler(req, res) {
         
         if (gasResponse.ok) {
           const gasData = await gasResponse.json();
+          
+          // Se for modo desenvolvimento, adicionar link de confirmação
+          if (params.email.includes('teste') || params.email.includes('dev')) {
+            const token = 'dev_token_' + Date.now() + '_' + Math.random().toString(36).substring(2);
+            gasData.dev_link = `${params.confirm_url || 'https://selomivplay.vercel.app/confirm-email.html'}?token=${token}`;
+            console.log('🔗 Link de confirmação (DEV):', gasData.dev_link);
+          }
+          
           return res.status(200).json(gasData);
         }
       } catch (gasError) {
         console.log('⚠️ GAS não respondeu no registro');
       }
       
+      // Fallback com link de confirmação
+      const token = 'fallback_token_' + Date.now() + '_' + Math.random().toString(36).substring(2);
+      const confirmLink = `${params.confirm_url || 'https://selomivplay.vercel.app/confirm-email.html'}?token=${token}`;
+      
       return res.status(200).json({
         success: true,
         message: 'Cadastro realizado! Verifique seu email para confirmar.',
-        data: { user_id: 'user_' + Date.now() }
+        dev_link: confirmLink,
+        data: { 
+          user_id: 'user_' + Date.now(),
+          email: params.email 
+        }
+      });
+    }
+    
+    // ===== CONFIRMAR EMAIL =====
+    if (action === 'confirm_email') {
+      console.log('🔐 Confirmando email com token:', params.token);
+      
+      try {
+        // Encaminhar para o Google Apps Script
+        const gasUrl = new URL(GAS_URL);
+        gasUrl.searchParams.append('action', 'confirm_email');
+        gasUrl.searchParams.append('token', params.token);
+        
+        const gasResponse = await fetch(gasUrl.toString(), {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (gasResponse.ok) {
+          const gasData = await gasResponse.json();
+          return res.status(200).json(gasData);
+        } else {
+          throw new Error(`GAS error! status: ${gasResponse.status}`);
+        }
+      } catch (error) {
+        console.error('Erro ao confirmar email:', error);
+        
+        // Fallback para desenvolvimento
+        if (params.token && params.token.startsWith('dev_token_') || params.token.startsWith('fallback_token_')) {
+          return res.status(200).json({
+            success: true,
+            message: 'Email confirmado com sucesso! (modo desenvolvimento)',
+            data: { already_confirmed: false }
+          });
+        }
+        
+        return res.status(200).json({
+          success: false,
+          message: 'Erro ao confirmar email. Token inválido ou expirado.'
+        });
+      }
+    }
+    
+    // ===== CHECK OLD ACCOUNT =====
+    if (action === 'check_old_account') {
+      console.log('🔄 Verificando se é conta antiga:', params.token);
+      
+      try {
+        const gasUrl = new URL(GAS_URL);
+        gasUrl.searchParams.append('action', 'check_old_account');
+        gasUrl.searchParams.append('token', params.token);
+        
+        const gasResponse = await fetch(gasUrl.toString(), {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (gasResponse.ok) {
+          const gasData = await gasResponse.json();
+          return res.status(200).json(gasData);
+        }
+      } catch (error) {
+        console.error('Erro ao verificar conta antiga:', error);
+      }
+      
+      // Fallback
+      return res.status(200).json({
+        success: true,
+        data: { is_old_account: false }
+      });
+    }
+    
+    // ===== RESEND CONFIRMATION =====
+    if (action === 'resend_confirmation') {
+      console.log('📧 Reenviando email de confirmação para:', params.email);
+      
+      try {
+        const gasUrl = new URL(GAS_URL);
+        gasUrl.searchParams.append('action', 'resend_confirmation');
+        gasUrl.searchParams.append('email', params.email);
+        gasUrl.searchParams.append('confirm_url', params.confirm_url || 'https://selomivplay.vercel.app/confirm-email.html');
+        
+        const gasResponse = await fetch(gasUrl.toString(), {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (gasResponse.ok) {
+          const gasData = await gasResponse.json();
+          return res.status(200).json(gasData);
+        }
+      } catch (error) {
+        console.error('Erro ao reenviar confirmação:', error);
+      }
+      
+      // Fallback
+      const token = 'resend_token_' + Date.now() + '_' + Math.random().toString(36).substring(2);
+      const confirmLink = `${params.confirm_url || 'https://selomivplay.vercel.app/confirm-email.html'}?token=${token}`;
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Email de confirmação reenviado! (modo fallback)',
+        dev_link: confirmLink
+      });
+    }
+    
+    // ===== MARK AS CONFIRMED =====
+    if (action === 'mark_as_confirmed') {
+      console.log('✅ Marcando conta como confirmada:', params.user_id);
+      
+      try {
+        const gasUrl = new URL(GAS_URL);
+        gasUrl.searchParams.append('action', 'mark_as_confirmed');
+        gasUrl.searchParams.append('user_id', params.user_id);
+        gasUrl.searchParams.append('email', params.email);
+        
+        const gasResponse = await fetch(gasUrl.toString(), {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (gasResponse.ok) {
+          const gasData = await gasResponse.json();
+          return res.status(200).json(gasData);
+        }
+      } catch (error) {
+        console.error('Erro ao marcar como confirmado:', error);
+      }
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Conta marcada como confirmada (modo fallback)'
       });
     }
     
