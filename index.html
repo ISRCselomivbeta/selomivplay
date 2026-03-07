@@ -129,8 +129,186 @@
             font-size: 2.5rem;
             color: var(--neon-green);
         }
-       
+       /* ===== NOVO: ESTILOS DA BARRA DE PESQUISA ===== */
+.search-container {
+    position: relative;
+    flex: 1;
+    max-width: 500px;
+    margin: 0 20px;
+}
+
+#searchForm {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 30px;
+    padding: 5px 5px 5px 15px;
+    border: 1px solid var(--border);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+#searchForm:focus-within {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--neon-green);
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+}
+
+.search-icon {
+    color: var(--text-muted);
+    font-size: 1rem;
+    margin-right: 8px;
+}
+
+.search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-light);
+    font-size: 0.95rem;
+    padding: 8px 0;
+    outline: none;
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.search-submit-btn {
+    background: var(--neon-green);
+    border: none;
+    border-radius: 30px;
+    color: #000;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 8px 18px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.search-submit-btn:hover {
+    background: #00cc6a;
+    transform: scale(1.02);
+}
+
+/* Resultados da pesquisa */
+.search-results {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 10000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid var(--border);
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background: rgba(0, 255, 136, 0.1);
+}
+
+.search-result-cover {
+    width: 45px;
+    height: 45px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.search-result-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-result-title {
+    color: var(--text-light);
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.search-result-artist {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-result-badge {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.search-result-badge.normal {
+    background: rgba(0, 255, 136, 0.2);
+    color: var(--neon-green);
+}
+
+/* Responsividade para a barra de pesquisa */
+@media (max-width: 992px) {
+    .search-container {
+        max-width: 300px;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-header .header-content {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .search-container {
+        order: 3;
+        max-width: 100%;
+        margin: 10px 0 0 0;
+        width: 100%;
+    }
+    
+    .search-submit-btn {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .search-results {
+        position: fixed;
+        top: auto;
+        left: 10px;
+        right: 10px;
+        max-height: 50vh;
+    }
+}
+/* ===== FIM DOS NOVOS ESTILOS ===== */
         /* Forms */
+        
         .form-group {
             margin-bottom: 1.25rem;
         }
@@ -2585,24 +2763,40 @@
             </li>
         </ul>
     </div>
-    <!-- Main Header -->
-    <header class="app-header">
-        <div class="header-content">
-            <div class="d-flex align-items-center">
-                <button class="btn text-white me-3" onclick="toggleSidebar()">
-                    <i class="bi bi-list fs-3"></i>
-                </button>
-                <div class="saldo-display">
-                    <h6>CRÉDITO DISPONÍVEL</h6>
-                    <h4 id="currentBalance">R$ 0,00</h4>
-                </div>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <span class="blockchain-badge" id="blockchainStatus">⛓️ Blockchain Ativa</span>
-                <div class="user-badge" id="userBadge">Ouvinte</div>
+<!-- Main Header -->
+<header class="app-header">
+    <div class="header-content">
+        <div class="d-flex align-items-center">
+            <button class="btn text-white me-3" onclick="toggleSidebar()">
+                <i class="bi bi-list fs-3"></i>
+            </button>
+            <div class="saldo-display">
+                <h6>CRÉDITO DISPONÍVEL</h6>
+                <h4 id="currentBalance">R$ 0,00</h4>
             </div>
         </div>
-    </header>
+
+        {/* ===== NOVO: BARRA DE PESQUISA ===== */}
+        <div class="search-container">
+            <form id="searchForm" onsubmit="event.preventDefault(); performSearch();">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text"
+                       id="searchInput"
+                       class="search-input"
+                       placeholder="O que você quer ouvir?"
+                       autocomplete="off">
+                <button type="submit" class="search-submit-btn">Buscar</button>
+            </form>
+            <div id="searchResults" class="search-results" style="display: none;"></div>
+        </div>
+        {/* ===== FIM DA NOVA BARRA DE PESQUISA ===== */}
+
+        <div class="d-flex align-items-center gap-2">
+            <span class="blockchain-badge" id="blockchainStatus">⛓️ Blockchain Ativa</span>
+            <div class="user-badge" id="userBadge">Ouvinte</div>
+        </div>
+    </div>
+</header>
     <!-- Marketplace Section -->
     <section id="marketplaceSection" class="section active">
         <div class="marketplace-spotify">
@@ -7908,7 +8102,270 @@ function initializeYouTubePlayer(videoId) {
             showToast('Logout realizado', 'success');
         }
     }
+// ========== NOVO: SISTEMA DE PESQUISA E RECOMENDAÇÃO ==========
+let searchTimeout = null;
+const YOUTUBE_API_KEY = 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI'; // ← VOCÊ PRECISA SUBSTITUIR ISSO!
 
+/**
+ * Função principal de busca. Chamada ao submeter o formulário.
+ */
+async function performSearch() {
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) {
+        showToast('Digite o nome de uma música ou artista', 'warning');
+        return;
+    }
+
+    showLoading(`Buscando por "${query}"...`);
+    const resultsContainer = document.getElementById('searchResults');
+    resultsContainer.style.display = 'none';
+    resultsContainer.innerHTML = '<div class="p-4 text-center text-muted"><div class="spinner-border text-success mb-2"></div><p>Buscando...</p></div>';
+    resultsContainer.style.display = 'block';
+
+    try {
+        // 1. Busca na playlist interna do SELO MIV
+        const internalResults = state.playlist.filter(item =>
+            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
+            item.artista?.toLowerCase().includes(query.toLowerCase())
+        );
+
+        // 2. Busca na Bolsa Externa
+        const externalResults = state.externalPlaylist.filter(item =>
+            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
+            item.artista?.toLowerCase().includes(query.toLowerCase())
+        );
+
+        // 3. Busca no YouTube (se a API Key estiver configurada)
+        let youtubeResults = [];
+        if (YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
+            youtubeResults = await searchYouTube(query);
+        } else {
+            console.warn('YouTube Search desativada: Chave de API não configurada.');
+        }
+
+        // Combina e exibe os resultados
+        displaySearchResults(internalResults, externalResults, youtubeResults, query);
+
+    } catch (error) {
+        console.error('Erro na pesquisa:', error);
+        resultsContainer.innerHTML = `<div class="p-4 text-center text-danger">
+            <i class="bi bi-exclamation-triangle fs-1 d-block mb-3"></i>
+            <p>Erro ao realizar a busca. Tente novamente.</p>
+        </div>`;
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Busca vídeos no YouTube usando a API v3.
+ */
+async function searchYouTube(query) {
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(query + ' música')}&key=${YOUTUBE_API_KEY}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.error) {
+            console.error('Erro na API do YouTube:', data.error);
+            return [];
+        }
+
+        return data.items.map(item => ({
+            id: 'yt_' + item.id.videoId,
+            titulo: item.snippet.title,
+            artista: item.snippet.channelTitle,
+            link_capa: item.snippet.thumbnails.high.url,
+            link_youtube: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+            is_external: true,
+            is_youtube: true
+        }));
+    } catch (error) {
+        console.error('Falha na busca do YouTube:', error);
+        return [];
+    }
+}
+
+/**
+ * Exibe os resultados combinados na interface.
+ */
+function displaySearchResults(internal, external, youtube, query) {
+    const container = document.getElementById('searchResults');
+    const allResults = [...internal, ...external, ...youtube];
+
+    if (allResults.length === 0) {
+        container.innerHTML = `<div class="p-4 text-center text-muted">
+            <i class="bi bi-music-note-beamed fs-1 d-block mb-3"></i>
+            <p>Nenhum resultado encontrado para "${query}"</p>
+        </div>`;
+        return;
+    }
+
+    let html = '<div class="p-2"><small class="text-muted d-block p-2">Resultados da busca:</small>';
+    allResults.forEach((item, index) => {
+        const isExternal = item.is_external || item.is_youtube;
+        const coverImg = item.link_capa || (isExternal ? PLACEHOLDERS.EXT_56 : PLACEHOLDERS.MIV_56);
+
+        html += `
+        <div class="search-result-item" onclick="playSearchResult(${index}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
+            <img src="${coverImg}" class="search-result-cover" onerror="this.src='${isExternal ? PLACEHOLDERS.EXT_56 : PLACEHOLDERS.MIV_56}'">
+            <div class="search-result-info">
+                <div class="search-result-title">${item.titulo || 'Sem título'}</div>
+                <div class="search-result-artist">${item.artista || 'Artista'}</div>
+            </div>
+            <div>
+                <span class="search-result-badge ${!isExternal ? 'normal' : ''}">
+                    ${item.is_youtube ? '🎬 YouTube' : (isExternal ? '🌐 Bolsa Ext' : '🔷 Selo MIV')}
+                </span>
+            </div>
+        </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+    container.style.display = 'block';
+
+    // Fecha os resultados ao clicar fora
+    setTimeout(() => {
+        document.addEventListener('click', function closeSearch(e) {
+            if (!container.contains(e.target) && !document.getElementById('searchForm').contains(e.target)) {
+                container.style.display = 'none';
+                document.removeEventListener('click', closeSearch);
+            }
+        });
+    }, 100);
+}
+
+/**
+ * Toca o resultado selecionado e gera recomendações.
+ */
+async function playSearchResult(index, item) {
+    // Fecha os resultados
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('searchInput').value = '';
+
+    // Se for um item do YouTube, precisamos "importá-lo" para a Bolsa Externa
+    if (item.is_youtube) {
+        showToast(`Adicionando "${item.titulo}" à sua sessão...`, 'info');
+        await addYouTubeToExternalAndPlay(item);
+    } else {
+        // Se já existe na playlist, toca diretamente
+        const trackIndex = state.playlist.findIndex(t => t.id === item.id);
+        if (trackIndex !== -1) {
+            playTrack(trackIndex);
+        } else {
+            const externalIndex = state.externalPlaylist.findIndex(t => t.id === item.id);
+            if (externalIndex !== -1) {
+                playExternalTrack(externalIndex);
+            } else {
+                showToast('Música não encontrada na playlist', 'error');
+            }
+        }
+    }
+}
+
+/**
+ * Adiciona um vídeo do YouTube como item temporário na Bolsa Externa e toca.
+ */
+async function addYouTubeToExternalAndPlay(youtubeItem) {
+    // Cria um item para a bolsa externa
+    const newExternalItem = {
+        id: 'yt_temp_' + Date.now(),
+        titulo: youtubeItem.titulo,
+        artista: youtubeItem.artista,
+        link_capa: youtubeItem.link_capa,
+        link_youtube: youtubeItem.link_youtube,
+        valor_acao: 5.00, // Preço simbólico
+        percentual_disponivel: 10,
+        acoes_vendidas: 0,
+        total_investidores: 0,
+        vendas_atuais: 0,
+        meta_vendas: 1000000,
+        status: 'aprovado',
+        is_temporary: true,
+        data_sugestao: new Date().toISOString()
+    };
+
+    // Adiciona ao início da playlist externa
+    state.externalPlaylist.unshift(newExternalItem);
+    
+    // Re-renderiza a Bolsa Externa
+    renderExternalMarketplace();
+    
+    // Toca a música (o índice dela será 0, pois adicionamos no início)
+    playExternalTrack(0);
+    
+    showToast(`🎵 "${youtubeItem.titulo}" adicionado à Bolsa Externa`, 'success');
+    
+    // --- LÓGICA DE RECOMENDAÇÃO (Músicas Semelhantes) ---
+    await loadSimilarMusicAndAddToQueue(youtubeItem);
+}
+
+/**
+ * Carrega músicas semelhantes (simulado) e adiciona à fila e à Bolsa Externa.
+ */
+async function loadSimilarMusicAndAddToQueue(originalItem) {
+    showLoading('Buscando músicas semelhantes...');
+    
+    // SIMULAÇÃO: Em um cenário real, você usaria uma API de recomendação
+    // (Ex: Spotify Recommendations, Last.fm, ou sua própria lógica)
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simula latência
+    
+    // Gera algumas músicas "semelhantes" falsas
+    const similarArtists = [
+        { artista: 'Artista Similar 1', musica: 'Música Recomendada 1' },
+        { artista: 'Artista Similar 2', musica: 'Música Recomendada 2' },
+        { artista: 'Artista Similar 3', musica: 'Música Recomendada 3' },
+    ];
+
+    similarArtists.forEach((sim, index) => {
+        const similarItem = {
+            id: 'yt_sim_' + Date.now() + index,
+            titulo: sim.musica,
+            artista: sim.artista,
+            link_capa: `https://picsum.photos/200/200?random=${Date.now() + index}`,
+            link_youtube: originalItem.link_youtube, // Placeholder
+            valor_acao: (Math.random() * 20 + 5).toFixed(2),
+            percentual_disponivel: 15,
+            acoes_vendidas: 0,
+            total_investidores: 0,
+            vendas_atuais: 0,
+            meta_vendas: 1000000,
+            status: 'aprovado',
+            is_temporary: true,
+            is_recommendation: true,
+            data_sugestao: new Date().toISOString()
+        };
+        
+        // Adiciona à Bolsa Externa
+        state.externalPlaylist.push(similarItem);
+    });
+    
+    // Re-renderiza a Bolsa Externa
+    renderExternalMarketplace();
+    
+    // Adiciona à fila de reprodução (simulada com um array de fila)
+    if (!state.playQueue) state.playQueue = [];
+    state.playQueue.push(...similarArtists.map((_, i) => state.externalPlaylist.length - similarArtists.length + i));
+    
+    showToast(`🎧 ${similarArtists.length} músicas semelhantes adicionadas à Bolsa Externa!`, 'success');
+    hideLoading();
+}
+
+// Fecha os resultados da pesquisa se o usuário clicar fora
+document.addEventListener('click', function(e) {
+    const results = document.getElementById('searchResults');
+    const searchForm = document.getElementById('searchForm');
+    if (results && searchForm && !results.contains(e.target) && !searchForm.contains(e.target)) {
+        results.style.display = 'none';
+    }
+});
+
+// Expõe as funções globalmente
+window.performSearch = performSearch;
+window.playSearchResult = playSearchResult;
+// ========== FIM DO SISTEMA DE PESQUISA ==========
     // ========== INICIALIZAÇÃO ==========
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 SELO MIV v' + CONFIG.VERSION);
