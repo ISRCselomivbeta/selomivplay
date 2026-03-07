@@ -16,6 +16,10 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
     <!-- YouTube Iframe API -->
+     <!-- FAVICON -->
+    <link rel="icon" type="image/png" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
+    <link rel="apple-touch-icon" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
+    <link rel="shortcut icon" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png" type="image/x-icon">
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         /* ========== CSS COMPLETO CORRIGIDO ========== */
@@ -2291,13 +2295,72 @@
         padding: 1px 4px !important;
     }
 }
+         @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+/* ===== LOGO EM DIFERENTES TAMANHOS ===== */
+.logo-miv {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo-miv img {
+    object-fit: contain;
+}
+
+.logo-miv.small img {
+    height: 24px;
+}
+
+.logo-miv.medium img {
+    height: 32px;
+}
+
+.logo-miv.large img {
+    height: 40px;
+}
+
+.logo-miv.xlarge img {
+    height: 80px;
+    border-radius: 50%;
+    border: 2px solid var(--neon-green);
+}
+
+/* Animação para o loading */
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Hover effect no header */
+.app-header img {
+    transition: transform 0.3s ease;
+}
+
+.app-header img:hover {
+    transform: scale(1.05);
+}
+        
     </style>
 </head>
 <body>
 <!-- Loading Screen -->
 <div id="loadingScreen" class="loading-screen">
     <div class="loading-content">
-        <div class="loading-spinner"></div>
+        <img src="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png" 
+             alt="SELO MIV" 
+             width="80" 
+             height="80" 
+             style="border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 2px solid var(--neon-green); animation: pulse 2s infinite;">
+        <div class="loading-spinner" style="margin-top: 1rem;"></div>
         <h4 class="text-success mb-2">SELO MIV</h4>
         <p class="text-muted" id="loadingMessage">Conectando ao servidor...</p>
         <div class="progress-loading">
@@ -2436,13 +2499,19 @@
 <!-- Main Application -->
 <div id="mainApp" class="main-app">
     <!-- Sidebar -->
-    <div id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-            <h4 class="text-white mb-0">🎵 MIV PRO</h4>
-            <button class="sidebar-close" onclick="toggleSidebar()">
-                <i class="bi bi-x-lg"></i>
-            </button>
+<div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+        <div class="d-flex align-items-center gap-2">
+            <img src="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png" 
+                 alt="SELO MIV" 
+                 height="32" 
+                 style="object-fit: contain;">
+            <h4 class="text-white mb-0">MIV PRO</h4>
         </div>
+        <button class="sidebar-close" onclick="toggleSidebar()">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
         <ul class="nav-menu">
             <li class="nav-item">
                 <a href="#" class="nav-link active" onclick="changeSection('marketplace')">
@@ -2960,17 +3029,35 @@
     </div>
    
     <!-- Player Expandido como Seção -->
-    <section id="playerExpandedSection" class="section">
-        <div class="section-header">
-            <h2 class="section-title">
+<section id="playerExpandedSection" class="section">
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="bi bi-music-player-fill me-2 text-success"></i>
+            Player Expandido
+        </h2>
+        <button class="btn btn-outline-success" onclick="closePlayerExpanded()">
+            <i class="bi bi-arrows-angle-contract me-2"></i>
+            Minimizar Player
+        </button>
+    </div>
+
+<section id="playerExpandedSection" class="section">
+    <div class="section-header">
+        <div class="d-flex align-items-center gap-3">
+            <img src="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png" 
+                 alt="SELO MIV" 
+                 height="30" 
+                 style="object-fit: contain;">
+            <h2 class="section-title mb-0">
                 <i class="bi bi-music-player-fill me-2 text-success"></i>
                 Player Expandido
             </h2>
-            <button class="btn btn-outline-success" onclick="closePlayerExpanded()">
-                <i class="bi bi-arrows-angle-contract me-2"></i>
-                Minimizar Player
-            </button>
         </div>
+        <button class="btn btn-outline-success" onclick="closePlayerExpanded()">
+            <i class="bi bi-arrows-angle-contract me-2"></i>
+            Minimizar Player
+        </button>
+    </div>
        
         <div class="expanded-content">
             <div class="row">
@@ -8487,5 +8574,20 @@ function initializeYouTubePlayer(videoId) {
     window.handleExpandedProgressClick = handleExpandedProgressClick;
     window.gerarBlocosSimuladosParaVisualizacao = gerarBlocosSimuladosParaVisualizacao;
 </script>
+<!-- FOOTER COM LOGO -->
+<div class="connection-footer" style="justify-content: space-between; margin-top: 40px;">
+    <div class="d-flex align-items-center gap-2">
+        <img src="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png" 
+             alt="SELO MIV" 
+             height="24" 
+             style="object-fit: contain;">
+        <span class="text-muted small">© 2026 SELO MIV - Todos os direitos reservados</span>
+    </div>
+    <div>
+        <i class="bi bi-bluetooth me-2"></i>
+        <span class="text-muted small">Conexão Blockchain Ativa 🔒 </span>
+    </div>
+</div>
+            
 </body>
 </html>
