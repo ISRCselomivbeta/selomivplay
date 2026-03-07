@@ -1751,209 +1751,247 @@
         gap: 16px;
     }
 }
+/* CELULAR - 2 cards */
+/* ===== GARANTIA PARA CELULAR - SEMPRE POR ÚLTIMO ===== */
 @media (max-width: 767px) {
     .spotify-card {
-        margin-bottom: 8px;
         padding: 8px !important;
     }
     
     .spotify-cover {
-        margin-bottom: 6px !important;
+        margin-bottom: 8px !important;
     }
     
     .spotify-title {
-        font-size: 11px !important;
-        line-height: 1.2 !important;
-        white-space: normal !important;
-        max-height: 2.4em;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        margin-bottom: 4px !important;
+        white-space: nowrap;
         overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .spotify-artist {
-        font-size: 9px !important;
-        white-space: normal !important;
-    }
-    
-    .btn-invest {
-        font-size: 9px !important;
-        padding: 4px !important;
-        margin-top: 4px !important;
+        font-size: 12px !important;
+        color: #b3b3b3 !important;
+        margin-bottom: 4px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .play-overlay {
-        width: 24px !important;
-        height: 24px !important;
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 20px !important;
+        bottom: 8px !important;
+        right: 8px !important;
+    }
+    
+    .btn-invest {
         font-size: 12px !important;
-        bottom: 2px !important;
-        right: 2px !important;
+        padding: 6px !important;
+        margin-top: 8px !important;
+        border-radius: 16px !important;
     }
     
-    .badge {
-        font-size: 8px !important;
-        padding: 1px 4px !important;
+    .spotify-price {
+        font-size: 13px !important;
+        font-weight: 600 !important;
     }
     
-    /* ===== CORREÇÕES PARA BOLSA EXTERNA NO CELULAR ===== */
-    /* Ajustes específicos para cards externos */
-    .spotify-card.external-card,
-    .spotify-card.external-investment-card {
-        padding: 8px !important;
-        margin: 0 !important;
-        width: 100% !important;
-        min-width: 0 !important;
-    }
-    
-    /* Ajuste da imagem */
-    .external-card .spotify-cover,
-    .external-investment-card .spotify-cover {
-        margin-bottom: 6px !important;
-    }
-    
-    /* Badge externo menor */
-    .external-badge {
-        font-size: 7px !important;
-        padding: 2px 4px !important;
-        top: 4px !important;
-        right: 4px !important;
-    }
-    
-    /* Títulos menores */
-    .external-card .spotify-title,
-    .external-investment-card .spotify-title {
-        font-size: 11px !important;
-        line-height: 1.2 !important;
-        margin-bottom: 2px !important;
-        white-space: normal !important;
-        max-height: 2.4em;
-        overflow: hidden;
-    }
-    
-    /* Artista menor */
-    .external-card .spotify-artist,
-    .external-investment-card .spotify-artist {
-        font-size: 9px !important;
-        margin-bottom: 4px !important;
-    }
-    
-    /* Stats em linha */
-    .external-card .spotify-stats,
-    .external-investment-card .spotify-stats {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        margin-top: 4px !important;
-    }
-    
-    /* Badge de pré-lançamento */
-    .external-card .spotify-elo,
-    .external-investment-card .spotify-elo {
-        font-size: 8px !important;
-        padding: 2px 4px !important;
-        white-space: nowrap !important;
-    }
-    
-    /* Preço */
-    .external-card .spotify-price,
-    .external-investment-card .spotify-price {
+    .spotify-elo {
         font-size: 10px !important;
+        padding: 2px 6px !important;
     }
     
-    /* Barra de progresso mais compacta */
-    .external-card .external-progress,
-    .external-investment-card .external-progress {
+    .spotify-stats {
         margin-top: 4px !important;
     }
     
-    .external-card .progress-header,
-    .external-investment-card .progress-header {
-        font-size: 7px !important;
-        margin-bottom: 1px !important;
+    .favorite-btn {
+        width: 28px !important;
+        height: 28px !important;
     }
     
-    .external-card .progress-bar-bg,
-    .external-investment-card .progress-bar-bg {
-        height: 2px !important;
-    }
-    
-    .external-card .progress-bar-fill,
-    .external-investment-card .progress-bar-fill {
-        height: 2px !important;
-    }
-    
-    /* Botão investir menor */
-    .external-card .btn-invest,
-    .external-investment-card .btn-invest {
-        font-size: 8px !important;
-        padding: 3px 4px !important;
-        margin-top: 4px !important;
-        border-radius: 12px !important;
-    }
-    
-    /* Informações de sugestão */
-    .external-card div[style*="font-size: 11px"],
-    .external-investment-card div[style*="font-size: 11px"] {
-        font-size: 7px !important;
-        margin-top: 2px !important;
-    }
-    
-    /* Badge de blockchain */
-    .external-card .blockchain-badge,
-    .external-investment-card .blockchain-badge {
-        font-size: 7px !important;
-        padding: 1px 3px !important;
-    }
-    
-    /* Status badges */
-    .external-card .status-aguardando,
-    .external-card .status-aprovado,
-    .external-card .status-rejeitado,
-    .external-investment-card .status-aguardando,
-    .external-investment-card .status-aprovado,
-    .external-investment-card .status-rejeitado {
-        font-size: 7px !important;
-        padding: 1px 4px !important;
-    }
-    
-    /* CORREÇÃO DO GRID PARA BOLSA EXTERNA */
-    #externalContent.spotify-grid,
-    #externalMarketplaceGrid.spotify-grid {
-        gap: 8px !important;
-        padding: 0 4px !important;
-    }
-    
-    /* Cards ocupando espaço correto */
-    #externalContent .spotify-card,
-    #externalMarketplaceGrid .spotify-card {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        box-sizing: border-box !important;
-    }
-    
-    /* Remove margens extras */
-    .external-card,
-    .external-investment-card {
-        margin: 0 !important;
-    }
-    
-    /* Ajuste do card de sugestão */
-    .suggest-card {
-        min-height: 150px !important;
-        padding: 16px 8px !important;
-    }
-    
-    .suggest-card i {
-        font-size: 30px !important;
-    }
-    
-    .suggest-card h3 {
+    .favorite-btn i {
         font-size: 14px !important;
     }
-    
-    .suggest-card p {
-        font-size: 10px !important;
-    }
-}        /* Card Recomendado */
+}
+        
+        /* CARD PADRÃO */
+        .spotify-card {
+            background: var(--spotify-card);
+            border-radius: 6px;
+            padding: 16px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .spotify-card:hover {
+            background: var(--spotify-card-hover);
+            transform: translateY(-4px);
+        }
+        .spotify-card:hover .play-overlay {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* CAPA */
+        .spotify-cover {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .spotify-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        /* BOTÃO PLAY */
+        .play-overlay {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: var(--spotify-green);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: black;
+            font-size: 20px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all 0.3s ease;
+            border: none;
+        }
+        .play-overlay:hover {
+            transform: scale(1.05);
+            background: var(--spotify-green-hover);
+        }
+        /* TÍTULO */
+        .spotify-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+            margin: 0 0 4px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* ARTISTA */
+        .spotify-artist {
+            font-size: 14px;
+            color: var(--spotify-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* BADGE DE PERCENTUAL */
+        .spotify-badge {
+            background: rgba(29, 185, 84, 0.2);
+            color: var(--spotify-green);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 6px;
+            display: inline-block;
+        }
+        /* BOTÃO INVESTIR */
+        .btn-invest {
+            width: 100%;
+            margin-top: 12px;
+            padding: 8px;
+            background: transparent;
+            border: 1px solid rgba(29, 185, 84, 0.3);
+            border-radius: 20px;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .btn-invest:hover {
+            background: var(--spotify-green);
+            border-color: var(--spotify-green);
+            color: black;
+        }
+        /* ===== CARDS ESPECIAIS ===== */
+        .spotify-card.external-card {
+            border: 1px dashed rgba(255, 107, 107, 0.3);
+        }
+        .spotify-card.external-card:hover {
+            border-color: #ff6b6b;
+        }
+        .external-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: linear-gradient(135deg, #ff6b6b, #ff4c4c);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 700;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+        }
+        .external-card .btn-invest {
+            border-color: rgba(255, 107, 107, 0.3);
+            color: #ff6b6b;
+        }
+        .external-card .btn-invest:hover {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+            color: white;
+        }
+        /* Card para Sugerir Música */
+        .suggest-card {
+            background: var(--spotify-card);
+            border: 2px dashed #ff6b6b;
+            border-radius: 6px;
+            padding: 24px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            height: 100%;
+            min-height: 200px;
+        }
+        .suggest-card i {
+            font-size: 40px;
+            color: #ff6b6b;
+            margin-bottom: 12px;
+        }
+        .suggest-card h3 {
+            color: white;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        .suggest-card p {
+            color: #b3b3b3;
+            font-size: 12px;
+        }
+        .suggest-card:hover {
+            background: var(--spotify-card-hover);
+        }
+        /* Card Recomendado */
         .recommended-card {
             display: flex;
             align-items: center;
