@@ -3027,20 +3027,7 @@
             </div>
         </div>
     </div>
-   
-    <!-- Player Expandido como Seção -->
-<section id="playerExpandedSection" class="section">
-    <div class="section-header">
-        <h2 class="section-title">
-            <i class="bi bi-music-player-fill me-2 text-success"></i>
-            Player Expandido
-        </h2>
-        <button class="btn btn-outline-success" onclick="closePlayerExpanded()">
-            <i class="bi bi-arrows-angle-contract me-2"></i>
-            Minimizar Player
-        </button>
-    </div>
-
+   <!-- Player Expandido como Seção -->
 <section id="playerExpandedSection" class="section">
     <div class="section-header">
         <div class="d-flex align-items-center gap-3">
@@ -3058,148 +3045,147 @@
             Minimizar Player
         </button>
     </div>
-       
-        <div class="expanded-content">
-            <div class="row">
-                <div class="col-md-4 mb-4 mb-md-0">
-                    <div class="text-center">
-                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E"
-                             class="expanded-album-art img-fluid rounded"
-                             alt="Album Art"
-                             id="expandedAlbumArt">
-                       
-                        <h3 class="expanded-title text-white" id="expandedTitle">Nenhuma música tocando</h3>
-                        <p class="expanded-artist text-muted" id="expandedArtist">Selecione uma música</p>
-                       
-                        <div class="expanded-meta d-flex justify-content-center gap-3 mb-3">
-                            <span class="meta-item">
-                                <i class="bi bi-music-note-beamed text-success"></i>
-                                <span id="expandedGenre">Música</span>
-                            </span>
-                            <span class="meta-item">
-                                <i class="bi bi-clock text-success"></i>
-                                <span id="expandedDuration">0:00</span>
-                            </span>
-                        </div>
+    
+    <div class="expanded-content">
+        <div class="row">
+            <div class="col-md-4 mb-4 mb-md-0">
+                <div class="text-center">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23111418'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='Arial' font-size='24' fill='%2300ff88'%3EMIV%3C/text%3E%3C/svg%3E"
+                         class="expanded-album-art img-fluid rounded"
+                         alt="Album Art"
+                         id="expandedAlbumArt">
+                    
+                    <h3 class="expanded-title text-white" id="expandedTitle">Nenhuma música tocando</h3>
+                    <p class="expanded-artist text-muted" id="expandedArtist">Selecione uma música</p>
+                    
+                    <div class="expanded-meta d-flex justify-content-center gap-3 mb-3">
+                        <span class="meta-item">
+                            <i class="bi bi-music-note-beamed text-success"></i>
+                            <span id="expandedGenre">Música</span>
+                        </span>
+                        <span class="meta-item">
+                            <i class="bi bi-clock text-success"></i>
+                            <span id="expandedDuration">0:00</span>
+                        </span>
                     </div>
                 </div>
-               
-                <div class="col-md-8">
-                    <div class="youtube-container-expanded mb-4">
-                        <div id="youtubePlayerExpanded" style="width: 100%; height: 100%;"></div>
-                        <div class="player-loading" id="playerLoadingExpanded">
-                            <div class="loading-spinner"></div>
-                            <span id="loadingMessageText">Carregando vídeo...</span>
-                            <span id="realTimeStatus"></span>
+            </div>
+            
+            <div class="col-md-8">
+                <div class="youtube-container-expanded mb-4">
+                    <div id="youtubePlayerExpanded" style="width: 100%; height: 100%;"></div>
+                    <div class="player-loading" id="playerLoadingExpanded">
+                        <div class="loading-spinner"></div>
+                        <span id="loadingMessageText">Carregando vídeo...</span>
+                        <span id="realTimeStatus"></span>
+                    </div>
+                </div>
+                <div id="playerStatus" class="mt-2 small text-center"></div>
+                <div id="streamingRewardIndicator" class="mt-2 text-center" style="display: none;">
+                    <div class="alert alert-success bg-success bg-opacity-10 border-success py-1 px-2 d-inline-flex align-items-center gap-2 rounded-pill">
+                        <i class="bi bi-cash-stack text-success"></i>
+                        <span id="streamingRewardAmount" class="fw-bold text-success">+0 SELO COIN</span>
+                        <span class="text-muted small">|</span>
+                        <span id="streamingMusicName" class="small text-success">Música atual</span>
+                    </div>
+                </div>
+                
+                <div class="expanded-controls bg-dark p-4 rounded-3">
+                    <div class="expanded-progress-container mb-4">
+                        <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
+                            <div class="expanded-progress-fill" id="expandedProgressBar"></div>
+                        </div>
+                        <div class="expanded-time-display d-flex justify-content-between mt-2">
+                            <span id="expandedCurrentTime" class="text-muted">0:00</span>
+                            <span id="expandedTotalTime" class="text-muted">0:00</span>
                         </div>
                     </div>
-                    <div id="playerStatus" class="mt-2 small text-center"></div>
-                    <div id="streamingRewardIndicator" class="mt-2 text-center" style="display: none;">
-                        <div class="alert alert-success bg-success bg-opacity-10 border-success py-1 px-2 d-inline-flex align-items-center gap-2 rounded-pill">
-                            <i class="bi bi-cash-stack text-success"></i>
-                            <span id="streamingRewardAmount" class="fw-bold text-success">+0 SELO COIN</span>
-                            <span class="text-muted small">|</span>
-                            <span id="streamingMusicName" class="small text-success">Música atual</span>
-                        </div>
+                    
+                    <div class="expanded-controls-bottom d-flex justify-content-center align-items-center gap-4">
+                        <button class="btn btn-outline-success" onclick="playPrevious()">
+                            <i class="bi bi-skip-backward-fill"></i>
+                        </button>
+                        
+                        <button class="btn btn-success btn-lg rounded-circle" onclick="togglePlay()" id="expandedPlayPauseBtn" style="width: 60px; height: 60px;">
+                            <i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i>
+                        </button>
+                        
+                        <button class="btn btn-outline-success" onclick="playNext()">
+                            <i class="bi bi-skip-forward-fill"></i>
+                        </button>
                     </div>
-                   
-                    <div class="expanded-controls bg-dark p-4 rounded-3">
-                        <div class="expanded-progress-container mb-4">
-                            <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
-                                <div class="expanded-progress-fill" id="expandedProgressBar"></div>
-                            </div>
-                            <div class="expanded-time-display d-flex justify-content-between mt-2">
-                                <span id="expandedCurrentTime" class="text-muted">0:00</span>
-                                <span id="expandedTotalTime" class="text-muted">0:00</span>
-                            </div>
-                        </div>
-                       
-                        <div class="expanded-controls-bottom d-flex justify-content-center align-items-center gap-4">
-                            <button class="btn btn-outline-success" onclick="playPrevious()">
-                                <i class="bi bi-skip-backward-fill"></i>
-                            </button>
-                           
-                            <button class="btn btn-success btn-lg rounded-circle" onclick="togglePlay()" id="expandedPlayPauseBtn" style="width: 60px; height: 60px;">
-                                <i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i>
-                            </button>
-                           
-                            <button class="btn btn-outline-success" onclick="playNext()">
-                                <i class="bi bi-skip-forward-fill"></i>
-                            </button>
-                        </div>
-                       
-                        <div class="expanded-controls-top d-flex justify-content-center gap-3 mt-4">
-                            <button class="btn btn-outline-success" onclick="toggleShuffle()" id="expandedShuffleBtn">
-                                <i class="bi bi-shuffle me-2"></i>Aleatório
-                            </button>
-                           
-                            <button class="btn btn-outline-success" onclick="toggleRepeat()" id="expandedRepeatBtn">
-                                <i class="bi bi-repeat me-2"></i>Repetir
-                            </button>
-                           
-                            <button class="btn btn-outline-success" onclick="toggleFavorite()" id="expandedFavoriteBtn">
-                                <i class="bi bi-star" id="expandedFavoriteIcon"></i>
-                            </button>
-                           
-                            <button class="btn btn-success" onclick="openInvestModalFromPlayer()">
-                                <i class="bi bi-currency-dollar me-2"></i>Investir
-                            </button>
-                        </div>
+                    
+                    <div class="expanded-controls-top d-flex justify-content-center gap-3 mt-4">
+                        <button class="btn btn-outline-success" onclick="toggleShuffle()" id="expandedShuffleBtn">
+                            <i class="bi bi-shuffle me-2"></i>Aleatório
+                        </button>
+                        
+                        <button class="btn btn-outline-success" onclick="toggleRepeat()" id="expandedRepeatBtn">
+                            <i class="bi bi-repeat me-2"></i>Repetir
+                        </button>
+                        
+                        <button class="btn btn-outline-success" onclick="toggleFavorite()" id="expandedFavoriteBtn">
+                            <i class="bi bi-star" id="expandedFavoriteIcon"></i>
+                        </button>
+                        
+                        <button class="btn btn-success" onclick="openInvestModalFromPlayer()">
+                            <i class="bi bi-currency-dollar me-2"></i>Investir
+                        </button>
                     </div>
-                   
-                    <div class="track-info-section mt-4">
-                        <h4 class="text-white mb-3">
-                            <i class="bi bi-info-circle text-success me-2"></i>
-                            Sobre esta música
-                        </h4>
-                       
-                        <div class="info-grid">
-                            <div class="info-card">
-                                <div class="info-icon">
-                                    <i class="bi bi-cash-coin"></i>
-                                </div>
-                                <div class="info-content">
-                                    <div class="info-label">Valor por ação</div>
-                                    <div class="info-value text-success" id="expandedPrice">R$ 0,00</div>
-                                </div>
+                </div>
+                
+                <div class="track-info-section mt-4">
+                    <h4 class="text-white mb-3">
+                        <i class="bi bi-info-circle text-success me-2"></i>
+                        Sobre esta música
+                    </h4>
+                    
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-cash-coin"></i>
                             </div>
-                           
-                            <div class="info-card">
-                                <div class="info-icon">
-                                    <i class="bi bi-percent"></i>
-                                </div>
-                                <div class="info-content">
-                                    <div class="info-label">Disponível</div>
-                                    <div class="info-value text-success" id="expandedAvailable">0%</div>
-                                </div>
+                            <div class="info-content">
+                                <div class="info-label">Valor por ação</div>
+                                <div class="info-value text-success" id="expandedPrice">R$ 0,00</div>
                             </div>
-                           
-                            <div class="info-card">
-                                <div class="info-icon">
-                                    <i class="bi bi-graph-up-arrow"></i>
-                                </div>
-                                <div class="info-content">
-                                    <div class="info-label">Retorno</div>
-                                    <div class="info-value text-success" id="expandedReturn">0%</div>
-                                </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-percent"></i>
                             </div>
-                           
-                            <div class="info-card">
-                                <div class="info-icon">
-                                    <i class="bi bi-people"></i>
-                                </div>
-                                <div class="info-content">
-                                    <div class="info-label">Investidores</div>
-                                    <div class="info-value text-success" id="expandedInvestors">0</div>
-                                </div>
+                            <div class="info-content">
+                                <div class="info-label">Disponível</div>
+                                <div class="info-value text-success" id="expandedAvailable">0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-graph-up-arrow"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Retorno</div>
+                                <div class="info-value text-success" id="expandedReturn">0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <div class="info-icon">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Investidores</div>
+                                <div class="info-value text-success" id="expandedInvestors">0</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
-   
+    </div>
+</section>
     <!-- MINHAS NEGOCIAÇÕES SECTION -->
     <section id="tradesSection" class="section">
         <div class="section-header">
