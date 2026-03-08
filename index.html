@@ -4356,33 +4356,7 @@ const playQueue = {
         
         document.getElementById('eloRankingContent').innerHTML = rankingHTML;
         showModal('eloRankingModal');
-    };
-
-    function getELOColor(rating) {
-        if (rating >= 2400) return '#ffd700';
-        if (rating >= 2000) return '#c0c0c0';
-        if (rating >= 1600) return '#cd7f32';
-        return '#6c757d';
-    }
-    function getELOLevel(rating) {
-        if (rating >= 2600) return '⚜️ Lenda';
-        if (rating >= 2400) return '👑 Mestre';
-        if (rating >= 2200) return '💎 Diamante';
-        if (rating >= 2000) return '🥇 Platina';
-        if (rating >= 1800) return '🥈 Ouro';
-        if (rating >= 1600) return '🥉 Prata';
-        if (rating >= 1400) return '🔰 Bronze';
-        return '🆚 Iniciante';
-    }
-    
-    function getELOTrend(music) {
-        if (!music.elo_history || music.elo_history.length < 2) return '➡️ Estável';
-        const last = music.elo_history[music.elo_history.length - 1];
-        const prev = music.elo_history[music.elo_history.length - 2];
-        if (last.newRating > prev.newRating) return '📈 Subindo';
-        if (last.newRating < prev.newRating) return '📉 Descendo';
-        return '➡️ Estável';
-    }
+    };    
 
     // ========== LOAD BLOCKCHAIN DATA ==========
     window.loadBlockchainData = async function() {
@@ -4522,45 +4496,8 @@ const playQueue = {
         }
     };
 
-    function gerarBlocosSimulados(quantidade = 10) {
-        const blocos = [];
-        const musicas = ['Bohemian Rhapsody', 'Blinding Lights', 'Lose Yourself', 'Shape of You', 'Rolling in the Deep'];
-        const artistas = ['Queen', 'The Weeknd', 'Eminem', 'Ed Sheeran', 'Adele'];
-        
-        for (let i = 0; i < quantidade; i++) {
-            const index = i + 1;
-            const musicIndex = i % musicas.length;
-            
-            blocos.push({
-                block_index: index,
-                block_hash: '0x' + (Date.now() + i).toString(16).padStart(16, '0'),
-                previous_hash: i === 0 ? '0'.repeat(64) : '0x' + (Date.now() + i - 1).toString(16).padStart(16, '0'),
-                timestamp: new Date(Date.now() - i * 60000).toISOString(),
-                miner_user_id: 'user_' + (i + 100),
-                user_name: 'Minerador ' + (i + 1),
-                music_title: musicas[musicIndex] + ' - ' + artistas[musicIndex],
-                reward_amount: Math.floor(Math.random() * 1000) + 100,
-                music_id: 'music_' + (i + 1)
-            });
-        }
-        
-        return blocos;
-    }
 
-    function gerarTransacoesSimuladasArray() {
-        const tipos = ['🎵 Royalty', '💰 Investimento', '💸 Streaming', '⛏️ Mineração', '🤝 Negociação'];
-        const transacoes = [];
-        
-        for (let i = 0; i < 5; i++) {
-            transacoes.push({
-                hash: '0x' + (Date.now() + i + 100).toString(16).padStart(16, '0'),
-                tipo: tipos[Math.floor(Math.random() * tipos.length)],
-                valor: Math.floor(Math.random() * 500) + 50
-            });
-        }
-        
-        return transacoes;
-    }
+
 
     function generateFakeHash(seed = 0) {
         return '0x' + (Date.now() + seed).toString(16).padStart(16, '0') + '...';
@@ -4571,32 +4508,8 @@ const playQueue = {
         return tipos[Math.floor(Math.random() * tipos.length)];
     }
 
-    function gerarDadosSimulados() {
-        return `
-            <tr>
-                <td colspan="6" class="text-center py-4">
-                    <i class="bi bi-link-45deg fs-1 text-muted d-block mb-3"></i>
-                    <span class="text-muted">Nenhum contrato real encontrado</span>
-                    <div class="mt-3">
-                        <button class="btn btn-sm btn-outline-success" onclick="gerarBlocosSimuladosParaVisualizacao()">
-                            <i class="bi bi-magic me-2"></i>Gerar exemplo
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
 
-    function gerarTransacoesSimuladas() {
-        return `
-            <tr>
-                <td colspan="5" class="text-center py-4">
-                    <i class="bi bi-arrow-left-right fs-1 text-muted d-block mb-3"></i>
-                    <span class="text-muted">Nenhuma transação real encontrada</span>
-                </td>
-            </tr>
-        `;
-    }
+
 
     // ========== FUNÇÃO RENDER BLOCKCHAIN VISUALIZATION ==========
     window.renderBlockchainVisualization = function(contracts) {
@@ -5255,87 +5168,189 @@ function getFallbackData(action, data) {
         }
     }
 
-    async function handleRegister() {
-        const name = document.getElementById('registerNameField')?.value?.trim();
-        const email = document.getElementById('registerEmailField')?.value?.trim();
-        const password = document.getElementById('registerPasswordField')?.value?.trim();
-        const type = document.getElementById('registerTypeField')?.value;
-        const link = document.getElementById('registerLinkField')?.value?.trim() || '';
-        const acceptTerms = document.getElementById('acceptTermsField')?.checked;
-        const acceptMarketing = document.getElementById('acceptMarketingField')?.checked || false;
-        const registerBtn = document.getElementById('registerBtn');
+async function handleRegister() {
+    const name = document.getElementById('registerNameField')?.value?.trim();
+    const email = document.getElementById('registerEmailField')?.value?.trim();
+    const password = document.getElementById('registerPasswordField')?.value?.trim();
+    const type = document.getElementById('registerTypeField')?.value;
+    const link = document.getElementById('registerLinkField')?.value?.trim() || '';
+    const acceptTerms = document.getElementById('acceptTermsField')?.checked;
+    const acceptMarketing = document.getElementById('acceptMarketingField')?.checked || false;
+    const registerBtn = document.getElementById('registerBtn');
 
-        if (!name || !email || !password || !type) { 
-            showToast('Preencha todos os campos obrigatórios', 'error'); 
-            return; 
-        }
-        if (password.length < 6) { 
-            showToast('A senha deve ter no mínimo 6 caracteres', 'error'); 
-            return; 
-        }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { 
-            showToast('Digite um e-mail válido', 'error'); 
-            return; 
-        }
-        
-        if (!acceptTerms) {
-            showToast('Você precisa aceitar os Termos de Uso para continuar', 'error');
-            return;
-        }
-
-        const termsCheckbox = document.getElementById('acceptTermsField');
-        if (!termsCheckbox || !termsCheckbox.checked) {
-            showToast('Marque a caixa de aceite dos Termos de Uso', 'error');
-            return;
-        }
-
-        registerBtn.disabled = true;
-        registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
-        showLoading('Criando conta...');
-
-        try {
-            const result = await callAPI('register', { 
-                nome: name, 
-                email, 
-                senha: password, 
-                tipo: type, 
-                workLink: link,
-                confirm_url: window.location.origin + '/confirm-email.html',
-                accepted_terms: true,
-                terms_version: '6.0.0',
-                terms_accepted_at: new Date().toISOString(),
-                accepted_marketing: acceptMarketing
-            });
-            
-            if (result?.success) {
-                showToast('Cadastro realizado! Verifique seu email para confirmar.', 'success');
-                
-                document.getElementById('registerNameField').value = '';
-                document.getElementById('registerEmailField').value = '';
-                document.getElementById('registerPasswordField').value = '';
-                document.getElementById('registerTypeField').value = '';
-                document.getElementById('registerLinkField').value = '';
-                document.getElementById('acceptTermsField').checked = false;
-                document.getElementById('acceptMarketingField').checked = false;
-                
-                showLoginForm();
-                
-                setTimeout(() => {
-                    showToast(`✉️ Enviamos um email de confirmação para ${email}`, 'info', 5000);
-                }, 1000);
-                
-            } else {
-                showToast(result?.message || 'Erro ao cadastrar', 'error');
-            }
-        } catch (error) {
-            console.error('Erro no registro:', error);
-            showToast('Erro ao criar conta', 'error');
-        } finally {
-            registerBtn.disabled = false;
-            registerBtn.innerHTML = '<i class="bi bi-person-plus"></i> Solicitar Cadastro';
-            hideLoading();
-        }
+    if (!name || !email || !password || !type) { 
+        showToast('Preencha todos os campos obrigatórios', 'error'); 
+        return; 
     }
+    if (password.length < 6) { 
+        showToast('A senha deve ter no mínimo 6 caracteres', 'error'); 
+        return; 
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { 
+        showToast('Digite um e-mail válido', 'error'); 
+        return; 
+    }
+    
+    if (!acceptTerms) {
+        showToast('Você precisa aceitar os Termos de Uso para continuar', 'error');
+        return;
+    }
+
+    const termsCheckbox = document.getElementById('acceptTermsField');
+    if (!termsCheckbox || !termsCheckbox.checked) {
+        showToast('Marque a caixa de aceite dos Termos de Uso', 'error');
+        return;
+    }
+
+    registerBtn.disabled = true;
+    registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
+    showLoading('Criando conta...');
+
+    try {
+        const result = await callAPI('register', { 
+            nome: name, 
+            email, 
+            senha: password, 
+            tipo: type, 
+            workLink: link,
+            confirm_url: window.location.origin + '/confirm-email.html',
+            accepted_terms: true,
+            terms_version: '6.0.0',
+            terms_accepted_at: new Date().toISOString(),
+            accepted_marketing: acceptMarketing
+        });
+        
+        if (result?.success) {
+            // TOAST DE CADASTRO REALIZADO
+            showToast('Cadastro realizado! Verifique seu email para confirmar.', 'success');
+            
+            // Fecha o loading
+            hideLoading();
+            
+            // TOAST DE EMAIL ENVIADO
+            setTimeout(() => {
+                showToast(`✉️ Enviamos um email de confirmação para ${email}`, 'info', 5000);
+            }, 1000);
+            
+            // MODAL CHAMATIVO
+            const modalHtml = `
+                <div id="confirmEmailModal" class="modal-overlay show" style="z-index: 10000;">
+                    <div class="modal-content" style="max-width: 450px; background: linear-gradient(135deg, #1a1e24, #0f1217); border: 2px solid var(--neon-green); animation: modalPulse 2s infinite;">
+                        <div class="modal-header" style="border-bottom: 1px solid var(--neon-green);">
+                            <h5 class="modal-title" style="color: var(--neon-green); font-size: 1.5rem;">
+                                <i class="bi bi-envelope-check-fill me-2"></i>
+                                CONFIRMAÇÃO NECESSÁRIA
+                            </h5>
+                            <button class="modal-close" onclick="closeCustomModal()" style="color: var(--text-muted);">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body text-center py-4">
+                            <div style="font-size: 5rem; color: var(--neon-green); animation: bounce 2s infinite; margin-bottom: 1rem;">
+                                <i class="bi bi-envelope-paper-fill"></i>
+                            </div>
+                            
+                            <h3 style="color: white; font-weight: 700; margin-bottom: 1rem;">
+                                ÚLTIMO PASSO!
+                            </h3>
+                            
+                            <p style="color: #b3b3b3; font-size: 1.1rem; margin-bottom: 0.5rem;">
+                                <strong style="color: var(--neon-green);">${email}</strong>
+                            </p>
+                            
+                            <div style="background: rgba(0, 255, 136, 0.1); border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0; border: 1px dashed var(--neon-green);">
+                                <i class="bi bi-check-circle-fill" style="color: var(--neon-green); font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+                                <p style="color: white; font-size: 1.1rem; margin-bottom: 0;">
+                                    Cadastro realizado com sucesso!
+                                </p>
+                                <p style="color: var(--neon-green); font-weight: 600; font-size: 1.2rem; margin: 0.5rem 0;">
+                                    VERIFIQUE SEU E-MAIL
+                                </p>
+                                <p style="color: #b3b3b3;">
+                                    Enviamos um link de confirmação para seu e-mail. Clique nele para ativar sua conta.
+                                </p>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 10px; margin: 20px 0;">
+                                <div style="display: flex; align-items: center; gap: 10px; color: #b3b3b3;">
+                                    <i class="bi bi-1-circle-fill" style="color: var(--neon-green);"></i>
+                                    <span>Acesse sua caixa de entrada</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px; color: #b3b3b3;">
+                                    <i class="bi bi-2-circle-fill" style="color: var(--neon-green);"></i>
+                                    <span>Clique no link de confirmação</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px; color: #b3b3b3;">
+                                    <i class="bi bi-3-circle-fill" style="color: var(--neon-green);"></i>
+                                    <span>Faça login na plataforma</span>
+                                </div>
+                            </div>
+                            
+                            <div style="background: rgba(255, 193, 7, 0.1); border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+                                <i class="bi bi-exclamation-triangle-fill" style="color: #ffc107; margin-right: 8px;"></i>
+                                <span style="color: #ffc107; font-size: 0.9rem;">
+                                    Não recebeu? Verifique sua caixa de spam ou lixeira.
+                                </span>
+                            </div>
+                            
+                            <button class="btn-miv" onclick="resendConfirmationEmailFromModal('${email}')" style="margin-top: 1rem; padding: 0.75rem 2rem; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px; width: auto;">
+                                <i class="bi bi-arrow-clockwise"></i>
+                                Reenviar e-mail de confirmação
+                            </button>
+                        </div>
+                        <div class="modal-footer" style="border-top: 1px solid var(--border); justify-content: center;">
+                            <button class="btn btn-outline-success" onclick="closeCustomModal()" style="min-width: 120px;">
+                                <i class="bi bi-check-lg me-2"></i>Entendi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <style>
+                    @keyframes bounce {
+                        0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+                        40% {transform: translateY(-20px);}
+                        60% {transform: translateY(-10px);}
+                    }
+                    @keyframes modalPulse {
+                        0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
+                        70% { box-shadow: 0 0 0 15px rgba(0, 255, 136, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+                    }
+                </style>
+            `;
+            
+            // Remove qualquer modal existente e adiciona o novo
+            const existingModal = document.getElementById('confirmEmailModal');
+            if (existingModal) existingModal.remove();
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.body.style.overflow = 'hidden';
+            
+            // Limpa o formulário de registro
+            document.getElementById('registerNameField').value = '';
+            document.getElementById('registerEmailField').value = '';
+            document.getElementById('registerPasswordField').value = '';
+            document.getElementById('registerTypeField').value = '';
+            document.getElementById('registerLinkField').value = '';
+            document.getElementById('acceptTermsField').checked = false;
+            document.getElementById('acceptMarketingField').checked = false;
+            
+            // Mostra a tela de login
+            showLoginForm();
+            
+        } else {
+            showToast(result?.message || 'Erro ao cadastrar', 'error');
+        }
+    } catch (error) {
+        console.error('Erro no registro:', error);
+        showToast('Erro ao criar conta', 'error');
+    } finally {
+        registerBtn.disabled = false;
+        registerBtn.innerHTML = '<i class="bi bi-person-plus"></i> Solicitar Cadastro';
+        hideLoading();
+    }
+}
 
     async function resendConfirmationEmail() {
         const email = document.getElementById('loginEmailField')?.value?.trim();
@@ -9097,7 +9112,60 @@ window.playSearchResult = playSearchResult;
             showToast('Termos aceitos!', 'success');
         }
     }
+// ========== FUNÇÕES AUXILIARES DO MODAL ==========
+function closeCustomModal() {
+    const modal = document.getElementById('confirmEmailModal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+            document.body.style.overflow = 'auto';
+        }, 300);
+    }
+}
 
+async function resendConfirmationEmailFromModal(email) {
+    if (!email) return;
+    
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Enviando...';
+    
+    try {
+        const result = await callAPI('resend_confirmation', { 
+            email,
+            confirm_url: window.location.origin + '/confirm-email.html'
+        });
+        
+        if (result?.success) {
+            showToast(`✉️ Novo link enviado para ${email}!`, 'success', 4000);
+            
+            const modalBody = document.querySelector('#confirmEmailModal .modal-body');
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.className = 'alert alert-success mt-3';
+            feedbackDiv.style.background = 'rgba(0, 255, 136, 0.1)';
+            feedbackDiv.style.border = '1px solid var(--neon-green)';
+            feedbackDiv.style.color = 'var(--neon-green)';
+            feedbackDiv.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> E-mail reenviado! Verifique sua caixa de entrada.';
+            
+            const oldFeedback = modalBody.querySelector('.alert-success');
+            if (oldFeedback) oldFeedback.remove();
+            
+            modalBody.insertBefore(feedbackDiv, modalBody.querySelector('button'));
+            
+            setTimeout(() => feedbackDiv.remove(), 4000);
+        } else {
+            showToast(result?.message || 'Erro ao enviar email', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao reenviar:', error);
+        showToast('Erro ao enviar email', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
     // ========== EXPOR FUNÇÕES GLOBAIS ==========
     window.handleLogin = handleLogin;
     window.handleRegister = handleRegister;
