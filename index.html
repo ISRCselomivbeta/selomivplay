@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SELO MIV - Plataforma de Investimento em Música com Blockchain">
     <meta name="theme-color" content="#00ff88">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>SELO MIV | Fintech Musical Blockchain</title>
    
     <!-- PERMITIR COMUNICAÇÃO COM YOUTUBE E GOOGLE APPS SCRIPT -->
@@ -45,13 +47,13 @@
         }
        
         body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-light);
-            min-height: 100vh;
-            overflow-x: hidden;
-            padding-bottom: var(--player-height);
-        }
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding-bottom: calc(var(--player-height) + env(safe-area-inset-bottom, 0px));
+}
        
         /* Loading Screen */
         .loading-screen {
@@ -1140,9 +1142,36 @@
                 --player-height: 250px; /* Ajustado para mais espaço no mobile */
             }
 
-            body {
-                padding-bottom: var(--player-height); /* Corrige a sobreposição */
-            }
+       body {
+        padding-bottom: calc(250px + env(safe-area-inset-bottom, 0px));
+    }
+    
+    /* Aumenta área de toque dos botões */
+    .btn, 
+    .btn-miv, 
+    .btn-invest,
+    .nav-link,
+    .player-btn,
+    .control-btn,
+    .favorite-btn {
+        min-height: 48px;
+        min-width: 48px;
+        padding: 12px !important;
+    }
+    
+    /* Melhora scroll dos modais */
+    .modal-content {
+        max-height: 85vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Corrige o player no mobile */
+    .player-miv {
+        padding-bottom: env(safe-area-inset-bottom, 10px);
+        height: auto;
+        min-height: var(--player-height);
+    }
 
             .player-miv {
                 height: auto; /* Já existe, mas garanta min-height */
@@ -5232,9 +5261,8 @@ async function handleRegister() {
                 showToast(`✉️ Enviamos um email de confirmação para ${email}`, 'info', 5000);
             }, 1000);
             
-            // MODAL CHAMATIVO
-            const modalHtml = `
-                <div id="confirmEmailModal" class="modal-overlay show" style="z-index: 10000;">
+            // MODAL CHAMATIVOonst modalHtml = `
+    <div id="confirmEmailModal" class="modal-overlay show" style="display: flex; z-index: 10000;">
                     <div class="modal-content" style="max-width: 450px; background: linear-gradient(135deg, #1a1e24, #0f1217); border: 2px solid var(--neon-green); animation: modalPulse 2s infinite;">
                         <div class="modal-header" style="border-bottom: 1px solid var(--neon-green);">
                             <h5 class="modal-title" style="color: var(--neon-green); font-size: 1.5rem;">
@@ -9112,13 +9140,13 @@ window.playSearchResult = playSearchResult;
             showToast('Termos aceitos!', 'success');
         }
     }
-// ========== FUNÇÕES AUXILIARES DO MODAL ==========
+    // ========== FUNÇÕES AUXILIARES DO MODAL ==========
 function closeCustomModal() {
     const modal = document.getElementById('confirmEmailModal');
     if (modal) {
         modal.classList.remove('show');
         setTimeout(() => {
-            modal.remove();
+            modal.style.display = 'none'; // ← NÃO remove, só esconde
             document.body.style.overflow = 'auto';
         }, 300);
     }
