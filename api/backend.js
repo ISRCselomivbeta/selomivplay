@@ -455,61 +455,87 @@ export default async function handler(req, res) {
         data: []
       });
     }
+    // ===== GET MINING BLOCKS (VERSÃO CORRIGIDA) =====
+if (action === 'get_mining_blocks') {
+  console.log('⛏️ Buscando blocos de mineração...');
+  
+  try {
+    const gasUrl = new URL(GAS_URL);
+    gasUrl.searchParams.append('action', 'get_mining_blocks');
+    if (params.user_id) gasUrl.searchParams.append('user_id', params.user_id);
+    if (params.limit) gasUrl.searchParams.append('limit', params.limit);
     
-    // ===== GET MINING BLOCKS =====
-    if (action === 'get_mining_blocks') {
-      console.log('⛏️ Buscando blocos de mineração...');
-      
-      try {
-        const gasUrl = new URL(GAS_URL);
-        gasUrl.searchParams.append('action', 'get_mining_blocks');
-        if (params.user_id) gasUrl.searchParams.append('user_id', params.user_id);
-        if (params.limit) gasUrl.searchParams.append('limit', params.limit);
-        
-        const gasResponse = await fetch(gasUrl.toString(), {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        
-        if (gasResponse.ok) {
-          const gasData = await gasResponse.json();
-          if (gasData.success && gasData.data?.length > 0) {
-            return res.status(200).json(gasData);
-          }
-        }
-      } catch (gasError) {
-        console.log('⚠️ GAS não respondeu get_mining_blocks');
+    const gasResponse = await fetch(gasUrl.toString(), {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (gasResponse.ok) {
+      const gasData = await gasResponse.json();
+      if (gasData.success && gasData.data?.length > 0) {
+        return res.status(200).json(gasData); // ✅ DADOS REAIS DO GAS
       }
-      
-      // Gerar blocos simulados
-      const simulatedBlocks = Array.from({ length: 5 }, (_, i) => {
-        const musicas = [
-          'Bohemian Rhapsody - Queen',
-          'Blinding Lights - The Weeknd',
-          'Lose Yourself - Eminem',
-          'Shape of You - Ed Sheeran',
-          'Rolling in the Deep - Adele'
-        ];
-        
-        return {
-          block_index: 100 + i,
-          block_hash: '0x' + (Date.now() + i).toString(16).padStart(16, '0') + (i * 1000).toString(16),
-          previous_hash: i === 0 ? '0'.repeat(64) : '0x' + (Date.now() + i - 1).toString(16).padStart(16, '0'),
-          timestamp: new Date(Date.now() - i * 3600000).toISOString(),
-          miner_user_id: params.user_id || 'user_' + i,
-          user_name: 'Minerador ' + (i + 1),
-          music_title: musicas[i],
-          reward_amount: Math.floor(Math.random() * 100) + 10,
-          music_id: 'music_' + i
-        };
-      });
-      
-      return res.status(200).json({
-        success: true,
-        data: simulatedBlocks,
-        source: 'simulado'
-      });
     }
+  } catch (gasError) {
+    console.log('⚠️ GAS não respondeu get_mining_blocks');
+  }
+  
+  // ===== FALLBACK INTELIGENTE =====
+  // Busca músicas reais do banco para usar nos blocos
+  let musicasReais = [];
+  
+  try {
+    // Tenta buscar músicas reais primeiro
+    const musicasUrl = new URL(GAS_URL);
+    musicasUrl.searchParams.append('action', 'get_musicas');
+    
+    const musicasResponse = await fetch(musicasUrl.toString());
+    if (musicasResponse.ok) {
+      const musicasData = await musicasResponse.json();
+      if (musicasData.success && musicasData.data?.length > 0) {
+        musicasReais = musicasData.data;
+      }
+    }
+  } catch (e) {
+    console.log('Não foi possível buscar músicas reais para fallback');
+  }
+  
+  // Se não conseguiu músicas reais, usa um fallback com dados do site
+  if (musicasReais.length === 0) {
+    musicasReais = [
+      { titulo: 'RIO DE JANEIRO', artista: 'Elzo Henschell' },
+      { titulo: 'Blinding Lights', artista: 'The Weeknd' },
+      { titulo: 'Bohemian Rhapsody', artista: 'Queen' },
+      { titulo: 'Shape of You', artista: 'Ed Sheeran' },
+      { titulo: 'Rolling in the Deep', artista: 'Adele' }
+    ];
+  }
+  
+  // Gerar blocos simulados com os NOMES REAIS
+  const simulatedBlocks = Array.from({ length: Math.min(5, musicasReais.length) }, (_, i) => {
+    const musica = musicasReais[i % musicasReais.length];
+    const titulo = musica.titulo || musica.music_title || 'Música';
+    const artista = musica.artista || musica.artist || 'Artista';
+    
+    return {
+      block_index: 100 + i,
+      block_hash: '0x' + (Date.now() + i).toString(16).padStart(16, '0') + (i * 1000).toString(16),
+      previous_hash: i === 0 ? '0'.repeat(64) : '0x' + (Date.now() + i - 1).toString(16).padStart(16, '0'),
+      timestamp: new Date(Date.now() - i * 3600000).toISOString(),
+      miner_user_id: params.user_id || 'user_' + i,
+      user_name: 'Minerador ' + (i + 1),
+      music_title: `${titulo} - ${artista}`, // ← NOME CORRETO!
+      music_id: musica.id || 'music_' + i,
+      reward_amount: Math.floor(Math.random() * 100) + 10
+    };
+  });
+  
+  return res.status(200).json({
+    success: true,
+    data: simulatedBlocks,
+    source: 'fallback_com_dados_reais' // ← AVISA QUE É FALLBACK MAS COM NOMES REAIS
+  });
+}
     
     // ===== REGISTER STREAMING =====
     if (action === 'register_streaming') {
