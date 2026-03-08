@@ -131,7 +131,7 @@
             font-size: 2.5rem;
             color: var(--neon-green);
         }
-       /* ===== NOVO: ESTILOS DA BARRA DE PESQUISA ===== */
+/* ===== NOVO: ESTILOS DA BARRA DE PESQUISA ===== */
 .search-container {
     position: relative;
     flex: 1;
@@ -157,7 +157,7 @@
 }
 
 .search-icon {
-    color: var(--text-muted);
+    color: #9ca3af !important;
     font-size: 1rem;
     margin-right: 8px;
 }
@@ -166,15 +166,16 @@
     flex: 1;
     background: transparent;
     border: none;
-    color: var(--text-light);
+    color: #ffffff !important;
     font-size: 0.95rem;
     padding: 8px 0;
     outline: none;
 }
 
 .search-input::placeholder {
-    color: var(--text-muted);
+    color: #9ca3af !important;
     font-style: italic;
+    opacity: 1;
 }
 
 .search-submit-btn {
@@ -201,14 +202,13 @@
     top: calc(100% + 5px);
     left: 0;
     right: 0;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
+    background: #1a1e24 !important;
+    border: 1px solid #2d3748;
     border-radius: 12px;
     max-height: 400px;
     overflow-y: auto;
     z-index: 10000;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(10px);
 }
 
 .search-result-item {
@@ -218,7 +218,7 @@
     padding: 12px;
     cursor: pointer;
     transition: background 0.2s ease;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #2d3748;
 }
 
 .search-result-item:last-child {
@@ -226,7 +226,7 @@
 }
 
 .search-result-item:hover {
-    background: rgba(0, 255, 136, 0.1);
+    background: rgba(0, 255, 136, 0.15) !important;
 }
 
 .search-result-cover {
@@ -243,7 +243,7 @@
 }
 
 .search-result-title {
-    color: var(--text-light);
+    color: #ffffff !important;
     font-weight: 600;
     font-size: 0.95rem;
     white-space: nowrap;
@@ -253,7 +253,7 @@
 }
 
 .search-result-artist {
-    color: var(--text-muted);
+    color: #9ca3af !important;
     font-size: 0.8rem;
     white-space: nowrap;
     overflow: hidden;
@@ -1362,40 +1362,52 @@
             font-size: 0.875rem;
         }
        
-        /* Modals */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1200;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-       
-        .modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-       
-        .modal-content {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 1rem;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            transform: translateY(20px);
-            transition: transform 0.3s ease;
-        }
-       
-        .modal-overlay.show .modal-content {
-            transform: translateY(0);
-        }
+      /* Modals - CORRIGIDO para ficar acima do player */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100000 !important; /* Aumentado e com !important */
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    z-index: 100001 !important; /* Garantir que o conteúdo também fique acima */
+}
+
+.modal-overlay.show .modal-content {
+    transform: translateY(0);
+}
+
+/* CORREÇÃO ESPECÍFICA: Modal de trade acima do player */
+#tradeModal.modal-overlay,
+#tradeModal .modal-content {
+    z-index: 200000 !important;
+}
+
+/* Garantir que o player não atrapalhe nenhum modal */
+.player-miv {
+    z-index: 9999; /* Mantém o player alto, mas menor que os modais */
+}
        
         .modal-header {
             padding: 1.5rem;
@@ -2555,6 +2567,161 @@
 .app-header img:hover {
     transform: scale(1.05);
 }
+
+/* ===== CORREÇÕES GLOBAIS DE CORES ===== */
+:root {
+    --text-light: #ffffff;
+    --text-muted: #b3b3b3;
+    --text-muted-light: #9ca3af;
+}
+
+/* Garantir que textos fiquem visíveis */
+.spotify-title,
+.track-title,
+.expanded-title,
+.modal-title,
+h1, h2, h3, h4, h5, h6,
+.stat-value,
+.portfolio-value,
+#investTrackTitle,
+#currentBalance {
+    color: #ffffff !important;
+}
+
+/* Textos secundários */
+.spotify-artist,
+.track-artist,
+.expanded-artist,
+.stat-label,
+.text-muted,
+small,
+.ledger-table th,
+.form-label,
+label:not(.text-success):not(.text-danger) {
+    color: #b3b3b3 !important;
+}
+
+/* Inputs e placeholders */
+.form-control-custom,
+.form-control-custom:focus {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.form-control-custom::placeholder {
+    color: #6c757d !important;
+    opacity: 1;
+}
+
+/* Botões e badges */
+.btn-invest {
+    color: #ffffff !important;
+    border-color: rgba(0, 255, 136, 0.3);
+}
+
+.btn-invest:hover {
+    background: #00ff88 !important;
+    color: #000000 !important;
+}
+
+.spotify-price {
+    color: #00ff88 !important;
+}
+
+.spotify-elo {
+    background: rgba(0, 255, 136, 0.15) !important;
+    color: #00ff88 !important;
+}
+
+/* Tabelas */
+.ledger-table td {
+    color: #ffffff !important;
+}
+
+/* Cards especiais */
+.info-card .info-value {
+    color: #00ff88 !important;
+}
+
+.info-card .info-label {
+    color: #b3b3b3 !important;
+}
+
+/* Player */
+.time-current, .time-total {
+    color: #b3b3b3 !important;
+}
+
+/* Modais */
+.modal-body p,
+.modal-body div:not(.text-success):not(.text-danger) {
+    color: #ffffff !important;
+}
+
+/* Alerts */
+.alert {
+    color: #ffffff !important;
+}
+
+.alert-info {
+    background: rgba(13, 202, 240, 0.1) !important;
+}
+
+.alert-warning {
+    background: rgba(255, 193, 7, 0.1) !important;
+}
+
+/* Footer */
+.connection-footer {
+    color: #b3b3b3 !important;
+}
+
+/* Blockchain explorer */
+.blockchain-hash {
+    color: #9ca3af !important;
+}
+
+/* Links */
+a, .auth-link {
+    color: #00ff88 !important;
+}
+
+/* Resultados de pesquisa */
+.search-result-title {
+    color: #ffffff !important;
+}
+
+.search-result-artist {
+    color: #9ca3af !important;
+}
+
+/* Barra de progresso de volume */
+.volume-slider-fill {
+    background: #00ff88 !important;
+}
+
+/* Loading screen */
+#loadingMessage {
+    color: #ffffff !important;
+}
+
+/* Garantir que badges fiquem visíveis */
+.badge-success {
+    background: rgba(0, 255, 136, 0.15) !important;
+    color: #00ff88 !important;
+}
+
+.badge-warning {
+    background: rgba(255, 193, 7, 0.15) !important;
+    color: #ffc107 !important;
+}
+
+.badge-info {
+    background: rgba(13, 202, 240, 0.15) !important;
+    color: #0dcaf0 !important;
+}
+
+/* ===== FIM DAS CORREÇÕES ===== */
         
     </style>
 </head>
