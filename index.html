@@ -8460,10 +8460,6 @@ function initializeYouTubePlayer(videoId) {
             showToast('Logout realizado', 'success');
         }
     }
-// ========== NOVO: SISTEMA DE PESQUISA E RECOMENDAÇÃO ==========
-let searchTimeout = null;
-const YOUTUBE_API_KEY = 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
-
 /**
  * Função principal de busca. Chamada ao submeter o formulário.
  */
@@ -8518,29 +8514,16 @@ async function performSearch() {
 /**
  * Busca vídeos no YouTube usando a API v3.
  */
+// Substitua a função atual por esta:
 async function searchYouTube(query) {
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(query + ' música')}&key=${YOUTUBE_API_KEY}`;
-
     try {
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.error) {
-            console.error('Erro na API do YouTube:', data.error);
-            return [];
+        const result = await callAPI('search_youtube', { query: query + ' música' });
+        if (result?.success && result.data) {
+            return result.data;
         }
-
-        return data.items.map(item => ({
-            id: 'yt_' + item.id.videoId,
-            titulo: item.snippet.title,
-            artista: item.snippet.channelTitle,
-            link_capa: item.snippet.thumbnails.high.url,
-            link_youtube: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-            is_external: true,
-            is_youtube: true
-        }));
+        return [];
     } catch (error) {
-        console.error('Falha na busca do YouTube:', error);
+        console.error('Erro na pesquisa do YouTube:', error);
         return [];
     }
 }
