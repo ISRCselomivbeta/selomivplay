@@ -5835,11 +5835,40 @@ async function loadMarketplace(forceRefresh = false) {
     renderMarketplace();
 }
 
-    async function loadExternalMarketplace(forceRefresh = false) {
-        const result = await callAPI('get_external_musicas');
-        if (result?.success && result?.data) state.externalPlaylist = result.data;
-        renderExternalMarketplace();
+async function loadExternalMarketplace(forceRefresh = false) {
+    // ===== TENTAR CARREGAR DO CACHE PRIMEIRO =====
+    if (!forceRefresh) {
+        const cached = localStorage.getItem('miv_external_playlist');
+        const cachedTime = localStorage.getItem('miv_external_timestamp');
+        
+        // Se tiver cache com menos de 1 hora, usar
+        if (cached && cachedTime) {
+            const age = Date.now() - parseInt(cachedTime);
+            if (age < 3600000) { // 1 hora
+                try {
+                    state.externalPlaylist = JSON.parse(cached);
+                    console.log('📦 Bolsa Externa carregada do cache');
+                    renderExternalMarketplace();
+                    return;
+                } catch (e) {
+                    console.error('Erro ao ler cache:', e);
+                }
+            }
+        }
     }
+    
+    // ===== BUSCAR DA API =====
+    const result = await callAPI('get_external_musicas');
+    if (result?.success && result?.data) {
+        state.externalPlaylist = result.data;
+        
+        // ===== SALVAR NO LOCALSTORAGE =====
+        localStorage.setItem('miv_external_playlist', JSON.stringify(result.data));
+        localStorage.setItem('miv_external_timestamp', Date.now().toString());
+        console.log('💾 Bolsa Externa salva no cache');
+    }
+    renderExternalMarketplace();
+}
 
     async function loadPortfolio(silent = false) {
         if (!state.currentUser) return;
@@ -8014,45 +8043,40 @@ function initializeYouTubePlayer(videoId) {
         }
     }
 
-    async function toggleFavoriteMusic(musicId, trackIndex) {
-        if (!state.currentUser || !state.currentUser.id) { 
-            showToast('Faça login para favoritar', 'error'); 
-            return; 
-        }
-        
-        const isFavorite = state.favoriteMusicIds?.includes(musicId.toString());
-        
-        if (isFavorite) {
-            state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
-            showToast('Removido dos favoritos', 'success');
-        } else {
-            state.favoriteMusicIds.push(musicId.toString());
-            showToast('Adicionado aos favoritos', 'success');
-        }
-        
-        renderMarketplace();
-        renderPlaylists();
-        if (trackIndex !== null) updateFavoriteButton(!isFavorite);
-        
-        const result = await callAPI('toggle_favorite', { 
-            user_id: state.currentUser.id,
-            music_id: musicId, 
-            action: isFavorite ? 'remove' : 'add' 
-        });
-        
-        if (!result || !result.success) {
-            if (isFavorite) {
-                state.favoriteMusicIds.push(musicId.toString());
-            } else {
-                state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
-            }
-            renderMarketplace();
-            renderPlaylists();
-            if (trackIndex !== null) updateFavoriteButton(isFavorite);
-            showToast('Erro ao sincronizar com servidor', 'warning');
-        }
+async function toggleFavoriteMusic(musicId, trackIndex) {
+    if (!state.currentUser || !state.currentUser.id) { 
+        showToast('Faça login para favoritar', 'error'); 
+        return; 
     }
-
+    
+    const isFavorite = state.favoriteMusicIds?.includes(musicId.toString());
+    
+    if (isFavorite) {
+        state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
+        showToast('Removido dos favoritos', 'success');
+    } else {
+        state.favoriteMusicIds.push(musicId.toString());
+        showToast('Adicionado aos favoritos', 'success');
+    }
+    // ===== SALVAR NO LOCALSTORAGE =====
+if (state.currentUser) {
+    state.currentUser.favorite_music_ids = state.favoriteMusicIds;
+    localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+    localStorage.setItem('miv_favorites', JSON.stringify(state.favoriteMusicIds));
+    console.log('💾 Favoritos salvos:', state.favoriteMusicIds);
+}
+    
+    
+    renderMarketplace();
+    renderPlaylists();
+    if (trackIndex !== null) updateFavoriteButton(!isFavorite);
+    
+    const result = await callAPI('toggle_favorite', { 
+        user_id: state.currentUser.id,
+        music_id: musicId, 
+        action: isFavorite ? 'remove' : 'add' 
+    });
+} 
     async function createPlaylist() {
         const name = document.getElementById('playlistNameField').value.trim();
         if (!name) { 
@@ -8514,7 +8538,6 @@ async function performSearch() {
         hideLoading();
     }
 }
-
 /**
  * Busca vídeos no YouTube usando a API v3.
  */
@@ -8544,7 +8567,107 @@ async function searchYouTube(query) {
         return [];
     }
 }
+// ===== HISTÓRICO DE PESQUISAS =====
+const SEARCH_HISTORY_KEY = 'miv_search_history';
+const MAX_SEARCH_HISTORY = 10;
 
+function saveSearchToHistory(query) {
+    if (!query || query.trim() === '') return;
+    
+    try {
+        // Carregar histórico existente
+        let history = [];
+        const stored = localStorage.getItem(SEARCH_HISTORY_KEY);
+        if (stored) {
+            history = JSON.parse(stored);
+        }
+        
+        // Remover duplicatas (mesma busca)
+        history = history.filter(item => item.toLowerCase() !== query.toLowerCase());
+        
+        // Adicionar nova busca no início
+        history.unshift(query);
+        
+        // Limitar tamanho
+        if (history.length > MAX_SEARCH_HISTORY) {
+            history = history.slice(0, MAX_SEARCH_HISTORY);
+        }
+        
+        // Salvar
+        localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+        console.log('💾 Busca salva no histórico:', query);
+        
+    } catch (error) {
+        console.error('Erro ao salvar histórico de busca:', error);
+    }
+}
+
+function getSearchHistory() {
+    try {
+        const stored = localStorage.getItem(SEARCH_HISTORY_KEY);
+        return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+        console.error('Erro ao carregar histórico de busca:', error);
+        return [];
+    }
+}
+
+function clearSearchHistory() {
+    localStorage.removeItem(SEARCH_HISTORY_KEY);
+    showToast('Histórico de buscas limpo!', 'success');
+}
+
+
+
+// ===== FUNÇÃO PARA MOSTRAR HISTÓRICO (opcional) =====
+function showSearchHistory() {
+    const history = getSearchHistory();
+    const resultsContainer = document.getElementById('searchResults');
+    
+    if (history.length === 0) {
+        resultsContainer.innerHTML = `
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-clock-history fs-1 d-block mb-3"></i>
+                <p>Nenhuma busca recente</p>
+            </div>
+        `;
+        resultsContainer.style.display = 'block';
+        return;
+    }
+    
+    let html = '<div class="p-2"><small class="text-muted d-block p-2">Buscas recentes:</small>';
+    history.forEach((item, index) => {
+        html += `
+        <div class="search-result-item" onclick="document.getElementById('searchInput').value='${item.replace(/'/g, "\\'")}'; performSearch();">
+            <i class="bi bi-clock-history me-2" style="color: #9ca3af;"></i>
+            <div class="search-result-info">
+                <div class="search-result-title">${item}</div>
+            </div>
+            <div>
+                <span class="search-result-badge normal">Histórico</span>
+            </div>
+        </div>
+        `;
+    });
+    
+    html += `
+        <div class="p-2 text-center">
+            <button class="btn btn-sm btn-outline-danger" onclick="clearSearchHistory(); document.getElementById('searchResults').style.display='none';">
+                <i class="bi bi-trash me-1"></i> Limpar histórico
+            </button>
+        </div>
+    `;
+    
+    resultsContainer.innerHTML = html;
+    resultsContainer.style.display = 'block';
+}
+
+// Adicionar evento para mostrar histórico quando o input estiver vazio e em foco
+    document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 SELO MIV v' + CONFIG.VERSION);
+    
+    
+    const stored = localStorage.getItem('miv_user');
 /**
  * Exibe os resultados combinados na interface.
  */
