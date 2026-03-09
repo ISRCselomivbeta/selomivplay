@@ -642,7 +642,46 @@ if (action === 'get_mining_blocks') {
         }
       });
     }
-    
+        // ===== SEARCH YOUTUBE =====
+    if (action === 'search_youtube') {
+      console.log('🔍 Buscando no YouTube:', params.query);
+      
+      try {
+        // Buscar a chave do YouTube das variáveis de ambiente
+        const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+        
+        if (!YOUTUBE_API_KEY) {
+          console.error('❌ YOUTUBE_API_KEY não configurada');
+          return res.status(200).json({ success: true, data: [] });
+        }
+        
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(params.query)}&key=${YOUTUBE_API_KEY}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.error) {
+          console.error('Erro na API do YouTube:', data.error);
+          return res.status(200).json({ success: false, data: [] });
+        }
+        
+        const results = data.items.map(item => ({
+          id: 'yt_' + item.id.videoId,
+          titulo: item.snippet.title,
+          artista: item.snippet.channelTitle,
+          link_capa: item.snippet.thumbnails.high.url,
+          link_youtube: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+          is_external: true,
+          is_youtube: true
+        }));
+        
+        return res.status(200).json({ success: true, data: results });
+        
+      } catch (error) {
+        console.error('Erro na busca do YouTube:', error);
+        return res.status(200).json({ success: true, data: [] });
+      }
+    }
     // ===== ENCAMINHAR QUALQUER OUTRA AÇÃO PARA O GAS =====
     const url = new URL(GAS_URL);
     url.searchParams.append('action', action);
