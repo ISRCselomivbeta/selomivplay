@@ -8766,18 +8766,31 @@ async function performSearch() {
 }
 /**
  * Busca vídeos no YouTube usando a API v3.
+ *//**
+ * Busca no YouTube através do seu backend (seguro)
  */
 async function searchYouTube(query) {
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(query + ' música')}&key=${YOUTUBE_API_KEY}`;
-
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.error) {
-            console.error('Erro na API do YouTube:', data.error);
-            return [];
-        }
+  try {
+    // Chama SEU backend, que por sua vez chama o YouTube com a chave segura
+    const result = await callAPI('search_youtube', { query });
+    
+    if (result?.success && result.data) {
+      return result.data.map(item => ({
+        id: 'yt_' + item.videoId,
+        titulo: item.title,
+        artista: item.channelTitle,
+        link_capa: item.thumbnail,
+        link_youtube: `https://www.youtube.com/watch?v=${item.videoId}`,
+        is_external: true,
+        is_youtube: true
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error('Erro na busca do YouTube:', error);
+    return [];
+  }
+}
 
         return data.items.map(item => ({
             id: 'yt_' + item.id.videoId,
