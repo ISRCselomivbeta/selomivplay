@@ -8662,13 +8662,15 @@ function showSearchHistory() {
     resultsContainer.style.display = 'block';
 }
 
-// Adicionar evento para mostrar histórico quando o input estiver vazio e em foco
-    document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 SELO MIV v' + CONFIG.VERSION);
-    
-    
-    const stored = localStorage.getItem('miv_user');
-
+// Adicionar evento para mostrar histórico quando o input estiver vazio e em foco//
+const searchInput = document.getElementById('searchInput');
+if (searchInput) {
+    searchInput.addEventListener('focus', () => {
+        if (searchInput.value.trim() === '') {
+            showSearchHistory();
+        }
+    });
+}
 /**
  * Exibe os resultados combinados na interface.
  */
