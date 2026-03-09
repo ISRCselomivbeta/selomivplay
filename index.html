@@ -8670,6 +8670,9 @@ function showSearchHistory() {
     const stored = localStorage.getItem('miv_user');
 /**
  * Exibe os resultados combinados na interface.
+ */// ===== FUNÇÕES DE EXIBIÇÃO DE RESULTADOS =====
+/**
+ * Exibe os resultados combinados na interface.
  */
 function displaySearchResults(internal, external, youtube, query) {
     const container = document.getElementById('searchResults');
@@ -8757,7 +8760,7 @@ async function addYouTubeToExternalAndPlay(youtubeItem) {
         artista: youtubeItem.artista,
         link_capa: youtubeItem.link_capa,
         link_youtube: youtubeItem.link_youtube,
-        valor_acao: 5.00, // Preço simbólico
+        valor_acao: 5.00,
         percentual_disponivel: 10,
         acoes_vendidas: 0,
         total_investidores: 0,
@@ -8768,24 +8771,13 @@ async function addYouTubeToExternalAndPlay(youtubeItem) {
         data_sugestao: new Date().toISOString()
     };
 
-    // Adiciona ao início da playlist externa
     state.externalPlaylist.unshift(newExternalItem);
-    
-    // Re-renderiza a Bolsa Externa
     renderExternalMarketplace();
-    
-    // Toca a música (o índice dela será 0, pois adicionamos no início)
     playExternalTrack(0);
-    
     showToast(`🎵 "${youtubeItem.titulo}" adicionado à Bolsa Externa`, 'success');
-    
-    // --- LÓGICA DE RECOMENDAÇÃO (Músicas Semelhantes) ---
     await loadSimilarMusicAndAddToQueue(youtubeItem);
 }
 
-/**
- * Carrega músicas semelhantes (simulado) e adiciona à fila e à Bolsa Externa.
- */
 /**
  * Carrega músicas semelhantes REAIS e adiciona à fila e à Bolsa Externa.
  */
@@ -8794,17 +8786,13 @@ async function loadSimilarMusicAndAddToQueue(originalItem) {
     
     let similarTracks = [];
     
-    // Tenta buscar do YouTube primeiro
     if (YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
-        // Extrai o artista e título para busca mais precisa
         const searchTerms = [];
         
-        // Se for um item do YouTube, já temos artista e título
         if (originalItem.artista && originalItem.artista !== 'Artista') {
             searchTerms.push(originalItem.artista);
         }
         
-        // Adiciona o título principal (removendo palavras comuns)
         if (originalItem.titulo) {
             let cleanTitle = originalItem.titulo
                 .replace(/\(official.*?\)/gi, '')
@@ -8823,14 +8811,12 @@ async function loadSimilarMusicAndAddToQueue(originalItem) {
             }
         }
         
-        // Se não conseguiu termos específicos, usa o título completo
         const searchQuery = searchTerms.length > 0 
             ? searchTerms.join(' ') + ' música' 
             : originalItem.titulo + ' música';
         
         console.log('🔍 Buscando similares para:', searchQuery);
         
-        // Busca músicas relacionadas no YouTube
         const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=6&q=${encodeURIComponent(searchQuery)}&key=${YOUTUBE_API_KEY}`;
         
         try {
@@ -8838,19 +8824,18 @@ async function loadSimilarMusicAndAddToQueue(originalItem) {
             const data = await response.json();
             
             if (!data.error && data.items) {
-                // Filtra para não incluir a mesma música
                 const originalVideoId = extractYouTubeId(originalItem.link_youtube);
                 
                 similarTracks = data.items
-                    .filter(item => item.id.videoId !== originalVideoId) // Remove a música original
+                    .filter(item => item.id.videoId !== originalVideoId)
                     .map(item => ({
                         id: 'yt_sim_' + Date.now() + Math.random().toString(36).substr(2, 5),
                         titulo: item.snippet.title,
                         artista: item.snippet.channelTitle,
                         link_capa: item.snippet.thumbnails.high.url,
                         link_youtube: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-                        valor_acao: (Math.random() * 15 + 5).toFixed(2), // Preço entre R$5 e R$20
-                        percentual_disponivel: Math.floor(Math.random() * 20) + 10, // 10% a 30%
+                        valor_acao: (Math.random() * 15 + 5).toFixed(2),
+                        percentual_disponivel: Math.floor(Math.random() * 20) + 10,
                         acoes_vendidas: Math.floor(Math.random() * 50),
                         total_investidores: Math.floor(Math.random() * 15),
                         vendas_atuais: Math.floor(Math.random() * 100000),
@@ -8867,55 +8852,24 @@ async function loadSimilarMusicAndAddToQueue(originalItem) {
         }
     }
     
-    // Se não conseguiu recomendações da API ou queremos complementar, usa fallback inteligente
     if (similarTracks.length < 3) {
         console.log('📀 Usando fallback inteligente para recomendações');
         
-        // Artistas famosos brasileiros e internacionais (variados)
         const artistasReais = [
-            // Brasileiros
             { nome: 'Anitta', genero: 'POP', musica: 'Envolver' },
             { nome: 'Jorge & Mateus', genero: 'SERTANEJO', musica: 'Propaganda' },
             { nome: 'Ivete Sangalo', genero: 'MPB', musica: 'Macetando' },
             { nome: 'Luan Santana', genero: 'SERTANEJO', musica: 'Morena' },
-            { nome: 'Marília Mendonça', genero: 'SERTANEJO', musica: 'Leão' },
-            { nome: 'Alok', genero: 'ELETRONICA', musica: 'Hear Me Now' },
-            { nome: 'Djonga', genero: 'RAP', musica: 'Olho de Tigre' },
-            { nome: 'Emicida', genero: 'RAP', musica: 'AmarElo' },
-            { nome: 'Liniker', genero: 'MPB', musica: 'Caju' },
-            { nome: 'Duda Beat', genero: 'POP', musica: 'Chega' },
-            { nome: 'Luísa Sonza', genero: 'POP', musica: 'MODO TURBO' },
-            // Internacionais
             { nome: 'The Weeknd', genero: 'POP', musica: 'Blinding Lights' },
             { nome: 'Taylor Swift', genero: 'POP', musica: 'Shake It Off' },
             { nome: 'Ed Sheeran', genero: 'POP', musica: 'Shape of You' },
-            { nome: 'Coldplay', genero: 'ROCK', musica: 'Viva la Vida' },
-            { nome: 'Imagine Dragons', genero: 'ROCK', musica: 'Believer' },
-            { nome: 'Dua Lipa', genero: 'POP', musica: 'Levitating' },
-            { nome: 'Drake', genero: 'RAP', musica: "God's Plan" },
-            { nome: 'Beyoncé', genero: 'POP', musica: 'Halo' },
-            { nome: 'Adele', genero: 'POP', musica: 'Hello' },
-            { nome: 'Bruno Mars', genero: 'POP', musica: 'Locked Out of Heaven' },
-            { nome: 'Rihanna', genero: 'POP', musica: 'Diamonds' },
-            { nome: 'Post Malone', genero: 'RAP', musica: 'Circles' }
+            { nome: 'Coldplay', genero: 'ROCK', musica: 'Viva la Vida' }
         ];
         
-        // Embaralha o array para pegar recomendações diferentes
         const shuffled = [...artistasReais].sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, 4);
         
-        // Pega até 4 artistas aleatórios, evitando o artista original
-        const selected = [];
-        for (let i = 0; i < shuffled.length && selected.length < 4; i++) {
-            const artista = shuffled[i];
-            // Evita recomendar o mesmo artista
-            if (!originalItem.artista || !artista.nome.includes(originalItem.artista)) {
-                selected.push(artista);
-            }
-        }
-        
-        // Cria as recomendações
         selected.forEach((artista, index) => {
-            // Gera um ID do YouTube simulado (você pode buscar IDs reais depois)
             const videoId = getYoutubeIdForMusic(artista.musica, artista.nome);
             
             similarTracks.push({
@@ -8939,23 +8893,18 @@ async function loadSimilarMusicAndAddToQueue(originalItem) {
         });
     }
     
-    // Limita a 4 recomendações no máximo
     similarTracks = similarTracks.slice(0, 4);
     
-    // Adiciona as recomendações à Bolsa Externa
     similarTracks.forEach(track => {
         state.externalPlaylist.push(track);
     });
     
-    // Adiciona as recomendações à FILA
     similarTracks.forEach(track => {
         playQueue.add(track);
     });
     
-    // Re-renderiza a Bolsa Externa
     renderExternalMarketplace();
     
-    // Mostra toast com as recomendações
     const artistasStr = similarTracks.map(t => t.artista).join(', ');
     showToast(`🎧 Recomendações baseadas em "${originalItem.titulo}": ${artistasStr}`, 'success', 5000);
     
@@ -8966,7 +8915,6 @@ async function loadSimilarMusicAndAddToQueue(originalItem) {
  * Função auxiliar para obter ID do YouTube para músicas famosas
  */
 function getYoutubeIdForMusic(titulo, artista) {
-    // Mapeamento de músicas famosas para IDs do YouTube
     const musicMap = {
         'Anitta Envolver': 'dGHP0Nj9S0A',
         'Jorge & Mateus Propaganda': 'YhVq7eB7j5M',
@@ -8976,26 +8924,16 @@ function getYoutubeIdForMusic(titulo, artista) {
         'Alok Hear Me Now': 'u_PjGd1nV0M',
         'Djonga Olho de Tigre': 'qUZVo7g1nwY',
         'Emicida AmarElo': 'uE1_2Yc6RlM',
-        'Liniker Caju': 'vX7Vn0c2RlY',
-        'Duda Beat Chega': 'pK8Y1xVJ5bM',
-        'Luísa Sonza MODO TURBO': 'r_8Nq0gXw9M',
         'The Weeknd Blinding Lights': '4NRXx6U8ABQ',
         'Taylor Swift Shake It Off': 'nfWlot6h_JM',
         'Ed Sheeran Shape of You': 'JGwWNGJdvx8',
         'Coldplay Viva la Vida': 'dvgZkm1xWPE',
         'Imagine Dragons Believer': '7wtfhZwyrcc',
-        'Dua Lipa Levitating': 'TUVcZfQe-Kw',
-        'Drake God\'s Plan': 'xpVfcZ0Hc-E',
-        'Beyoncé Halo': 'bnVUHWCynig',
-        'Adele Hello': 'YQHsXMglC9A',
-        'Bruno Mars Locked Out of Heaven': 'e-fA-gBCkj0',
-        'Rihanna Diamonds': 'lWA2pjMjpBs',
-        'Post Malone Circles': 'wXhTHyIgQ_U'
+        'Dua Lipa Levitating': 'TUVcZfQe-Kw'
     };
     
     const key = `${artista} ${titulo}`;
-    // Se não encontrar, retorna um ID genérico de música popular
-    return musicMap[key] || 'dQw4w9WgXcQ'; // Rick Astley - Never Gonna Give You Up (nunca vai dar ruim kkk)
+    return musicMap[key] || 'dQw4w9WgXcQ';
 }
 // Expõe as funções globalmente
 window.performSearch = performSearch;
