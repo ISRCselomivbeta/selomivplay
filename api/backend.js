@@ -1,6 +1,5 @@
 // ========== BACKEND.JS - VERCEL SERVERLESS FUNCTION ==========
 // Versão 6.2.0 - Atualizado em 06/03/2026
-// ADICIONADO: confirm_email, check_old_account, resend_confirmation
 
 export default async function handler(req, res) {
   // Configurar CORS
