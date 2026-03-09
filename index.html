@@ -8668,9 +8668,7 @@ function showSearchHistory() {
     
     
     const stored = localStorage.getItem('miv_user');
-/**
- * Exibe os resultados combinados na interface.
- */// ===== FUNÇÕES DE EXIBIÇÃO DE RESULTADOS =====
+
 /**
  * Exibe os resultados combinados na interface.
  */
@@ -8710,7 +8708,6 @@ function displaySearchResults(internal, external, youtube, query) {
     container.innerHTML = html;
     container.style.display = 'block';
 
-    // Fecha os resultados ao clicar fora
     setTimeout(() => {
         document.addEventListener('click', function closeSearch(e) {
             if (!container.contains(e.target) && !document.getElementById('searchForm').contains(e.target)) {
@@ -8725,16 +8722,13 @@ function displaySearchResults(internal, external, youtube, query) {
  * Toca o resultado selecionado e gera recomendações.
  */
 async function playSearchResult(index, item) {
-    // Fecha os resultados
     document.getElementById('searchResults').style.display = 'none';
     document.getElementById('searchInput').value = '';
 
-    // Se for um item do YouTube, precisamos "importá-lo" para a Bolsa Externa
     if (item.is_youtube) {
         showToast(`Adicionando "${item.titulo}" à sua sessão...`, 'info');
         await addYouTubeToExternalAndPlay(item);
     } else {
-        // Se já existe na playlist, toca diretamente
         const trackIndex = state.playlist.findIndex(t => t.id === item.id);
         if (trackIndex !== -1) {
             playTrack(trackIndex);
@@ -8748,7 +8742,6 @@ async function playSearchResult(index, item) {
         }
     }
 }
-
 /**
  * Adiciona um vídeo do YouTube como item temporário na Bolsa Externa e toca.
  */
@@ -9645,7 +9638,7 @@ async function resendConfirmationEmailFromModal(email) {
     window.handleProgressClick = handleProgressClick;
     window.handleExpandedProgressClick = handleExpandedProgressClick;
        window.gerarBlocosSimuladosParaVisualizacao = gerarBlocosSimuladosParaVisualizacao;
-} // Fim do escopo global
+// Fim do escopo global
 </script>
 <!-- FOOTER COM LOGO -->
 <div class="connection-footer" style="justify-content: space-between; margin-top: 40px;">
