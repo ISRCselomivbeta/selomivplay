@@ -8460,105 +8460,7 @@ function initializeYouTubePlayer(videoId) {
             showToast('Logout realizado', 'success');
         }
     }
-/**
- * Função principal de busca. Chamada ao submeter o formulário.
- */
- /**
- * Função principal de busca. Chamada ao submeter o formulário.
- */
-async function performSearch() {
-    const query = document.getElementById('searchInput').value.trim();
-    if (!query) {
-        showToast('Digite o nome de uma música ou artista', 'warning');
-        return;
-    }
 
-    showLoading(`Buscando por "${query}"...`);
-    const resultsContainer = document.getElementById('searchResults');
-    resultsContainer.style.display = 'none';
-    resultsContainer.innerHTML = '<div class="p-4 text-center text-muted"><div class="spinner-border text-success mb-2"></div><p>Buscando...</p></div>';
-    resultsContainer.style.display = 'block';
-
-    try {
-        // 1. Busca na playlist interna do SELO MIV
-        const internalResults = state.playlist.filter(item =>
-            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
-            item.artista?.toLowerCase().includes(query.toLowerCase())
-        );
-
-        // 2. Busca na Bolsa Externa
-        const externalResults = state.externalPlaylist.filter(item =>
-            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
-            item.artista?.toLowerCase().includes(query.toLowerCase())
-        );
-
-        
-// 3. Busca no YouTube (sempre tenta, o backend cuida da chave)
-let youtubeResults = [];
-try {
-    youtubeResults = await searchYouTube(query);
-} catch (error) {
-    console.error('Erro na busca do YouTube:', error);
-    youtubeResults = [];
-}
-
-    showLoading(`Buscando por "${query}"...`);
-    const resultsContainer = document.getElementById('searchResults');
-    resultsContainer.style.display = 'none';
-    resultsContainer.innerHTML = '<div class="p-4 text-center text-muted"><div class="spinner-border text-success mb-2"></div><p>Buscando...</p></div>';
-    resultsContainer.style.display = 'block';
-
-    try {
-        // 1. Busca na playlist interna do SELO MIV
-        const internalResults = state.playlist.filter(item =>
-            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
-            item.artista?.toLowerCase().includes(query.toLowerCase())
-        );
-
-        // 2. Busca na Bolsa Externa
-        const externalResults = state.externalPlaylist.filter(item =>
-            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
-            item.artista?.toLowerCase().includes(query.toLowerCase())
-        );
-
-        // 3. Busca no YouTube (se a API Key estiver configurada)
-        let youtubeResults = [];
-        if (YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
-            youtubeResults = await searchYouTube(query);
-        } else {
-            console.warn('YouTube Search desativada: Chave de API não configurada.');
-        }
-
-        // Combina e exibe os resultados
-        displaySearchResults(internalResults, externalResults, youtubeResults, query);
-
-    } catch (error) {
-        console.error('Erro na pesquisa:', error);
-        resultsContainer.innerHTML = `<div class="p-4 text-center text-danger">
-            <i class="bi bi-exclamation-triangle fs-1 d-block mb-3"></i>
-            <p>Erro ao realizar a busca. Tente novamente.</p>
-        </div>`;
-    } finally {
-        hideLoading();
-    }
-}
-
-/**
- * Busca vídeos no YouTube usando a API v3.
- */
-// Substitua a função atual por esta:
-async function searchYouTube(query) {
-    try {
-        const result = await callAPI('search_youtube', { query: query + ' música' });
-        if (result?.success && result.data) {
-            return result.data;
-        }
-        return [];
-    } catch (error) {
-        console.error('Erro na pesquisa do YouTube:', error);
-        return [];
-    }
-}
 
 /**
  * Exibe os resultados combinados na interface.
@@ -8687,8 +8589,14 @@ async function loadSimilarMusicAndAddToQueue(originalItem) {
     let similarTracks = [];
     
     // Tenta buscar do YouTube primeiro
-    if (YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
-        // Extrai o artista e título para busca mais precisa
+// Tenta buscar do YouTube primeiro (via backend)
+try {
+    // Busca músicas relacionadas usando a API do YouTube via backend
+    const searchResults = await searchYouTube(originalItem.artista + ' ' + originalItem.titulo);
+    // processar resultados...
+} catch (error) {
+    console.error('Erro ao buscar recomendações:', error);
+}        // Extrai o artista e título para busca mais precisa
         const searchTerms = [];
         
         // Se for um item do YouTube, já temos artista e título
@@ -8889,6 +8797,22 @@ function getYoutubeIdForMusic(titulo, artista) {
     // Se não encontrar, retorna um ID genérico de música popular
     return musicMap[key] || 'dQw4w9WgXcQ'; // Rick Astley - Never Gonna Give You Up (nunca vai dar ruim kkk)
 }
+/**
+ * Busca vídeos no YouTube via backend.
+ */
+async function searchYouTube(query) {
+    try {
+        const result = await callAPI('search_youtube', { query: query + ' música' });
+        if (result?.success && result.data) {
+            return result.data;
+        }
+        return [];
+    } catch (error) {
+        console.error('Erro na pesquisa do YouTube:', error);
+        return [];
+    }
+}
+    
 // Expõe as funções globalmente
 window.performSearch = performSearch;
 window.playSearchResult = playSearchResult;
