@@ -5437,15 +5437,14 @@ const playQueue = {
         }
     };
 
-    // ========== FUNÇÃO DE API ==========
 async function callAPI(action, data = {}) {
   if (state?.currentUser?.id && !data.user_id) {
     data.user_id = state.currentUser.id;
   }
 
   try {
-    // URL FIXA da sua Vercel (substitua pelo seu domínio)
-    const baseUrl = 'https://selomivplay.vercel.app'; // 👈 MUDAR AQUI
+    // URL CORRETA - usa a origem da página automaticamente
+    const baseUrl = window.location.origin;
     const url = new URL(`${baseUrl}/api/backend`);
     
     url.searchParams.append('action', action);
@@ -9157,6 +9156,68 @@ function getYoutubeIdForMusic(titulo, artista) {
     const key = `${artista} ${titulo}`;
     return musicMap[key] || 'dQw4w9WgXcQ';
 }
+
+    // ========== SISTEMA DE PESQUISA ==========
+window.YOUTUBE_API_KEY = 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
+
+window.performSearch = async function() {
+  const query = document.getElementById('searchInput')?.value.trim();
+  if (!query) {
+    showToast('Digite o nome de uma música ou artista', 'warning');
+    return;
+  }
+
+  showLoading(`Buscando por "${query}"...`);
+  const resultsContainer = document.getElementById('searchResults');
+  
+  if (!resultsContainer) {
+    console.error('❌ Elemento searchResults não encontrado!');
+    hideLoading();
+    return;
+  }
+
+  resultsContainer.innerHTML = '<div class="p-4 text-center"><div class="spinner-border text-success"></div><p>Buscando...</p></div>';
+  resultsContainer.style.display = 'block';
+
+  try {
+    // Buscar resultados do backend
+    const response = await fetch(`/api/backend?action=search_youtube&query=${encodeURIComponent(query)}`);
+    const result = await response.json();
+    
+    if (result.success && result.data?.length > 0) {
+      let html = '<div class="p-2">';
+      result.data.forEach(item => {
+        html += `
+          <div class="search-result-item" onclick="window.location.href='${item.link_youtube}'" target="_blank">
+            <img src="${item.link_capa}" class="search-result-cover" style="width: 45px; height: 45px; object-fit: cover;">
+            <div>
+              <div class="fw-bold">${item.titulo}</div>
+              <small class="text-muted">${item.artista}</small>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      resultsContainer.innerHTML = html;
+    } else {
+      resultsContainer.innerHTML = '<div class="p-4 text-center text-muted">Nenhum resultado encontrado</div>';
+    }
+  } catch (error) {
+    console.error('Erro na pesquisa:', error);
+    resultsContainer.innerHTML = '<div class="p-4 text-center text-danger">Erro ao buscar resultados</div>';
+  } finally {
+    hideLoading();
+  }
+};
+
+// Fechar resultados ao clicar fora
+document.addEventListener('click', function(e) {
+  const results = document.getElementById('searchResults');
+  const searchForm = document.getElementById('searchForm');
+  if (results && !results.contains(e.target) && !searchForm?.contains(e.target)) {
+    results.style.display = 'none';
+  }
+});
 // Expõe as funções globalmente
 window.performSearch = performSearch;
 window.playSearchResult = playSearchResult;
