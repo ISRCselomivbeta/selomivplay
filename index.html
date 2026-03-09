@@ -8463,12 +8463,44 @@ function initializeYouTubePlayer(videoId) {
 /**
  * Função principal de busca. Chamada ao submeter o formulário.
  */
+ /**
+ * Função principal de busca. Chamada ao submeter o formulário.
+ */
 async function performSearch() {
     const query = document.getElementById('searchInput').value.trim();
     if (!query) {
         showToast('Digite o nome de uma música ou artista', 'warning');
         return;
     }
+
+    showLoading(`Buscando por "${query}"...`);
+    const resultsContainer = document.getElementById('searchResults');
+    resultsContainer.style.display = 'none';
+    resultsContainer.innerHTML = '<div class="p-4 text-center text-muted"><div class="spinner-border text-success mb-2"></div><p>Buscando...</p></div>';
+    resultsContainer.style.display = 'block';
+
+    try {
+        // 1. Busca na playlist interna do SELO MIV
+        const internalResults = state.playlist.filter(item =>
+            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
+            item.artista?.toLowerCase().includes(query.toLowerCase())
+        );
+
+        // 2. Busca na Bolsa Externa
+        const externalResults = state.externalPlaylist.filter(item =>
+            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
+            item.artista?.toLowerCase().includes(query.toLowerCase())
+        );
+
+        
+// 3. Busca no YouTube (sempre tenta, o backend cuida da chave)
+let youtubeResults = [];
+try {
+    youtubeResults = await searchYouTube(query);
+} catch (error) {
+    console.error('Erro na busca do YouTube:', error);
+    youtubeResults = [];
+}
 
     showLoading(`Buscando por "${query}"...`);
     const resultsContainer = document.getElementById('searchResults');
