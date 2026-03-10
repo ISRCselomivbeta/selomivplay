@@ -256,7 +256,7 @@ Este projeto está sob a licença **SELO MIV**. Consulte o arquivo [TERMOS DE US
 ## 👥 Equipe e Contato
 
 - **Desenvolvimento:** [Seu Nome]
-- **Email:** contato@selomiv.com
+- **Email:** selomiv@gmail.com
 - **Site:** [https://selomivplay.vercel.app](https://selomivplay.vercel.app)
 
 ---
