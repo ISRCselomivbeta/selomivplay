@@ -1,7 +1,11 @@
 // ========== BACKEND.JS - VERCEL SERVERLESS FUNCTION ==========
-// Versão 6.2.1 - CORREÇÃO DO STREAMING STATS - Atualizado em 09/03/2026
+// Versão 6.3.0 - COM AUTO-FIX IA INTEGRADO - Atualizado em 10/03/2026
 
-export default async function handler(req, res) {
+// 🆕 [LINHA 5] IMPORT DO AUTO-FIX (NÃO QUEBRA NADA)
+import { enhanceWithAutoFix, autoFix } from '../lib/auto-fix-ia.js';
+
+// 🆕 [LINHA 8] RENOMEAR A FUNÇÃO (ÚNICA MUDANÇA ESTRUTURAL)
+async function originalHandler(req, res) {  // ← ANTES ERA "handler"
   // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -26,12 +30,12 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true,
         status: 'healthy',
-        version: '6.2.1',
+        version: '6.3.0', // ← Atualizei a versão
         timestamp: new Date().toISOString()
       });
     }
     
-    // ===== LOGIN (COM SUPORTE A ADMIN E CONTAS ANTIGAS) =====
+    // ===== LOGIN =====
     if (action === 'login') {
       console.log('🔐 Processando login para:', params.email);
       
@@ -87,7 +91,7 @@ export default async function handler(req, res) {
       });
     }
     
-    // ===== REGISTER (COM MODO DEV) =====
+    // ===== REGISTER =====
     if (action === 'register') {
       console.log('📝 Processando registro para:', params.email);
       
@@ -157,7 +161,7 @@ export default async function handler(req, res) {
         console.error('Erro ao confirmar email:', error);
         
         // Fallback para desenvolvimento
-        if (params.token && params.token.startsWith('dev_token_') || params.token.startsWith('fallback_token_')) {
+        if (params.token && (params.token.startsWith('dev_token_') || params.token.startsWith('fallback_token_'))) {
           return res.status(200).json({
             success: true,
             message: 'Email confirmado com sucesso! (modo desenvolvimento)',
@@ -455,7 +459,7 @@ export default async function handler(req, res) {
       });
     }
     
-    // ===== GET MINING BLOCKS (VERSÃO CORRIGIDA) =====
+    // ===== GET MINING BLOCKS =====
     if (action === 'get_mining_blocks') {
       console.log('⛏️ Buscando blocos de mineração...');
       
@@ -473,7 +477,7 @@ export default async function handler(req, res) {
         if (gasResponse.ok) {
           const gasData = await gasResponse.json();
           if (gasData.success && gasData.data?.length > 0) {
-            return res.status(200).json(gasData); // ✅ DADOS REAIS DO GAS
+            return res.status(200).json(gasData);
           }
         }
       } catch (gasError) {
@@ -481,11 +485,9 @@ export default async function handler(req, res) {
       }
       
       // ===== FALLBACK INTELIGENTE =====
-      // Busca músicas reais do banco para usar nos blocos
       let musicasReais = [];
       
       try {
-        // Tenta buscar músicas reais primeiro
         const musicasUrl = new URL(GAS_URL);
         musicasUrl.searchParams.append('action', 'get_musicas');
         
@@ -500,7 +502,6 @@ export default async function handler(req, res) {
         console.log('Não foi possível buscar músicas reais para fallback');
       }
       
-      // Se não conseguiu músicas reais, usa um fallback com dados do site
       if (musicasReais.length === 0) {
         musicasReais = [
           { titulo: 'RIO DE JANEIRO', artista: 'Elzo Henschell' },
@@ -511,7 +512,6 @@ export default async function handler(req, res) {
         ];
       }
       
-      // Gerar blocos simulados com os NOMES REAIS
       const simulatedBlocks = Array.from({ length: Math.min(5, musicasReais.length) }, (_, i) => {
         const musica = musicasReais[i % musicasReais.length];
         const titulo = musica.titulo || musica.music_title || 'Música';
@@ -524,7 +524,7 @@ export default async function handler(req, res) {
           timestamp: new Date(Date.now() - i * 3600000).toISOString(),
           miner_user_id: params.user_id || 'user_' + i,
           user_name: 'Minerador ' + (i + 1),
-          music_title: `${titulo} - ${artista}`, // ← NOME CORRETO!
+          music_title: `${titulo} - ${artista}`,
           music_id: musica.id || 'music_' + i,
           reward_amount: Math.floor(Math.random() * 100) + 10
         };
@@ -533,219 +533,217 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true,
         data: simulatedBlocks,
-        source: 'fallback_com_dados_reais' // ← AVISA QUE É FALLBACK MAS COM NOMES REAIS
+        source: 'fallback_com_dados_reais'
       });
     }
     
-// ===== REGISTER STREAMING =====
-if (action === 'register_streaming') {
-  console.log('🎵 Registrando streaming...');
-  
-  try {
-    const gasUrl = new URL(GAS_URL);
-    gasUrl.searchParams.append('action', 'register_streaming');
-    Object.keys(params).forEach(key => gasUrl.searchParams.append(key, params[key]));
-    
-    const gasResponse = await fetch(gasUrl.toString(), {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    if (gasResponse.ok) {
-      const gasData = await gasResponse.json();
-      return res.status(200).json(gasData);
-    }
-  } catch (gasError) {
-    console.log('⚠️ GAS não respondeu register_streaming');
-  }
-  
-  // Simular sucesso
-  return res.status(200).json({
-    success: true,
-    message: 'Streaming registrado com sucesso!',
-    data: {
-      reward: 1,
-      block: {
-        block_index: Date.now(),
-        block_hash: '0x' + Date.now().toString(16) + Math.random().toString(36).substring(2, 8),
-        previous_hash: '0x' + (Date.now() - 1000).toString(16),
-        timestamp: new Date().toISOString(),
-        miner_user_id: params.user_id || 'usuario',
-        music_title: params.music_title || 'Música',
-        reward_amount: 1
-      }
-    }
-  });
-}
-
-// ===== 🆕 CRIAR PAGAMENTO MERCADO PAGO =====
-if (action === 'create_mercadopago_payment') {
-  console.log('💰 Criando pagamento Mercado Pago:', params);
-  
-  try {
-    const MERCADO_PAGO_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN;
-    
-    if (!MERCADO_PAGO_ACCESS_TOKEN) {
-      console.error('❌ MERCADO_PAGO_ACCESS_TOKEN não configurado');
-      return res.status(200).json({ 
-        success: false, 
-        message: 'Mercado Pago não configurado' 
-      });
-    }
-    
-    const { amount, user_id, email, description } = params;
-    
-    if (!amount || amount < 10) {
-      return res.status(200).json({
-        success: false,
-        message: 'Valor mínimo: R$ 10,00'
-      });
-    }
-    
-    const preference = {
-      items: [{
-        title: description || 'Depósito SELO MIV',
-        quantity: 1,
-        currency_id: 'BRL',
-        unit_price: parseFloat(amount)
-      }],
-      payer: { email: email || 'cliente@email.com' },
-      external_reference: user_id,
-      back_urls: {
-        success: 'https://selomivplay.vercel.app/deposito/sucesso',
-        failure: 'https://selomivplay.vercel.app/deposito/falha',
-        pending: 'https://selomivplay.vercel.app/deposito/pendente'
-      },
-      auto_return: 'approved',
-      notification_url: 'https://selomivplay.vercel.app/api/webhook-mercadopago'
-    };
-    
-    const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(preference)
-    });
-    
-    const data = await response.json();
-    
-    if (data.error) {
-      return res.status(200).json({
-        success: false,
-        message: data.error.message || 'Erro ao criar pagamento'
-      });
-    }
-    
-    return res.status(200).json({
-      success: true,
-      data: {
-        preference_id: data.id,
-        init_point: data.init_point,
-        sandbox_init_point: data.sandbox_init_point
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Erro ao criar pagamento:', error);
-    return res.status(200).json({
-      success: false,
-      message: 'Erro ao processar pagamento',
-      error: error.message
-    });
-  }
-}
-
-// ===== 🆕 WEBHOOK MERCADO PAGO =====
-if (action === 'webhook_mercadopago') {
-  console.log('🔔 Webhook Mercado Pago recebido:', req.body);
-  
-  try {
-    const MERCADO_PAGO_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN;
-    const paymentData = req.body;
-    
-    if (paymentData.type === 'payment' || paymentData.action === 'payment.created') {
-      const paymentId = paymentData.data?.id;
+    // ===== REGISTER STREAMING =====
+    if (action === 'register_streaming') {
+      console.log('🎵 Registrando streaming...');
       
-      const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-        headers: { 'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}` }
-      });
-      
-      const payment = await paymentResponse.json();
-      
-      if (payment.status === 'approved') {
-        const user_id = payment.external_reference;
-        const amount = payment.transaction_amount;
-        const payment_id = payment.id;
-        
-        console.log(`✅ Pagamento aprovado! User: ${user_id}, Amount: ${amount}`);
-        
+      try {
         const gasUrl = new URL(GAS_URL);
-        gasUrl.searchParams.append('action', 'add_balance');
-        gasUrl.searchParams.append('user_id', user_id);
-        gasUrl.searchParams.append('amount', amount);
-        gasUrl.searchParams.append('payment_id', payment_id);
-        gasUrl.searchParams.append('payment_method', 'MERCADO_PAGO');
+        gasUrl.searchParams.append('action', 'register_streaming');
+        Object.keys(params).forEach(key => gasUrl.searchParams.append(key, params[key]));
         
-        await fetch(gasUrl.toString());
+        const gasResponse = await fetch(gasUrl.toString(), {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (gasResponse.ok) {
+          const gasData = await gasResponse.json();
+          return res.status(200).json(gasData);
+        }
+      } catch (gasError) {
+        console.log('⚠️ GAS não respondeu register_streaming');
+      }
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Streaming registrado com sucesso!',
+        data: {
+          reward: 1,
+          block: {
+            block_index: Date.now(),
+            block_hash: '0x' + Date.now().toString(16) + Math.random().toString(36).substring(2, 8),
+            previous_hash: '0x' + (Date.now() - 1000).toString(16),
+            timestamp: new Date().toISOString(),
+            miner_user_id: params.user_id || 'usuario',
+            music_title: params.music_title || 'Música',
+            reward_amount: 1
+          }
+        }
+      });
+    }
+    
+    // ===== CRIAR PAGAMENTO MERCADO PAGO =====
+    if (action === 'create_mercadopago_payment') {
+      console.log('💰 Criando pagamento Mercado Pago:', params);
+      
+      try {
+        const MERCADO_PAGO_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+        
+        if (!MERCADO_PAGO_ACCESS_TOKEN) {
+          console.error('❌ MERCADO_PAGO_ACCESS_TOKEN não configurado');
+          return res.status(200).json({ 
+            success: false, 
+            message: 'Mercado Pago não configurado' 
+          });
+        }
+        
+        const { amount, user_id, email, description } = params;
+        
+        if (!amount || amount < 10) {
+          return res.status(200).json({
+            success: false,
+            message: 'Valor mínimo: R$ 10,00'
+          });
+        }
+        
+        const preference = {
+          items: [{
+            title: description || 'Depósito SELO MIV',
+            quantity: 1,
+            currency_id: 'BRL',
+            unit_price: parseFloat(amount)
+          }],
+          payer: { email: email || 'cliente@email.com' },
+          external_reference: user_id,
+          back_urls: {
+            success: 'https://selomivplay.vercel.app/deposito/sucesso',
+            failure: 'https://selomivplay.vercel.app/deposito/falha',
+            pending: 'https://selomivplay.vercel.app/deposito/pendente'
+          },
+          auto_return: 'approved',
+          notification_url: 'https://selomivplay.vercel.app/api/backend?action=webhook_mercadopago'
+        };
+        
+        const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(preference)
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          return res.status(200).json({
+            success: false,
+            message: data.error.message || 'Erro ao criar pagamento'
+          });
+        }
+        
+        return res.status(200).json({
+          success: true,
+          data: {
+            preference_id: data.id,
+            init_point: data.init_point,
+            sandbox_init_point: data.sandbox_init_point
+          }
+        });
+        
+      } catch (error) {
+        console.error('❌ Erro ao criar pagamento:', error);
+        return res.status(200).json({
+          success: false,
+          message: 'Erro ao processar pagamento',
+          error: error.message
+        });
       }
     }
     
-    return res.status(200).json({ received: true });
-    
-  } catch (error) {
-    console.error('❌ Erro no webhook:', error);
-    return res.status(200).json({ received: true });
-  }
-}
-
-// ===== GET STREAMING STATS =====
-if (action === 'get_streaming_stats') {
-  console.log('📈 Buscando stats de streaming para:', params.user_id);
-  
-  try {
-    const gasUrl = new URL(GAS_URL);
-    gasUrl.searchParams.append('action', 'get_streaming_stats');
-    if (params.user_id) gasUrl.searchParams.append('user_id', params.user_id);
-    
-    const gasResponse = await fetch(gasUrl.toString(), {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    if (gasResponse.ok) {
-      const gasData = await gasResponse.json();
-      if (gasData.success) {
-        return res.status(200).json(gasData);
+    // ===== WEBHOOK MERCADO PAGO =====
+    if (action === 'webhook_mercadopago') {
+      console.log('🔔 Webhook Mercado Pago recebido:', req.body);
+      
+      try {
+        const MERCADO_PAGO_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+        const paymentData = req.body;
+        
+        if (paymentData.type === 'payment' || paymentData.action === 'payment.created') {
+          const paymentId = paymentData.data?.id;
+          
+          const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+            headers: { 'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}` }
+          });
+          
+          const payment = await paymentResponse.json();
+          
+          if (payment.status === 'approved') {
+            const user_id = payment.external_reference;
+            const amount = payment.transaction_amount;
+            const payment_id = payment.id;
+            
+            console.log(`✅ Pagamento aprovado! User: ${user_id}, Amount: ${amount}`);
+            
+            const gasUrl = new URL(GAS_URL);
+            gasUrl.searchParams.append('action', 'add_balance');
+            gasUrl.searchParams.append('user_id', user_id);
+            gasUrl.searchParams.append('amount', amount);
+            gasUrl.searchParams.append('payment_id', payment_id);
+            gasUrl.searchParams.append('payment_method', 'MERCADO_PAGO');
+            
+            await fetch(gasUrl.toString());
+          }
+        }
+        
+        return res.status(200).json({ received: true });
+        
+      } catch (error) {
+        console.error('❌ Erro no webhook:', error);
+        return res.status(200).json({ received: true });
       }
     }
     
-    return res.status(200).json({
-      success: true,
-      data: {
-        total_earnings: 0,
-        songs_count: 0,
-        total_seconds: 0,
-        rank: 0
+    // ===== GET STREAMING STATS =====
+    if (action === 'get_streaming_stats') {
+      console.log('📈 Buscando stats de streaming para:', params.user_id);
+      
+      try {
+        const gasUrl = new URL(GAS_URL);
+        gasUrl.searchParams.append('action', 'get_streaming_stats');
+        if (params.user_id) gasUrl.searchParams.append('user_id', params.user_id);
+        
+        const gasResponse = await fetch(gasUrl.toString(), {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (gasResponse.ok) {
+          const gasData = await gasResponse.json();
+          if (gasData.success) {
+            return res.status(200).json(gasData);
+          }
+        }
+        
+        return res.status(200).json({
+          success: true,
+          data: {
+            total_earnings: 0,
+            songs_count: 0,
+            total_seconds: 0,
+            rank: 0
+          }
+        });
+        
+      } catch (gasError) {
+        console.log('⚠️ GAS não respondeu get_streaming_stats');
+        return res.status(200).json({
+          success: true,
+          data: {
+            total_earnings: 0,
+            songs_count: 0,
+            total_seconds: 0,
+            rank: 0
+          }
+        });
       }
-    });
+    }
     
-  } catch (gasError) {
-    console.log('⚠️ GAS não respondeu get_streaming_stats');
-    return res.status(200).json({
-      success: true,
-      data: {
-        total_earnings: 0,
-        songs_count: 0,
-        total_seconds: 0,
-        rank: 0
-      }
-    });
-  }
-}
-
-// ===== BUY ===== (continua o código existente...)    
     // ===== BUY =====
     if (action === 'buy') {
       console.log('💰 Processando compra:', params);
@@ -778,12 +776,11 @@ if (action === 'get_streaming_stats') {
       });
     }
     
-    // ===== SEARCH YOUTUBE (VERSÃO CORRIGIDA) =====
+    // ===== SEARCH YOUTUBE =====
     if (action === 'search_youtube') {
       console.log('🔍 Buscando no YouTube:', params.query);
       
       try {
-        // Buscar a chave do YouTube das variáveis de ambiente
         const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
         
         if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY_HERE') {
@@ -854,7 +851,6 @@ if (action === 'get_streaming_stats') {
         console.log('⚠️ GAS não respondeu get_top_investments');
       }
       
-      // Fallback com dados das músicas
       let musicas = [];
       try {
         const musicasResponse = await fetch(new URL(GAS_URL + '?action=get_musicas'));
@@ -1275,6 +1271,20 @@ if (action === 'get_streaming_stats') {
       });
     }
     
+    // ===== 🆕 [NOVO] AUTO-FIX STATUS =====
+    if (action === 'auto_fix_status') {
+      return res.status(200).json({
+        success: true,
+        data: {
+          enabled: true,
+          version: '1.0.0',
+          fixCount: autoFix?.fixCount || 0,
+          lastError: autoFix?.lastError || null,
+          fixHistory: autoFix?.fixHistory?.slice(-10) || []
+        }
+      });
+    }
+    
     // ===== ENCAMINHAR QUALQUER OUTRA AÇÃO PARA O GAS =====
     const url = new URL(GAS_URL);
     url.searchParams.append('action', action);
@@ -1317,3 +1327,6 @@ if (action === 'get_streaming_stats') {
     });
   }
 }
+
+// 🆕 [LINHA FINAL] EXPORTAR COM AUTO-FIX
+export default enhanceWithAutoFix(originalHandler);
