@@ -5924,34 +5924,47 @@ const modalHtml = `
         }, 60000);
     }    
 
-    async function loadAllData() {
-        showLoading('Carregando dados...');
-        try {
-            await Promise.all([
-                loadMarketplace(),
-                loadExternalMarketplace(),
-                loadPortfolio(),
-                loadLedger(),
-                loadTopInvestments(),
-                loadUserPlaylists()
-            ]);
-            
-            await updateBalanceDisplay();
-            
-            if (state.currentUser?.tipo === 'artista') await loadArtistData();
-            showToast('Sistema carregado!', 'success');
-        } catch (error) {
-            console.error('Erro ao carregar dados:', error);
-            showToast('Alguns dados não foram carregados', 'warning');
-        } finally {
-            hideLoading();
+async function loadAllData() {
+    showLoading('Carregando dados...');
+    try {
+        // 🔴 CARREGAR FAVORITOS DO LOCALSTORAGE
+        const savedFavorites = localStorage.getItem('miv_favorites');
+        if (savedFavorites) {
+            try {
+                state.favoriteMusicIds = JSON.parse(savedFavorites);
+                console.log('✅ Favoritos carregados do localStorage:', state.favoriteMusicIds);
+            } catch (e) {
+                console.error('Erro ao carregar favoritos:', e);
+            }
         }
+        
+        await Promise.all([
+            loadMarketplace(),
+            loadExternalMarketplace(),
+            loadPortfolio(),
+            loadLedger(),
+            loadTopInvestments(),
+            loadUserPlaylists()
+        ]);
+        
+        await updateBalanceDisplay();
+        
+        if (state.currentUser?.tipo === 'artista') await loadArtistData();
+        showToast('Sistema carregado!', 'success');
+    } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        showToast('Alguns dados não foram carregados', 'warning');
+    } finally {
+        hideLoading();
     }
+}
 
 async function loadMarketplace(forceRefresh = false) {
+    // Salvar favoritos atuais ANTES de recarregar
+    const currentFavorites = [...(state.favoriteMusicIds || [])];
+    
     // Primeiro, carrega dados de exemplo imediatamente para teste
     if (!state.playlist || state.playlist.length === 0) {
-        // Dados de exemplo para teste no celular
         state.playlist = [
             {
                 id: '1',
@@ -6007,6 +6020,62 @@ async function loadMarketplace(forceRefresh = false) {
         const result = await callAPI('get_musicas');
         if (result?.success && result?.data && result.data.length > 0) {
             state.playlist = result.data;
+            
+            // 🔴 RESTAURAR FAVORITOS APÓS CARREGAR DADOS DA API
+            if (currentFavorites.length > 0) {
+                state.favoriteMusicIds = currentFavorites;
+                
+                // Salvar novamente no localStorage
+                if (state.currentUser) {
+                    state.currentUser.favorite_music_ids = state.favoriteMusicIds;
+                    localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+                    localStorage.setItem('miv_favorites', JSON.stringify(state.favoriteMusicIds));
+                }
+            }
+            
+            state.playlist = ELO.applyRatingDecay(state.playlist);
+            state.playlist = ELO.updateCompleteRanking(state.playlist);
+        }
+    } catch (error) {
+        console.log('Usando dados de exemplo (API indisponível)');
+    }
+    
+    renderMarketplace();
+}
+    
+    // Tenta carregar da API (se falhar, mantém os dados de exemplo)
+    try {
+        const result = await callAPI('get_musicas');
+        if (result?.success && result?.data && result.data.length > 0) {
+            state.playlist = result.data;
+            
+            // 🔴 RESTAURAR FAVORITOS APÓS CARREGAR DADOS DA API
+            if (currentFavorites.length > 0) {
+                state.favoriteMusicIds = currentFavorites;
+                
+                // Salvar novamente no localStorage
+                if (state.currentUser) {
+                    state.currentUser.favorite_music_ids = state.favoriteMusicIds;
+                    localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+                    localStorage.setItem('miv_favorites', JSON.stringify(state.favoriteMusicIds));
+                }
+            }
+            
+            state.playlist = ELO.applyRatingDecay(state.playlist);
+            state.playlist = ELO.updateCompleteRanking(state.playlist);
+        }
+    } catch (error) {
+        console.log('Usando dados de exemplo (API indisponível)');
+    }
+    
+    renderMarketplace();
+}
+    
+    // Tenta carregar da API (se falhar, mantém os dados de exemplo)
+    try {
+        const result = await callAPI('get_musicas');
+        if (result?.success && result?.data && result.data.length > 0) {
+            state.playlist = result.data;
             state.playlist = ELO.applyRatingDecay(state.playlist);
             state.playlist = ELO.updateCompleteRanking(state.playlist);
         }
@@ -6018,15 +6087,17 @@ async function loadMarketplace(forceRefresh = false) {
 }
 
 async function loadExternalMarketplace(forceRefresh = false) {
+    // Salvar favoritos atuais ANTES de recarregar
+    const currentFavorites = [...(state.favoriteMusicIds || [])];
+    
     // ===== TENTAR CARREGAR DO CACHE PRIMEIRO =====
     if (!forceRefresh) {
         const cached = localStorage.getItem('miv_external_playlist');
         const cachedTime = localStorage.getItem('miv_external_timestamp');
         
-        // Se tiver cache com menos de 1 hora, usar
         if (cached && cachedTime) {
             const age = Date.now() - parseInt(cachedTime);
-            if (age < 3600000) { // 1 hora
+            if (age < 3600000) {
                 try {
                     state.externalPlaylist = JSON.parse(cached);
                     console.log('📦 Bolsa Externa carregada do cache');
@@ -6043,6 +6114,18 @@ async function loadExternalMarketplace(forceRefresh = false) {
     const result = await callAPI('get_external_musicas');
     if (result?.success && result?.data) {
         state.externalPlaylist = result.data;
+        
+        // 🔴 RESTAURAR FAVORITOS APÓS CARREGAR DADOS DA API
+        if (currentFavorites.length > 0) {
+            state.favoriteMusicIds = currentFavorites;
+            
+            // Salvar novamente no localStorage
+            if (state.currentUser) {
+                state.currentUser.favorite_music_ids = state.favoriteMusicIds;
+                localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+                localStorage.setItem('miv_favorites', JSON.stringify(state.favoriteMusicIds));
+            }
+        }
         
         // ===== SALVAR NO LOCALSTORAGE =====
         localStorage.setItem('miv_external_playlist', JSON.stringify(result.data));
