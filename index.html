@@ -1,3 +1,4 @@
+
 <!DOCTYPE html> 
 <html lang="pt-BR">
 <head>
@@ -4662,9 +4663,7 @@ const playQueue = {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 
-
-
-    /**
+    // ========== FUNÇÕES PARA DADOS REAIS DO YOUTUBE ==========
 
     /**
      * Extrai o ID do vídeo do YouTube a partir da URL
@@ -4739,11 +4738,11 @@ const playQueue = {
      */
     function calculateEstimatedRevenue(views, platform = 'youtube') {
         const rates = {
-            youtube: 0.002,
-            spotify: 0.004,
-            deezer: 0.005,
-            apple_music: 0.007,
-            average: 0.0035
+            youtube: 0.002,      // $0.002 por view (média)
+            spotify: 0.004,       // $0.004 por stream
+            deezer: 0.005,        // $0.005 por stream
+            apple_music: 0.007,   // $0.007 por stream
+            average: 0.0035       // Média ponderada
         };
         
         const rate = rates[platform] || rates.average;
@@ -4755,72 +4754,6 @@ const playQueue = {
             brl: revenueBRL,
             formatted: formatCurrency(revenueBRL)
         };
-    }
-
-    // ===== FUNÇÃO: Carregar estatísticas para a playlist =====
-    async function loadYouTubeStatsForPlaylist() {
-        if (!state.playlist || state.playlist.length === 0) return;
-        
-        console.log('📊 Buscando estatísticas do YouTube para a playlist...');
-        
-        for (let i = 0; i < Math.min(state.playlist.length, 10); i++) {
-            const track = state.playlist[i];
-            if (track.link_youtube) {
-                const videoId = extractYouTubeId(track.link_youtube);
-                if (videoId) {
-                    const cached = localStorage.getItem(`yt_stats_${videoId}`);
-                    if (cached) {
-                        try {
-                            track.youtube_stats = JSON.parse(cached);
-                            continue;
-                        } catch (e) {}
-                    }
-                    
-                    const stats = await getYouTubeStats(videoId);
-                    if (stats) {
-                        track.youtube_stats = stats;
-                        localStorage.setItem(`yt_stats_${videoId}`, JSON.stringify(stats));
-                    }
-                    
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-            }
-        }
-        
-        renderMarketplace();
-    }
-
-    // ===== FUNÇÃO: Carregar estatísticas para a bolsa externa =====
-    async function loadYouTubeStatsForExternal() {
-        if (!state.externalPlaylist || state.externalPlaylist.length === 0) return;
-        
-        console.log('📊 Buscando estatísticas do YouTube para bolsa externa...');
-        
-        for (let i = 0; i < Math.min(state.externalPlaylist.length, 10); i++) {
-            const track = state.externalPlaylist[i];
-            if (track.link_youtube) {
-                const videoId = extractYouTubeId(track.link_youtube);
-                if (videoId) {
-                    const cached = localStorage.getItem(`yt_stats_${videoId}`);
-                    if (cached) {
-                        try {
-                            track.youtube_stats = JSON.parse(cached);
-                            continue;
-                        } catch (e) {}
-                    }
-                    
-                    const stats = await getYouTubeStats(videoId);
-                    if (stats) {
-                        track.youtube_stats = stats;
-                        localStorage.setItem(`yt_stats_${videoId}`, JSON.stringify(stats));
-                    }
-                    
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-            }
-        }
-        
-        renderExternalMarketplace();
     }
 
     /**
@@ -4867,7 +4800,7 @@ const playQueue = {
         }
     }
 
-    // ===== FUNÇÕES GLOBAIS =====
+    // ========== FUNÇÕES GLOBAIS ==========
     window.openBlockchainExplorer = function() {
         console.log('openBlockchainExplorer chamado');
         changeSection('blockchain');
@@ -4941,9 +4874,9 @@ const playQueue = {
         
         document.getElementById('eloRankingContent').innerHTML = rankingHTML;
         showModal('eloRankingModal');
-    };
+    };    
 
-    // ===== LOAD BLOCKCHAIN DATA =====
+    // ========== LOAD BLOCKCHAIN DATA ==========
     window.loadBlockchainData = async function() {
         console.log('🔍 Carregando blockchain com dados REAIS...');
         
@@ -5081,7 +5014,9 @@ const playQueue = {
         }
     };
 
-    // ===== FUNÇÕES AUXILIARES =====
+
+
+
     function generateFakeHash(seed = 0) {
         return '0x' + (Date.now() + seed).toString(16).padStart(16, '0') + '...';
     }
@@ -5091,7 +5026,10 @@ const playQueue = {
         return tipos[Math.floor(Math.random() * tipos.length)];
     }
 
-    // ===== FUNÇÃO RENDER BLOCKCHAIN VISUALIZATION =====
+
+
+
+    // ========== FUNÇÃO RENDER BLOCKCHAIN VISUALIZATION ==========
     window.renderBlockchainVisualization = function(contracts) {
         const container = document.getElementById('blockchainVisualization');
         if (!container) return;
@@ -5243,7 +5181,7 @@ const playQueue = {
         }
     };
 
-    // ===== SISTEMA DE RATING ELO =====
+    // ========== SISTEMA DE RATING ELO ==========
     const ELO = {
         CONFIG: {
             BASE_RATING: 1400,
@@ -5500,102 +5438,102 @@ const playQueue = {
         }
     };
 
-    // ===== FUNÇÃO callAPI =====
-    async function callAPI(action, data = {}) {
-        if (state?.currentUser?.id && !data.user_id) {
-            data.user_id = state.currentUser.id;
-        }
+    // ========== FUNÇÃO DE API ==========
+async function callAPI(action, data = {}) {
+  if (state?.currentUser?.id && !data.user_id) {
+    data.user_id = state.currentUser.id;
+  }
 
-        try {
-            const baseUrl = window.location.origin;
-            const url = new URL(`${baseUrl}/api/backend`);
-            
-            url.searchParams.append('action', action);
-            
-            Object.keys(data).forEach(key => {
-                if (data[key] !== undefined && data[key] !== null) {
-                    url.searchParams.append(key, data[key]);
-                }
-            });
+  try {
+    // URL FIXA da sua Vercel (substitua pelo seu domínio)
+    const baseUrl = 'https://selomivplay.vercel.app'; // 👈 MUDAR AQUI
+    const url = new URL(`${baseUrl}/api/backend`);
+    
+    url.searchParams.append('action', action);
+    
+    Object.keys(data).forEach(key => {
+      if (data[key] !== undefined && data[key] !== null) {
+        url.searchParams.append(key, data[key]);
+      }
+    });
 
-            console.log(`📡 [${action}] Fetching:`, url.toString());
+    console.log(`📡 [${action}] Fetching:`, url.toString());
 
-            const response = await fetch(url.toString(), {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const result = await response.json();
-            console.log(`✅ [${action}] Resposta:`, result);
-            return result;
-
-        } catch (error) {
-            console.error(`❌ [${action}] Erro:`, error);
-            showToast('Erro de conexão com o servidor', 'error');
-            return getFallbackData(action, data);
-        }
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    
+    const result = await response.json();
+    console.log(`✅ [${action}] Resposta:`, result);
+    return result;
 
-    // ===== FUNÇÃO getFallbackData =====
-    function getFallbackData(action, data) {
-        console.log(`📦 [${action}] Usando fallback local`);
+  } catch (error) {
+    console.error(`❌ [${action}] Erro:`, error);
+    showToast('Erro de conexão com o servidor', 'error');
+    return getFallbackData(action, data);
+  }
+}
+
+function getFallbackData(action, data) {
+    console.log(`📦 [${action}] Usando fallback local`);
+    
+    if (action === 'get_musicas') {
+        return {
+            success: true,
+            data: [
+                {
+                    id: '1',
+                    titulo: 'RIO DE JANEIRO',
+                    artista: 'Elzo Henschell',
+                    link_capa: 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400',
+                    link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+                    valor_acao: 25.50,
+                    percentual_disponivel: 38,
+                    acoes_vendidas: 150,
+                    total_investidores: 45,
+                    rentabilidade_media: 12.5,
+                    status: 'ativo',
+                    genero: 'URBAN'
+                },
+                {
+                    id: '2',
+                    titulo: 'Blinding Lights',
+                    artista: 'The Weeknd',
+                    link_capa: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400',
+                    link_youtube: 'https://www.youtube.com/watch?v=4NRXx6U8ABQ',
+                    valor_acao: 32.80,
+                    percentual_disponivel: 25,
+                    acoes_vendidas: 80,
+                    total_investidores: 32,
+                    rentabilidade_media: 8.3,
+                    status: 'ativo',
+                    genero: 'POP'
+                },
+                {
+                    id: '3',
+                    titulo: 'Bohemian Rhapsody',
+                    artista: 'Queen',
+                    link_capa: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400',
+                    link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+                    valor_acao: 45.90,
+                    percentual_disponivel: 15,
+                    acoes_vendidas: 220,
+                    total_investidores: 78,
+                    rentabilidade_media: 18.2,
+                    status: 'ativo',
+                    genero: 'ROCK'
+                }
+            ]
+        };
+    }
         
-        if (action === 'get_musicas') {
-            return {
-                success: true,
-                data: [
-                    {
-                        id: '1',
-                        titulo: 'RIO DE JANEIRO',
-                        artista: 'Elzo Henschell',
-                        link_capa: 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400',
-                        link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
-                        valor_acao: 25.50,
-                        percentual_disponivel: 38,
-                        acoes_vendidas: 150,
-                        total_investidores: 45,
-                        rentabilidade_media: 12.5,
-                        status: 'ativo',
-                        genero: 'URBAN'
-                    },
-                    {
-                        id: '2',
-                        titulo: 'Blinding Lights',
-                        artista: 'The Weeknd',
-                        link_capa: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400',
-                        link_youtube: 'https://www.youtube.com/watch?v=4NRXx6U8ABQ',
-                        valor_acao: 32.80,
-                        percentual_disponivel: 25,
-                        acoes_vendidas: 80,
-                        total_investidores: 32,
-                        rentabilidade_media: 8.3,
-                        status: 'ativo',
-                        genero: 'POP'
-                    },
-                    {
-                        id: '3',
-                        titulo: 'Bohemian Rhapsody',
-                        artista: 'Queen',
-                        link_capa: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400',
-                        link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
-                        valor_acao: 45.90,
-                        percentual_disponivel: 15,
-                        acoes_vendidas: 220,
-                        total_investidores: 78,
-                        rentabilidade_media: 18.2,
-                        status: 'ativo',
-                        genero: 'ROCK'
-                    }
-                ]
-            };
-        }
-            
         if (action === 'buy' && CONFIG.BLOCKCHAIN_ENABLED) {
             const contract = Blockchain.createContract({
                 music_id: data.music_id,
@@ -5629,6 +5567,7 @@ const playQueue = {
         
         return { success: true, data: [] };
     }
+
     // ========== LOGIN ==========
     async function handleLogin() {
         const email = document.getElementById('loginEmailField')?.value?.trim();
@@ -6010,214 +5949,109 @@ const modalHtml = `
     }
 
 async function loadMarketplace(forceRefresh = false) {
-    console.log('📦 Carregando marketplace com dados REAIS...');
-    
-    try {
-        // PRIMEIRO: Tenta carregar da API
-        const result = await callAPI('get_musicas');
-        
-        if (result?.success && result?.data && result.data.length > 0) {
-            console.log('✅ Dados REAIS carregados:', result.data.length, 'músicas');
-            state.playlist = result.data;
-            
-            // Salvar no cache
-            localStorage.setItem('miv_playlist', JSON.stringify(result.data));
-            localStorage.setItem('miv_playlist_timestamp', Date.now().toString());
-            
-            // Aplicar ratings ELO se disponível
-            if (ELO && typeof ELO.applyRatingDecay === 'function') {
-                state.playlist = ELO.applyRatingDecay(state.playlist);
-                state.playlist = ELO.updateCompleteRanking(state.playlist);
+    // Primeiro, carrega dados de exemplo imediatamente para teste
+    if (!state.playlist || state.playlist.length === 0) {
+        // Dados de exemplo para teste no celular
+        state.playlist = [
+            {
+                id: '1',
+                titulo: 'RIO DE JANEIRO',
+                artista: 'Elzo Henschell',
+                link_capa: 'https://i.scdn.co/image/ab67616d0000b273e8b066f70c206551210d902b',
+                link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+                valor_acao: 25.50,
+                percentual_disponivel: 38,
+                acoes_vendidas: 150,
+                total_investidores: 45,
+                rentabilidade_media: 12.5,
+                status: 'ativo',
+                genero: 'URBAN',
+                elo_rating: 1850
+            },
+            {
+                id: '2',
+                titulo: 'Blinding Lights',
+                artista: 'The Weeknd',
+                link_capa: 'https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36',
+                link_youtube: 'https://www.youtube.com/watch?v=4NRXx6U8ABQ',
+                valor_acao: 32.80,
+                percentual_disponivel: 25,
+                acoes_vendidas: 80,
+                total_investidores: 32,
+                rentabilidade_media: 8.3,
+                status: 'ativo',
+                genero: 'POP',
+                elo_rating: 1720
+            },
+            {
+                id: '3',
+                titulo: 'Bohemian Rhapsody',
+                artista: 'Queen',
+                link_capa: 'https://i.scdn.co/image/ab67616d0000b273e8b066f70c206551210d902b',
+                link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+                valor_acao: 45.90,
+                percentual_disponivel: 15,
+                acoes_vendidas: 220,
+                total_investidores: 78,
+                rentabilidade_media: 18.2,
+                status: 'ativo',
+                genero: 'ROCK',
+                elo_rating: 2100
             }
-            
-            // Buscar estatísticas do YouTube para cada música (NÃO BLOQUEANTE)
-            loadYouTubeStatsForPlaylist().catch(console.error);
-            
-            renderMarketplace();
-            return;
+        ];
+        renderMarketplace();
+    }
+    
+    // Tenta carregar da API (se falhar, mantém os dados de exemplo)
+    try {
+        const result = await callAPI('get_musicas');
+        if (result?.success && result?.data && result.data.length > 0) {
+            state.playlist = result.data;
+            state.playlist = ELO.applyRatingDecay(state.playlist);
+            state.playlist = ELO.updateCompleteRanking(state.playlist);
         }
+    } catch (error) {
+        console.log('Usando dados de exemplo (API indisponível)');
+    }
+    
+    renderMarketplace();
+}
+
+async function loadExternalMarketplace(forceRefresh = false) {
+    // ===== TENTAR CARREGAR DO CACHE PRIMEIRO =====
+    if (!forceRefresh) {
+        const cached = localStorage.getItem('miv_external_playlist');
+        const cachedTime = localStorage.getItem('miv_external_timestamp');
         
-        // SEGUNDO: Se API falhar, tenta cache
-        const cached = localStorage.getItem('miv_playlist');
-        const cachedTime = localStorage.getItem('miv_playlist_timestamp');
-        
-        if (cached && cachedTime && !forceRefresh) {
+        // Se tiver cache com menos de 1 hora, usar
+        if (cached && cachedTime) {
             const age = Date.now() - parseInt(cachedTime);
             if (age < 3600000) { // 1 hora
-                console.log('📦 Usando cache do marketplace');
-                state.playlist = JSON.parse(cached);
-                renderMarketplace();
-                return;
-            }
-        }
-        
-        // TERCEIRO: Fallback para dados de exemplo APENAS se nada funcionar
-        console.log('⚠️ Nenhum dado real encontrado, usando fallback');
-        state.playlist = getFallbackMusics();
-        renderMarketplace();
-        
-    } catch (error) {
-        console.error('❌ Erro ao carregar marketplace:', error);
-        
-        // Tenta cache em caso de erro
-        const cached = localStorage.getItem('miv_playlist');
-        if (cached) {
-            state.playlist = JSON.parse(cached);
-            renderMarketplace();
-            showToast('Usando dados do cache', 'info');
-        } else {
-            state.playlist = getFallbackMusics();
-            renderMarketplace();
-        }
-    }
-}
-
-    // ===== FUNÇÃO loadMarketplace =====
-    async function loadMarketplace(forceRefresh = false) {
-        console.log('📦 Carregando marketplace com dados REAIS...');
-        
-        try {
-            const result = await callAPI('get_musicas');
-            
-            if (result?.success && result?.data && result.data.length > 0) {
-                console.log('✅ Dados REAIS carregados:', result.data.length, 'músicas');
-                state.playlist = result.data;
-                
-                localStorage.setItem('miv_playlist', JSON.stringify(result.data));
-                localStorage.setItem('miv_playlist_timestamp', Date.now().toString());
-                
-                if (ELO && typeof ELO.applyRatingDecay === 'function') {
-                    state.playlist = ELO.applyRatingDecay(state.playlist);
-                    state.playlist = ELO.updateCompleteRanking(state.playlist);
-                }
-                
-                loadYouTubeStatsForPlaylist().catch(console.error);
-                
-                renderMarketplace();
-                return;
-            }
-            
-            const cached = localStorage.getItem('miv_playlist');
-            const cachedTime = localStorage.getItem('miv_playlist_timestamp');
-            
-            if (cached && cachedTime && !forceRefresh) {
-                const age = Date.now() - parseInt(cachedTime);
-                if (age < 3600000) {
-                    console.log('📦 Usando cache do marketplace');
-                    state.playlist = JSON.parse(cached);
-                    renderMarketplace();
-                    return;
-                }
-            }
-            
-            console.log('⚠️ Nenhum dado real encontrado, usando fallback');
-            state.playlist = getFallbackMusics();
-            renderMarketplace();
-            
-        } catch (error) {
-            console.error('❌ Erro ao carregar marketplace:', error);
-            
-            const cached = localStorage.getItem('miv_playlist');
-            if (cached) {
-                state.playlist = JSON.parse(cached);
-                renderMarketplace();
-                showToast('Usando dados do cache', 'info');
-            } else {
-                state.playlist = getFallbackMusics();
-                renderMarketplace();
-            }
-        }
-    }
-    function getFallbackMusics() {
-    return [
-        {
-            id: 'fallback_1',
-            titulo: '🔴 Modo Demonstração - API não conectada',
-            artista: 'SELO MIV',
-            link_capa: 'https://via.placeholder.com/300/00ff88/000000?text=API+OFFLINE',
-            link_youtube: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-            valor_acao: 10.00,
-            percentual_disponivel: 20,
-            acoes_vendidas: 0,
-            total_investidores: 0,
-            rentabilidade_media: 0,
-            status: 'ativo',
-            youtube_stats: { 
-                views: 0, 
-                likes: 0, 
-                comments: 0,
-                estimated_earnings: 0 
-            },
-            is_fallback: true
-        }
-    ];
-}
-
-    // ===== FUNÇÃO loadExternalMarketplace =====
-    async function loadExternalMarketplace(forceRefresh = false) {
-        console.log('🌐 Carregando bolsa externa com dados REAIS...');
-        
-        try {
-            const result = await callAPI('get_external_musicas');
-            
-            if (result?.success && result?.data && result.data.length > 0) {
-                console.log('✅ Dados REAIS da bolsa externa:', result.data.length, 'músicas');
-                state.externalPlaylist = result.data;
-                
-                localStorage.setItem('miv_external_playlist', JSON.stringify(result.data));
-                localStorage.setItem('miv_external_timestamp', Date.now().toString());
-                
-                await loadYouTubeStatsForExternal();
-                
-                renderExternalMarketplace();
-                return;
-            }
-            
-            const cached = localStorage.getItem('miv_external_playlist');
-            const cachedTime = localStorage.getItem('miv_external_timestamp');
-            
-            if (cached && cachedTime && !forceRefresh) {
-                const age = Date.now() - parseInt(cachedTime);
-                if (age < 3600000) {
-                    console.log('📦 Usando cache da bolsa externa');
+                try {
                     state.externalPlaylist = JSON.parse(cached);
+                    console.log('📦 Bolsa Externa carregada do cache');
                     renderExternalMarketplace();
                     return;
+                } catch (e) {
+                    console.error('Erro ao ler cache:', e);
                 }
-            }
-            
-            console.log('⚠️ Nenhum dado externo real, usando fallback');
-            state.externalPlaylist = [];
-            renderExternalMarketplace();
-            
-        } catch (error) {
-            console.error('❌ Erro ao carregar bolsa externa:', error);
-            
-            const cached = localStorage.getItem('miv_external_playlist');
-            if (cached) {
-                state.externalPlaylist = JSON.parse(cached);
-                renderExternalMarketplace();
-            } else {
-                state.externalPlaylist = [];
-                renderExternalMarketplace();
             }
         }
     }
-
-    // ===== NOVA FUNÇÃO: refreshRealData =====
-    async function refreshRealData() {
-        showLoading('Buscando dados reais...');
+    
+    // ===== BUSCAR DA API =====
+    const result = await callAPI('get_external_musicas');
+    if (result?.success && result?.data) {
+        state.externalPlaylist = result.data;
         
-        await Promise.all([
-            loadMarketplace(true),
-            loadExternalMarketplace(true)
-        ]);
-        
-        hideLoading();
-        showToast('Dados atualizados!', 'success');
+        // ===== SALVAR NO LOCALSTORAGE =====
+        localStorage.setItem('miv_external_playlist', JSON.stringify(result.data));
+        localStorage.setItem('miv_external_timestamp', Date.now().toString());
+        console.log('💾 Bolsa Externa salva no cache');
     }
+    renderExternalMarketplace();
+}
 
-    // ===== FUNÇÃO loadPortfolio =====
     async function loadPortfolio(silent = false) {
         if (!state.currentUser) return;
         
@@ -6239,6 +6073,7 @@ async function loadMarketplace(forceRefresh = false) {
         renderPortfolio();
         updatePortfolioValue();
     }
+
     async function loadLedger(forceRefresh = false) {
         if (!state.currentUser) return;
         const result = await callAPI('get_extrato', { user_id: state.currentUser.id });
@@ -8933,31 +8768,18 @@ async function performSearch() {
 }
 /**
  * Busca vídeos no YouTube usando a API v3.
- *//**
- * Busca no YouTube através do seu backend (seguro)
  */
 async function searchYouTube(query) {
-  try {
-    // Chama SEU backend, que por sua vez chama o YouTube com a chave segura
-    const result = await callAPI('search_youtube', { query });
-    
-    if (result?.success && result.data) {
-      return result.data.map(item => ({
-        id: 'yt_' + item.videoId,
-        titulo: item.title,
-        artista: item.channelTitle,
-        link_capa: item.thumbnail,
-        link_youtube: `https://www.youtube.com/watch?v=${item.videoId}`,
-        is_external: true,
-        is_youtube: true
-      }));
-    }
-    return [];
-  } catch (error) {
-    console.error('Erro na busca do YouTube:', error);
-    return [];
-  }
-}
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(query + ' música')}&key=${YOUTUBE_API_KEY}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.error) {
+            console.error('Erro na API do YouTube:', data.error);
+            return [];
+        }
 
         return data.items.map(item => ({
             id: 'yt_' + item.id.videoId,
@@ -9336,68 +9158,6 @@ function getYoutubeIdForMusic(titulo, artista) {
     const key = `${artista} ${titulo}`;
     return musicMap[key] || 'dQw4w9WgXcQ';
 }
-
-    // ========== SISTEMA DE PESQUISA ==========
-window.YOUTUBE_API_KEY = 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
-
-window.performSearch = async function() {
-  const query = document.getElementById('searchInput')?.value.trim();
-  if (!query) {
-    showToast('Digite o nome de uma música ou artista', 'warning');
-    return;
-  }
-
-  showLoading(`Buscando por "${query}"...`);
-  const resultsContainer = document.getElementById('searchResults');
-  
-  if (!resultsContainer) {
-    console.error('❌ Elemento searchResults não encontrado!');
-    hideLoading();
-    return;
-  }
-
-  resultsContainer.innerHTML = '<div class="p-4 text-center"><div class="spinner-border text-success"></div><p>Buscando...</p></div>';
-  resultsContainer.style.display = 'block';
-
-  try {
-    // Buscar resultados do backend
-    const response = await fetch(`/api/backend?action=search_youtube&query=${encodeURIComponent(query)}`);
-    const result = await response.json();
-    
-    if (result.success && result.data?.length > 0) {
-      let html = '<div class="p-2">';
-      result.data.forEach(item => {
-        html += `
-          <div class="search-result-item" onclick="window.location.href='${item.link_youtube}'" target="_blank">
-            <img src="${item.link_capa}" class="search-result-cover" style="width: 45px; height: 45px; object-fit: cover;">
-            <div>
-              <div class="fw-bold">${item.titulo}</div>
-              <small class="text-muted">${item.artista}</small>
-            </div>
-          </div>
-        `;
-      });
-      html += '</div>';
-      resultsContainer.innerHTML = html;
-    } else {
-      resultsContainer.innerHTML = '<div class="p-4 text-center text-muted">Nenhum resultado encontrado</div>';
-    }
-  } catch (error) {
-    console.error('Erro na pesquisa:', error);
-    resultsContainer.innerHTML = '<div class="p-4 text-center text-danger">Erro ao buscar resultados</div>';
-  } finally {
-    hideLoading();
-  }
-};
-
-// Fechar resultados ao clicar fora
-document.addEventListener('click', function(e) {
-  const results = document.getElementById('searchResults');
-  const searchForm = document.getElementById('searchForm');
-  if (results && !results.contains(e.target) && !searchForm?.contains(e.target)) {
-    results.style.display = 'none';
-  }
-});
 // Expõe as funções globalmente
 window.performSearch = performSearch;
 window.playSearchResult = playSearchResult;
