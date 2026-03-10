@@ -4665,6 +4665,9 @@ const playQueue = {
     // ========== FUNÇÕES PARA DADOS REAIS DO YOUTUBE ==========
 
     /**
+    // ========== FUNÇÕES PARA DADOS REAIS DO YOUTUBE ==========
+
+    /**
      * Extrai o ID do vídeo do YouTube a partir da URL
      */
     function extractYouTubeId(url) {
@@ -4755,6 +4758,81 @@ const playQueue = {
         };
     }
 
+    // ===== NOVA FUNÇÃO: Carregar estatísticas para a playlist =====
+    async function loadYouTubeStatsForPlaylist() {
+        if (!state.playlist || state.playlist.length === 0) return;
+        
+        console.log('📊 Buscando estatísticas do YouTube para a playlist...');
+        
+        // Limitar a 5 músicas por vez para não sobrecarregar
+        for (let i = 0; i < Math.min(state.playlist.length, 10); i++) {
+            const track = state.playlist[i];
+            if (track.link_youtube) {
+                const videoId = extractYouTubeId(track.link_youtube);
+                if (videoId) {
+                    // Tenta cache primeiro
+                    const cached = localStorage.getItem(`yt_stats_${videoId}`);
+                    if (cached) {
+                        try {
+                            track.youtube_stats = JSON.parse(cached);
+                            console.log(`📦 Cache para ${track.titulo}:`, track.youtube_stats);
+                            continue;
+                        } catch (e) {}
+                    }
+                    
+                    // Busca da API
+                    const stats = await getYouTubeStats(videoId);
+                    if (stats) {
+                        track.youtube_stats = stats;
+                        localStorage.setItem(`yt_stats_${videoId}`, JSON.stringify(stats));
+                        console.log(`✅ Stats para ${track.titulo}:`, stats);
+                    }
+                    
+                    // Pequeno delay para não sobrecarregar a API
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+        }
+        
+        // Atualizar a interface
+        renderMarketplace();
+    }
+    // ===== FIM DA NOVA FUNÇÃO =====
+
+    // ===== NOVA FUNÇÃO: Carregar estatísticas para a bolsa externa =====
+    async function loadYouTubeStatsForExternal() {
+        if (!state.externalPlaylist || state.externalPlaylist.length === 0) return;
+        
+        console.log('📊 Buscando estatísticas do YouTube para bolsa externa...');
+        
+        for (let i = 0; i < Math.min(state.externalPlaylist.length, 10); i++) {
+            const track = state.externalPlaylist[i];
+            if (track.link_youtube) {
+                const videoId = extractYouTubeId(track.link_youtube);
+                if (videoId) {
+                    const cached = localStorage.getItem(`yt_stats_${videoId}`);
+                    if (cached) {
+                        try {
+                            track.youtube_stats = JSON.parse(cached);
+                            continue;
+                        } catch (e) {}
+                    }
+                    
+                    const stats = await getYouTubeStats(videoId);
+                    if (stats) {
+                        track.youtube_stats = stats;
+                        localStorage.setItem(`yt_stats_${videoId}`, JSON.stringify(stats));
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+        }
+        
+        renderExternalMarketplace();
+    }
+    // ===== FIM DA NOVA FUNÇÃO =====
+
     /**
      * Atualiza os cards com dados reais do YouTube
      */
@@ -4798,7 +4876,6 @@ const playQueue = {
             );
         }
     }
-
     // ========== FUNÇÕES GLOBAIS ==========
     window.openBlockchainExplorer = function() {
         console.log('openBlockchainExplorer chamado');
@@ -5947,130 +6024,218 @@ const modalHtml = `
     }
 
 async function loadMarketplace(forceRefresh = false) {
-    // Primeiro, carrega dados de exemplo imediatamente para teste
-    if (!state.playlist || state.playlist.length === 0) {
-        // Dados de exemplo para teste no celular
-        state.playlist = [
+    console.log('📦 Carregando marketplace com dados REAIS...');
+    
+    try {
+        // PRIMEIRO: Tenta carregar da API
+        const result = await callAPI('get_musicas');
+        
+        if (result?.success && result?.data && result.data.length > 0) {
+            console.log('✅ Dados REAIS carregados:', result.data.length, 'músicas');
+            state.playlist = result.data;
+            
+            // Salvar no cache
+            localStorage.setItem('miv_playlist', JSON.stringify(result.data));
+            localStorage.setItem('miv_playlist_timestamp', Date.now().toString());
+            
+            // Aplicar ratings ELO se disponível
+            if (ELO && typeof ELO.applyRatingDecay === 'function') {
+                state.playlist = ELO.applyRatingDecay(state.playlist);
+                state.playlist = ELO.updateCompleteRanking(state.playlist);
+            }
+            
+            // Buscar estatísticas do YouTube para cada música (NÃO BLOQUEANTE)
+            loadYouTubeStatsForPlaylist().catch(console.error);
+            
+            renderMarketplace();
+            return;
+        }
+        
+        // SEGUNDO: Se API falhar, tenta cache
+        const cached = localStorage.getItem('miv_playlist');
+        const cachedTime = localStorage.getItem('miv_playlist_timestamp');
+        
+        if (cached && cachedTime && !forceRefresh) {
+            const age = Date.now() - parseInt(cachedTime);
+            if (age < 3600000) { // 1 hora
+                console.log('📦 Usando cache do marketplace');
+                state.playlist = JSON.parse(cached);
+                renderMarketplace();
+                return;
+            }
+        }
+        
+        // TERCEIRO: Fallback para dados de exemplo APENAS se nada funcionar
+        console.log('⚠️ Nenhum dado real encontrado, usando fallback');
+        state.playlist = getFallbackMusics();
+        renderMarketplace();
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar marketplace:', error);
+        
+        // Tenta cache em caso de erro
+        const cached = localStorage.getItem('miv_playlist');
+        if (cached) {
+            state.playlist = JSON.parse(cached);
+            renderMarketplace();
+            showToast('Usando dados do cache', 'info');
+        } else {
+            state.playlist = getFallbackMusics();
+            renderMarketplace();
+        }
+    }
+}
+    // ===== FIM DA NOVA FUNÇÃO =====
+        
+        // SEGUNDO: Se API falhar, tenta cache
+        const cached = localStorage.getItem('miv_playlist');
+        const cachedTime = localStorage.getItem('miv_playlist_timestamp');
+        
+        if (cached && cachedTime && !forceRefresh) {
+            const age = Date.now() - parseInt(cachedTime);
+            if (age < 3600000) { // 1 hora
+                console.log('📦 Usando cache do marketplace');
+                state.playlist = JSON.parse(cached);
+                renderMarketplace();
+                return;
+            }
+        }
+        
+        // TERCEIRO: Fallback para dados de exemplo APENAS se nada funcionar
+        console.log('⚠️ Nenhum dado real encontrado, usando fallback');
+        state.playlist = getFallbackMusics();
+        renderMarketplace();
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar marketplace:', error);
+        
+        // Tenta cache em caso de erro
+        const cached = localStorage.getItem('miv_playlist');
+        if (cached) {
+            state.playlist = JSON.parse(cached);
+            renderMarketplace();
+            showToast('Usando dados do cache', 'info');
+        } else {
+            state.playlist = getFallbackMusics();
+            renderMarketplace();
+        }
+    }
+}
+    // ===== FUNÇÃO DE FALLBACK =====
+    function getFallbackMusics() {
+        return [
             {
-                id: '1',
-                titulo: 'RIO DE JANEIRO',
-                artista: 'Elzo Henschell',
-                link_capa: 'https://i.scdn.co/image/ab67616d0000b273e8b066f70c206551210d902b',
-                link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
-                valor_acao: 25.50,
-                percentual_disponivel: 38,
-                acoes_vendidas: 150,
-                total_investidores: 45,
-                rentabilidade_media: 12.5,
+                id: 'fallback_1',
+                titulo: '🔴 Modo Demonstração - API não conectada',
+                artista: 'SELO MIV',
+                link_capa: 'https://via.placeholder.com/300/00ff88/000000?text=API+OFFLINE',
+                link_youtube: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                valor_acao: 10.00,
+                percentual_disponivel: 20,
+                acoes_vendidas: 0,
+                total_investidores: 0,
+                rentabilidade_media: 0,
                 status: 'ativo',
-                genero: 'URBAN',
-                elo_rating: 1850
-            },
-            {
-                id: '2',
-                titulo: 'Blinding Lights',
-                artista: 'The Weeknd',
-                link_capa: 'https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36',
-                link_youtube: 'https://www.youtube.com/watch?v=4NRXx6U8ABQ',
-                valor_acao: 32.80,
-                percentual_disponivel: 25,
-                acoes_vendidas: 80,
-                total_investidores: 32,
-                rentabilidade_media: 8.3,
-                status: 'ativo',
-                genero: 'POP',
-                elo_rating: 1720
-            },
-            {
-                id: '3',
-                titulo: 'Bohemian Rhapsody',
-                artista: 'Queen',
-                link_capa: 'https://i.scdn.co/image/ab67616d0000b273e8b066f70c206551210d902b',
-                link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
-                valor_acao: 45.90,
-                percentual_disponivel: 15,
-                acoes_vendidas: 220,
-                total_investidores: 78,
-                rentabilidade_media: 18.2,
-                status: 'ativo',
-                genero: 'ROCK',
-                elo_rating: 2100
+                youtube_stats: { 
+                    views: 0, 
+                    likes: 0, 
+                    comments: 0,
+                    estimated_earnings: 0 
+                },
+                is_fallback: true
             }
         ];
-        renderMarketplace();
-    }
+    }async function loadExternalMarketplace(forceRefresh = false) {
+    console.log('🌐 Carregando bolsa externa com dados REAIS...');
     
-    // Tenta carregar da API (se falhar, mantém os dados de exemplo)
     try {
-        const result = await callAPI('get_musicas');
+        // PRIMEIRO: Tenta API
+        const result = await callAPI('get_external_musicas');
+        
         if (result?.success && result?.data && result.data.length > 0) {
-            state.playlist = result.data;
-            state.playlist = ELO.applyRatingDecay(state.playlist);
-            state.playlist = ELO.updateCompleteRanking(state.playlist);
+            console.log('✅ Dados REAIS da bolsa externa:', result.data.length, 'músicas');
+            state.externalPlaylist = result.data;
+            
+            // Salvar no cache
+            localStorage.setItem('miv_external_playlist', JSON.stringify(result.data));
+            localStorage.setItem('miv_external_timestamp', Date.now().toString());
+            
+            // Buscar estatísticas do YouTube
+            await loadYouTubeStatsForExternal();
+            
+            renderExternalMarketplace();
+            return;
         }
-    } catch (error) {
-        console.log('Usando dados de exemplo (API indisponível)');
-    }
-    
-    renderMarketplace();
-}
-
-async function loadExternalMarketplace(forceRefresh = false) {
-    // ===== TENTAR CARREGAR DO CACHE PRIMEIRO =====
-    if (!forceRefresh) {
+        
+        // SEGUNDO: Tenta cache
         const cached = localStorage.getItem('miv_external_playlist');
         const cachedTime = localStorage.getItem('miv_external_timestamp');
         
-        // Se tiver cache com menos de 1 hora, usar
-        if (cached && cachedTime) {
+        if (cached && cachedTime && !forceRefresh) {
             const age = Date.now() - parseInt(cachedTime);
             if (age < 3600000) { // 1 hora
-                try {
-                    state.externalPlaylist = JSON.parse(cached);
-                    console.log('📦 Bolsa Externa carregada do cache');
-                    renderExternalMarketplace();
-                    return;
-                } catch (e) {
-                    console.error('Erro ao ler cache:', e);
-                }
+                console.log('📦 Usando cache da bolsa externa');
+                state.externalPlaylist = JSON.parse(cached);
+                renderExternalMarketplace();
+                return;
             }
         }
-    }
-    
-    // ===== BUSCAR DA API =====
-    const result = await callAPI('get_external_musicas');
-    if (result?.success && result?.data) {
-        state.externalPlaylist = result.data;
         
-        // ===== SALVAR NO LOCALSTORAGE =====
-        localStorage.setItem('miv_external_playlist', JSON.stringify(result.data));
-        localStorage.setItem('miv_external_timestamp', Date.now().toString());
-        console.log('💾 Bolsa Externa salva no cache');
+        // TERCEIRO: Fallback
+        console.log('⚠️ Nenhum dado externo real, usando fallback');
+        state.externalPlaylist = [];
+        renderExternalMarketplace();
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar bolsa externa:', error);
+        
+        const cached = localStorage.getItem('miv_external_playlist');
+        if (cached) {
+            state.externalPlaylist = JSON.parse(cached);
+            renderExternalMarketplace();
+        } else {
+            state.externalPlaylist = [];
+            renderExternalMarketplace();
+        }
     }
-    renderExternalMarketplace();
 }
 
-    async function loadPortfolio(silent = false) {
-        if (!state.currentUser) return;
-        
-        const result = await callAPI('get_carteira', { user_id: state.currentUser.id });
-        
-        if (result?.success && result?.data) {
-            if (Array.isArray(result.data)) {
-                state.portfolioAssets = result.data;
-            } else if (result.data && typeof result.data === 'object') {
-                console.log('API retornou objeto, extraindo investimentos');
-                state.portfolioAssets = result.data.investimentos || [];
-            } else {
-                state.portfolioAssets = [];
-            }
+// ===== NOVA FUNÇÃO: refreshRealData =====
+async function refreshRealData() {
+    showLoading('Buscando dados reais...');
+    
+    // Forçar refresh e ignorar cache
+    await Promise.all([
+        loadMarketplace(true),
+        loadExternalMarketplace(true)
+    ]);
+    
+    hideLoading();
+    showToast('Dados atualizados!', 'success');
+}
+// ===== FIM DA NOVA FUNÇÃO =====
+
+async function loadPortfolio(silent = false) {
+    if (!state.currentUser) return;
+    
+    const result = await callAPI('get_carteira', { user_id: state.currentUser.id });
+    
+    if (result?.success && result?.data) {
+        if (Array.isArray(result.data)) {
+            state.portfolioAssets = result.data;
+        } else if (result.data && typeof result.data === 'object') {
+            console.log('API retornou objeto, extraindo investimentos');
+            state.portfolioAssets = result.data.investimentos || [];
         } else {
             state.portfolioAssets = [];
         }
-        
-        renderPortfolio();
-        updatePortfolioValue();
+    } else {
+        state.portfolioAssets = [];
     }
+    
+    renderPortfolio();
+    updatePortfolioValue();
+}
 
     async function loadLedger(forceRefresh = false) {
         if (!state.currentUser) return;
