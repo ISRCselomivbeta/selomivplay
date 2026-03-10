@@ -6554,71 +6554,72 @@ coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
     }).join('');
 }
 
-    function playExternalTrack(index) {
-        if (index < 0 || index >= state.externalPlaylist.length) {
-            showToast('Música não encontrada', 'error');
-            return;
-        }
-        
-        const externalIndex = 1000 + index;
-        state.currentTrackIndex = externalIndex;
-        
-        const track = state.externalPlaylist[index];
-        
-        const player = document.getElementById('playerSpotify');
-        if (player) player.style.display = 'flex';
-        
-        const playerTitle = document.getElementById('playerTitle');
-        const playerArtist = document.getElementById('playerArtist');
-        const playerAlbumArt = document.getElementById('playerAlbumArt');
-        
-        if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
-        if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
-        
-        if (playerAlbumArt) {
-            let coverUrl = PLACEHOLDERS.EXT_56;
-            
-            if (track.link_youtube) {
-                const videoId = extractYouTubeId(track.link_youtube);
-                if (videoId) {
-coverUrl = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
-                }
-            }
-            
-            if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
-                coverUrl = track.link_capa.trim();
-            }
-            
-            playerAlbumArt.src = coverUrl;
-            playerAlbumArt.onerror = function() {
-                this.src = PLACEHOLDERS.EXT_56;
-            };
-        }
-        
-        const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
-        updateFavoriteButton(isFavorite);
+function playExternalTrack(index) {
+    if (index < 0 || index >= state.externalPlaylist.length) {
+        showToast('Música não encontrada', 'error');
+        return;
+    }
+    
+    const externalIndex = 1000 + index;
+    state.currentTrackIndex = externalIndex;
+    
+    const track = state.externalPlaylist[index];
+    
+    const player = document.getElementById('playerSpotify');
+    if (player) player.style.display = 'flex';
+    
+    const playerTitle = document.getElementById('playerTitle');
+    const playerArtist = document.getElementById('playerArtist');
+    const playerAlbumArt = document.getElementById('playerAlbumArt');
+    
+    if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
+    if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
+    
+    if (playerAlbumArt) {
+        let coverUrl = PLACEHOLDERS.EXT_56;
         
         if (track.link_youtube) {
             const videoId = extractYouTubeId(track.link_youtube);
             if (videoId) {
-                if (state.youtubeAPILoaded && window.YT) {
-                    initializeYouTubePlayer(videoId);
-                } else {
-                    loadYouTubeAPI();
-                    setTimeout(() => initializeYouTubePlayer(videoId), 1000);
-                }
+                coverUrl = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
             }
         }
         
-        state.isPlaying = true;
-        updatePlayerIcons();
-        
-        if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
-            updateExpandedPlayer();
+        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
+            coverUrl = track.link_capa.trim();
         }
         
-        showToast(`🎵 Tocando: ${track.titulo} (Bolsa Externa)`, 'info');
+        playerAlbumArt.src = coverUrl;
+        playerAlbumArt.onerror = function() {
+            this.src = PLACEHOLDERS.EXT_56;
+        };
     }
+    
+    // 🔴 VERIFICAR SE É FAVORITO
+    const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+    updateFavoriteButton(isFavorite);
+    
+    if (track.link_youtube) {
+        const videoId = extractYouTubeId(track.link_youtube);
+        if (videoId) {
+            if (state.youtubeAPILoaded && window.YT) {
+                initializeYouTubePlayer(videoId);
+            } else {
+                loadYouTubeAPI();
+                setTimeout(() => initializeYouTubePlayer(videoId), 1000);
+            }
+        }
+    }
+    
+    state.isPlaying = true;
+    updatePlayerIcons();
+    
+    if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
+        updateExpandedPlayer();
+    }
+    
+    showToast(`🎵 Tocando: ${track.titulo} (Bolsa Externa)`, 'info');
+}
 
     window.renderExternalMarketplace = renderExternalMarketplace;
     window.playExternalTrack = playExternalTrack;
@@ -6833,91 +6834,105 @@ coverUrl = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
         }).join('');
     }
 
-    function renderPlaylists() {
-        const playlistsContainer = document.getElementById('playlistsContent');
-        const favoritesContainer = document.getElementById('favoritesContent');
-        
-        if (playlistsContainer) {
-            if (state.userPlaylists?.length) {
-                playlistsContainer.innerHTML = state.userPlaylists.map(p => `
-                    <div class="playlist-item">
-                        <div class="playlist-cover">
-                            <img src="${PLACEHOLDERS.PLAYLIST}" width="60" height="60" alt="Playlist">
-                        </div>
-                        <div class="flex-grow-1">
-                            <h6 class="mb-0">${p.nome}</h6>
-                            <small class="text-muted">${p.publica ? 'Pública' : 'Privada'}</small>
-                        </div>
-                        <button class="btn btn-sm btn-outline-success">
-                            <i class="bi bi-play-fill"></i>
-                        </button>
+function renderPlaylists() {
+    const playlistsContainer = document.getElementById('playlistsContent');
+    const favoritesContainer = document.getElementById('favoritesContent');
+    
+    if (playlistsContainer) {
+        if (state.userPlaylists?.length) {
+            playlistsContainer.innerHTML = state.userPlaylists.map(p => `
+                <div class="playlist-item">
+                    <div class="playlist-cover">
+                        <img src="${PLACEHOLDERS.PLAYLIST}" width="60" height="60" alt="Playlist">
                     </div>
-                `).join('');
-            } else {
-                playlistsContainer.innerHTML = `
-                    <div class="empty-state-actionable">
-                        <i class="bi bi-music-note-list empty-icon"></i>
-                        <h5 class="text-muted">Nenhuma playlist</h5>
-                        <p class="text-muted">Crie sua primeira playlist</p>
-                        <button class="btn-miv mt-3" onclick="openCreatePlaylistModal()">
-                            <i class="bi bi-plus-circle me-2"></i> Criar Playlist
-                        </button>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-0">${p.nome}</h6>
+                        <small class="text-muted">${p.publica ? 'Pública' : 'Privada'}</small>
                     </div>
-                `;
-            }
-        }
-        
-        if (favoritesContainer) {
-            const favoriteTracks = state.playlist.filter(t => state.favoriteMusicIds?.includes(t.id.toString()));
-            
-            if (favoriteTracks.length) {
-                favoritesContainer.innerHTML = favoriteTracks.map((t) => {
-                    const trackIndex = state.playlist.findIndex(p => p.id === t.id);
-                    let coverImage = t.link_capa?.trim() || PLACEHOLDERS.MIV_300;
-                    
-                    if (t.link_youtube) {
-                        const videoId = extractYouTubeId(t.link_youtube);
-                        if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                    }
-                    
-                    const eloRating = t.elo_rating || 1400;
-                    const eloLevel = eloRating >= 2000 ? '🔥 Top' : 
-                                    eloRating >= 1700 ? '📈 Trending' : '🎵 Nova';
-                    
-                    return `
-                    <div class="spotify-card" onclick="playTrack(${trackIndex})">
-                        <div class="spotify-cover">
-                            <img src="${coverImage}" alt="${t.titulo || 'Música'}" 
-                                 onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                            <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${trackIndex})">
-                                <i class="bi bi-play-fill"></i>
-                            </div>
-                        </div>
-                        <h3 class="spotify-title">${t.titulo || 'Sem título'}</h3>
-                        <p class="spotify-artist">${t.artista || 'Artista'}</p>
-                        
-                        <div class="spotify-stats">
-                            <span class="spotify-elo">${eloLevel}</span>
-                            <span class="spotify-price">${formatCurrency(t.valor_acao || 0)}</span>
-                        </div>
-                        
-                        <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${trackIndex})">
-                            <i class="bi bi-currency-dollar me-1"></i> INVESTIR
-                        </button>
-                    </div>`;
-                }).join('');
-            } else {
-                favoritesContainer.innerHTML = `
-                    <div class="empty-state-actionable" style="grid-column: 1/-1;">
-                        <i class="bi bi-star empty-icon"></i>
-                        <h5 class="text-muted">Nenhuma música favoritada</h5>
-                        <p class="text-muted">Adicione músicas aos favoritos clicando na estrela</p>
-                    </div>
-                `;
-            }
+                    <button class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
+                </div>
+            `).join('');
+        } else {
+            playlistsContainer.innerHTML = `
+                <div class="empty-state-actionable">
+                    <i class="bi bi-music-note-list empty-icon"></i>
+                    <h5 class="text-muted">Nenhuma playlist</h5>
+                    <p class="text-muted">Crie sua primeira playlist</p>
+                    <button class="btn-miv mt-3" onclick="openCreatePlaylistModal()">
+                        <i class="bi bi-plus-circle me-2"></i> Criar Playlist
+                    </button>
+                </div>
+            `;
         }
     }
-
+    
+    if (favoritesContainer) {
+        // 🔴 COMBINAR MÚSICAS NORMAIS E EXTERNAS FAVORITADAS
+        const favoriteTracks = [
+            ...state.playlist.filter(t => state.favoriteMusicIds?.includes(t.id.toString())),
+            ...state.externalPlaylist.filter(t => state.favoriteMusicIds?.includes(t.id.toString()))
+        ];
+        
+        if (favoriteTracks.length) {
+            favoritesContainer.innerHTML = favoriteTracks.map((t) => {
+                const isExternal = t.id?.toString().startsWith('ext_');
+                const trackIndex = isExternal 
+                    ? 1000 + state.externalPlaylist.findIndex(p => p.id === t.id)
+                    : state.playlist.findIndex(p => p.id === t.id);
+                
+                let coverImage = isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300;
+                
+                if (t.link_capa && t.link_capa.trim() !== '') {
+                    coverImage = t.link_capa.trim();
+                } else if (t.link_youtube) {
+                    const videoId = extractYouTubeId(t.link_youtube);
+                    if (videoId) {
+                        coverImage = isExternal 
+                            ? `/api/backend?action=youtube_thumbnail&videoId=${videoId}`
+                            : `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                    }
+                }
+                
+                const eloRating = t.elo_rating || 1400;
+                const eloLevel = eloRating >= 2000 ? '🔥 Top' : 
+                                eloRating >= 1700 ? '📈 Trending' : '🎵 Nova';
+                
+                return `
+                <div class="spotify-card ${isExternal ? 'external-card' : ''}" onclick="${isExternal ? `playExternalTrack(${trackIndex - 1000})` : `playTrack(${trackIndex})`}">
+                    <div class="spotify-cover">
+                        <img src="${coverImage}" alt="${t.titulo || 'Música'}" 
+                             onerror="this.src='${isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300}'">
+                        <div class="play-overlay" onclick="event.stopPropagation(); ${isExternal ? `playExternalTrack(${trackIndex - 1000})` : `playTrack(${trackIndex})`}">
+                            <i class="bi bi-play-fill"></i>
+                        </div>
+                        ${isExternal ? '<div class="external-badge" style="top: 4px; right: 4px; font-size: 0.6rem;">🌐</div>' : ''}
+                    </div>
+                    <h3 class="spotify-title">${t.titulo || 'Sem título'}</h3>
+                    <p class="spotify-artist">${t.artista || 'Artista'}</p>
+                    
+                    <div class="spotify-stats">
+                        <span class="spotify-elo">${eloLevel}</span>
+                        <span class="spotify-price">${formatCurrency(t.valor_acao || 0)}</span>
+                    </div>
+                    
+                    <button class="btn-invest" onclick="event.stopPropagation(); ${isExternal ? `openInvestExternalModal(${trackIndex - 1000})` : `openInvestModal(${trackIndex})`}">
+                        <i class="bi bi-currency-dollar me-1"></i> INVESTIR
+                    </button>
+                </div>`;
+            }).join('');
+        } else {
+            favoritesContainer.innerHTML = `
+                <div class="empty-state-actionable" style="grid-column: 1/-1;">
+                    <i class="bi bi-star empty-icon"></i>
+                    <h5 class="text-muted">Nenhuma música favoritada</h5>
+                    <p class="text-muted">Adicione músicas aos favoritos clicando na estrela</p>
+                </div>
+            `;
+        }
+    }
+}
     function renderArtistMusic(musics) {
         const container = document.getElementById('artistMusicContent');
         if (!container) return;
@@ -8287,17 +8302,20 @@ async function toggleFavoriteMusic(musicId, trackIndex) {
         state.favoriteMusicIds.push(musicId.toString());
         showToast('Adicionado aos favoritos', 'success');
     }
+    
     // ===== SALVAR NO LOCALSTORAGE =====
-if (state.currentUser) {
-    state.currentUser.favorite_music_ids = state.favoriteMusicIds;
-    localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-    localStorage.setItem('miv_favorites', JSON.stringify(state.favoriteMusicIds));
-    console.log('💾 Favoritos salvos:', state.favoriteMusicIds);
-}
+    if (state.currentUser) {
+        state.currentUser.favorite_music_ids = state.favoriteMusicIds;
+        localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+        localStorage.setItem('miv_favorites', JSON.stringify(state.favoriteMusicIds));
+        console.log('💾 Favoritos salvos:', state.favoriteMusicIds);
+    }
     
-    
+    // 🔴 ATUALIZAR AMBAS AS SEÇÕES
     renderMarketplace();
+    renderExternalMarketplace(); // ← NOVO!
     renderPlaylists();
+    
     if (trackIndex !== null) updateFavoriteButton(!isFavorite);
     
     const result = await callAPI('toggle_favorite', { 
@@ -8305,7 +8323,7 @@ if (state.currentUser) {
         music_id: musicId, 
         action: isFavorite ? 'remove' : 'add' 
     });
-} 
+}
     async function createPlaylist() {
         const name = document.getElementById('playlistNameField').value.trim();
         if (!name) { 
