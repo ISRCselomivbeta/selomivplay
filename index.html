@@ -9004,6 +9004,9 @@ if (searchInput) {
 /**
  * Exibe os resultados combinados na interface.
  */
+/**
+ * Exibe os resultados combinados na interface.
+ */
 function displaySearchResults(internal, external, youtube, query) {
     const container = document.getElementById('searchResults');
     const allResults = [...internal, ...external, ...youtube];
@@ -9020,9 +9023,23 @@ function displaySearchResults(internal, external, youtube, query) {
     allResults.forEach((item, index) => {
         const isExternal = item.is_external || item.is_youtube;
         const coverImg = item.link_capa || (isExternal ? PLACEHOLDERS.EXT_56 : PLACEHOLDERS.MIV_56);
+        
+        // CORREÇÃO: Criar uma versão segura do item para passar como atributo data
+        const safeItem = {
+            id: item.id || '',
+            titulo: item.titulo || '',
+            artista: item.artista || '',
+            link_capa: item.link_capa || '',
+            link_youtube: item.link_youtube || '',
+            is_external: item.is_external || false,
+            is_youtube: item.is_youtube || false
+        };
+        
+        // CORREÇÃO: Converter para JSON e escapar aspas
+        const itemJson = JSON.stringify(safeItem).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
         html += `
-        <div class="search-result-item" onclick="playSearchResult(${index}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
+        <div class="search-result-item" onclick='playSearchResult(${index}, ${itemJson})'>
             <img src="${coverImg}" class="search-result-cover" onerror="this.src='${isExternal ? PLACEHOLDERS.EXT_56 : PLACEHOLDERS.MIV_56}'">
             <div class="search-result-info">
                 <div class="search-result-title">${item.titulo || 'Sem título'}</div>
@@ -9258,7 +9275,7 @@ function getYoutubeIdForMusic(titulo, artista) {
     };
     
     const key = `${artista} ${titulo}`;
-    return musicMap[key] || 'dQw4w9WgXcQ';
+    return musicMap[key] || 'dQw4w9WgXcQ'; // Rick Roll como fallback
 }
 // Expõe as funções globalmente
 window.performSearch = performSearch;
