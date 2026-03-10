@@ -5731,7 +5731,7 @@ async function handleRegister() {
             senha: password, 
             tipo: type, 
             workLink: link,
-            confirm_url: 'https://selomivplay.vercel.app/confirm-email.html',
+            confirm_url: window.location.origin + '/confirm-email.html',
             accepted_terms: true,
             terms_version: '6.0.0',
             terms_accepted_at: new Date().toISOString(),
