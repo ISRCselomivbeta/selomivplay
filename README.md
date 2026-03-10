@@ -74,13 +74,11 @@ O **SELO MIV** é uma plataforma inovadora que permite investimentos em direitos
 
 ### Variáveis de Ambiente (Vercel)
 ```env
-YOUTUBE_API_KEY=AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM
 ```
 
 ### Google Apps Script Properties
 ```javascript
 // Script Properties
-YOUTUBE_API_KEY = AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM
 ```
 
 ---
@@ -265,7 +263,7 @@ Este projeto está sob a licença **SELO MIV**. Consulte o arquivo [TERMOS DE US
 
 ## 🆘 Suporte
 
-Para suporte técnico, abra uma issue no repositório ou envie um email para suporte@selomiv.com
+Para suporte técnico, abra uma issue no repositório ou envie um email para selomiv@gmail.com
 
 ---
 
