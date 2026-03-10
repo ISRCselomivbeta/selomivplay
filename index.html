@@ -6071,66 +6071,6 @@ async function loadMarketplace(forceRefresh = false) {
         }
     }
 }
-    // ===== FIM DA NOVA FUNÇÃO =====
-        
-        // SEGUNDO: Se API falhar, tenta cache
-        const cached = localStorage.getItem('miv_playlist');
-        const cachedTime = localStorage.getItem('miv_playlist_timestamp');
-        
-        if (cached && cachedTime && !forceRefresh) {
-            const age = Date.now() - parseInt(cachedTime);
-            if (age < 3600000) { // 1 hora
-                console.log('📦 Usando cache do marketplace');
-                state.playlist = JSON.parse(cached);
-                renderMarketplace();
-                return;
-            }
-        }
-        
-        // TERCEIRO: Fallback para dados de exemplo APENAS se nada funcionar
-        console.log('⚠️ Nenhum dado real encontrado, usando fallback');
-        state.playlist = getFallbackMusics();
-        renderMarketplace();
-        
-    } catch (error) {
-        console.error('❌ Erro ao carregar marketplace:', error);
-        
-        // Tenta cache em caso de erro
-        const cached = localStorage.getItem('miv_playlist');
-        if (cached) {
-            state.playlist = JSON.parse(cached);
-            renderMarketplace();
-            showToast('Usando dados do cache', 'info');
-        } else {
-            state.playlist = getFallbackMusics();
-            renderMarketplace();
-        }
-    }
-}
-function getFallbackMusics() {
-        return [
-            {
-                id: 'fallback_1',
-                titulo: '🔴 Modo Demonstração - API não conectada',
-                artista: 'SELO MIV',
-                link_capa: 'https://via.placeholder.com/300/00ff88/000000?text=API+OFFLINE',
-                link_youtube: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                valor_acao: 10.00,
-                percentual_disponivel: 20,
-                acoes_vendidas: 0,
-                total_investidores: 0,
-                rentabilidade_media: 0,
-                status: 'ativo',
-                youtube_stats: { 
-                    views: 0, 
-                    likes: 0, 
-                    comments: 0,
-                    estimated_earnings: 0 
-                },
-                is_fallback: true
-            }
-        ];
-    }
 
     // ===== FUNÇÃO loadMarketplace =====
     async function loadMarketplace(forceRefresh = false) {
@@ -6188,6 +6128,30 @@ function getFallbackMusics() {
             }
         }
     }
+    function getFallbackMusics() {
+    return [
+        {
+            id: 'fallback_1',
+            titulo: '🔴 Modo Demonstração - API não conectada',
+            artista: 'SELO MIV',
+            link_capa: 'https://via.placeholder.com/300/00ff88/000000?text=API+OFFLINE',
+            link_youtube: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            valor_acao: 10.00,
+            percentual_disponivel: 20,
+            acoes_vendidas: 0,
+            total_investidores: 0,
+            rentabilidade_media: 0,
+            status: 'ativo',
+            youtube_stats: { 
+                views: 0, 
+                likes: 0, 
+                comments: 0,
+                estimated_earnings: 0 
+            },
+            is_fallback: true
+        }
+    ];
+}
 
     // ===== FUNÇÃO loadExternalMarketplace =====
     async function loadExternalMarketplace(forceRefresh = false) {
