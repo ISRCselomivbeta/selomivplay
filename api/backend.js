@@ -558,6 +558,144 @@ export default async function handler(req, res) {
       } catch (gasError) {
         console.log('⚠️ GAS não respondeu register_streaming');
       }
+      // ===== CRIAR PAGAMENTO MERCADO PAGO =====
+if (action === 'create_mercadopago_payment') {
+  console.log('💰 Criando pagamento Mercado Pago:', params);
+  
+  try {
+    // ✅ AQUI! - PEGANDO O TOKEN DAS VARIÁVEIS DE AMBIENTE
+    const MERCADO_PAGO_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+    
+    if (!MERCADO_PAGO_ACCESS_TOKEN || MERCADO_PAGO_ACCESS_TOKEN === 'YOUR_MERCADO_PAGO_TOKEN_HERE') {
+      console.error('❌ MERCADO_PAGO_ACCESS_TOKEN não configurado');
+      return res.status(200).json({ 
+        success: false, 
+        message: 'Mercado Pago não configurado' 
+      });
+    }
+    
+    const { amount, user_id, email, description } = params;
+    
+    if (!amount || amount < 10) {
+      return res.status(200).json({
+        success: false,
+        message: 'Valor mínimo: R$ 10,00'
+      });
+    }
+    
+    // Criar preferência no Mercado Pago
+    const preference = {
+      items: [
+        {
+          title: description || 'Depósito SELO MIV',
+          quantity: 1,
+          currency_id: 'BRL',
+          unit_price: parseFloat(amount)
+        }
+      ],
+      payer: {
+        email: email || 'cliente@email.com'
+      },
+      external_reference: user_id, // IMPORTANTE: Guardar o user_id!
+      back_urls: {
+        success: 'https://selomivplay.vercel.app/deposito/sucesso',
+        failure: 'https://selomivplay.vercel.app/deposito/falha',
+        pending: 'https://selomivplay.vercel.app/deposito/pendente'
+      },
+      auto_return: 'approved',
+      notification_url: 'https://selomivplay.vercel.app/api/webhook-mercadopago' // Webhook
+    };
+    
+    const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(preference)
+    });
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      console.error('Erro Mercado Pago:', data.error);
+      return res.status(200).json({
+        success: false,
+        message: data.error.message || 'Erro ao criar pagamento'
+      });
+    }
+    
+    console.log('✅ Pagamento criado:', data.id);
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        preference_id: data.id,
+        init_point: data.init_point, // Link para pagamento
+        sandbox_init_point: data.sandbox_init_point // Link para testes
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao criar pagamento:', error);
+    return res.status(200).json({
+      success: false,
+      message: 'Erro ao processar pagamento',
+      error: error.message
+    });
+  }
+}
+      // ===== WEBHOOK MERCADO PAGO =====
+if (action === 'webhook_mercadopago') {
+  console.log('🔔 Webhook Mercado Pago recebido:', req.body);
+  
+  try {
+    const MERCADO_PAGO_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+    const paymentData = req.body;
+    
+    // Verificar se é notificação de pagamento
+    if (paymentData.type === 'payment' || paymentData.action === 'payment.created') {
+      const paymentId = paymentData.data?.id;
+      
+      // Buscar detalhes do pagamento
+      const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+        headers: {
+          'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`
+        }
+      });
+      
+      const payment = await paymentResponse.json();
+      
+      // Se pagamento foi aprovado
+      if (payment.status === 'approved') {
+        const user_id = payment.external_reference;
+        const amount = payment.transaction_amount;
+        const payment_id = payment.id;
+        
+        console.log(`✅ Pagamento aprovado! User: ${user_id}, Amount: ${amount}`);
+        
+        // Chamar seu Google Apps Script para adicionar saldo
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
+        
+        const gasUrl = new URL(GAS_URL);
+        gasUrl.searchParams.append('action', 'add_balance');
+        gasUrl.searchParams.append('user_id', user_id);
+        gasUrl.searchParams.append('amount', amount);
+        gasUrl.searchParams.append('payment_id', payment_id);
+        gasUrl.searchParams.append('payment_method', 'MERCADO_PAGO');
+        
+        await fetch(gasUrl.toString());
+      }
+    }
+    
+    // Sempre retornar 200 para o Mercado Pago
+    return res.status(200).json({ received: true });
+    
+  } catch (error) {
+    console.error('❌ Erro no webhook:', error);
+    return res.status(200).json({ received: true }); // Sempre 200
+  }
+}
       
       // Simular sucesso
       return res.status(200).json({
