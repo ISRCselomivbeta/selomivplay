@@ -6238,7 +6238,8 @@ function renderMarketplace() {
                     coverImage = track.link_capa.trim();
                 } else if (track.link_youtube) {
                     const videoId = extractYouTubeId(track.link_youtube);
-                    if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                    if (videoId) coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
+
                 }
                 
                 const vendasAtuais = track.vendas_atuais || 0;
@@ -6465,7 +6466,7 @@ function renderExternalMarketplace() {
         } else if (track.link_youtube) {
             const videoId = extractYouTubeId(track.link_youtube);
             if (videoId) {
-                coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
             }
         }
         
@@ -6580,7 +6581,7 @@ function renderExternalMarketplace() {
             if (track.link_youtube) {
                 const videoId = extractYouTubeId(track.link_youtube);
                 if (videoId) {
-                    coverUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+coverUrl = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
                 }
             }
             
