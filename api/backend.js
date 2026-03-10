@@ -698,7 +698,74 @@ async function originalHandler(req, res) {  // ← ANTES ERA "handler"
         return res.status(200).json({ received: true });
       }
     }
-    
+       // ===== 🆕 [NOVO] PROXY PARA THUMBNAILS DO YOUTUBE =====
+    if (action === 'youtube_thumbnail') {
+      const { videoId } = params;
+      
+      if (!videoId) {
+        return res.status(400).json({ error: 'videoId é obrigatório' });
+      }
+      
+      try {
+        // Tentar buscar nos formatos disponíveis
+        const formats = [
+          `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          `https://img.youtube.com/vi/${videoId}/sddefault.jpg`,
+          `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+          `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+          `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+          `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+        ];
+        
+        let imageResponse = null;
+        let usedUrl = '';
+        
+        // Tentar cada formato até encontrar um que funcione
+        for (const url of formats) {
+          try {
+            const response = await fetch(url, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+              }
+            });
+            
+            if (response.ok) {
+              imageResponse = response;
+              usedUrl = url;
+              console.log(`✅ Thumbnail encontrada: ${usedUrl}`);
+              break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+        
+        if (!imageResponse) {
+          console.log(`❌ Nenhuma thumbnail encontrada para ${videoId}`);
+          // Retornar imagem padrão
+          const defaultImage = await fetch('https://via.placeholder.com/480x360?text=SEM+IMAGEM');
+          const defaultBuffer = await defaultImage.arrayBuffer();
+          res.setHeader('Content-Type', 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          res.send(Buffer.from(defaultBuffer));
+          return;
+        }
+        
+        const imageBuffer = await imageResponse.arrayBuffer();
+        
+        // Configurar headers para cache e CORS
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache por 24 horas
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        
+        // Enviar imagem
+        res.send(Buffer.from(imageBuffer));
+        
+      } catch (error) {
+        console.error('❌ Erro no proxy de thumbnail:', error);
+        res.status(500).json({ error: 'Erro ao buscar thumbnail' });
+      }
+    }
     // ===== GET STREAMING STATS =====
     if (action === 'get_streaming_stats') {
       console.log('📈 Buscando stats de streaming para:', params.user_id);
