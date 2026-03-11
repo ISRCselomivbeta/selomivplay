@@ -6739,8 +6739,15 @@ coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
 }
 
     function playExternalTrack(index) {
-    // Adicionar à fila
-    const track = state.externalPlaylist[index];
+    // Verificar índice primeiro
+    if (index < 0 || index >= state.externalPlaylist.length) {
+        showToast('Música não encontrada', 'error');
+        return;
+    }
+    
+    // Adicionar à fila (USANDO A MESMA VARIÁVEL)
+    const track = state.externalPlaylist[index];  // ← ÚNICA DECLARAÇÃO
+    
     if (track) {
         playQueue.items = [];
         playQueue.items.push({
@@ -6756,16 +6763,8 @@ coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
         }, 2000);
     }
     
-    // Resto do código existente...
-    if (index < 0 || index >= state.externalPlaylist.length) {
-        showToast('Música não encontrada', 'error');
-        return;
-    }
-    
     const externalIndex = 1000 + index;
     state.currentTrackIndex = externalIndex;
-    
-    const track = state.externalPlaylist[index];
     
     const player = document.getElementById('playerSpotify');
     if (player) player.style.display = 'flex';
@@ -6797,7 +6796,7 @@ coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
         };
     }
     
-    // 🔴 VERIFICAR SE É FAVORITO
+    // Verificar se é favorito
     const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
     updateFavoriteButton(isFavorite);
     
