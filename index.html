@@ -9455,12 +9455,20 @@ async function loadSimilarMusicAndAddToQueue(originalItem) {
     
     similarTracks = similarTracks.slice(0, 4);
     
+    // Adicionar à Bolsa Externa
     similarTracks.forEach(track => {
         state.externalPlaylist.push(track);
     });
     
+    // 🔴 CORRIGIDO: Adicionar à fila de reprodução
     similarTracks.forEach(track => {
-        playQueue.add(track);
+        playQueue.items.push({
+            type: 'external',
+            index: state.externalPlaylist.length - 1,
+            track: track,
+            trackId: track.id,
+            isSimilar: true
+        });
     });
     
     renderExternalMarketplace();
