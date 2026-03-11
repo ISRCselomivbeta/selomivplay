@@ -3964,7 +3964,6 @@ a, .auth-link {
                 <i class="bi bi-info-circle me-2"></i>
                 Sugira músicas do YouTube para investimento antecipado.
             </div>
-            
             <div class="form-group">
     <label for="externalYoutubeLinkField" class="text-muted mb-2 d-block">Link do YouTube *</label>
     <div class="input-group mb-2">
@@ -3975,6 +3974,7 @@ a, .auth-link {
     </div>
     <small class="text-muted">Cole o link e clique em "Auto-Preencher"</small>
 </div>
+            
             <div class="form-group">
                 <label for="externalCoverField" class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
                 <input type="url" id="externalCoverField" class="form-control-custom" placeholder="https://exemplo.com/capa.jpg">
@@ -4502,7 +4502,7 @@ a, .auth-link {
         EXT_300: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%22300%22 height%3D%22300%22 viewBox%3D%220 0 300 300%22%3E%3Crect width%3D%22300%22 height%3D%22300%22 fill%3D%22%23111418%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2224%22 fill%3D%22%23ff6b6b%22%3EEXT%3C/text%3E%3C/svg%3E',
         PLAYLIST: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%2260%22 height%3D%2260%22 viewBox%3D%220 0 60 60%22%3E%3Crect width%3D%2260%22 height%3D%2260%22 fill%3D%22%2300ff88%22/%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 text-anchor%3D%22middle%22 dy%3D%22.3em%22 font-family%3D%22Arial%22 font-size%3D%2224%22 fill%3D%22%23000000%22%3E%E2%99%AA%3C/text%3E%3C/svg%3E'
     };
-// ===== FUNÇÕES PARA CAPAS =====
+// ===== FUNÇÕES PARA CAPAS (NOVO) =====
 async function getMusicCover(track) {
     // Prioridade 1: Link direto da capa
     if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
@@ -4537,6 +4537,8 @@ function getMusicCoverSync(track) {
     
     return track.is_external ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300;
 }
+// ===== FIM DAS FUNÇÕES DE CAPA =====
+    
     // ========== ESTADO GLOBAL ==========
     const state = {
         currentUser: null,
@@ -4573,7 +4575,8 @@ function getMusicCoverSync(track) {
         streamingStats: null,
         progressInterval: null
     };
-// ===== FILA DE REPRODUÇÃO UNIFICADA =====
+
+// ===== FILA DE REPRODUÇÃO UNIFICADA (NOVO) =====
 const playQueue = {
     items: [], // { type: 'internal'|'external', index, track, trackId }
     currentIndex: -1,
@@ -4724,6 +4727,8 @@ const playQueue = {
         this.updateQueueDisplay();
     }
 };
+// ===== FIM DA FILA =====
+    
     // ========== CONTROLE DE REQUISIÇÕES ==========
     const requestControl = {
         lastSaldo: 0,
@@ -6086,12 +6091,12 @@ const modalHtml = `
         }
     }
 
-    async function initializeApp() {
+async function initializeApp() {
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
     updateUserInterface();
     await loadAllData();
-    await loadUserFavorites();
+    await loadUserFavorites(); // ← NOVO
 
     loadYouTubeAPI();
     
@@ -6107,7 +6112,31 @@ const modalHtml = `
         }
     }, 60000);
 }
-// ===== CARREGAR FAVORITOS DO PERFIL =====  ← ADICIONAR AQUI (linha ~6100)
+
+    async function loadAllData() {
+        showLoading('Carregando dados...');
+        try {
+            await Promise.all([
+                loadMarketplace(),
+                loadExternalMarketplace(),
+                loadPortfolio(),
+                loadLedger(),
+                loadTopInvestments(),
+                loadUserPlaylists()
+            ]);
+            
+            await updateBalanceDisplay();
+            
+            if (state.currentUser?.tipo === 'artista') await loadArtistData();
+            showToast('Sistema carregado!', 'success');
+        } catch (error) {
+            console.error('Erro ao carregar dados:', error);
+            showToast('Alguns dados não foram carregados', 'warning');
+        } finally {
+            hideLoading();
+        }
+    }
+// ===== CARREGAR FAVORITOS DO PERFIL (NOVO) =====
 async function loadUserFavorites() {
     if (!state.currentUser || !state.currentUser.id) return;
     
@@ -6128,30 +6157,7 @@ async function loadUserFavorites() {
         console.error('Erro ao carregar favoritos:', error);
     }
 }
-async function loadAllData() {
-    showLoading('Carregando dados...');
-    try {
-        await Promise.all([
-            loadMarketplace(),
-            loadExternalMarketplace(),
-            loadPortfolio(),
-            loadLedger(),
-            loadTopInvestments(),
-            loadUserPlaylists()
-        ]);
-        
-        await updateBalanceDisplay();
-        
-        if (state.currentUser?.tipo === 'artista') await loadArtistData();
-        showToast('Sistema carregado!', 'success');
-    } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        showToast('Alguns dados não foram carregados', 'warning');
-    } finally {
-        hideLoading();
-    }
-}
-
+// ===== FIM =====
 async function loadMarketplace(forceRefresh = false) {
     // Primeiro, carrega dados de exemplo imediatamente para teste
     if (!state.playlist || state.playlist.length === 0) {
@@ -6758,15 +6764,15 @@ coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
     }).join('');
 }
 
-    function playExternalTrack(index) {
+function playExternalTrack(index) {
     // Verificar índice primeiro
     if (index < 0 || index >= state.externalPlaylist.length) {
         showToast('Música não encontrada', 'error');
         return;
     }
     
-    // Adicionar à fila (USANDO A MESMA VARIÁVEL)
-    const track = state.externalPlaylist[index];  // ← ÚNICA DECLARAÇÃO
+    // Adicionar à fila
+    const track = state.externalPlaylist[index];
     
     if (track) {
         playQueue.items = [];
@@ -6816,7 +6822,6 @@ coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
         };
     }
     
-    // Verificar se é favorito
     const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
     updateFavoriteButton(isFavorite);
     
@@ -7373,7 +7378,7 @@ function renderPlaylists() {
 
 function playTrack(index) {
     // Adicionar à fila
-    const track = state.playlist[index];  // ← ÚNICA declaração
+    const track = state.playlist[index];
     
     if (index < 0 || index >= state.playlist.length) {
         showToast('Música não encontrada', 'error');
@@ -8207,24 +8212,14 @@ function initializeYouTubePlayer(videoId) {
     }
 
     function playNext() {
-        
-        if (!state.playlist.length) return;
-        let next = state.isShuffle ? 
-            Math.floor(Math.random() * state.playlist.length) : 
-            (state.currentTrackIndex + 1) % state.playlist.length;
-        playTrack(next);
-    }
+    playQueue.playNext();
+}
 
-    function playPrevious() {
-        
-        if (!state.playlist.length) return;
-        let prev = state.isShuffle ? 
-            Math.floor(Math.random() * state.playlist.length) : 
-            (state.currentTrackIndex > 0 ? state.currentTrackIndex - 1 : state.playlist.length - 1);
-        playTrack(prev);
-    }
+   function playPrevious() {
+    playQueue.playPrevious();
+}
 
-function toggleShuffle() { 
+    function toggleShuffle() { 
     state.isShuffle = !state.isShuffle; 
     
     if (state.isShuffle) {
@@ -8973,8 +8968,7 @@ async function toggleFavoriteMusic(musicId, trackIndex) {
             showToast('Logout realizado', 'success');
         }
     }
-    
-// ===== BUSCAR ISRC AUTOMATICAMENTE =====
+// ===== BUSCAR ISRC AUTOMATICAMENTE (NOVO) =====
 async function autoFillMusicInfo() {
     const youtubeUrl = document.getElementById('externalYoutubeLinkField').value.trim();
     
@@ -8995,7 +8989,6 @@ async function autoFillMusicInfo() {
     btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Buscando...';
     
     try {
-        // Chamar a API para buscar informações
         const result = await callAPI('search_isrc', { youtube_url: youtubeUrl });
         
         if (result.success && result.data) {
@@ -9038,11 +9031,9 @@ async function autoFillMusicInfo() {
     }
 }
 
-// Função de fallback (opcional)
 async function fallbackFillMusicInfo() {
     const youtubeUrl = document.getElementById('externalYoutubeLinkField').value.trim();
     
-    // Extrair ID para gerar título sugerido
     let videoId = '';
     if (youtubeUrl.includes('youtu.be/')) {
         videoId = youtubeUrl.split('youtu.be/')[1].split('?')[0].split('&')[0];
@@ -9051,13 +9042,13 @@ async function fallbackFillMusicInfo() {
     }
     
     if (videoId) {
-        // Preencher com base no ID (fallback)
         document.getElementById('externalTitleField').value = 'Música do YouTube';
         document.getElementById('externalArtistField').value = 'Artista';
         
         showToast('Informações preenchidas (modo offline)', 'info');
     }
 }
+// ===== FIM =====    
 // ========== NOVO: SISTEMA DE PESQUISA E RECOMENDAÇÃO ==========
 let searchTimeout = null;
 const YOUTUBE_API_KEY = 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
@@ -9462,12 +9453,14 @@ async function loadSimilarMusicAndAddToQueue(originalItem) {
         });
     }
     
- similarTracks = similarTracks.slice(0, 4);
+    similarTracks = similarTracks.slice(0, 4);
     
     similarTracks.forEach(track => {
-        state.externalPlaylist.push(track);  // ← JÁ ESTÁ SENDO FEITO
-        // Não precisa chamar playQueue.add
-        console.log('🎵 Música similar adicionada:', track.titulo);
+        state.externalPlaylist.push(track);
+    });
+    
+    similarTracks.forEach(track => {
+        playQueue.add(track);
     });
     
     renderExternalMarketplace();
@@ -9939,37 +9932,29 @@ window.playSearchResult = playSearchResult;
         renderTradeOffers(type);
     }
 
-async function acceptTradeOffer(offerId) {
-    if (!confirm('Confirmar negociação? O valor será transferido entre vocês.')) return;
-    
-    try {
-        showToast('Processando negociação...', 'info');
+    async function acceptTradeOffer(offerId) {
+        if (!confirm('Confirmar negociação? O valor será debitado do seu saldo.')) return;
         
-        const result = await callAPI('process_trade', {
-            trade_id: offerId,
-            action_type: 'accept'
-        });
-        
-        if (result?.success) {
-            showToast('✅ Negociação concluída!', 'success');
+        try {
+            showToast('Processando negociação...', 'info');
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Atualizar saldos
-            await updateBalanceDisplay(true);
-            await loadPortfolio(true);
+            const offer = tradeOffers.received.find(o => o.id === offerId);
+            if (offer) {
+                offer.status = 'accepted';
+                tradeOffers.history.unshift({...offer, type: 'history'});
+                tradeOffers.received = tradeOffers.received.filter(o => o.id !== offerId);
+            }
             
-            // Remover oferta da lista
-            await loadTradeOffers();
-            
-            // Notificar via toast
-            showToast(`💰 Saldo atualizado: ${formatCurrency(state.userBalance)}`, 'success');
-        } else {
-            showToast(result?.message || 'Erro ao processar negociação', 'error');
+            showToast('Negociação concluída com sucesso!', 'success');
+            await updateBalanceDisplay();
+            await loadPortfolio();
+            renderTradeOffers('received');
+        } catch (error) {
+            console.error('Erro ao aceitar oferta:', error);
+            showToast('Erro ao processar negociação', 'error');
         }
-    } catch (error) {
-        console.error('Erro ao aceitar oferta:', error);
-        showToast('Erro ao processar negociação', 'error');
     }
-}
 
     async function declineTradeOffer(offerId) {
         if (!confirm('Recusar esta oferta?')) return;
@@ -10139,7 +10124,8 @@ async function resendConfirmationEmailFromModal(email) {
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
-}    // ========== EXPOR FUNÇÕES GLOBAIS ==========
+}
+    // ========== EXPOR FUNÇÕES GLOBAIS ==========
     window.handleLogin = handleLogin;
     window.handleRegister = handleRegister;
     window.logout = logout;
@@ -10195,8 +10181,6 @@ async function resendConfirmationEmailFromModal(email) {
     window.openEditMusicModal = openEditMusicModal;
     window.updateMusic = updateMusic;
     window.pauseMusic = pauseMusic;
-    window.autoFillMusicInfo = autoFillMusicInfo;        // ← ADICIONAR ESTA LINHA
-    window.fallbackFillMusicInfo = fallbackFillMusicInfo; // ← ADICIONAR ESTA LINHA
     window.unpauseMusic = unpauseMusic;
     window.requestDeleteMusic = requestDeleteMusic;
     window.openBlockchainExplorer = openBlockchainExplorer;
@@ -10220,8 +10204,9 @@ async function resendConfirmationEmailFromModal(email) {
     window.closePlayerExpanded = closePlayerExpanded;
     window.handleProgressClick = handleProgressClick;
     window.handleExpandedProgressClick = handleExpandedProgressClick;
-    window.gerarBlocosSimuladosParaVisualizacao = gerarBlocosSimuladosParaVisualizacao;
-// Fim do escopo global
+       window.gerarBlocosSimuladosParaVisualizacao = gerarBlocosSimuladosParaVisualizacao;
+    window.autoFillMusicInfo = autoFillMusicInfo;
+window.fallbackFillMusicInfo = fallbackFillMusicInfo;
 // Fim do escopo global
 </script>
 <!-- FOOTER COM LOGO -->
