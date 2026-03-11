@@ -6086,71 +6086,51 @@ const modalHtml = `
         }
     }
 
-    function initializeApp() {
-        document.getElementById('authScreen').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        updateUserInterface();
-        loadAllData();
-        await loadUserFavorites();
+    async function initializeApp() {
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    updateUserInterface();
+    await loadAllData();
+    await loadUserFavorites();
 
-        loadYouTubeAPI();
-        
-        setInterval(() => {
-            if (state.currentUser) {
-                updateBalanceDisplay();
-            }
-        }, 30000);
-        
-        setInterval(() => {
-            if (state.currentUser) {
-                loadStreamingStats();
-            }
-        }, 60000);
-    }    
-// ===== CARREGAR FAVORITOS DO PERFIL =====
-async function loadUserFavorites() {
-    if (!state.currentUser || !state.currentUser.id) return;
+    loadYouTubeAPI();
     
-    try {
-        const result = await callAPI('get_user_profile', { 
-            user_id: state.currentUser.id 
-        });
-        
-        if (result.success && result.data && result.data.favorites) {
-            state.favoriteMusicIds = result.data.favorites;
-            console.log('⭐ Favoritos carregados:', state.favoriteMusicIds.length);
-            
-            renderMarketplace();
-            renderExternalMarketplace();
-            renderPlaylists();
+    setInterval(() => {
+        if (state.currentUser) {
+            updateBalanceDisplay();
         }
+    }, 30000);
+    
+    setInterval(() => {
+        if (state.currentUser) {
+            loadStreamingStats();
+        }
+    }, 60000);
+}
+
+async function loadAllData() {
+    showLoading('Carregando dados...');
+    try {
+        await Promise.all([
+            loadMarketplace(),
+            loadExternalMarketplace(),
+            loadPortfolio(),
+            loadLedger(),
+            loadTopInvestments(),
+            loadUserPlaylists()
+        ]);
+        
+        await updateBalanceDisplay();
+        
+        if (state.currentUser?.tipo === 'artista') await loadArtistData();
+        showToast('Sistema carregado!', 'success');
     } catch (error) {
-        console.error('Erro ao carregar favoritos:', error);
+        console.error('Erro ao carregar dados:', error);
+        showToast('Alguns dados não foram carregados', 'warning');
+    } finally {
+        hideLoading();
     }
 }
-    async function loadAllData() {
-        showLoading('Carregando dados...');
-        try {
-            await Promise.all([
-                loadMarketplace(),
-                loadExternalMarketplace(),
-                loadPortfolio(),
-                loadLedger(),
-                loadTopInvestments(),
-                loadUserPlaylists()
-            ]);
-            
-            await updateBalanceDisplay();
-            
-            if (state.currentUser?.tipo === 'artista') await loadArtistData();
-            showToast('Sistema carregado!', 'success');
-        } catch (error) {
-            console.error('Erro ao carregar dados:', error);
-            showToast('Alguns dados não foram carregados', 'warning');
-        } finally {
-            hideLoading();
-        }
-    }
 
 async function loadMarketplace(forceRefresh = false) {
     // Primeiro, carrega dados de exemplo imediatamente para teste
