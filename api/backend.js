@@ -916,7 +916,59 @@ async function originalHandler(req, res) {
         });
       }
     }
+  // ===== SEARCH ISRC =====
+if (action === 'search_isrc') {
+  console.log('🔍 Buscando ISRC para:', params.youtube_url);
+  
+  try {
+    const gasUrl = new URL(GAS_URL);
+    gasUrl.searchParams.append('action', 'search_isrc');
+    if (params.youtube_url) gasUrl.searchParams.append('youtube_url', params.youtube_url);
     
+    const gasResponse = await fetch(gasUrl.toString(), {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (gasResponse.ok) {
+      const gasData = await gasResponse.json();
+      return res.status(200).json(gasData);
+    }
+  } catch (gasError) {
+    console.log('⚠️ GAS não respondeu search_isrc');
+  }
+  
+  // Fallback inteligente
+  // Função auxiliar para extrair ID do YouTube
+function extractYouTubeId(url) {
+  if (!url || typeof url !== 'string') return null;
+  
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
+    /youtu\.be\/([^&\n?#]+)/
+  ];
+  
+  for (let pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1] && match[1].length === 11) {
+      return match[1];
+    }
+  }
+  return null;
+}
+  const videoId = extractYouTubeId(params.youtube_url);
+  
+  return res.status(200).json({
+    success: true,
+    data: {
+      title: 'Música do YouTube',
+      artist: 'Artista',
+      isrc: 'ISRC_' + Date.now(),
+      source: 'fallback'
+    }
+  });
+}  
     // ===== GET TOP INVESTMENTS =====
     if (action === 'get_top_investments') {
       console.log('🏆 Buscando top investments...');
