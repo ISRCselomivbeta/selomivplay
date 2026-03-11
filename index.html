@@ -9462,14 +9462,12 @@ async function loadSimilarMusicAndAddToQueue(originalItem) {
         });
     }
     
-    similarTracks = similarTracks.slice(0, 4);
+ similarTracks = similarTracks.slice(0, 4);
     
     similarTracks.forEach(track => {
-        state.externalPlaylist.push(track);
-    });
-    
-    similarTracks.forEach(track => {
-        playQueue.add(track);
+        state.externalPlaylist.push(track);  // ← JÁ ESTÁ SENDO FEITO
+        // Não precisa chamar playQueue.add
+        console.log('🎵 Música similar adicionada:', track.titulo);
     });
     
     renderExternalMarketplace();
