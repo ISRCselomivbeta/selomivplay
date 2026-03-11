@@ -7352,9 +7352,25 @@ function renderPlaylists() {
         }
     }
 
-    function playTrack(index) {
-        // Adicionar à fila
-    const track = state.playlist[index];
+function playTrack(index) {
+    // Adicionar à fila
+    const track = state.playlist[index];  // ← ÚNICA declaração
+    
+    if (index < 0 || index >= state.playlist.length) {
+        showToast('Música não encontrada', 'error');
+        return;
+    }
+    
+    if (track.status === 'paused') {
+        showToast('Esta música está pausada pelo artista', 'warning');
+        return;
+    }
+    if (track.status === 'deleted') {
+        showToast('Esta música não está mais disponível', 'error');
+        return;
+    }
+    
+    // Configurar fila
     if (track) {
         playQueue.items = [];
         playQueue.items.push({
@@ -7365,73 +7381,59 @@ function renderPlaylists() {
         });
         playQueue.currentIndex = 0;
     }
-        state.streamingProgress = 0;
-        state.streamingLastReward = 0;
-        state.streamingTrackId = null;
-        state.playerReady = false;
+    
+    state.streamingProgress = 0;
+    state.streamingLastReward = 0;
+    state.streamingTrackId = null;
+    state.playerReady = false;
+    
+    state.currentTrackIndex = index;
+    
+    const player = document.getElementById('playerSpotify');
+    if (player) player.style.display = 'flex';
+    
+    const playerTitle = document.getElementById('playerTitle');
+    const playerArtist = document.getElementById('playerArtist');
+    const playerAlbumArt = document.getElementById('playerAlbumArt');
+    
+    if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
+    if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
+    
+    if (playerAlbumArt) {
+        let coverUrl = PLACEHOLDERS.MIV_56;
         
-        if (index < 0 || index >= state.playlist.length) {
-            showToast('Música não encontrada', 'error');
-            return;
+        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
+            coverUrl = track.link_capa.trim();
         }
         
-        const track = state.playlist[index];
-        if (track.status === 'paused') {
-            showToast('Esta música está pausada pelo artista', 'warning');
-            return;
-        }
-        if (track.status === 'deleted') {
-            showToast('Esta música não está mais disponível', 'error');
-            return;
-        }
-        
-        state.currentTrackIndex = index;
-        
-        const player = document.getElementById('playerSpotify');
-        if (player) player.style.display = 'flex';
-        
-        const playerTitle = document.getElementById('playerTitle');
-        const playerArtist = document.getElementById('playerArtist');
-        const playerAlbumArt = document.getElementById('playerAlbumArt');
-        
-        if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
-        if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
-        
-        if (playerAlbumArt) {
-            let coverUrl = PLACEHOLDERS.MIV_56;
-            
-            if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
-                coverUrl = track.link_capa.trim();
+        playerAlbumArt.src = coverUrl;
+        playerAlbumArt.onerror = function() {
+            this.src = PLACEHOLDERS.MIV_56;
+        };
+    }
+    
+    const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
+    updateFavoriteButton(isFavorite);
+    
+    if (track.link_youtube) {
+        const videoId = extractYouTubeId(track.link_youtube);
+        if (videoId) {
+            if (state.youtubeAPILoaded && window.YT) {
+                initializeYouTubePlayer(videoId);
+            } else {
+                loadYouTubeAPI();
+                setTimeout(() => initializeYouTubePlayer(videoId), 1000);
             }
-            
-            playerAlbumArt.src = coverUrl;
-            playerAlbumArt.onerror = function() {
-                this.src = PLACEHOLDERS.MIV_56;
-            };
-        }
-        
-        const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
-        updateFavoriteButton(isFavorite);
-        
-        if (track.link_youtube) {
-            const videoId = extractYouTubeId(track.link_youtube);
-            if (videoId) {
-                if (state.youtubeAPILoaded && window.YT) {
-                    initializeYouTubePlayer(videoId);
-                } else {
-                    loadYouTubeAPI();
-                    setTimeout(() => initializeYouTubePlayer(videoId), 1000);
-                }
-            }
-        }
-        
-        state.isPlaying = true;
-        updatePlayerIcons();
-        
-        if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
-            updateExpandedPlayer();
         }
     }
+    
+    state.isPlaying = true;
+    updatePlayerIcons();
+    
+    if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
+        updateExpandedPlayer();
+    }
+}
 
     function updateExpandedPlayer() {
         if (state.currentTrackIndex < 0) return;
