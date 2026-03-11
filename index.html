@@ -6107,7 +6107,27 @@ const modalHtml = `
         }
     }, 60000);
 }
-
+// ===== CARREGAR FAVORITOS DO PERFIL =====  ← ADICIONAR AQUI (linha ~6100)
+async function loadUserFavorites() {
+    if (!state.currentUser || !state.currentUser.id) return;
+    
+    try {
+        const result = await callAPI('get_user_profile', { 
+            user_id: state.currentUser.id 
+        });
+        
+        if (result.success && result.data && result.data.favorites) {
+            state.favoriteMusicIds = result.data.favorites;
+            console.log('⭐ Favoritos carregados:', state.favoriteMusicIds.length);
+            
+            renderMarketplace();
+            renderExternalMarketplace();
+            renderPlaylists();
+        }
+    } catch (error) {
+        console.error('Erro ao carregar favoritos:', error);
+    }
+}
 async function loadAllData() {
     showLoading('Carregando dados...');
     try {
