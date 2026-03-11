@@ -1341,46 +1341,73 @@ async function originalHandler(req, res) {
         message: 'Música excluída com sucesso!'
       });
     }
-    
     // ===== CREATE TRADE =====
-    if (action === 'create_trade') {
-      console.log('🤝 Criando negociação:', params);
-      
-      try {
-        const gasUrl = new URL(GAS_URL);
-        gasUrl.searchParams.append('action', 'create_trade');
-        
-        // Adicionar todos os parâmetros
-        if (params.seller_id) gasUrl.searchParams.append('seller_id', params.seller_id);
-        if (params.buyer_email) gasUrl.searchParams.append('buyer_email', params.buyer_email);
-        if (params.music_id) gasUrl.searchParams.append('music_id', params.music_id);
-        if (params.quantity) gasUrl.searchParams.append('quantity', params.quantity);
-        if (params.price) gasUrl.searchParams.append('price', params.price);
-        if (params.total) gasUrl.searchParams.append('total', params.total);
-        if (params.message) gasUrl.searchParams.append('message', params.message);
-        
-        const gasResponse = await fetch(gasUrl.toString(), {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        
-        if (gasResponse.ok) {
-          const gasData = await gasResponse.json();
-          return res.status(200).json(gasData);
-        }
-      } catch (gasError) {
-        console.log('⚠️ GAS não respondeu create_trade');
-      }
-      
-      return res.status(200).json({
-        success: true,
-        message: 'Oferta de negociação enviada!',
-        data: {
-          trade_id: 'trade_' + Date.now()
-        }
-      });
-    }
+if (action === 'create_trade') {
+  console.log('🤝 Criando negociação:', params);
+  
+  try {
+    const gasUrl = new URL(GAS_URL);
+    gasUrl.searchParams.append('action', 'create_trade');
     
+    // Adicionar todos os parâmetros
+    if (params.seller_id) gasUrl.searchParams.append('seller_id', params.seller_id);
+    if (params.buyer_email) gasUrl.searchParams.append('buyer_email', params.buyer_email);
+    if (params.music_id) gasUrl.searchParams.append('music_id', params.music_id);
+    if (params.quantity) gasUrl.searchParams.append('quantity', params.quantity);
+    if (params.price) gasUrl.searchParams.append('price', params.price);
+    if (params.total) gasUrl.searchParams.append('total', params.total);
+    if (params.message) gasUrl.searchParams.append('message', params.message);
+    
+    const gasResponse = await fetch(gasUrl.toString(), {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (gasResponse.ok) {
+      const gasData = await gasResponse.json();
+      return res.status(200).json(gasData);
+    }
+  } catch (gasError) {
+    console.log('⚠️ GAS não respondeu create_trade');
+  }
+  
+  return res.status(200).json({
+    success: true,
+    message: 'Oferta de negociação enviada!',
+    data: {
+      trade_id: 'trade_' + Date.now()
+    }
+  });
+}
+
+// ===== PROCESS TRADE (NOVO) =====
+if (action === 'process_trade') {
+  console.log('💰 Processando negociação:', params);
+  
+  try {
+    const gasUrl = new URL(GAS_URL);
+    gasUrl.searchParams.append('action', 'process_trade');
+    if (params.trade_id) gasUrl.searchParams.append('trade_id', params.trade_id);
+    if (params.action_type) gasUrl.searchParams.append('action_type', params.action_type);
+    
+    const gasResponse = await fetch(gasUrl.toString(), {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (gasResponse.ok) {
+      const gasData = await gasResponse.json();
+      return res.status(200).json(gasData);
+    }
+  } catch (gasError) {
+    console.log('⚠️ GAS não respondeu process_trade');
+  }
+  
+  return res.status(200).json({
+    success: false,
+    message: 'Erro ao processar negociação'
+  });
+}
     // ===== GET TRADES =====
     if (action === 'get_trades') {
       console.log('📦 Buscando negociações para:', params.user_id);
