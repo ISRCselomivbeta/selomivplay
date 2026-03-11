@@ -8951,10 +8951,93 @@ async function toggleFavoriteMusic(musicId, trackIndex) {
             document.getElementById('playerExpanded')?.classList.remove('show');
             
             showToast('Logout realizado', 'success');
-
-           }
+        }
     }
     
+// ===== BUSCAR ISRC AUTOMATICAMENTE =====
+async function autoFillMusicInfo() {
+    const youtubeUrl = document.getElementById('externalYoutubeLinkField').value.trim();
+    
+    if (!youtubeUrl) {
+        showToast('Digite o link do YouTube primeiro', 'error');
+        return;
+    }
+    
+    if (!youtubeUrl.includes('youtube.com/watch') && !youtubeUrl.includes('youtu.be')) {
+        showToast('Link do YouTube inválido', 'error');
+        return;
+    }
+    
+    const btn = document.querySelector('#addExternalMusicModal .btn-warning');
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Buscando...';
+    
+    try {
+        // Chamar a API para buscar informações
+        const result = await callAPI('search_isrc', { youtube_url: youtubeUrl });
+        
+        if (result.success && result.data) {
+            if (result.data.title) {
+                document.getElementById('externalTitleField').value = result.data.title;
+            }
+            
+            if (result.data.artist) {
+                document.getElementById('externalArtistField').value = result.data.artist;
+            }
+            
+            // Criar campo ISRC se não existir
+            let isrcField = document.getElementById('externalISRCField');
+            if (!isrcField) {
+                const formGroup = document.createElement('div');
+                formGroup.className = 'form-group';
+                formGroup.innerHTML = `
+                    <label for="externalISRCField" class="text-muted mb-2 d-block">ISRC (Código Internacional)</label>
+                    <input type="text" id="externalISRCField" class="form-control-custom" readonly>
+                    <small class="text-muted">Código identificador único da música</small>
+                `;
+                
+                const artistField = document.getElementById('externalArtistField').parentNode;
+                artistField.parentNode.insertBefore(formGroup, artistField.nextSibling);
+            }
+            
+            document.getElementById('externalISRCField').value = result.data.isrc || 'Não encontrado';
+            
+            showToast('✅ Informações preenchidas automaticamente!', 'success');
+        } else {
+            showToast('Não foi possível buscar informações', 'warning');
+        }
+        
+    } catch (error) {
+        console.error('Erro ao buscar ISRC:', error);
+        showToast('Erro ao buscar informações', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+// Função de fallback (opcional)
+async function fallbackFillMusicInfo() {
+    const youtubeUrl = document.getElementById('externalYoutubeLinkField').value.trim();
+    
+    // Extrair ID para gerar título sugerido
+    let videoId = '';
+    if (youtubeUrl.includes('youtu.be/')) {
+        videoId = youtubeUrl.split('youtu.be/')[1].split('?')[0].split('&')[0];
+    } else if (youtubeUrl.includes('watch?v=')) {
+        videoId = youtubeUrl.split('watch?v=')[1].split('&')[0];
+    }
+    
+    if (videoId) {
+        // Preencher com base no ID (fallback)
+        document.getElementById('externalTitleField').value = 'Música do YouTube';
+        document.getElementById('externalArtistField').value = 'Artista';
+        
+        showToast('Informações preenchidas (modo offline)', 'info');
+    }
+}
 // ========== NOVO: SISTEMA DE PESQUISA E RECOMENDAÇÃO ==========
 let searchTimeout = null;
 const YOUTUBE_API_KEY = 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
@@ -10038,8 +10121,7 @@ async function resendConfirmationEmailFromModal(email) {
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
-}
-    // ========== EXPOR FUNÇÕES GLOBAIS ==========
+}    // ========== EXPOR FUNÇÕES GLOBAIS ==========
     window.handleLogin = handleLogin;
     window.handleRegister = handleRegister;
     window.logout = logout;
@@ -10095,8 +10177,8 @@ async function resendConfirmationEmailFromModal(email) {
     window.openEditMusicModal = openEditMusicModal;
     window.updateMusic = updateMusic;
     window.pauseMusic = pauseMusic;
-    window.autoFillMusicInfo = autoFillMusicInfo;
-
+    window.autoFillMusicInfo = autoFillMusicInfo;        // ← ADICIONAR ESTA LINHA
+    window.fallbackFillMusicInfo = fallbackFillMusicInfo; // ← ADICIONAR ESTA LINHA
     window.unpauseMusic = unpauseMusic;
     window.requestDeleteMusic = requestDeleteMusic;
     window.openBlockchainExplorer = openBlockchainExplorer;
@@ -10120,7 +10202,8 @@ async function resendConfirmationEmailFromModal(email) {
     window.closePlayerExpanded = closePlayerExpanded;
     window.handleProgressClick = handleProgressClick;
     window.handleExpandedProgressClick = handleExpandedProgressClick;
-       window.gerarBlocosSimuladosParaVisualizacao = gerarBlocosSimuladosParaVisualizacao;
+    window.gerarBlocosSimuladosParaVisualizacao = gerarBlocosSimuladosParaVisualizacao;
+// Fim do escopo global
 // Fim do escopo global
 </script>
 <!-- FOOTER COM LOGO -->
