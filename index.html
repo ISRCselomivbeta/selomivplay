@@ -11243,14 +11243,25 @@ async function saveSearchToUserProfile(query) {
     if (!state.currentUser || !query) return;
     
     try {
-        // Buscar pesquisas anteriores
-        const userProfile = await callAPI('get_user_profile', {
-            user_id: state.currentUser.id
-        });
-        
+        // Buscar pesquisas anteriores do localStorage (fallback)
         let searches = [];
-        if (userProfile.success && userProfile.data.searches) {
-            searches = userProfile.data.searches;
+        
+        // Tentar buscar do servidor, mas não travar se falhar
+        try {
+            const userProfile = await callAPI('get_user_profile', {
+                user_id: state.currentUser.id
+            });
+            
+            if (userProfile.success && userProfile.data && userProfile.data.searches) {
+                searches = userProfile.data.searches;
+            }
+        } catch (e) {
+            console.log('Perfil não tem campo searches ainda, criando novo');
+        }
+        
+        // Se ainda não tiver pesquisas, criar array vazio
+        if (!Array.isArray(searches)) {
+            searches = [];
         }
         
         // Adicionar nova pesquisa no início
@@ -11262,33 +11273,72 @@ async function saveSearchToUserProfile(query) {
         // Manter apenas as últimas 20 pesquisas
         searches = searches.slice(0, 20);
         
-        // Salvar no servidor
+        // Salvar no servidor (searches como string JSON)
         await callAPI('update_profile', {
             user_id: state.currentUser.id,
             searches: JSON.stringify(searches)
         });
         
-        console.log('✅ Pesquisa salva no perfil');
+        console.log('✅ Pesquisa salva no perfil:', query);
     } catch (error) {
         console.error('Erro ao salvar pesquisa:', error);
+        // Não mostrar toast para não incomodar o usuário
     }
 }
 
-// Modificar a função performSearch para salvar
+// ===== FUNÇÃO PERFORMSEARCH CORRIGIDA =====
 async function performSearch() {
     const query = document.getElementById('searchInput').value.trim();
     if (!query) {
         showToast('Digite o nome de uma música ou artista', 'warning');
         return;
     }
-    
-    // Salvar no perfil do usuário
-    if (state.currentUser) {
-        await saveSearchToUserProfile(query);
+
+    showLoading(`Buscando por "${query}"...`);
+    const resultsContainer = document.getElementById('searchResults');
+    resultsContainer.style.display = 'none';
+    resultsContainer.innerHTML = '<div class="p-4 text-center text-muted"><div class="spinner-border text-success mb-2"></div><p>Buscando...</p></div>';
+    resultsContainer.style.display = 'block';
+
+    try {
+        // Salvar no perfil do usuário (agora com tratamento de erro)
+        if (state.currentUser) {
+            await saveSearchToUserProfile(query);
+        }
+        
+        // 1. Busca na playlist interna do SELO MIV
+        const internalResults = state.playlist.filter(item =>
+            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
+            item.artista?.toLowerCase().includes(query.toLowerCase())
+        );
+
+        // 2. Busca na Bolsa Externa
+        const externalResults = state.externalPlaylist.filter(item =>
+            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
+            item.artista?.toLowerCase().includes(query.toLowerCase())
+        );
+
+        // 3. Busca no YouTube (se a API Key estiver configurada)
+        let youtubeResults = [];
+        if (YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
+            youtubeResults = await searchYouTube(query);
+        } else {
+            console.warn('YouTube Search desativada: Chave de API não configurada.');
+        }
+
+        // Combina e exibe os resultados
+        displaySearchResults(internalResults, externalResults, youtubeResults, query);
+
+    } catch (error) {
+        console.error('Erro na pesquisa:', error);
+        resultsContainer.innerHTML = `<div class="p-4 text-center text-danger">
+            <i class="bi bi-exclamation-triangle fs-1 d-block mb-3"></i>
+            <p>Erro ao realizar a busca. Tente novamente.</p>
+        </div>`;
+    } finally {
+        hideLoading();
     }
-    
-    // Resto do código existente...
-}    
+}
 </script>
 <!-- FOOTER COM LOGO -->
 <div class="connection-footer" style="justify-content: space-between; margin-top: 40px;">
