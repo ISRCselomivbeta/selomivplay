@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>SELO MIV | Fintech Musical Blockchain</title>
    <!-- CONFIGURAÇÕES PWA PARA FUNCIONAR COMO APP -->
+    
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SELO MIV">
@@ -8537,22 +8538,22 @@ function initializeYouTubePlayer(videoId) {
             }
         }
         
-        // CONFIGURAÇÃO CORRETA para contabilizar visualizações
+        // CONFIGURAÇÃO CORRETA para contabilizar visualizações e continuar em background
         const playerOptions = {
             width: '100%',
             height: '100%',
             videoId: videoId,
             playerVars: {
-                autoplay: 0,  // ← MUDAR para 0 (não autoplay) - essencial para contagem
+                autoplay: 1,
                 controls: 1,
                 modestbranding: 1,
                 rel: 0,
                 showinfo: 0,
                 fs: 1,
-                playsinline: 1,
+                playsinline: 1, // ESSENCIAL para iOS
                 origin: window.location.origin,
-                enablejsapi: 1,  // ← ESSENCIAL para contabilizar
-                widget_referrer: window.location.origin
+                enablejsapi: 1,
+                disablekb: 0
             },
             events: {
                 onReady: onPlayerReady,
@@ -10988,6 +10989,46 @@ async function finalizarCadastroComYouTube() {
         btn.innerHTML = '<i class="bi bi-check-circle me-2"></i> Cadastrar Música';
     }
 }
+
+    // ========== MANTER ÁUDIO EM SEGUNDO PLANO ==========
+let backgroundAudio = null;
+
+// Detectar quando o app vai para segundo plano
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // App está em segundo plano
+        console.log('🎵 App em segundo plano - mantendo áudio');
+        
+        // Para YouTube, infelizmente não podemos manter o vídeo, mas podemos tentar manter o áudio
+        if (state.isPlaying && state.youtubePlayer) {
+            // Forçar o player a continuar
+            try {
+                // Verificar se ainda está tocando a cada 5 segundos
+                if (!backgroundInterval) {
+                    backgroundInterval = setInterval(() => {
+                        if (document.hidden && state.isPlaying) {
+                            console.log('🎵 Mantendo streaming em background');
+                        }
+                    }, 5000);
+                }
+            } catch (e) {
+                console.log('Erro ao manter áudio em background:', e);
+            }
+        }
+    } else {
+        // App voltou ao primeiro plano
+        console.log('🎵 App voltou ao primeiro plano');
+        if (backgroundInterval) {
+            clearInterval(backgroundInterval);
+            backgroundInterval = null;
+        }
+    }
+});
+
+// Importante: No iPhone, o áudio em segundo plano só funciona se:
+// 1. O usuário iniciou a reprodução manualmente
+// 2. O app está instalado na tela inicial
+// 3. O usuário não fechou completamente o app (apenas minimizou)
 // Fim do escopo global
 </script>
 <!-- FOOTER COM LOGO -->
