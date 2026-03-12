@@ -4964,7 +4964,7 @@ document.addEventListener('DOMContentLoaded', () => {
         streamingStats: null,
         progressInterval: null
     };
-
+state.recommendations = [];
 // ===== FILA DE REPRODUÇÃO UNIFICADA (NOVO) =====
 const playQueue = {
     items: [], // { type: 'internal'|'external', index, track, trackId }
@@ -5117,7 +5117,218 @@ const playQueue = {
     }
 };
 // ===== FIM DA FILA =====
+    // ===== FUNÇÕES DE FAVORITOS E RECOMENDAÇÕES =====
+// ===== CARREGAR FAVORITOS DO USUÁRIO =====
+async function loadUserFavorites() {
+  if (!state.currentUser || !state.currentUser.id) {
+    console.log('⚠️ Usuário não logado, não é possível carregar favoritos');
+    return { success: false, data: [] };
+  }
+  
+  try {
+    console.log('⭐ Carregando favoritos do usuário...');
     
+    // Tentar carregar do localStorage primeiro (mais rápido)
+    const cachedFavorites = localStorage.getItem(`miv_favorites_${state.currentUser.id}`);
+    if (cachedFavorites) {
+      try {
+        const parsed = JSON.parse(cachedFavorites);
+        if (Array.isArray(parsed)) {
+          state.favoriteMusicIds = parsed;
+          console.log('📦 Favoritos carregados do cache:', state.favoriteMusicIds.length);
+        }
+      } catch (e) {
+        console.log('Erro ao ler cache de favoritos');
+      }
+    }
+    
+    // Buscar do servidor para garantir dados atualizados
+    const result = await callAPI('get_user_profile', { 
+      user_id: state.currentUser.id 
+    });
+    
+    if (result.success && result.data) {
+      let favorites = [];
+      
+      if (result.data.favorite_music_ids) {
+        if (Array.isArray(result.data.favorite_music_ids)) {
+          favorites = result.data.favorite_music_ids;
+        } else if (typeof result.data.favorite_music_ids === 'string') {
+          favorites = result.data.favorite_music_ids.split(',').filter(id => id.trim() !== '');
+        }
+      }
+      
+      state.favoriteMusicIds = favorites;
+      
+      // Salvar no localStorage
+      localStorage.setItem(`miv_favorites_${state.currentUser.id}`, JSON.stringify(favorites));
+      
+      console.log('✅ Favoritos carregados do servidor:', favorites.length);
+      
+      // GERAR RECOMENDAÇÕES BASEADAS NOS FAVORITOS
+      if (favorites.length > 0) {
+        await generateRecommendationsFromFavorites();
+      } else {
+        // Se não tiver favoritos, mostrar recomendações populares
+        await generatePopularRecommendations();
+      }
+    }
+    
+    return { success: true, data: state.favoriteMusicIds };
+    
+  } catch (error) {
+    console.error('❌ Erro ao carregar favoritos:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ===== GERAR RECOMENDAÇÕES POPULARES (quando não tem favoritos) =====
+async function generatePopularRecommendations() {
+  console.log('📊 Gerando recomendações populares...');
+  
+  if (!state.playlist || state.playlist.length === 0) return;
+  
+  // Pegar as músicas com mais investimentos
+  const popular = [...state.playlist]
+    .sort((a, b) => (b.acoes_vendidas || 0) - (a.acoes_vendidas || 0))
+    .slice(0, 3);
+  
+  state.recommendations = popular.map(t => ({
+    ...t,
+    reason: 'Mais popular agora'
+  }));
+  
+  renderRecommendations();
+}
+
+// ===== GERAR RECOMENDAÇÕES BASEADAS NOS FAVORITOS =====
+async function generateRecommendationsFromFavorites() {
+  if (!state.favoriteMusicIds || state.favoriteMusicIds.length === 0) {
+    await generatePopularRecommendations();
+    return;
+  }
+  
+  console.log('🎯 Gerando recomendações baseadas em', state.favoriteMusicIds.length, 'favoritos...');
+  
+  // Coletar artistas e gêneros dos favoritos
+  const favoriteTracks = [
+    ...state.playlist.filter(t => state.favoriteMusicIds.includes(t.id)),
+    ...state.externalPlaylist.filter(t => state.favoriteMusicIds.includes(t.id))
+  ];
+  
+  if (favoriteTracks.length === 0) {
+    console.log('⚠️ Favoritos encontrados mas músicas não estão carregadas');
+    await generatePopularRecommendations();
+    return;
+  }
+  
+  // Extrair artistas e gêneros
+  const artists = [...new Set(favoriteTracks.map(t => t.artista).filter(a => a))];
+  const genres = [...new Set(favoriteTracks.map(t => t.genero).filter(g => g))];
+  
+  console.log('🎤 Artistas favoritos:', artists);
+  console.log('🎵 Gêneros favoritos:', genres);
+  
+  // Buscar recomendações
+  let recommendations = [];
+  
+  // 1. Músicas do mesmo artista (que não estão nos favoritos)
+  if (artists.length > 0) {
+    const sameArtistTracks = state.playlist.filter(t => 
+      artists.includes(t.artista) && 
+      !state.favoriteMusicIds.includes(t.id)
+    ).map(t => ({ ...t, reason: `do mesmo artista: ${t.artista}` }));
+    
+    recommendations.push(...sameArtistTracks);
+  }
+  
+  // 2. Músicas do mesmo gênero
+  if (genres.length > 0) {
+    const sameGenreTracks = state.playlist.filter(t => 
+      genres.includes(t.genero) && 
+      !state.favoriteMusicIds.includes(t.id) &&
+      !recommendations.some(r => r.id === t.id)
+    ).map(t => ({ ...t, reason: `do gênero ${t.genero}` }));
+    
+    recommendations.push(...sameGenreTracks);
+  }
+  
+  // 3. Músicas com ELO rating similar
+  if (favoriteTracks.length > 0) {
+    const avgElo = favoriteTracks.reduce((sum, t) => sum + (t.elo_rating || 1400), 0) / favoriteTracks.length;
+    const similarEloTracks = state.playlist.filter(t => 
+      Math.abs((t.elo_rating || 1400) - avgElo) < 200 &&
+      !state.favoriteMusicIds.includes(t.id) &&
+      !recommendations.some(r => r.id === t.id)
+    ).map(t => ({ ...t, reason: 'baseado no seu perfil musical' }));
+    
+    recommendations.push(...similarEloTracks);
+  }
+  
+  // Remover duplicatas
+  const uniqueRecommendations = [];
+  const seenIds = new Set();
+  
+  recommendations.forEach(t => {
+    if (!seenIds.has(t.id)) {
+      seenIds.add(t.id);
+      uniqueRecommendations.push(t);
+    }
+  });
+  
+  // Embaralhar e pegar as 5 primeiras
+  const shuffled = uniqueRecommendations.sort(() => 0.5 - Math.random());
+  state.recommendations = shuffled.slice(0, 5);
+  
+  console.log('🎉 Recomendações geradas:', state.recommendations.length);
+  
+  // Renderizar seção de recomendações
+  renderRecommendations();
+}
+
+// ===== RENDERIZAR RECOMENDAÇÕES =====
+function renderRecommendations() {
+  const container = document.getElementById('recommendedCard');
+  if (!container) return;
+  
+  if (!state.recommendations || state.recommendations.length === 0) {
+    // Se não tiver recomendações, mostrar a mais popular
+    if (state.playlist && state.playlist.length > 0) {
+      const popular = state.playlist.sort((a, b) => (b.acoes_vendidas || 0) - (a.acoes_vendidas || 0))[0];
+      if (popular) {
+        renderSingleRecommendation(popular, 'Mais popular agora');
+      }
+    }
+    return;
+  }
+  
+  // Mostrar a primeira recomendação
+  const rec = state.recommendations[0];
+  renderSingleRecommendation(rec, rec.reason || 'Recomendado para você');
+}
+
+function renderSingleRecommendation(track, reason) {
+  const container = document.getElementById('recommendedCard');
+  if (!container) return;
+  
+  const trackIndex = state.playlist.findIndex(t => t.id === track.id);
+  const playIndex = trackIndex >= 0 ? trackIndex : 0;
+  
+  let coverImage = track.link_capa || PLACEHOLDERS.MIV_300;
+  
+  container.innerHTML = `
+    <img src="${coverImage}" alt="${track.titulo}" class="recommended-cover"
+         onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+    <div class="recommended-info">
+      <h4>${track.titulo} • ${track.artista}</h4>
+      <p style="color: #1DB954; font-size: 0.8rem;">🎯 ${reason}</p>
+      <p>Cotação: ${formatCurrency(track.valor_acao || 0)}</p>
+    </div>
+    <button class="btn-play" onclick="playTrack(${playIndex})">
+      <i class="bi bi-play-fill"></i>
+    </button>
+  `;
+}
     // ========== CONTROLE DE REQUISIÇÕES ==========
     const requestControl = {
         lastSaldo: 0,
@@ -7241,6 +7452,7 @@ function renderExternalMarketplace() {
         }
         
         return `
+        
         <div class="spotify-card external-card" onclick="playExternalTrack(${index})" style="border: 2px dashed #ff6b6b; position: relative; overflow: hidden;">
             <div class="external-badge" style="position: absolute; top: 8px; right: 8px; background: linear-gradient(135deg, #ff6b6b, #ff4c4c); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; z-index: 20; display: flex; align-items: center; gap: 4px;">
                 <i class="bi bi-globe"></i> BOLSA EXTERNA
@@ -9227,76 +9439,70 @@ async function confirmInvestment() {
         }
     }
 
-async function toggleFavoriteMusic(musicId, trackIndex) {
-    if (!state.currentUser || !state.currentUser.id) { 
-        showToast('Faça login para favoritar', 'error'); 
-        return; 
-    }
-    
-    const isFavorite = state.favoriteMusicIds?.includes(musicId.toString());
-    
-    if (isFavorite) {
-        state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
-        showToast('Removido dos favoritos', 'success');
-    } else {
-        state.favoriteMusicIds.push(musicId.toString());
-        showToast('Adicionado aos favoritos', 'success');
-    }
-    
-    // ===== SALVAR NO LOCALSTORAGE =====
-    if (state.currentUser) {
-        state.currentUser.favorite_music_ids = state.favoriteMusicIds;
-        localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-        localStorage.setItem('miv_favorites', JSON.stringify(state.favoriteMusicIds));
-        console.log('💾 Favoritos salvos:', state.favoriteMusicIds);
-    }
-
-    
-    // 🔴 ATUALIZAR AMBAS AS SEÇÕES
-    renderMarketplace();
-    renderExternalMarketplace(); // ← NOVO!
-    renderPlaylists();
-    
-    if (trackIndex !== null) updateFavoriteButton(!isFavorite);
-    
+// ===== TOGGLE FAVORITO MELHORADO =====
+async function toggleFavoriteMusic(musicId, trackIndex = null) {
+  if (!state.currentUser || !state.currentUser.id) { 
+    showToast('Faça login para favoritar', 'error'); 
+    return; 
+  }
+  
+  const musicExists = 
+    state.playlist.some(m => m.id === musicId) || 
+    state.externalPlaylist.some(m => m.id === musicId);
+  
+  if (!musicExists) {
+    showToast('Música não encontrada', 'error');
+    return;
+  }
+  
+  const isFavorite = state.favoriteMusicIds?.includes(musicId.toString());
+  
+  // Atualizar estado local
+  if (isFavorite) {
+    state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
+    showToast('⭐ Removido dos favoritos', 'success');
+  } else {
+    state.favoriteMusicIds.push(musicId.toString());
+    showToast('⭐ Adicionado aos favoritos!', 'success');
+  }
+  
+  // Salvar no localStorage
+  if (state.currentUser) {
+    state.currentUser.favorite_music_ids = state.favoriteMusicIds;
+    localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+    localStorage.setItem(`miv_favorites_${state.currentUser.id}`, JSON.stringify(state.favoriteMusicIds));
+    console.log('💾 Favoritos salvos:', state.favoriteMusicIds);
+  }
+  
+  // Atualizar UI
+  renderMarketplace();
+  renderExternalMarketplace();
+  renderPlaylists();
+  
+  if (trackIndex !== null) {
+    const isNowFavorite = state.favoriteMusicIds.includes(musicId.toString());
+    updateFavoriteButton(isNowFavorite);
+  }
+  
+  // Salvar no servidor
+  try {
     const result = await callAPI('toggle_favorite', { 
-        user_id: state.currentUser.id,
-        music_id: musicId, 
-        action: isFavorite ? 'remove' : 'add' 
+      user_id: state.currentUser.id,
+      music_id: musicId, 
+      action: isFavorite ? 'remove' : 'add' 
     });
-}
-    async function createPlaylist() {
-        const name = document.getElementById('playlistNameField').value.trim();
-        if (!name) { 
-            showToast('Digite um nome para a playlist', 'error'); 
-            return; 
-        }
-        if (!state.currentUser) { 
-            showToast('Faça login para criar playlists', 'error'); 
-            return; 
-        }
-        const btn = document.getElementById('createPlaylistBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
-        
-        try {
-            await callAPI('create_playlist', { 
-                nome: name, 
-                publica: document.getElementById('playlistPublicField').checked 
-            });
-            showToast('Playlist criada!', 'success');
-            closeModal('createPlaylistModal');
-            document.getElementById('playlistNameField').value = '';
-            document.getElementById('playlistPublicField').checked = false;
-            await loadUserPlaylists();
-        } catch (error) {
-            console.error('Erro ao criar playlist:', error);
-            showToast('Erro ao criar playlist', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-plus-circle me-2"></i> Criar Playlist';
-        }
+    
+    if (result.success) {
+      console.log('✅ Favorito sincronizado com servidor');
+      
+      // GERAR NOVAS RECOMENDAÇÕES BASEADAS NOS FAVORITOS ATUALIZADOS
+      await generateRecommendationsFromFavorites();
     }
+  } catch (error) {
+    console.error('Erro ao sincronizar favorito:', error);
+    showToast('Favorito salvo localmente', 'warning');
+  }
+}
 
     // Função registerMusic melhorada (fallback caso a análise do YouTube falhe)
 async function registerMusic() {
