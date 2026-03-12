@@ -11466,6 +11466,118 @@
     // ========== EXPOR FUNÇÕES RESTANTES ==========
     window.saveSearchToUserProfile = saveSearchToUserProfile;
     window.backgroundMiner = backgroundMiner;
+    // ========== FUNÇÃO registerMusic ==========
+async function registerMusic() {
+    console.log('📝 Iniciando cadastro de música...');
+    
+    const title = document.getElementById('musicTitleField')?.value?.trim();
+    const genre = document.getElementById('musicGenreField')?.value;
+    const youtube = document.getElementById('musicYoutubeField')?.value?.trim();
+    const price = parseFloat(document.getElementById('musicPriceField')?.value);
+    const percent = parseFloat(document.getElementById('musicPercentField')?.value);
+    const cover = document.getElementById('musicCoverField')?.value?.trim() || '';
+    const terms = document.getElementById('musicTermsField')?.checked;
+    
+    if (!title || !genre || !youtube || !price || !percent) { 
+        showToast('Preencha todos os campos obrigatórios', 'error'); 
+        return; 
+    }
+    
+    if (!terms) { 
+        showToast('Você precisa aceitar os termos', 'error'); 
+        return; 
+    }
+    
+    if (price < 1) { 
+        showToast('Valor mínimo por ação: R$ 1,00', 'error'); 
+        return; 
+    }
+    
+    if (percent < 1 || percent > 100) { 
+        showToast('Percentual deve estar entre 1% e 100%', 'error'); 
+        return; 
+    }
+    
+    if (!youtube.includes('youtube.com/watch') && !youtube.includes('youtu.be')) {
+        showToast('Link do YouTube inválido', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('registerMusicBtn') || document.getElementById('btnFinalizarCadastro');
+    const originalText = btn?.innerHTML || 'Cadastrar';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cadastrando...';
+    }
+    
+    showLoading('Cadastrando música...');
+    
+    try {
+        const videoId = extractYouTubeId(youtube);
+        const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : cover;
+        
+        let youtubeStats = null;
+        if (videoId) {
+            youtubeStats = await getYouTubeStats(videoId);
+        }
+        
+        const musicData = {
+            titulo: title,
+            artista: state.currentUser?.nome || 'Artista',
+            genero: genre,
+            link_youtube: youtube,
+            link_capa: thumbnailUrl,
+            valor_acao: price,
+            percentual_disponivel: percent,
+            status: 'active',
+            youtube_views: youtubeStats?.views || 0,
+            youtube_earnings: youtubeStats?.estimated_earnings || 0,
+            created_at: new Date().toISOString()
+        };
+        
+        console.log('📦 Enviando dados:', musicData);
+        
+        const result = await callAPI('upload_music', musicData);
+        
+        if (result?.success) {
+            showToast('✅ Música cadastrada com sucesso!', 'success');
+            
+            document.getElementById('musicTitleField').value = '';
+            document.getElementById('musicGenreField').value = '';
+            document.getElementById('musicYoutubeField').value = '';
+            document.getElementById('musicCoverField').value = '';
+            document.getElementById('musicPriceField').value = '10.00';
+            document.getElementById('musicPercentField').value = '20';
+            document.getElementById('musicTermsField').checked = false;
+            
+            const statsArea = document.getElementById('areaEstatisticasYouTube');
+            if (statsArea) statsArea.style.display = 'none';
+            
+            closeModal('addMusicModal');
+            
+            await Promise.all([
+                loadMarketplace(true),
+                typeof loadArtistData === 'function' ? loadArtistData(true) : Promise.resolve()
+            ]);
+            
+        } else {
+            showToast(result?.message || 'Erro ao cadastrar música', 'error');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro no cadastro:', error);
+        showToast('Erro ao processar cadastro: ' + error.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+        hideLoading();
+    }
+}
+
+window.registerMusic = registerMusic;
 </script>
 
 <!-- FOOTER -->
