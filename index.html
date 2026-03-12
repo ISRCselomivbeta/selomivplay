@@ -5523,36 +5523,142 @@ function renderSingleRecommendation(track, reason) {
     /**
      * Busca estatísticas reais do YouTube via nossa API
      */
-    async function getYouTubeStats(videoId) {
-        if (!videoId) return null;
-        
-        try {
-            const result = await callAPI('get_youtube_stats', { video_id: videoId });
-            
-            if (result?.success && result.data) {
-                return {
-                    views: result.data.views || 0,
-                    likes: result.data.likes || 0,
-                    comments: result.data.comments || 0,
-                    estimated_earnings: result.data.estimated_earnings || 0
-                };
-            }
-        } catch (error) {
-            console.error('Erro ao buscar stats do YouTube:', error);
+    // ========== FUNÇÃO getYouTubeStats COM CACHE DE 7 DIAS ==========
+async function getYouTubeStats(videoId) {
+    if (!videoId) return null;
+    
+    console.log(`🔍 Buscando stats para vídeo: ${videoId}`);
+    
+    // ===== 1. VERIFICAR CACHE PRIMEIRO (7 DIAS) =====
+    const cacheKey = `yt_stats_${videoId}`;
+    const cacheTimeKey = `${cacheKey}_time`;
+    const cachedData = localStorage.getItem(cacheKey);
+    const cachedTime = localStorage.getItem(cacheTimeKey);
+    
+    // Cache válido por 7 dias (604800000 milissegundos)
+    const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 dias em ms
+    
+    if (cachedData && cachedTime) {
+        const age = Date.now() - parseInt(cachedTime);
+        if (age < CACHE_DURATION) {
+            console.log(`📦 Usando CACHE de ${Math.round(age / (24*60*60*1000))} dias atrás para`, videoId);
+            return JSON.parse(cachedData);
+        } else {
+            console.log(`🔄 Cache expirado (${Math.round(age / (24*60*60*1000))} dias), atualizando...`);
         }
-        
-        // Fallback com dados simulados baseados no ID
-        const hash = videoId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-        const baseViews = 100000 + (hash % 900000);
-        const baseEarnings = baseViews * 0.002;
-        
-        return {
-            views: baseViews,
-            likes: Math.floor(baseViews * 0.05),
-            comments: Math.floor(baseViews * 0.01),
-            estimated_earnings: baseEarnings
-        };
     }
+    
+    // ===== 2. TENTAR API REAL PRIMEIRO =====
+    try {
+        // TENTAR VIA callAPI (seu backend)
+        const result = await callAPI('get_youtube_stats', { video_id: videoId });
+        
+        if (result?.success && result.data) {
+            const stats = {
+                views: result.data.views || 0,
+                likes: result.data.likes || 0,
+                comments: result.data.comments || 0,
+                estimated_earnings: result.data.estimated_earnings || 0,
+                is_estimate: false,
+                source: 'backend_api'
+            };
+            
+            console.log(`✅ Stats via backend para`, videoId, stats);
+            
+            // Salvar no cache por 7 dias
+            localStorage.setItem(cacheKey, JSON.stringify(stats));
+            localStorage.setItem(cacheTimeKey, Date.now().toString());
+            
+            return stats;
+        }
+    } catch (error) {
+        console.warn('⚠️ Erro ao buscar stats via backend:', error);
+    }
+    
+    // ===== 3. TENTAR API DO YOUTUBE DIRETO (se tiver chave) =====
+    try {
+        const API_KEY = YOUTUBE_API_KEY;
+        if (API_KEY && API_KEY !== 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
+            console.log('📡 Chamando API do YouTube diretamente...');
+            
+            const url = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${API_KEY}`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (!data.error && data.items && data.items[0]) {
+                const stats = data.items[0].statistics;
+                const result = {
+                    views: parseInt(stats.viewCount) || 0,
+                    likes: parseInt(stats.likeCount) || 0,
+                    comments: parseInt(stats.commentCount) || 0,
+                    estimated_earnings: (parseInt(stats.viewCount) / 1000) * 1.5,
+                    is_estimate: false,
+                    source: 'youtube_api'
+                };
+                
+                console.log(`✅ Stats REAIS da API do YouTube para`, videoId, result);
+                
+                // Salvar no cache por 7 dias
+                localStorage.setItem(cacheKey, JSON.stringify(result));
+                localStorage.setItem(cacheTimeKey, Date.now().toString());
+                
+                return result;
+            }
+            
+            if (data.error && data.error.code === 403) {
+                console.warn('⚠️ Quota da API excedida! Usando fallback...');
+            }
+        }
+    } catch (error) {
+        console.warn('⚠️ Erro ao chamar API do YouTube:', error);
+    }
+    
+    // ===== 4. FALLBACK INTELIGENTE =====
+    console.log('📊 Gerando estimativa para', videoId);
+    
+    // Lista de vídeos conhecidos com valores reais
+    const popularVideos = {
+        'dGHP0Nj9S0A': 450000000, // Anitta - Envolver
+        '4NRXx6U8ABQ': 850000000, // The Weeknd - Blinding Lights
+        'JGwWNGJdvx8': 6200000000, // Ed Sheeran - Shape of You
+        'fJ9rUzIMcZQ': 1500000000, // Queen - Bohemian Rhapsody
+        '7wtfhZwyrcc': 2100000000, // Imagine Dragons - Believer
+        'nfWlot6h_JM': 3300000000, // Taylor Swift - Shake It Off
+        'dvgZkm1xWPE': 800000000, // Coldplay - Viva la Vida
+        'TUVcZfQe-Kw': 580000000, // Dua Lipa - Levitating
+        'R3fWW-TA_qc': 25000, // SEU VÍDEO - RIKISTRU
+    };
+    
+    let views;
+    if (popularVideos[videoId]) {
+        views = popularVideos[videoId];
+        console.log('🎯 Usando valor conhecido para vídeo popular');
+    } else {
+        // Gerar valor baseado no ID (entre 10k e 500k)
+        const hash = videoId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+        views = 10000 + (hash % 490000);
+        console.log('🎲 Gerando valor estimado baseado no hash');
+    }
+    
+    const earnings = (views / 1000) * 1.5; // R$ 1,50 por 1000 views
+    
+    const result = {
+        views: views,
+        likes: Math.floor(views * 0.03),
+        comments: Math.floor(views * 0.005),
+        estimated_earnings: earnings,
+        is_estimate: true,
+        source: 'fallback'
+    };
+    
+    // Salvar no cache por 7 dias (mesmo sendo estimativa)
+    localStorage.setItem(cacheKey, JSON.stringify(result));
+    localStorage.setItem(cacheTimeKey, Date.now().toString());
+    
+    console.log(`📊 Estimativa salva no cache para`, videoId, result);
+    return result;
+}
 
     /**
      * Formata números grandes (ex: 1.5M, 2.3K)
