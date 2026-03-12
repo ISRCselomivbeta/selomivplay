@@ -22,8 +22,7 @@ async function originalHandler(req, res) {
   const { action } = params;
   
   // SUA URL DO GOOGLE APPS SCRIPT
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
-  
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';  
   console.log('🚀 Backend Vercel chamado:', { action, params });
   
   try {
