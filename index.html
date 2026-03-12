@@ -4019,72 +4019,179 @@ a, .auth-link {
     </div>
 </div>
 
-<!-- Add Music Modal -->
+<!-- Add Music Modal - VERSÃO ATUALIZADA COM YOUTUBE -->
 <div id="addMusicModal" class="modal-overlay">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 700px;">
         <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-music-note-beamed me-2"></i> Cadastrar Nova Música</h5>
+            <h5 class="modal-title">
+                <i class="bi bi-youtube text-danger me-2"></i>
+                Cadastrar Música com YouTube
+            </h5>
             <button class="modal-close" onclick="closeModal('addMusicModal')">
                 <i class="bi bi-x"></i>
             </button>
         </div>
         
         <div class="modal-body">
-            <div class="form-group">
-                <label for="musicTitleField" class="text-muted mb-2 d-block">Título da Música *</label>
-                <input type="text" id="musicTitleField" class="form-control-custom" placeholder="Digite o título da música" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="musicGenreField" class="text-muted mb-2 d-block">Gênero Musical *</label>
-                <select id="musicGenreField" class="form-control-custom" required>
-                    <option value="">Selecione um gênero</option>
-                    <option value="POP">🎵 POP</option>
-                    <option value="HIPHOP_RAP">🎤 HIP HOP / RAP</option>
-                    <option value="ROCK">🤘 ROCK</option>
-                    <option value="ELETRONICA">⚡ ELETRÔNICA</option>
-                    <option value="MPB">🎸 MPB</option>
-                    <option value="SERTANEJO">🎶 SERTANEJO</option>
-                    <option value="FUNK">💃 FUNK</option>
-                    <option value="OUTRO">🎼 OUTRO</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="musicYoutubeField" class="text-muted mb-2 d-block">Link do YouTube *</label>
-                <input type="url" id="musicYoutubeField" class="form-control-custom" placeholder="https://youtube.com/watch?v=..." required>
-            </div>
-            
-            <div class="form-group">
-                <label for="musicCoverField" class="text-muted mb-2 d-block">Link da Capa (opcional)</label>
-                <input type="url" id="musicCoverField" class="form-control-custom" placeholder="https://exemplo.com/capa.jpg">
-            </div>
-            
-            <div class="form-group">
-                <label for="musicPriceField" class="text-muted mb-2 d-block">Valor por Ação *</label>
-                <input type="number" id="musicPriceField" class="form-control-custom" value="10.00" min="1" step="0.01" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="musicPercentField" class="text-muted mb-2 d-block">Percentual Disponível *</label>
+            <!-- LINK DO YOUTUBE COM ANÁLISE -->
+            <div class="form-group mb-4">
+                <label class="text-muted mb-2">Link do YouTube *</label>
                 <div class="input-group">
-                    <input type="number" id="musicPercentField" class="form-control-custom" value="20" min="1" max="100" required>
-                    <span class="input-group-text bg-dark text-white border-secondary">%</span>
+                    <input type="url" id="musicYoutubeField" class="form-control-custom" 
+                           placeholder="https://youtube.com/watch?v=...">
+                    <button class="btn btn-danger" type="button" onclick="analisarVideoYouTube()" id="btnAnalisarVideo">
+                        <i class="bi bi-search"></i> Analisar
+                    </button>
+                </div>
+                <small class="text-muted">Cole o link e clique em "Analisar" para ver estatísticas</small>
+            </div>
+
+            <!-- ÁREA DE ESTATÍSTICAS DO YOUTUBE (aparece após análise) -->
+            <div id="areaEstatisticasYouTube" style="display: none;" class="mb-4">
+                <div class="card bg-dark border-success">
+                    <div class="card-body">
+                        <h6 class="text-success mb-3">
+                            <i class="bi bi-graph-up-arrow me-2"></i>
+                            Estatísticas do YouTube
+                        </h6>
+                        
+                        <div class="row text-center mb-3">
+                            <div class="col-4">
+                                <i class="bi bi-eye-fill text-info fs-3"></i>
+                                <h5 class="text-white mb-0" id="youtubeViews">0</h5>
+                                <small class="text-muted">Visualizações</small>
+                            </div>
+                            <div class="col-4">
+                                <i class="bi bi-cash-stack text-success fs-3"></i>
+                                <h5 class="text-white mb-0" id="youtubeArrecadacao">R$ 0</h5>
+                                <small class="text-muted">Arrecadação Estimada</small>
+                            </div>
+                            <div class="col-4">
+                                <i class="bi bi-hand-thumbs-up text-primary fs-3"></i>
+                                <h5 class="text-white mb-0" id="youtubeLikes">0</h5>
+                                <small class="text-muted">Likes</small>
+                            </div>
+                        </div>
+
+                        <!-- BARRA DE PROGRESSO -->
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div id="progressoArrecadacao" class="progress-bar bg-success" style="width: 0%"></div>
+                        </div>
+
+                        <!-- OPÇÕES DE USO DO VALOR -->
+                        <div class="mt-3">
+                            <label class="text-muted mb-2">O que fazer com este valor?</label>
+                            
+                            <div class="list-group">
+                                <label class="list-group-item bg-dark text-white border-secondary">
+                                    <input type="radio" name="opcaoValorYouTube" value="saldo" class="me-2">
+                                    <i class="bi bi-wallet2 text-success me-2"></i>
+                                    Adicionar ao meu saldo
+                                    <small class="d-block text-muted">O valor vira crédito na plataforma</small>
+                                </label>
+                                
+                                <label class="list-group-item bg-dark text-white border-secondary">
+                                    <input type="radio" name="opcaoValorYouTube" value="investir" class="me-2">
+                                    <i class="bi bi-currency-dollar text-warning me-2"></i>
+                                    Reinvestir na própria música
+                                    <small class="d-block text-muted">Compra ações automaticamente</small>
+                                </label>
+                                
+                                <label class="list-group-item bg-dark text-white border-secondary">
+                                    <input type="radio" name="opcaoValorYouTube" value="dividir" class="me-2">
+                                    <i class="bi bi-people text-info me-2"></i>
+                                    Distribuir como royalties
+                                    <small class="d-block text-muted">Divide com investidores futuros</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- VALOR A UTILIZAR -->
+                        <div class="mt-3 p-3 bg-dark border-success rounded">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Valor disponível:</span>
+                                <span class="text-success fw-bold" id="valorDisponivelYouTube">R$ 0,00</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <span class="text-muted">Utilizar:</span>
+                                <div class="d-flex gap-2">
+                                    <input type="number" id="valorUtilizarYouTube" class="form-control" 
+                                           style="width: 120px;" step="0.01" min="0">
+                                    <button class="btn btn-sm btn-success" type="button" onclick="aplicarValorYouTube()">
+                                        Aplicar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
+
+            <!-- DADOS DA MÚSICA (agora readonly) -->
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="form-group">
+                        <label class="text-muted mb-2">Título da Música *</label>
+                        <input type="text" id="musicTitleField" class="form-control-custom" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="text-muted mb-2">Gênero Musical *</label>
+                        <select id="musicGenreField" class="form-control-custom" required>
+                            <option value="">Selecione...</option>
+                            <option value="POP">🎵 POP</option>
+                            <option value="HIPHOP">🎤 HIP HOP</option>
+                            <option value="ROCK">🤘 ROCK</option>
+                            <option value="ELETRONICA">⚡ ELETRÔNICA</option>
+                            <option value="MPB">🎸 MPB</option>
+                            <option value="SERTANEJO">🎶 SERTANEJO</option>
+                            <option value="FUNK">💃 FUNK</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <img id="thumbnailPreview" class="img-fluid rounded" style="max-height: 150px;">
+                </div>
+            </div>
+
+            <!-- VALORES DE INVESTIMENTO -->
+            <div class="row mt-3">
+                <div class="col-6">
+                    <div class="form-group">
+                        <label class="text-muted mb-2">Valor por Ação (R$)</label>
+                        <input type="number" id="musicPriceField" class="form-control-custom" value="10.00" min="1" step="0.01">
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="form-group">
+                        <label class="text-muted mb-2">Percentual (%)</label>
+                        <input type="number" id="musicPercentField" class="form-control-custom" value="20" min="1" max="100">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Link da Capa (oculto, preenchido automaticamente) -->
+            <input type="hidden" id="musicCoverField">
+
+            <!-- TERMOS -->
             <div class="form-check mt-3">
                 <input class="form-check-input" type="checkbox" id="musicTermsField" required>
-                <label class="form-check-label text-muted" for="musicTermsField">
-                    Aceito os termos de distribuição e compartilhamento de royalties
+                <label class="form-check-label text-muted">
+                    Aceito os termos de distribuição e royalties
                 </label>
             </div>
+
+            <!-- PREVIEW BLOCKCHAIN -->
+            <div class="blockchain-hash mt-3" id="blockchainPreview">
+                ⛓️ Hash será gerado após confirmação
+            </div>
         </div>
-        
+
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('addMusicModal')">Cancelar</button>
-            <button class="btn-miv" onclick="registerMusic()" id="registerMusicBtn">
-                <i class="bi bi-save me-2"></i> Cadastrar Música
+            <button class="btn btn-miv" onclick="finalizarCadastroComYouTube()" id="btnFinalizarCadastro">
+                <i class="bi bi-check-circle me-2"></i> Cadastrar Música
             </button>
         </div>
     </div>
@@ -8594,70 +8701,79 @@ async function toggleFavoriteMusic(musicId, trackIndex) {
         }
     }
 
-    async function registerMusic() {
-        const title = document.getElementById('musicTitleField').value.trim();
-        const genre = document.getElementById('musicGenreField').value;
-        const youtube = document.getElementById('musicYoutubeField').value.trim();
-        const price = parseFloat(document.getElementById('musicPriceField').value);
-        const percent = parseFloat(document.getElementById('musicPercentField').value);
-        const cover = document.getElementById('musicCoverField').value.trim();
-        const terms = document.getElementById('musicTermsField').checked;
-        
-        if (!title || !genre || !youtube || !price || !percent) { 
-            showToast('Preencha todos os campos obrigatórios', 'error'); 
-            return; 
-        }
-        if (!terms) { 
-            showToast('Você precisa aceitar os termos', 'error'); 
-            return; 
-        }
-        if (price < 1) { 
-            showToast('Valor mínimo por ação: R$ 1,00', 'error'); 
-            return; 
-        }
-        if (percent < 1 || percent > 100) { 
-            showToast('Percentual deve estar entre 1% e 100%', 'error'); 
-            return; 
-        }
-        
-        const btn = document.getElementById('registerMusicBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cadastrando...';
-        
-        try {
-            const result = await callAPI('upload_music', { 
-                titulo: title, 
-                artista: state.currentUser?.nome || 'Artista', 
-                genero: genre, 
-                link_youtube: youtube, 
-                link_capa: cover, 
-                valor_acao: price, 
-                percentual_disponivel: percent,
-                status: 'active'
-            });
-            
-            if (result?.success) {
-                showToast('Música cadastrada!', 'success');
-                closeModal('addMusicModal');
-                document.getElementById('musicTitleField').value = '';
-                document.getElementById('musicGenreField').value = '';
-                document.getElementById('musicYoutubeField').value = '';
-                document.getElementById('musicCoverField').value = '';
-                document.getElementById('musicPriceField').value = '10.00';
-                document.getElementById('musicPercentField').value = '20';
-                document.getElementById('musicTermsField').checked = false;
-                await Promise.all([loadArtistData(true), loadMarketplace(true)]);
-            } else {
-                showToast(result?.message || 'Erro ao cadastrar música', 'error');
-            }
-        } catch (error) {
-            console.error('Erro ao cadastrar música:', error);
-            showToast('Erro ao cadastrar música', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-save me-2"></i> Cadastrar Música';
-        }
+    // Função registerMusic melhorada (fallback caso a análise do YouTube falhe)
+async function registerMusic() {
+    const title = document.getElementById('musicTitleField').value.trim();
+    const genre = document.getElementById('musicGenreField').value;
+    const youtube = document.getElementById('musicYoutubeField').value.trim();
+    const price = parseFloat(document.getElementById('musicPriceField').value);
+    const percent = parseFloat(document.getElementById('musicPercentField').value);
+    const cover = document.getElementById('musicCoverField').value.trim();
+    const terms = document.getElementById('musicTermsField').checked;
+    
+    if (!title || !genre || !youtube || !price || !percent) { 
+        showToast('Preencha todos os campos obrigatórios', 'error'); 
+        return; 
     }
+    if (!terms) { 
+        showToast('Você precisa aceitar os termos', 'error'); 
+        return; 
+    }
+    if (price < 1) { 
+        showToast('Valor mínimo por ação: R$ 1,00', 'error'); 
+        return; 
+    }
+    if (percent < 1 || percent > 100) { 
+        showToast('Percentual deve estar entre 1% e 100%', 'error'); 
+        return; 
+    }
+    
+    const btn = document.getElementById('registerMusicBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cadastrando...';
+    
+    try {
+        // Extrair ID do YouTube para gerar thumbnail
+        const videoId = extractYouTubeId(youtube);
+        const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : cover;
+        
+        const result = await callAPI('upload_music', { 
+            titulo: title, 
+            artista: state.currentUser?.nome || 'Artista', 
+            genero: genre, 
+            link_youtube: youtube, 
+            link_capa: thumbnailUrl, 
+            valor_acao: price, 
+            percentual_disponivel: percent,
+            status: 'active'
+        });
+        
+        if (result?.success) {
+            showToast('Música cadastrada!', 'success');
+            closeModal('addMusicModal');
+            
+            // Limpar campos
+            document.getElementById('musicTitleField').value = '';
+            document.getElementById('musicGenreField').value = '';
+            document.getElementById('musicYoutubeField').value = '';
+            document.getElementById('musicCoverField').value = '';
+            document.getElementById('musicPriceField').value = '10.00';
+            document.getElementById('musicPercentField').value = '20';
+            document.getElementById('musicTermsField').checked = false;
+            
+            await Promise.all([loadArtistData(true), loadMarketplace(true)]);
+        } else {
+            showToast(result?.message || 'Erro ao cadastrar música', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao cadastrar música:', error);
+        showToast('Erro ao cadastrar música', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save me-2"></i> Cadastrar Música';
+    }
+}
+
 
     async function submitExternalMusic() {
         const youtube = document.getElementById('externalYoutubeLinkField').value.trim();
@@ -10215,6 +10331,225 @@ async function resendConfirmationEmailFromModal(email) {
        window.gerarBlocosSimuladosParaVisualizacao = gerarBlocosSimuladosParaVisualizacao;
     window.autoFillMusicInfo = autoFillMusicInfo;
 window.fallbackFillMusicInfo = fallbackFillMusicInfo;
+    // ===== NOVAS FUNÇÕES PARA CADASTRO COM YOUTUBE =====
+let dadosVideoAnalisado = null;
+let videoIdAtual = null;
+
+// Função para analisar vídeo do YouTube
+async function analisarVideoYouTube() {
+    const link = document.getElementById('musicYoutubeField').value;
+    videoIdAtual = extractYouTubeId(link);
+    
+    if (!videoIdAtual) {
+        showToast('Link do YouTube inválido', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btnAnalisarVideo');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Analisando...';
+
+    try {
+        // Buscar dados da API do YouTube
+        const API_KEY = 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM'; // Sua chave
+        const url = `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${videoIdAtual}&key=${API_KEY}`;
+        
+        const resposta = await fetch(url);
+        const dados = await resposta.json();
+        
+        if (dados.items && dados.items.length > 0) {
+            const video = dados.items[0];
+            const stats = video.statistics;
+            const views = parseInt(stats.viewCount) || 0;
+            const likes = parseInt(stats.likeCount) || 0;
+            
+            // Calcular arrecadação (R$ 1,50 por 1000 views)
+            const arrecadacao = (views / 1000) * 1.5;
+            
+            dadosVideoAnalisado = {
+                views: views,
+                likes: likes,
+                titulo: video.snippet.title,
+                canal: video.snippet.channelTitle,
+                arrecadacao: arrecadacao,
+                arrecadacaoFormatada: formatCurrency(arrecadacao)
+            };
+            
+            // Mostrar área de estatísticas
+            document.getElementById('areaEstatisticasYouTube').style.display = 'block';
+            
+            // Atualizar estatísticas
+            document.getElementById('youtubeViews').textContent = views.toLocaleString();
+            document.getElementById('youtubeArrecadacao').textContent = formatCurrency(arrecadacao);
+            document.getElementById('youtubeLikes').textContent = likes.toLocaleString();
+            
+            // Barra de progresso (meta: R$ 10.000)
+            const percentual = (arrecadacao / 10000) * 100;
+            document.getElementById('progressoArrecadacao').style.width = Math.min(percentual, 100) + '%';
+            
+            // Valor disponível
+            document.getElementById('valorDisponivelYouTube').textContent = formatCurrency(arrecadacao);
+            document.getElementById('valorUtilizarYouTube').value = arrecadacao.toFixed(2);
+            
+            // Preencher dados da música
+            document.getElementById('musicTitleField').value = dadosVideoAnalisado.titulo;
+            
+            // Thumbnail
+            const thumbnail = `https://img.youtube.com/vi/${videoIdAtual}/maxresdefault.jpg`;
+            document.getElementById('thumbnailPreview').src = thumbnail;
+            document.getElementById('musicCoverField').value = thumbnail;
+            
+            showToast('✅ Dados do YouTube carregados!', 'success');
+        }
+    } catch (erro) {
+        console.error('Erro na análise:', erro);
+        showToast('Erro ao analisar vídeo', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-search"></i> Analisar';
+    }
+}
+
+// Função para aplicar o valor do YouTube
+let opcaoValorSelecionada = null;
+let valorUtilizarSelecionado = 0;
+
+function aplicarValorYouTube() {
+    const opcao = document.querySelector('input[name="opcaoValorYouTube"]:checked')?.value;
+    const valor = parseFloat(document.getElementById('valorUtilizarYouTube').value);
+    
+    if (!opcao) {
+        showToast('Selecione uma opção para o valor', 'error');
+        return;
+    }
+    
+    if (isNaN(valor) || valor <= 0) {
+        showToast('Valor inválido', 'error');
+        return;
+    }
+    
+    if (valor > dadosVideoAnalisado.arrecadacao) {
+        showToast('Valor maior que o disponível', 'error');
+        return;
+    }
+    
+    opcaoValorSelecionada = opcao;
+    valorUtilizarSelecionado = valor;
+    
+    showToast(`✅ Opção selecionada: ${formatCurrency(valor)} será ${opcao === 'saldo' ? 'adicionado ao saldo' : opcao === 'investir' ? 'reinvestido' : 'distribuído'}`, 'success');
+}
+
+// Função para finalizar cadastro com YouTube
+async function finalizarCadastroComYouTube() {
+    if (!dadosVideoAnalisado || !videoIdAtual) {
+        showToast('Analise um vídeo primeiro', 'error');
+        return;
+    }
+    
+    const genero = document.getElementById('musicGenreField').value;
+    const preco = parseFloat(document.getElementById('musicPriceField').value);
+    const percentual = parseFloat(document.getElementById('musicPercentField').value);
+    const aceiteTermos = document.getElementById('musicTermsField').checked;
+    
+    if (!genero) {
+        showToast('Selecione um gênero musical', 'error');
+        return;
+    }
+    
+    if (!aceiteTermos) {
+        showToast('Aceite os termos para continuar', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('btnFinalizarCadastro');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cadastrando...';
+    
+    try {
+        // Preparar dados da música
+        const musicaData = {
+            titulo: dadosVideoAnalisado.titulo,
+            artista: state.currentUser.nome || 'Artista',
+            genero: genero,
+            link_youtube: `https://youtube.com/watch?v=${videoIdAtual}`,
+            link_capa: document.getElementById('musicCoverField').value,
+            valor_acao: preco,
+            percentual_disponivel: percentual,
+            views_youtube: dadosVideoAnalisado.views,
+            arrecadacao_youtube: dadosVideoAnalisado.arrecadacao,
+            status: 'active'
+        };
+        
+        // Chamar API para cadastrar
+        const resultado = await callAPI('upload_music', musicaData);
+        
+        if (resultado?.success) {
+            // Se tiver opção de valor selecionada, processar
+            if (opcaoValorSelecionada && valorUtilizarSelecionado > 0) {
+                if (opcaoValorSelecionada === 'saldo') {
+                    // Adicionar ao saldo do artista
+                    state.userBalance += valorUtilizarSelecionado;
+                    updateBalanceDisplay();
+                    
+                    // Registrar transação
+                    await callAPI('register_transaction', {
+                        tipo: 'royalties_youtube',
+                        valor: valorUtilizarSelecionado,
+                        descricao: `Royalties do YouTube - ${musicaData.titulo}`
+                    });
+                    
+                    showToast(`💰 ${formatCurrency(valorUtilizarSelecionado)} adicionado ao saldo!`, 'success');
+                }
+                else if (opcaoValorSelecionada === 'investir') {
+                    // Comprar ações da própria música
+                    const quantidade = Math.floor(valorUtilizarSelecionado / preco);
+                    if (quantidade > 0) {
+                        await callAPI('buy', {
+                            music_id: resultado.data.id,
+                            quantidade: quantidade,
+                            valor_unitario: preco,
+                            valor_total: quantidade * preco
+                        });
+                        showToast(`📈 Você investiu ${quantidade} ações na sua música!`, 'success');
+                    }
+                }
+            }
+            
+            // Fechar modal e mostrar sucesso
+            closeModal('addMusicModal');
+            showToast('✅ Música cadastrada com sucesso!', 'success');
+            
+            // Limpar formulário
+            document.getElementById('musicYoutubeField').value = '';
+            document.getElementById('musicTitleField').value = '';
+            document.getElementById('musicGenreField').value = '';
+            document.getElementById('musicPriceField').value = '10.00';
+            document.getElementById('musicPercentField').value = '20';
+            document.getElementById('musicTermsField').checked = false;
+            document.getElementById('areaEstatisticasYouTube').style.display = 'none';
+            
+            // Resetar variáveis
+            dadosVideoAnalisado = null;
+            videoIdAtual = null;
+            opcaoValorSelecionada = null;
+            
+            // Recarregar dados
+            await loadMarketplace(true);
+            if (state.currentUser?.tipo === 'artista') {
+                await loadArtistData(true);
+            }
+            
+        } else {
+            showToast(resultado?.message || 'Erro ao cadastrar música', 'error');
+        }
+    } catch (erro) {
+        console.error('Erro no cadastro:', erro);
+        showToast('Erro ao processar cadastro', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle me-2"></i> Cadastrar Música';
+    }
+}
 // Fim do escopo global
 </script>
 <!-- FOOTER COM LOGO -->
