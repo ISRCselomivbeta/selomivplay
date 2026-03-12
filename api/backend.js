@@ -2,7 +2,7 @@
 // Versão 6.3.1 - CORREÇÕES DE ERROS - Atualizado em 10/03/2026
 
 // 🆕 IMPORT DO AUTO-FIX (NÃO QUEBRA NADA)
-import { enhanceWithAutoFix, autoFix } from '../lib/auto-fix-ia.js';
+import { enhanceWithAutoFix, autoFix } from './lib/auto-fix-ia.js';
 
 // 🆕 HANDLER PRINCIPAL
 async function originalHandler(req, res) {
