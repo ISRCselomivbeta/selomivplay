@@ -10064,19 +10064,56 @@ async function performSearch() {
 /**
  * Busca vídeos no YouTube usando a API v3.
  */
+// ========== FUNÇÃO searchYouTube MELHORADA ==========
 async function searchYouTube(query) {
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(query + ' música')}&key=${YOUTUBE_API_KEY}`;
+    console.log('🔍 Buscando no YouTube:', query);
+    
+    // 1. Verificar cache primeiro
+    const cacheKey = `youtube_search_${query.toLowerCase().replace(/\s+/g, '_')}`;
+    const cached = localStorage.getItem(cacheKey);
+    const cachedTime = localStorage.getItem(`${cacheKey}_time`);
+    
+    if (cached && cachedTime && (Date.now() - parseInt(cachedTime)) < 3600000) {
+        console.log('📦 Usando cache do localStorage');
+        return JSON.parse(cached);
+    }
+    
+    // 2. Verificar se tem chave válida
+    const API_KEY = CONFIG?.YOUTUBE_API_KEY || YOUTUBE_API_KEY;
+    if (!API_KEY || API_KEY === 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
+        console.warn('⚠️ Chave da API não configurada');
+        const fallback = getYoutubeFallbackResults(query);
+        // Salvar no cache
+        localStorage.setItem(cacheKey, JSON.stringify(fallback));
+        localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
+        return fallback;
+    }
 
+    // 3. Tentar buscar da API
     try {
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(query + ' música')}&key=${API_KEY}`;
+
         const response = await fetch(url);
         const data = await response.json();
 
+        // Se erro na API
         if (data.error) {
             console.error('Erro na API do YouTube:', data.error);
-            return [];
+            
+            // Se for erro de quota (403)
+            if (data.error.code === 403) {
+                showToast('⚠️ Limite da API excedido. Usando resultados locais.', 'warning');
+            }
+            
+            const fallback = getYoutubeFallbackResults(query);
+            // Salvar no cache
+            localStorage.setItem(cacheKey, JSON.stringify(fallback));
+            localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
+            return fallback;
         }
 
-        return data.items.map(item => ({
+        // Processar resultados da API
+        const results = data.items.map(item => ({
             id: 'yt_' + item.id.videoId,
             titulo: item.snippet.title,
             artista: item.snippet.channelTitle,
@@ -10085,10 +10122,124 @@ async function searchYouTube(query) {
             is_external: true,
             is_youtube: true
         }));
+        
+        // Salvar no cache
+        localStorage.setItem(cacheKey, JSON.stringify(results));
+        localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
+        
+        return results;
+
     } catch (error) {
         console.error('Falha na busca do YouTube:', error);
-        return [];
+        
+        // Fallback em caso de erro
+        const fallback = getYoutubeFallbackResults(query);
+        localStorage.setItem(cacheKey, JSON.stringify(fallback));
+        localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
+        return fallback;
     }
+}
+
+// ========== FUNÇÃO getYoutubeFallbackResults ==========
+function getYoutubeFallbackResults(query) {
+    console.log('📦 Usando fallback local para busca:', query);
+    
+    // Banco de dados local de músicas populares
+    const localDatabase = [
+        {
+            id: 'yt_fallback_1',
+            titulo: 'Envolver',
+            artista: 'Anitta',
+            link_capa: 'https://img.youtube.com/vi/dGHP0Nj9S0A/hqdefault.jpg',
+            link_youtube: 'https://www.youtube.com/watch?v=dGHP0Nj9S0A'
+        },
+        {
+            id: 'yt_fallback_2',
+            titulo: 'Blinding Lights',
+            artista: 'The Weeknd',
+            link_capa: 'https://img.youtube.com/vi/4NRXx6U8ABQ/hqdefault.jpg',
+            link_youtube: 'https://www.youtube.com/watch?v=4NRXx6U8ABQ'
+        },
+        {
+            id: 'yt_fallback_3',
+            titulo: 'Propaganda',
+            artista: 'Jorge & Mateus',
+            link_capa: 'https://img.youtube.com/vi/YhVq7eB7j5M/hqdefault.jpg',
+            link_youtube: 'https://www.youtube.com/watch?v=YhVq7eB7j5M'
+        },
+        {
+            id: 'yt_fallback_4',
+            titulo: 'Macetando',
+            artista: 'Ivete Sangalo',
+            link_capa: 'https://img.youtube.com/vi/gM6A8kRj_9k/hqdefault.jpg',
+            link_youtube: 'https://www.youtube.com/watch?v=gM6A8kRj_9k'
+        },
+        {
+            id: 'yt_fallback_5',
+            titulo: 'Shape of You',
+            artista: 'Ed Sheeran',
+            link_capa: 'https://img.youtube.com/vi/JGwWNGJdvx8/hqdefault.jpg',
+            link_youtube: 'https://www.youtube.com/watch?v=JGwWNGJdvx8'
+        },
+        {
+            id: 'yt_fallback_6',
+            titulo: 'Bohemian Rhapsody',
+            artista: 'Queen',
+            link_capa: 'https://img.youtube.com/vi/fJ9rUzIMcZQ/hqdefault.jpg',
+            link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ'
+        },
+        {
+            id: 'yt_fallback_7',
+            titulo: 'Believer',
+            artista: 'Imagine Dragons',
+            link_capa: 'https://img.youtube.com/vi/7wtfhZwyrcc/hqdefault.jpg',
+            link_youtube: 'https://www.youtube.com/watch?v=7wtfhZwyrcc'
+        },
+        {
+            id: 'yt_fallback_8',
+            titulo: 'Levitating',
+            artista: 'Dua Lipa',
+            link_capa: 'https://img.youtube.com/vi/TUVcZfQe-Kw/hqdefault.jpg',
+            link_youtube: 'https://www.youtube.com/watch?v=TUVcZfQe-Kw'
+        },
+        {
+            id: 'yt_fallback_9',
+            titulo: 'Viva la Vida',
+            artista: 'Coldplay',
+            link_capa: 'https://img.youtube.com/vi/dvgZkm1xWPE/hqdefault.jpg',
+            link_youtube: 'https://www.youtube.com/watch?v=dvgZkm1xWPE'
+        },
+        {
+            id: 'yt_fallback_10',
+            titulo: 'Shake It Off',
+            artista: 'Taylor Swift',
+            link_capa: 'https://img.youtube.com/vi/nfWlot6h_JM/hqdefault.jpg',
+            link_youtube: 'https://www.youtube.com/watch?v=nfWlot6h_JM'
+        }
+    ];
+    
+    // Filtrar baseado na query
+    const queryLower = query.toLowerCase();
+    let results = localDatabase.filter(item => 
+        item.titulo.toLowerCase().includes(queryLower) || 
+        item.artista.toLowerCase().includes(queryLower)
+    );
+    
+    // Se não encontrou, retornar todos embaralhados
+    if (results.length === 0) {
+        results = shuffleArray([...localDatabase]);
+    }
+    
+    return results.slice(0, 5);
+}
+
+// ========== FUNÇÃO shuffleArray ==========
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
 }
 // ===== HISTÓRICO DE PESQUISAS =====
 const SEARCH_HISTORY_KEY = 'miv_search_history';
