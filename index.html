@@ -6876,7 +6876,7 @@ function renderExternalMarketplace() {
         } else if (track.link_youtube) {
             const videoId = extractYouTubeId(track.link_youtube);
             if (videoId) {
-coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
+                coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
             }
         }
         
@@ -6962,17 +6962,20 @@ coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
         </div>
         `;
     }).join('');
+    
+    // CARREGAR ESTATÍSTICAS REAIS PARA CADA CARD
+    if (state.externalPlaylist && state.externalPlaylist.length > 0) {
+        state.externalPlaylist.forEach((track, index) => {
+            const card = container.children[index];
+            if (card && track.link_youtube) {
+                setTimeout(() => {
+                    updateExternalCardWithRealData(track, card);
+                }, index * 500); // Delay para não sobrecarregar
+            }
+        });
+    }
 }
- // CARREGAR ESTATÍSTICAS REAIS PARA CADA CARD
-    state.externalPlaylist.forEach((track, index) => {
-        const card = container.children[index];
-        if (card && track.link_youtube) {
-            setTimeout(() => {
-                updateExternalCardWithRealData(track, card);
-            }, index * 500); // Delay para não sobrecarregar
-        }
-    });
-}
+    
 function playExternalTrack(index) {
     // Verificar índice primeiro
     if (index < 0 || index >= state.externalPlaylist.length) {
