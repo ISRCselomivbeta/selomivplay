@@ -1,12 +1,13 @@
 {
   "name": "selo-miv-backend",
-  "version": "6.2.0",
+  "version": "6.3.1",
   "description": "Backend SELO MIV para Vercel",
+  "type": "module",
   "main": "api/backend.js",
   "scripts": {
     "vercel-build": "echo OK"
   },
   "dependencies": {
-    "node-fetch": "^2.6.1"
+    "node-fetch": "^3.3.0"
   }
 }
