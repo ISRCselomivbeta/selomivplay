@@ -9,7 +9,47 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>SELO MIV | Fintech Musical Blockchain</title>
-   
+   <!-- CONFIGURAÇÕES PWA PARA FUNCIONAR COMO APP -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SELO MIV">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#00ff88">
+<meta name="msapplication-TileColor" content="#00ff88">
+<meta name="msapplication-TileImage" content="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
+
+<!-- ÍCONES PARA O APP (ADICIONAR DEPOIS DO FAVICON) -->
+<link rel="apple-touch-icon" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
+<link rel="apple-touch-icon" sizes="152x152" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
+<link rel="apple-touch-icon" sizes="180x180" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
+<link rel="apple-touch-icon" sizes="167x167" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
+
+<!-- MANIFEST DO PWA (SALVAR COMO manifest.json) -->
+<link rel="manifest" href="data:application/manifest+json,{
+  &quot;name&quot;: &quot;SELO MIV - Investimento Musical&quot;,
+  &quot;short_name&quot;: &quot;SELO MIV&quot;,
+  &quot;description&quot;: &quot;Plataforma de Investimento em Música com Blockchain&quot;,
+  &quot;start_url&quot;: &quot;/&quot;,
+  &quot;display&quot;: &quot;standalone&quot;,
+  &quot;background_color&quot;: &quot;#07090c&quot;,
+  &quot;theme_color&quot;: &quot;#00ff88&quot;,
+  &quot;orientation&quot;: &quot;portrait&quot;,
+  &quot;icons&quot;: [
+    {
+      &quot;src&quot;: &quot;https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png&quot;,
+      &quot;sizes&quot;: &quot;192x192&quot;,
+      &quot;type&quot;: &quot;image/png&quot;,
+      &quot;purpose&quot;: &quot;any maskable&quot;
+    },
+    {
+      &quot;src&quot;: &quot;https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png&quot;,
+      &quot;sizes&quot;: &quot;512x512&quot;,
+      &quot;type&quot;: &quot;image/png&quot;,
+      &quot;purpose&quot;: &quot;any maskable&quot;
+    }
+  ],
+  &quot;splash_pages&quot;: null
+}">
     <!-- PERMITIR COMUNICAÇÃO COM YOUTUBE E GOOGLE APPS SCRIPT -->
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://script.google.com https://script.googleusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com;">
     <!-- Bootstrap 5.3.0 -->
@@ -26,6 +66,50 @@
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         /* ========== CSS COMPLETO CORRIGIDO ========== */
+
+        /* ESTILOS PARA MODO OFFLINE */
+.app-mode {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+.offline-badge {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 50, 50, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 10001;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    display: none;
+}
+
+.offline-badge i {
+    margin-right: 5px;
+}
+
+/* Melhorias para touch */
+@media (hover: none) and (pointer: coarse) {
+    .btn,
+    .btn-miv,
+    .btn-invest,
+    .nav-link,
+    .player-btn,
+    .control-btn {
+        cursor: default;
+    }
+    
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+}
         :root {
             --neon-green: #00ff88;
             --miv-blue: #0072ff;
@@ -4591,6 +4675,8 @@ a, .auth-link {
 </div>
 
 <!-- JavaScript -->
+
+    
 <script>
     // ========== CONFIGURAÇÃO ==========
     const CONFIG = {
@@ -4645,7 +4731,160 @@ function getMusicCoverSync(track) {
     return track.is_external ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300;
 }
 // ===== FIM DAS FUNÇÕES DE CAPA =====
+    // ========== DETECTAR CONEXÃO ==========
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+function updateOnlineStatus() {
+    const offlineBadge = document.getElementById('offlineBadge') || createOfflineBadge();
     
+    if (navigator.onLine) {
+        offlineBadge.style.display = 'none';
+        showToast('📶 Conexão restabelecida!', 'success');
+        refreshAllData();
+    } else {
+        offlineBadge.style.display = 'block';
+        showToast('📴 Modo offline - algumas funções podem estar limitadas', 'warning', 5000);
+    }
+}
+
+function createOfflineBadge() {
+    const badge = document.createElement('div');
+    badge.id = 'offlineBadge';
+    badge.className = 'offline-badge';
+    badge.innerHTML = '<i class="bi bi-wifi-off"></i> Modo Offline';
+    document.body.appendChild(badge);
+    return badge;
+}
+
+// ========== COMPARTILHAR COMO APP ==========
+function shareAsApp() {
+    if (navigator.share) {
+        navigator.share({
+            title: 'SELO MIV',
+            text: 'Invista em música com blockchain!',
+            url: window.location.href
+        }).catch(console.error);
+    } else {
+        // Fallback - copiar link
+        navigator.clipboard.writeText(window.location.href);
+        showToast('Link copiado! Compartilhe com amigos', 'success');
+    }
+}
+
+// Adicionar botão de compartilhar no header
+function addShareButton() {
+    const headerRight = document.querySelector('.header-content .d-flex.gap-2');
+    if (headerRight && !document.getElementById('shareAppBtn')) {
+        const shareBtn = document.createElement('button');
+        shareBtn.id = 'shareAppBtn';
+        shareBtn.className = 'btn btn-sm btn-outline-success ms-2';
+        shareBtn.innerHTML = '<i class="bi bi-share"></i>';
+        shareBtn.onclick = shareAsApp;
+        shareBtn.title = 'Compartilhar App';
+        headerRight.appendChild(shareBtn);
+    }
+}
+
+// Chamar após o login
+setTimeout(addShareButton, 2000);
+
+// ========== FUNCIONAR EM BACKGROUND (STREAMING) ==========
+// Substituir a função checkStreamingProgress existente por esta versão melhorada
+async function checkStreamingProgress() {
+    if (!state.youtubePlayer || !state.playerReady) return;
+    
+    try {
+        if (typeof state.youtubePlayer.getPlayerState !== 'function' ||
+            typeof state.youtubePlayer.getCurrentTime !== 'function' ||
+            typeof state.youtubePlayer.getDuration !== 'function') {
+            return;
+        }
+        
+        const playerState = state.youtubePlayer.getPlayerState();
+        const currentTime = state.youtubePlayer.getCurrentTime() || 0;
+        const duration = state.youtubePlayer.getDuration() || 0;
+        
+        // Atualizar progresso mesmo em background
+        if (duration > 0) {
+            const percent = (currentTime / duration) * 100;
+            
+            // Só atualizar UI se estiver em primeiro plano
+            if (!document.hidden) {
+                const progressBar = document.getElementById('playerProgressBar');
+                const expandedBar = document.getElementById('expandedProgressBar');
+                const currentDisplay = document.getElementById('currentTimeDisplay');
+                const expandedCurrent = document.getElementById('expandedCurrentTime');
+                const totalDisplay = document.getElementById('totalTimeDisplay');
+                const expandedTotal = document.getElementById('expandedTotalTime');
+                
+                if (progressBar) progressBar.style.width = percent + '%';
+                if (expandedBar) expandedBar.style.width = percent + '%';
+                if (currentDisplay) currentDisplay.textContent = formatTime(currentTime);
+                if (expandedCurrent) expandedCurrent.textContent = formatTime(currentTime);
+                if (totalDisplay) totalDisplay.textContent = formatTime(duration);
+                if (expandedTotal) expandedTotal.textContent = formatTime(duration);
+            }
+        }
+        
+        // Registrar streaming mesmo em background
+        if (playerState === 1 && duration > 0 && currentTime >= 30) { // PLAYING
+            const now = Date.now();
+            
+            if (now - state.streamingLastReward > 29000) {
+                if (state.currentTrackIndex >= 0) {
+                    let currentTrack;
+                    if (state.currentTrackIndex >= 1000) {
+                        const externalIndex = state.currentTrackIndex - 1000;
+                        if (externalIndex >= 0 && externalIndex < state.externalPlaylist.length) {
+                            currentTrack = state.externalPlaylist[externalIndex];
+                        }
+                    } else if (state.currentTrackIndex < state.playlist.length) {
+                        currentTrack = state.playlist[state.currentTrackIndex];
+                    }
+                    
+                    if (currentTrack && currentTrack.id !== state.streamingTrackId) {
+                        state.streamingTrackId = currentTrack.id;
+                        state.streamingLastReward = 0;
+                    }
+                    
+                    if (state.streamingLastReward === 0 || now - state.streamingLastReward > 29000) {
+                        registerRealStreamingReward(currentTrack, currentTime, duration);
+                        state.streamingLastReward = now;
+                        
+                        // Mostrar notificação se estiver em background
+                        if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+                            new Notification('SELO MIV', {
+                                body: `🎵 +1 SELO COIN por streaming de "${currentTrack.titulo}"`,
+                                icon: 'https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png',
+                                silent: true
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('Erro no monitoramento de streaming:', error);
+    }
+}
+
+// ========== INICIALIZAR PWA ==========
+document.addEventListener('DOMContentLoaded', () => {
+    // Verificar se já está instalado
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('📱 Rodando como app instalado');
+        document.body.classList.add('app-mode');
+    }
+    
+    // Criar badge offline
+    createOfflineBadge();
+    updateOnlineStatus();
+    
+    // Adicionar botão de compartilhar
+    setTimeout(addShareButton, 2000);
+});
     // ========== ESTADO GLOBAL ==========
     const state = {
         currentUser: null,
@@ -10091,114 +10330,143 @@ window.playSearchResult = playSearchResult;
     }
 
     function renderTradeOffers(type) {
-        const container = document.getElementById('tradesContainer');
-        const empty = document.getElementById('tradesEmpty');
-        const offers = tradeOffers[type] || [];
+    const container = document.getElementById('tradesContainer');
+    const empty = document.getElementById('tradesEmpty');
+    const offers = tradeOffers[type] || [];
+    
+    if (offers.length === 0) {
+        container.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+    
+    empty.style.display = 'none';
+    
+    container.innerHTML = offers.map(offer => {
+        const isReceived = type === 'received';
+        const isSent = type === 'sent';
         
-        if (offers.length === 0) {
-            container.innerHTML = '';
-            empty.style.display = 'block';
-            return;
+        let statusClass = 'pending';
+        let statusText = '⏳ Aguardando';
+        
+        if (offer.status === 'accepted') {
+            statusClass = 'accepted';
+            statusText = '✅ Aceita';
+        } else if (offer.status === 'declined') {
+            statusClass = 'declined';
+            statusText = '❌ Recusada';
         }
         
-        empty.style.display = 'none';
+        // ===== CORREÇÃO DA DATA - VARIÁVEL DECLARADA AQUI =====
+        let dataFormatada = 'Data não disponível';
         
-        container.innerHTML = offers.map(offer => {
-            const isReceived = type === 'received';
-            const isSent = type === 'sent';
-            
-            let statusClass = 'pending';
-            let statusText = '⏳ Aguardando';
-            
-            if (offer.status === 'accepted') {
-                statusClass = 'accepted';
-                statusText = '✅ Aceita';
-            } else if (offer.status === 'declined') {
-                statusClass = 'declined';
-                statusText = '❌ Recusada';
+        // Tenta pegar a data de diferentes campos possíveis
+        const dataOriginal = offer.timestamp || offer.created_at || offer.updated_at || offer.data;
+        
+        if (dataOriginal) {
+            try {
+                const data = new Date(dataOriginal);
+                if (!isNaN(data.getTime())) {
+                    dataFormatada = data.toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+            } catch (e) {
+                console.log('Erro ao formatar data:', e);
             }
+        }
+        
+        // ===== CORREÇÃO DO VALOR =====
+        const precoFormatado = formatCurrency(offer.price || 0);
+        const totalFormatado = formatCurrency(offer.total || 0);
+        
+        return `
+        <div class="trade-offer-card bg-dark p-4 mb-3 rounded-3 border border-secondary ${offer.status}">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h5 class="text-white mb-1">${offer.music_title || 'Música'}</h5>
+                    <p class="text-muted small">${offer.artist || 'Artista'}</p>
+                </div>
+                <span class="badge bg-${offer.status === 'pending' ? 'warning' : (offer.status === 'accepted' ? 'success' : 'danger')}">
+                    ${statusText}
+                </span>
+            </div>
             
-            return `
-                <div class="trade-offer-card bg-dark p-4 mb-3 rounded-3 border border-secondary ${offer.status}">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h5 class="text-white mb-1">${offer.music_title}</h5>
-                            <p class="text-muted small">${offer.artist}</p>
-                        </div>
-                        <span class="badge bg-${offer.status === 'pending' ? 'warning' : (offer.status === 'accepted' ? 'success' : 'danger')}">
-                            ${statusText}
-                        </span>
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <div class="bg-black bg-opacity-50 p-2 rounded text-center">
+                        <small class="text-muted d-block">Quantidade</small>
+                        <strong>${offer.quantity || 0} ações</strong>
                     </div>
-                    
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <div class="bg-black bg-opacity-50 p-2 rounded text-center">
-                                <small class="text-muted d-block">Quantidade</small>
-                                <strong>${offer.quantity} ações</strong>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="bg-black bg-opacity-50 p-2 rounded text-center">
-                                <small class="text-muted d-block">Preço unitário</small>
-                                <strong class="text-info">${formatCurrency(offer.price)}</strong>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="bg-black bg-opacity-50 p-2 rounded text-center">
-                                <small class="text-muted d-block">Total</small>
-                                <strong class="text-warning">${formatCurrency(offer.total)}</strong>
-                            </div>
-                        </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="bg-black bg-opacity-50 p-2 rounded text-center">
+                        <small class="text-muted d-block">Preço unitário</small>
+                        <strong class="text-info">${precoFormatado}</strong>
                     </div>
-                    
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            ${isReceived ? `
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-person text-info me-2"></i>
-                                    <span>${offer.seller_name}</span>
-                                    <small class="text-muted ms-2">(${offer.seller_email})</small>
-                                </div>
-                            ` : ''}
-                            ${isSent ? `
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-envelope text-info me-2"></i>
-                                    <span>Para: ${offer.buyer_email}</span>
-                                </div>
-                            ` : ''}
-                            ${offer.message ? `
-                                <div class="mt-2 p-2 bg-black bg-opacity-25 rounded">
-                                    <i class="bi bi-chat-quote text-muted me-2"></i>
-                                    <span class="text-muted">"${offer.message}"</span>
-                                </div>
-                            ` : ''}
-                        </div>
-                        
-                        ${offer.status === 'pending' && isReceived ? `
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-success btn-sm" onclick="acceptTradeOffer('${offer.id}')">
-                                    <i class="bi bi-check-lg me-1"></i> Aceitar
-                                </button>
-                                <button class="btn btn-danger btn-sm" onclick="declineTradeOffer('${offer.id}')">
-                                    <i class="bi bi-x-lg me-1"></i> Recusar
-                                </button>
-                            </div>
-                        ` : ''}
-                        
-                        ${offer.status === 'pending' && isSent ? `
-                            <button class="btn btn-outline-danger btn-sm" onclick="cancelTradeOffer('${offer.id}')">
-                                <i class="bi bi-x-circle me-1"></i> Cancelar
-                            </button>
-                        ` : ''}
+                </div>
+                <div class="col-md-4">
+                    <div class="bg-black bg-opacity-50 p-2 rounded text-center">
+                        <small class="text-muted d-block">Total</small>
+                        <strong class="text-warning">${totalFormatado}</strong>
                     </div>
-                    
-                    <div class="mt-2 small text-muted">
-    <i class="bi bi-clock me-1"></i>
-    ${formatTradeDate(offer.timestamp || offer.updated_at)}
-</div>
-            `;
-        }).join('');
-    }
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    ${isReceived ? `
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-person text-info me-2"></i>
+                            <span>${offer.seller_name || 'Vendedor'}</span>
+                            <small class="text-muted ms-2">(${offer.seller_email || 'email'})</small>
+                        </div>
+                    ` : ''}
+                    ${isSent ? `
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-envelope text-info me-2"></i>
+                            <span>Para: ${offer.buyer_email || 'comprador'}</span>
+                        </div>
+                    ` : ''}
+                    ${offer.message ? `
+                        <div class="mt-2 p-2 bg-black bg-opacity-25 rounded">
+                            <i class="bi bi-chat-quote text-muted me-2"></i>
+                            <span class="text-muted">"${offer.message}"</span>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                ${offer.status === 'pending' && isReceived ? `
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success btn-sm" onclick="acceptTradeOffer('${offer.id}')">
+                            <i class="bi bi-check-lg me-1"></i> Aceitar
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="declineTradeOffer('${offer.id}')">
+                            <i class="bi bi-x-lg me-1"></i> Recusar
+                        </button>
+                    </div>
+                ` : ''}
+                
+                ${offer.status === 'pending' && isSent ? `
+                    <button class="btn btn-outline-danger btn-sm" onclick="cancelTradeOffer('${offer.id}')">
+                        <i class="bi bi-x-circle me-1"></i> Cancelar
+                    </button>
+                ` : ''}
+            </div>
+            
+            <!-- DATA CORRIGIDA -->
+            <div class="mt-2 small text-muted">
+                <i class="bi bi-clock me-1"></i>
+                ${dataFormatada}
+            </div>
+        </div>
+        `;
+    }).join('');
+}
     // ===== FUNÇÃO PARA FORMATAR DATA DE TRADE =====
 function formatTradeDate(dateString) {
     if (!dateString) return 'Data não disponível';
@@ -10736,5 +11004,308 @@ async function finalizarCadastroComYouTube() {
         <span class="text-muted small">Conexão Blockchain Ativa 🔒 </span>
     </div>
 </div>
+<!-- SERVICE WORKER PARA FUNCIONAR OFFLINE E EM SEGUNDO PLANO -->
+<script>
+    // ========== SERVICE WORKER PARA PWA ==========
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', async () => {
+            try {
+                // Registrar Service Worker
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                console.log('✅ Service Worker registrado:', registration.scope);
+                
+                // Solicitar permissão para notificações
+                if ('Notification' in window) {
+                    const permission = await Notification.requestPermission();
+                    console.log('📱 Permissão de notificação:', permission);
+                }
+                
+                // Verificar se está rodando como app instalado
+                if (window.matchMedia('(display-mode: standalone)').matches) {
+                    console.log('📱 Rodando como app instalado');
+                    document.body.classList.add('app-mode');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro no Service Worker:', error);
+            }
+        });
+    }
+
+    // ========== FUNCIONAR EM SEGUNDO PLANO ==========
+    let backgroundInterval = null;
+    let isInBackground = false;
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            // App está em segundo plano
+            console.log('📱 App em segundo plano');
+            isInBackground = true;
+            
+            // Manter apenas funções essenciais rodando
+            startBackgroundTasks();
+        } else {
+            // App voltou ao primeiro plano
+            console.log('📱 App voltou ao primeiro plano');
+            isInBackground = false;
+            
+            // Parar tarefas de background e atualizar tudo
+            stopBackgroundTasks();
+            refreshAllData();
+        }
+    });
+
+    function startBackgroundTasks() {
+        if (backgroundInterval) clearInterval(backgroundInterval);
+        
+        // Verificar streaming a cada 30 segundos mesmo em background
+        backgroundInterval = setInterval(() => {
+            if (isInBackground && state.isPlaying && state.youtubePlayer) {
+                // Verificar se ainda está tocando
+                try {
+                    const playerState = state.youtubePlayer.getPlayerState();
+                    if (playerState === 1) { // PLAYING
+                        console.log('🎵 Streaming continua em background');
+                        // Registrar streaming a cada 30 segundos
+                        checkStreamingProgress();
+                    }
+                } catch (e) {
+                    console.log('Erro ao verificar streaming em background');
+                }
+            }
+        }, 30000);
+    }
+
+    function stopBackgroundTasks() {
+        if (backgroundInterval) {
+            clearInterval(backgroundInterval);
+            backgroundInterval = null;
+        }
+    }
+
+    async function refreshAllData() {
+        // Atualizar dados quando voltar ao primeiro plano
+        if (state.currentUser) {
+            await Promise.all([
+                updateBalanceDisplay(true),
+                loadStreamingStats(true),
+                loadPortfolio(true),
+                loadLedger(true)
+            ]);
+            showToast('📱 Dados atualizados!', 'success');
+        }
+    }
+
+    // ========== ARQUIVO sw.js (CRIAR NA RAIZ DO SITE) ==========
+    // Este é o conteúdo do arquivo sw.js que precisa ser salvo
+    const swContent = `
+    const CACHE_NAME = 'selo-miv-v6';
+    const urlsToCache = [
+        '/',
+        'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
+        'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css',
+        'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap',
+        'https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png'
+    ];
+
+    // Instalar Service Worker
+    self.addEventListener('install', event => {
+        event.waitUntil(
+            caches.open(CACHE_NAME)
+                .then(cache => {
+                    console.log('Cache aberto');
+                    return cache.addAll(urlsToCache);
+                })
+        );
+    });
+
+    // Interceptar requisições
+    self.addEventListener('fetch', event => {
+        event.respondWith(
+            caches.match(event.request)
+                .then(response => {
+                    // Cache hit - retorna resposta
+                    if (response) {
+                        return response;
+                    }
+
+                    // Clone da requisição
+                    const fetchRequest = event.request.clone();
+
+                    return fetch(fetchRequest).then(response => {
+                        // Verifica se resposta é válida
+                        if (!response || response.status !== 200 || response.type !== 'basic') {
+                            return response;
+                        }
+
+                        // Clone da resposta
+                        const responseToCache = response.clone();
+
+                        caches.open(CACHE_NAME)
+                            .then(cache => {
+                                cache.put(event.request, responseToCache);
+                            });
+
+                        return response;
+                    }).catch(() => {
+                        // Se falhar e for página HTML, mostra página offline
+                        if (event.request.headers.get('accept').includes('text/html')) {
+                            return caches.match('/offline.html');
+                        }
+                    });
+                })
+        );
+    });
+
+    // Atualizar cache
+    self.addEventListener('activate', event => {
+        const cacheWhitelist = [CACHE_NAME];
+        event.waitUntil(
+            caches.keys().then(cacheNames => {
+                return Promise.all(
+                    cacheNames.map(cacheName => {
+                        if (cacheWhitelist.indexOf(cacheName) === -1) {
+                            return caches.delete(cacheName);
+                        }
+                    })
+                );
+            })
+        );
+    });
+
+    // Sincronização em background
+    self.addEventListener('sync', event => {
+        if (event.tag === 'sync-trades') {
+            event.waitUntil(syncTrades());
+        }
+    });
+
+    async function syncTrades() {
+        try {
+            const trades = await getPendingTrades();
+            for (const trade of trades) {
+                await fetch('/api/sync-trade', {
+                    method: 'POST',
+                    body: JSON.stringify(trade)
+                });
+            }
+        } catch (error) {
+            console.log('Erro na sincronização:', error);
+        }
+    }
+
+    async function getPendingTrades() {
+        // Implementar lógica para buscar trades pendentes do IndexedDB
+        return [];
+    }
+    `;
+
+    // Função para criar o arquivo sw.js (opcional - pode criar manualmente)
+    function createServiceWorker() {
+        const blob = new Blob([swContent], { type: 'application/javascript' });
+        const url = URL.createObjectURL(blob);
+        console.log('URL do Service Worker:', url);
+        // Nota: Você precisa salvar este conteúdo como sw.js na raiz do site
+    }
+
+    // ========== DETECTAR INSTALAÇÃO DO APP ==========
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Previne que o mini-infobar apareça
+        e.preventDefault();
+        // Armazena o evento para usar depois
+        deferredPrompt = e;
+        
+        // Mostra botão de instalar se quiser
+        showInstallButton();
+    });
+
+    function showInstallButton() {
+        // Criar botão flutuante de instalação
+        const installBtn = document.createElement('button');
+        installBtn.id = 'installPWA';
+        installBtn.innerHTML = '<i class="bi bi-download"></i> Instalar App';
+        installBtn.style.cssText = `
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            background: var(--neon-green);
+            color: black;
+            border: none;
+            border-radius: 30px;
+            padding: 12px 24px;
+            font-weight: 700;
+            z-index: 10000;
+            box-shadow: 0 4px 15px rgba(0,255,136,0.3);
+            cursor: pointer;
+            display: none;
+        `;
+        
+        installBtn.onclick = async () => {
+            if (!deferredPrompt) return;
+            
+            // Mostra o prompt de instalação
+            deferredPrompt.prompt();
+            
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('Resultado da instalação:', outcome);
+            
+            // Limpa o evento
+            deferredPrompt = null;
+            installBtn.style.display = 'none';
+        };
+        
+        document.body.appendChild(installBtn);
+        
+        // Mostrar botão após 5 segundos
+        setTimeout(() => {
+            if (deferredPrompt) {
+                installBtn.style.display = 'block';
+            }
+        }, 5000);
+    }
+
+    // ========== ARMAZENAMENTO LOCAL MELHORADO ==========
+    // Salvar estado completo no localStorage
+    function saveAppState() {
+        if (!state.currentUser) return;
+        
+        const appState = {
+            user: state.currentUser,
+            balance: state.userBalance,
+            favorites: state.favoriteMusicIds,
+            playlist: state.playlist.slice(0, 20), // Salvar só as primeiras
+            externalPlaylist: state.externalPlaylist.slice(0, 10),
+            timestamp: Date.now()
+        };
+        
+        localStorage.setItem('miv_app_state', JSON.stringify(appState));
+        console.log('💾 Estado do app salvo');
+    }
+
+    // Carregar estado salvo
+    function loadAppState() {
+        const saved = localStorage.getItem('miv_app_state');
+        if (saved) {
+            try {
+                const state = JSON.parse(saved);
+                // Verificar se não está muito antigo (1 hora)
+                if (Date.now() - state.timestamp < 3600000) {
+                    return state;
+                }
+            } catch (e) {
+                console.log('Erro ao carregar estado salvo');
+            }
+        }
+        return null;
+    }
+
+    // Salvar estado periodicamente
+    setInterval(saveAppState, 60000); // A cada minuto
+
+    // Salvar ao sair da página
+    window.addEventListener('beforeunload', saveAppState);
+</script>
+    
 </body>
 </html>
