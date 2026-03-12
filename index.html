@@ -7830,7 +7830,46 @@ function playExternalTrack(index) {
             </div>`;
         }).join('');
     }
-
+async function createPlaylist() {
+    const name = document.getElementById('playlistNameField').value.trim();
+    if (!name) { 
+        showToast('Digite um nome para a playlist', 'error'); 
+        return; 
+    }
+    if (!state.currentUser) { 
+        showToast('Faça login para criar playlists', 'error'); 
+        return; 
+    }
+    
+    const btn = document.getElementById('createPlaylistBtn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
+    
+    try {
+        const result = await callAPI('create_playlist', { 
+            nome: name, 
+            publica: document.getElementById('playlistPublicField').checked,
+            user_id: state.currentUser.id
+        });
+        
+        if (result?.success) {
+            showToast('Playlist criada!', 'success');
+            closeModal('createPlaylistModal');
+            document.getElementById('playlistNameField').value = '';
+            document.getElementById('playlistPublicField').checked = false;
+            await loadUserPlaylists();
+        } else {
+            showToast(result?.message || 'Erro ao criar playlist', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao criar playlist:', error);
+        showToast('Erro ao criar playlist', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
 function renderPlaylists() {
     const playlistsContainer = document.getElementById('playlistsContent');
     const favoritesContainer = document.getElementById('favoritesContent');
