@@ -10947,71 +10947,126 @@ function formatTradeDate(dateString) {
         renderTradeOffers(type);
     }
 
-    async function acceptTradeOffer(offerId) {
-        if (!confirm('Confirmar negociação? O valor será debitado do seu saldo.')) return;
+async function acceptTradeOffer(offerId) {
+    if (!confirm('Confirmar negociação? O valor será debitado do seu saldo.')) return;
+    
+    const btn = event?.target;
+    const originalText = btn?.innerHTML;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Processando...';
+    }
+    
+    showToast('Processando negociação...', 'info');
+    
+    try {
+        // ===== CHAMAR API PARA PROCESSAR A NEGOCIAÇÃO =====
+        const result = await callAPI('process_trade', { 
+            trade_id: offerId,
+            action_type: 'accept',
+            user_id: state.currentUser.id
+        });
         
-        try {
-            showToast('Processando negociação...', 'info');
-            await new Promise(resolve => setTimeout(resolve, 1000));
+        if (result?.success) {
+            showToast('✅ Negociação concluída com sucesso!', 'success');
             
-            const offer = tradeOffers.received.find(o => o.id === offerId);
-            if (offer) {
-                offer.status = 'accepted';
-                tradeOffers.history.unshift({...offer, type: 'history'});
-                tradeOffers.received = tradeOffers.received.filter(o => o.id !== offerId);
-            }
+            // Atualizar dados
+            await Promise.all([
+                loadTradeOffers(),
+                updateBalanceDisplay(true),
+                loadPortfolio(true),
+                loadLedger(true)
+            ]);
             
-            showToast('Negociação concluída com sucesso!', 'success');
-            await updateBalanceDisplay();
-            await loadPortfolio();
-            renderTradeOffers('received');
-        } catch (error) {
-            console.error('Erro ao aceitar oferta:', error);
-            showToast('Erro ao processar negociação', 'error');
+            // Registrar na blockchain (simulado)
+            console.log('⛓️ Transação registrada:', result.data);
+            
+        } else {
+            showToast(result?.message || 'Erro ao processar negociação', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Erro ao aceitar oferta:', error);
+        showToast('Erro ao processar negociação: ' + error.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
     }
+}
 
     async function declineTradeOffer(offerId) {
-        if (!confirm('Recusar esta oferta?')) return;
+    if (!confirm('Recusar esta oferta?')) return;
+    
+    const btn = event?.target;
+    const originalText = btn?.innerHTML;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Recusando...';
+    }
+    
+    try {
+        // ===== CHAMAR API PARA RECUSAR =====
+        const result = await callAPI('process_trade', { 
+            trade_id: offerId,
+            action_type: 'decline',
+            user_id: state.currentUser.id
+        });
         
-        try {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            const offer = tradeOffers.received.find(o => o.id === offerId);
-            if (offer) {
-                offer.status = 'declined';
-                tradeOffers.history.unshift({...offer, type: 'history'});
-                tradeOffers.received = tradeOffers.received.filter(o => o.id !== offerId);
-            }
-            
+        if (result?.success) {
             showToast('Oferta recusada', 'info');
-            renderTradeOffers('received');
-        } catch (error) {
-            console.error('Erro ao recusar oferta:', error);
-            showToast('Erro ao recusar oferta', 'error');
+            await loadTradeOffers();
+        } else {
+            showToast(result?.message || 'Erro ao recusar', 'error');
         }
-    }
-
-    async function cancelTradeOffer(offerId) {
-        if (!confirm('Cancelar esta oferta?')) return;
         
-        try {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            const offer = tradeOffers.sent.find(o => o.id === offerId);
-            if (offer) {
-                offer.status = 'declined';
-                tradeOffers.history.unshift({...offer, type: 'history'});
-                tradeOffers.sent = tradeOffers.sent.filter(o => o.id !== offerId);
-            }
-            
-            showToast('Oferta cancelada', 'info');
-            renderTradeOffers('sent');
-        } catch (error) {
-            console.error('Erro ao cancelar oferta:', error);
-            showToast('Erro ao cancelar oferta', 'error');
+    } catch (error) {
+        console.error('Erro ao recusar oferta:', error);
+        showToast('Erro ao recusar oferta', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
     }
+}
+
+   async function cancelTradeOffer(offerId) {
+    if (!confirm('Cancelar esta oferta?')) return;
+    
+    const btn = event?.target;
+    const originalText = btn?.innerHTML;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cancelando...';
+    }
+    
+    try {
+        // ===== CHAMAR API PARA CANCELAR =====
+        const result = await callAPI('process_trade', { 
+            trade_id: offerId,
+            action_type: 'cancel',
+            user_id: state.currentUser.id
+        });
+        
+        if (result?.success) {
+            showToast('Oferta cancelada', 'info');
+            await loadTradeOffers();
+        } else {
+            showToast(result?.message || 'Erro ao cancelar', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Erro ao cancelar oferta:', error);
+        showToast('Erro ao cancelar oferta', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
 
     // ========== FUNÇÕES DOS MODAIS DE TERMOS ==========
     function openTermsModal() {
