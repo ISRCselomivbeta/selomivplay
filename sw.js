@@ -234,3 +234,10 @@ async function markTradeAsSynced(db, tradeId) {
         request.onsuccess = () => resolve();
     });
 }
+
+// ===== MANTER SERVICE WORKER ATIVO PARA ÁUDIO EM BACKGROUND =====
+self.addEventListener('message', event => {
+    if (event.data && event.data.type === 'KEEP_ALIVE') {
+        console.log('🎵 Mantendo Service Worker ativo para áudio');
+    }
+});
