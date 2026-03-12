@@ -8106,8 +8106,8 @@ function playTrack(index) {
     if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
         updateExpandedPlayer();
     }
-}
-     // ===== NOVO: Registrar música no histórico =====
+    
+    // ===== REGISTRAR MÚSICA NO HISTÓRICO =====
     if (state.currentUser && track) {
         registerMusicPlayed(
             track.id, 
