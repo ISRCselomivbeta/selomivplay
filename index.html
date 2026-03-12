@@ -10064,180 +10064,31 @@ async function performSearch() {
 /**
  * Busca vídeos no YouTube usando a API v3.
  */
-// ========== FUNÇÃO searchYouTube MELHORADA ==========
-// ========== FUNÇÃO searchYouTube CORRIGIDA ==========
 async function searchYouTube(query) {
-    console.log('🔍 Buscando no YouTube:', query);
-    
-    // 1. Verificar cache primeiro
-    const cacheKey = `youtube_search_${query.toLowerCase().replace(/\s+/g, '_')}`;
-    const cached = localStorage.getItem(cacheKey);
-    const cachedTime = localStorage.getItem(`${cacheKey}_time`);
-    
-    // Cache válido por 6 horas (para não ficar obsoleto)
-    if (cached && cachedTime && (Date.now() - parseInt(cachedTime)) < 21600000) {
-        console.log('📦 Usando cache do YouTube');
-        return JSON.parse(cached);
-    }
-    
-    // 2. TENTAR API REAL PRIMEIRO
-    try {
-        const API_KEY = CONFIG?.YOUTUBE_API_KEY || YOUTUBE_API_KEY;
-        if (API_KEY && API_KEY !== 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
-            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(query)}&key=${API_KEY}`;
-            
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            if (!data.error && data.items && data.items.length > 0) {
-                console.log('✅ Resultados REAIS do YouTube carregados');
-                
-                const results = data.items.map(item => ({
-                    id: 'yt_' + item.id.videoId,
-                    titulo: item.snippet.title,
-                    artista: item.snippet.channelTitle,
-                    link_capa: item.snippet.thumbnails.high.url,
-                    link_youtube: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-                    is_external: true,
-                    is_youtube: true,
-                    published_at: item.snippet.publishedAt,
-                    description: item.snippet.description
-                }));
-                
-                // Salvar no cache
-                localStorage.setItem(cacheKey, JSON.stringify(results));
-                localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
-                
-                return results;
-            }
-        }
-    } catch (error) {
-        console.warn('⚠️ API do YouTube falhou:', error);
-    }
-    
-    // 3. SE API FALHAR, USAR SCRAPING SIMPLES
-    console.log('🔄 Usando scraping alternativo para:', query);
-    showToast('Usando busca alternativa do YouTube...', 'info', 2000);
-    
-    try {
-        const results = await scrapeYouTubeSearch(query);
-        
-        // Salvar no cache
-        if (results.length > 0) {
-            localStorage.setItem(cacheKey, JSON.stringify(results));
-            localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
-        }
-        
-        return results;
-        
-    } catch (error) {
-        console.error('Scraping também falhou:', error);
-        showToast('Erro na busca do YouTube', 'error');
-        return [];
-    }
-}
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(query + ' música')}&key=${YOUTUBE_API_KEY}`;
 
-// ========== SCRAPING DO YOUTUBE ==========
-async function scrapeYouTubeSearch(query) {
     try {
-        // Usar API pública do YouTube via RSS/JSON
-        const response = await fetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`);
-        const html = await response.text();
-        
-        // Extrair IDs dos vídeos usando regex
-        const videoIds = [];
-        const regex = /"videoId":"([^"]+)"/g;
-        let match;
-        
-        while ((match = regex.exec(html)) !== null && videoIds.length < 10) {
-            if (!videoIds.includes(match[1])) {
-                videoIds.push(match[1]);
-            }
-        }
-        
-        console.log(`📹 Encontrados ${videoIds.length} vídeos`);
-        
-        // Para cada ID, buscar informações básicas
-        const results = await Promise.all(
-            videoIds.slice(0, 8).map(async (videoId) => {
-                return await getVideoInfo(videoId);
-            })
-        );
-        
-        return results.filter(r => r !== null);
-        
-    } catch (error) {
-        console.error('Erro no scraping:', error);
-        return [];
-    }
-}
-
-// ========== BUSCAR INFO DO VÍDEO ==========
-async function getVideoInfo(videoId) {
-    try {
-        // Usar API pública do YouTube via oEmbed
-        const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
-        const response = await fetch(oembedUrl);
+        const response = await fetch(url);
         const data = await response.json();
-        
-        return {
-            id: 'yt_' + videoId,
-            titulo: data.title,
-            artista: data.author_name,
-            link_capa: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-            link_youtube: `https://www.youtube.com/watch?v=${videoId}`,
-            is_external: true,
-            is_youtube: true,
-            thumbnail: data.thumbnail_url
-        };
-        
-    } catch (error) {
-        // Fallback mínimo se oEmbed falhar
-        return {
-            id: 'yt_' + videoId,
-            titulo: 'Vídeo do YouTube',
-            artista: 'Artista',
-            link_capa: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-            link_youtube: `https://www.youtube.com/watch?v=${videoId}`,
+
+        if (data.error) {
+            console.error('Erro na API do YouTube:', data.error);
+            return [];
+        }
+
+        return data.items.map(item => ({
+            id: 'yt_' + item.id.videoId,
+            titulo: item.snippet.title,
+            artista: item.snippet.channelTitle,
+            link_capa: item.snippet.thumbnails.high.url,
+            link_youtube: `https://www.youtube.com/watch?v=${item.id.videoId}`,
             is_external: true,
             is_youtube: true
-        };
-    }
-}
-
-// ========== FUNÇÃO PARA BUSCAR ESTATÍSTICAS ==========
-async function getYouTubeStats(videoId) {
-    // 1. TENTAR API REAL
-    try {
-        const API_KEY = CONFIG?.YOUTUBE_API_KEY || YOUTUBE_API_KEY;
-        if (API_KEY && API_KEY !== 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
-            const url = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${API_KEY}`;
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            if (data.items && data.items[0]) {
-                const stats = data.items[0].statistics;
-                return {
-                    views: parseInt(stats.viewCount) || 0,
-                    likes: parseInt(stats.likeCount) || 0,
-                    comments: parseInt(stats.commentCount) || 0
-                };
-            }
-        }
+        }));
     } catch (error) {
-        console.warn('⚠️ Não foi possível buscar estatísticas:', error);
+        console.error('Falha na busca do YouTube:', error);
+        return [];
     }
-    
-    // 2. ESTIMATIVA BASEADA NO ID (fallback)
-    const hash = videoId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    const views = 100000 + (hash % 900000);
-    
-    return {
-        views: views,
-        likes: Math.floor(views * 0.03),
-        comments: Math.floor(views * 0.005),
-        is_estimate: true
-    };
 }
 // ===== HISTÓRICO DE PESQUISAS =====
 const SEARCH_HISTORY_KEY = 'miv_search_history';
