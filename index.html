@@ -3216,6 +3216,12 @@ a, .auth-link {
                 </a>
             </li>
             <li class="nav-item">
+    <a href="#" class="nav-link" onclick="changeSection('myMusic')">
+        <i class="bi bi-clock-history text-info"></i>
+        <span class="text-info">Minhas Músicas</span>
+    </a>
+</li>
+            <li class="nav-item">
                 <a href="#" class="nav-link" onclick="changeSection('trades')">
                     <i class="bi bi-arrow-left-right text-info"></i>
                     <span class="text-info">Negociações</span>
@@ -3848,6 +3854,42 @@ a, .auth-link {
     </div>
 </section>
     <!-- MINHAS NEGOCIAÇÕES SECTION -->
+    <!-- MINHAS MÚSICAS SECTION -->
+<section id="myMusicSection" class="section">
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="bi bi-clock-history me-2 text-info"></i>
+            Minhas Músicas
+        </h2>
+        <div>
+            <button class="btn btn-sm btn-outline-info" onclick="loadUserStreamingHistory(true)">
+                <i class="bi bi-arrow-clockwise"></i> Atualizar
+            </button>
+        </div>
+    </div>
+    
+    <ul class="nav nav-tabs border-0 mb-3" id="myMusicTabs">
+        <li class="nav-item">
+            <a class="nav-link text-muted active" href="#" onclick="switchMyMusicTab('recent')">
+                <i class="bi bi-clock"></i> Ouvidas Recentemente
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-muted" href="#" onclick="switchMyMusicTab('favorites')">
+                <i class="bi bi-star-fill text-warning"></i> Favoritas
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-muted" href="#" onclick="switchMyMusicTab('playlists')">
+                <i class="bi bi-music-note-list"></i> Minhas Playlists
+            </a>
+        </li>
+    </ul>
+    
+    <div id="myMusicContent" class="spotify-grid">
+        <!-- Conteúdo carregado via JavaScript -->
+    </div>
+</section>
     <section id="tradesSection" class="section">
         <div class="section-header">
             <h2 class="section-title">
@@ -6483,25 +6525,90 @@ async function initializeApp() {
             hideLoading();
         }
     }
-// ===== CARREGAR FAVORITOS DO PERFIL (NOVO) =====
-async function loadUserFavorites() {
+// ===== CARREGAR DADOS COMPLETOS DO PERFIL =====
+async function loadUserProfile() {
     if (!state.currentUser || !state.currentUser.id) return;
     
     try {
+        showLoading('Carregando seu perfil...');
+        
         const result = await callAPI('get_user_profile', { 
             user_id: state.currentUser.id 
         });
         
-        if (result.success && result.data && result.data.favorites) {
-            state.favoriteMusicIds = result.data.favorites;
-            console.log('⭐ Favoritos carregados:', state.favoriteMusicIds.length);
+        if (result.success && result.data) {
+            // Carregar favoritos
+            if (result.data.favorites) {
+                state.favoriteMusicIds = result.data.favorites;
+                console.log('⭐ Favoritos carregados:', state.favoriteMusicIds.length);
+            }
             
+            // Carregar playlists do usuário
+            await loadUserPlaylists();
+            
+            // Carregar histórico de streaming
+            await loadUserStreamingHistory();
+            
+            // Atualizar todas as telas
             renderMarketplace();
             renderExternalMarketplace();
             renderPlaylists();
+            renderFavoritesPage();
+            
+            showToast('✅ Perfil carregado!', 'success');
         }
     } catch (error) {
-        console.error('Erro ao carregar favoritos:', error);
+        console.error('Erro ao carregar perfil:', error);
+    } finally {
+        hideLoading();
+    }
+}
+
+// ===== CARREGAR HISTÓRICO DE STREAMING =====
+async function loadUserStreamingHistory() {
+    if (!state.currentUser) return;
+    
+    try {
+        const result = await callAPI('get_streaming_history', {
+            user_id: state.currentUser.id,
+            limit: 50
+        });
+        
+        if (result.success && result.data) {
+            state.streamingHistory = result.data;
+            console.log('🎵 Histórico de streaming carregado:', state.streamingHistory.length);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar histórico:', error);
+    }
+}
+
+// ===== REGISTRAR MÚSICA OUVIDA =====
+async function registerMusicPlayed(musicId, musicTitle, artist, duration) {
+    if (!state.currentUser || !musicId) return;
+    
+    try {
+        await callAPI('register_streaming', {
+            user_id: state.currentUser.id,
+            music_id: musicId,
+            music_title: musicTitle,
+            artist: artist,
+            duration: duration || 30,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Atualizar histórico local
+        if (!state.streamingHistory) state.streamingHistory = [];
+        state.streamingHistory.unshift({
+            music_id: musicId,
+            music_title: musicTitle,
+            artist: artist,
+            played_at: new Date().toISOString()
+        });
+        
+        console.log('✅ Música registrada no histórico');
+    } catch (error) {
+        console.error('Erro ao registrar música:', error);
     }
 }
 // ===== FIM =====
@@ -7611,6 +7718,96 @@ function renderPlaylists() {
         }
     }
 }
+    // ===== RENDERIZAR MINHAS MÚSICAS =====
+function renderMyMusic(tab = 'recent') {
+    const container = document.getElementById('myMusicContent');
+    if (!container) return;
+    
+    let tracks = [];
+    
+    if (tab === 'recent' && state.streamingHistory) {
+        // Músicas recentes (evitar duplicatas)
+        const unique = new Map();
+        state.streamingHistory.forEach(item => {
+            if (!unique.has(item.music_id)) {
+                unique.set(item.music_id, item);
+            }
+        });
+        tracks = Array.from(unique.values()).slice(0, 20);
+    } else if (tab === 'favorites') {
+        // Músicas favoritas
+        tracks = [
+            ...state.playlist.filter(t => state.favoriteMusicIds?.includes(t.id.toString())),
+            ...state.externalPlaylist.filter(t => state.favoriteMusicIds?.includes(t.id.toString()))
+        ];
+    } else if (tab === 'playlists') {
+        // Playlists do usuário
+        renderPlaylists(); // Já tem função específica
+        return;
+    }
+    
+    if (tracks.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state-actionable" style="grid-column: 1/-1;">
+                <i class="bi bi-music-note-beamed empty-icon"></i>
+                <h5 class="text-muted">Nenhuma música encontrada</h5>
+                <p class="text-muted">Comece a ouvir músicas para vê-las aqui</p>
+                <button class="btn btn-outline-info mt-3" onclick="changeSection('marketplace')">
+                    <i class="bi bi-shop me-2"></i> Explorar músicas
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = tracks.map(track => {
+        const isExternal = track.id?.toString().startsWith('ext_');
+        const playIndex = isExternal 
+            ? 1000 + state.externalPlaylist.findIndex(e => e.id === track.id)
+            : state.playlist.findIndex(p => p.id === track.id);
+        
+        let coverImage = track.link_capa || (isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300);
+        
+        return `
+        <div class="spotify-card ${isExternal ? 'external-card' : ''}" 
+             onclick="${isExternal ? `playExternalTrack(${playIndex - 1000})` : `playTrack(${playIndex})`}">
+            <div class="spotify-cover">
+                <img src="${coverImage}" alt="${track.titulo || 'Música'}" 
+                     onerror="this.src='${isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300}'">
+                <div class="play-overlay">
+                    <i class="bi bi-play-fill"></i>
+                </div>
+                ${track.played_at ? `
+                    <div class="position-absolute bottom-0 start-0 m-1">
+                        <span class="badge bg-info bg-opacity-75" style="font-size: 8px;">
+                            <i class="bi bi-clock"></i> ${new Date(track.played_at).toLocaleDateString()}
+                        </span>
+                    </div>
+                ` : ''}
+            </div>
+            <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+            <p class="spotify-artist">${track.artista || 'Artista'}</p>
+            
+            <button class="btn-invest" onclick="event.stopPropagation(); 
+                ${isExternal ? `openInvestExternalModal(${playIndex - 1000})` : `openInvestModal(${playIndex})`}">
+                <i class="bi bi-currency-dollar me-1"></i> INVESTIR
+            </button>
+        </div>
+        `;
+    }).join('');
+}
+
+// ===== TROCAR ABA NA MINHAS MÚSICAS =====
+function switchMyMusicTab(tab) {
+    // Atualizar classes das abas
+    document.querySelectorAll('#myMusicTabs .nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Renderizar conteúdo
+    renderMyMusic(tab);
+}
     function renderArtistMusic(musics) {
         const container = document.getElementById('artistMusicContent');
         if (!container) return;
@@ -7908,6 +8105,16 @@ function playTrack(index) {
     
     if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
         updateExpandedPlayer();
+    }
+}
+     // ===== NOVO: Registrar música no histórico =====
+    if (state.currentUser && track) {
+        registerMusicPlayed(
+            track.id, 
+            track.titulo, 
+            track.artista, 
+            30
+        );
     }
 }
 
@@ -11030,6 +11237,58 @@ document.addEventListener('visibilitychange', () => {
 // 2. O app está instalado na tela inicial
 // 3. O usuário não fechou completamente o app (apenas minimizou)
 // Fim do escopo global
+
+// ===== SALVAR HISTÓRICO DE PESQUISAS NO PERFIL =====
+async function saveSearchToUserProfile(query) {
+    if (!state.currentUser || !query) return;
+    
+    try {
+        // Buscar pesquisas anteriores
+        const userProfile = await callAPI('get_user_profile', {
+            user_id: state.currentUser.id
+        });
+        
+        let searches = [];
+        if (userProfile.success && userProfile.data.searches) {
+            searches = userProfile.data.searches;
+        }
+        
+        // Adicionar nova pesquisa no início
+        searches.unshift({
+            query: query,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Manter apenas as últimas 20 pesquisas
+        searches = searches.slice(0, 20);
+        
+        // Salvar no servidor
+        await callAPI('update_profile', {
+            user_id: state.currentUser.id,
+            searches: JSON.stringify(searches)
+        });
+        
+        console.log('✅ Pesquisa salva no perfil');
+    } catch (error) {
+        console.error('Erro ao salvar pesquisa:', error);
+    }
+}
+
+// Modificar a função performSearch para salvar
+async function performSearch() {
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) {
+        showToast('Digite o nome de uma música ou artista', 'warning');
+        return;
+    }
+    
+    // Salvar no perfil do usuário
+    if (state.currentUser) {
+        await saveSearchToUserProfile(query);
+    }
+    
+    // Resto do código existente...
+}    
 </script>
 <!-- FOOTER COM LOGO -->
 <div class="connection-footer" style="justify-content: space-between; margin-top: 40px;">
