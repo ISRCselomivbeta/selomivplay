@@ -12,6 +12,10 @@
     {
       "src": "public/**/*.pdf",
       "use": "@vercel/static"
+    },
+    {
+      "src": "sw.js",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -26,6 +30,10 @@
     {
       "src": "/reset-password.html",
       "dest": "/reset-password.html"
+    },
+    {
+      "src": "/sw.js",
+      "dest": "/sw.js"
     },
     {
       "src": "/termos-de-uso.pdf",
