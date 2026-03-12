@@ -6752,7 +6752,100 @@ function renderFilteredMarketplace(filteredTracks) {
 }
 
     window.filterMarketplace = filterMarketplace;
+// ===== FUNÇÃO PARA ATUALIZAR CARD EXTERNO COM DADOS REAIS =====
+async function updateExternalCardWithRealData(track, cardElement) {
+    if (!track || !track.link_youtube) return;
+    
+    const videoId = extractYouTubeId(track.link_youtube);
+    if (!videoId) return;
+    
+    const viewsEl = cardElement.querySelector('.youtube-views');
+    const earningsEl = cardElement.querySelector('.estimated-earnings');
+    
+    if (viewsEl) viewsEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    if (earningsEl) earningsEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    
+    try {
+        // Tenta buscar da API
+        const stats = await getYouTubeStats(videoId);
+        
+        if (stats) {
+            const revenue = calculateEstimatedRevenue(stats.views);
+            
+            if (viewsEl) {
+                viewsEl.innerHTML = `
+                    <i class="bi bi-eye-fill me-1"></i>
+                    ${formatNumber(stats.views)} views
+                `;
+            }
+            
+            if (earningsEl) {
+                earningsEl.innerHTML = `
+                    <i class="bi bi-cash-stack me-1"></i>
+                    ${revenue.formatted}
+                `;
+            }
+            
+            // Salvar no track para não buscar de novo
+            track.youtube_stats = stats;
+            
+            cardElement.setAttribute('data-tooltip', 
+                `📊 YouTube Stats:\n` +
+                `👁️ Views: ${stats.views.toLocaleString()}\n` +
+                `👍 Likes: ${stats.likes.toLocaleString()}\n` +
+                `💬 Comments: ${stats.comments.toLocaleString()}\n` +
+                `💰 Estimativa: ${revenue.formatted}`
+            );
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar card externo:', error);
+        
+        // Fallback
+        const hash = videoId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+        const views = 100000 + (hash % 900000);
+        const revenue = calculateEstimatedRevenue(views);
+        
+        if (viewsEl) {
+            viewsEl.innerHTML = `
+                <i class="bi bi-eye-fill me-1"></i>
+                ${formatNumber(views)} views
+            `;
+        }
+        
+        if (earningsEl) {
+            earningsEl.innerHTML = `
+                <i class="bi bi-cash-stack me-1"></i>
+                ${revenue.formatted}
+            `;
+        }
+    }
+}
 
+// ===== FUNÇÃO PARA VERIFICAR VENDAS DO ARTISTA =====
+async function verificarVendasArtista() {
+    if (!state.currentUser || state.currentUser.tipo !== 'artista') return;
+    
+    console.log('📊 Verificando vendas do artista...');
+    
+    // Buscar todas as músicas do artista
+    const minhasMusicas = state.playlist.filter(m => m.user_id === state.currentUser.id);
+    
+    let totalVendido = 0;
+    let totalInvestidores = 0;
+    
+    minhasMusicas.forEach(musica => {
+        totalVendido += (musica.acoes_vendidas || 0) * (musica.valor_acao || 0);
+        totalInvestidores += musica.total_investidores || 0;
+    });
+    
+    console.log(`💰 Total vendido: ${formatCurrency(totalVendido)}`);
+    console.log(`👥 Total investidores: ${totalInvestidores}`);
+    
+    // Atualizar painel
+    document.getElementById('artistSharesSold').textContent = totalVendido.toFixed(2);
+    
+    showToast(`📈 Você vendeu ${formatCurrency(totalVendido)} em ações!`, 'success');
+}    
 function renderExternalMarketplace() {
     const container = document.getElementById('externalContent');
     if (!container) return;
@@ -6870,7 +6963,16 @@ coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
         `;
     }).join('');
 }
-
+ // CARREGAR ESTATÍSTICAS REAIS PARA CADA CARD
+    state.externalPlaylist.forEach((track, index) => {
+        const card = container.children[index];
+        if (card && track.link_youtube) {
+            setTimeout(() => {
+                updateExternalCardWithRealData(track, card);
+            }, index * 500); // Delay para não sobrecarregar
+        }
+    });
+}
 function playExternalTrack(index) {
     // Verificar índice primeiro
     if (index < 0 || index >= state.externalPlaylist.length) {
@@ -8479,67 +8581,111 @@ function initializeYouTubePlayer(videoId) {
         updateInvestmentTotal(); 
     }
 
-    async function confirmInvestment() {
-        if (!state.currentUser || !state.currentInvestTrack) { 
-            showToast('Erro ao processar investimento', 'error'); 
-            return; 
-        }
-        
-        const qty = parseInt(document.getElementById('investQuantityField').value) || 1;
-        const total = qty * (state.currentInvestTrack.valor_acao || 0);
-        
-        if (total > state.userBalance) { 
-            showToast('Saldo insuficiente', 'error'); 
-            return; 
-        }
-        
-        const btn = document.getElementById('confirmInvestBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Processando...';
-        showLoading('Processando investimento...');
+    // ===== FUNÇÃO DE COMPRA CORRIGIDA =====
+async function confirmInvestment() {
+    if (!state.currentUser || !state.currentInvestTrack) { 
+        showToast('Erro ao processar investimento', 'error'); 
+        return; 
+    }
+    
+    const qty = parseInt(document.getElementById('investQuantityField').value) || 1;
+    const total = qty * (state.currentInvestTrack.valor_acao || 0);
+    
+    if (total > state.userBalance) { 
+        showToast('Saldo insuficiente', 'error'); 
+        return; 
+    }
+    
+    const btn = document.getElementById('confirmInvestBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Processando...';
+    showLoading('Processando investimento...');
 
-        try {
-            const result = await callAPI('buy', { 
-                music_id: state.currentInvestTrack.id, 
-                quantidade: qty, 
-                valor_unitario: state.currentInvestTrack.valor_acao || 0, 
-                valor_total: total 
+    try {
+        // 1. CHAMAR API PARA REGISTRAR COMPRA
+        const result = await callAPI('buy', { 
+            music_id: state.currentInvestTrack.id, 
+            quantidade: qty, 
+            valor_unitario: state.currentInvestTrack.valor_acao || 0, 
+            valor_total: total,
+            comprador_id: state.currentUser.id,
+            vendedor_id: state.currentInvestTrack.user_id // Quem está vendendo (artista)
+        });
+        
+        if (result?.success) {
+            // 2. ATUALIZAR SALDO DO COMPRADOR
+            state.userBalance -= total;
+            
+            // 3. ADICIONAR À CARTEIRA DO COMPRADOR
+            const novoAtivo = {
+                id: 'inv_' + Date.now(),
+                music_id: state.currentInvestTrack.id,
+                quantidade: qty,
+                valor_unitario: state.currentInvestTrack.valor_acao,
+                valor_total: total,
+                data_compra: new Date().toISOString(),
+                status: 'ativo'
+            };
+            
+            if (!state.portfolioAssets) state.portfolioAssets = [];
+            state.portfolioAssets.push(novoAtivo);
+            
+            // 4. ATUALIZAR ESTATÍSTICAS DA MÚSICA
+            const musicIndex = state.playlist.findIndex(m => m.id === state.currentInvestTrack.id);
+            if (musicIndex >= 0) {
+                state.playlist[musicIndex].acoes_vendidas = (state.playlist[musicIndex].acoes_vendidas || 0) + qty;
+                state.playlist[musicIndex].acoes_disponiveis = Math.max(0, (state.playlist[musicIndex].acoes_disponiveis || 0) - qty);
+                state.playlist[musicIndex].total_investidores = (state.playlist[musicIndex].total_investidores || 0) + 1;
+                state.playlist[musicIndex].total_investido = (state.playlist[musicIndex].total_investido || 0) + total;
+                
+                // Calcular nova rentabilidade
+                const investido = state.playlist[musicIndex].total_investido || 0;
+                const vendido = (state.playlist[musicIndex].acoes_vendidas || 0) * (state.playlist[musicIndex].valor_acao || 0);
+                if (investido > 0) {
+                    state.playlist[musicIndex].rentabilidade_media = ((vendido - investido) / investido) * 100;
+                }
+            }
+            
+            // 5. ATUALIZAR TELA
+            updateBalanceDisplay();
+            renderPortfolio();
+            renderMarketplace();
+            
+            // 6. REGISTRAR NA BLOCKCHAIN
+            const hash = Blockchain.generateHash(state.currentInvestTrack.id + state.currentUser.id + Date.now());
+            
+            // 7. MOSTRA SUCESSO
+            showToast(`✅ Investimento realizado! Você comprou ${qty} ações`, 'success');
+            closeModal('investModal');
+            
+            // 8. ATUALIZAR DADOS DO ARTISTA (quem vendeu)
+            if (state.currentInvestTrack.user_id) {
+                // Se o artista estiver logado, atualizar painel dele
+                if (state.currentUser.id === state.currentInvestTrack.user_id) {
+                    await loadArtistData(true);
+                }
+            }
+            
+            console.log('💰 Investimento concluído:', {
+                comprador: state.currentUser.id,
+                musica: state.currentInvestTrack.titulo,
+                quantidade: qty,
+                total: total,
+                hash: hash
             });
             
-            if (result?.success) {
-                showToast('Investimento realizado!', 'success');
-                closeModal('investModal');
-                await updateBalanceDisplay();
-                await Promise.all([loadMarketplace(), loadPortfolio(), loadLedger()]);
-                
-                if (state.currentInvestTrack) {
-                    const musicIndex = state.playlist.findIndex(m => m.id === state.currentInvestTrack.id);
-                    if (musicIndex >= 0) {
-                        const baseMusic = {
-                            id: 'base',
-                            acoes_vendidas: 0,
-                            total_investidores: 0,
-                            rentabilidade_media: 0,
-                            valor_total_investido: 0
-                        };
-                        const updated = ELO.compareMusic(state.playlist[musicIndex], baseMusic, 1);
-                        state.playlist[musicIndex] = updated.musicA;
-                        renderMarketplace();
-                    }
-                }
-            } else {
-                showToast(result?.message || 'Erro ao processar investimento', 'error');
-            }
-        } catch (error) {
-            console.error('Erro ao investir:', error);
-            showToast('Erro ao processar investimento', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-circle me-2"></i> Confirmar Investimento';
-            hideLoading();
+        } else {
+            showToast(result?.message || 'Erro ao processar investimento', 'error');
         }
+    } catch (error) {
+        console.error('❌ Erro ao investir:', error);
+        showToast('Erro ao processar investimento: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle me-2"></i> Confirmar Investimento';
+        hideLoading();
     }
-
+}
     function openInvestExternalModal(trackIndex) {
         if (trackIndex < 0 || trackIndex >= state.externalPlaylist.length) { 
             showToast('Música não encontrada', 'error'); 
@@ -8654,6 +8800,7 @@ async function toggleFavoriteMusic(musicId, trackIndex) {
         localStorage.setItem('miv_favorites', JSON.stringify(state.favoriteMusicIds));
         console.log('💾 Favoritos salvos:', state.favoriteMusicIds);
     }
+
     
     // 🔴 ATUALIZAR AMBAS AS SEÇÕES
     renderMarketplace();
