@@ -5523,8 +5523,7 @@ function renderSingleRecommendation(track, reason) {
     /**
      * Busca estatísticas reais do YouTube via nossa API
      */
-    // ========== FUNÇÃO getYouTubeStats COM CACHE DE 7 DIAS ==========
-// ========== FUNÇÃO getYouTubeStats COM CACHE INTELIGENTE ==========
+// ========== FUNÇÃO getYouTubeStats CORRIGIDA - MANTÉM ÚLTIMOS NÚMEROS REAIS ==========
 async function getYouTubeStats(videoId) {
     if (!videoId) return null;
     
@@ -5536,32 +5535,27 @@ async function getYouTubeStats(videoId) {
     const cachedData = localStorage.getItem(cacheKey);
     const cachedTime = localStorage.getItem(cacheTimeKey);
     
-    // Cache: 6 HORAS para dados reais, 7 DIAS para estimativas
+    // Cache: 6 HORAS para atualizar, mas SEMPRE mantém último valor real
     const REAL_DATA_CACHE = 6 * 60 * 60 * 1000; // 6 horas
-    const ESTIMATE_CACHE = 7 * 24 * 60 * 60 * 1000; // 7 dias
     
-    if (cachedData && cachedTime) {
-        const age = Date.now() - parseInt(cachedTime);
+    // Variável para guardar o último valor real conhecido
+    let ultimoValorReal = null;
+    
+    if (cachedData) {
         const parsedData = JSON.parse(cachedData);
         
-        // Se for dado real (da API), cache de 6 horas
+        // Se já temos um valor real no cache, guardamos como último real
         if (!parsedData.is_estimate) {
-            if (age < REAL_DATA_CACHE) {
-                console.log(`📦 Usando CACHE de ${Math.round(age / (60*60*1000))} horas atrás (dados reais)`);
-                return parsedData;
-            } else {
-                console.log(`🔄 Cache de dados reais expirado, atualizando...`);
-            }
-        } 
-        // Se for estimativa, pode manter por mais tempo
-        else if (age < ESTIMATE_CACHE) {
-            console.log(`📦 Usando CACHE de ${Math.round(age / (24*60*60*1000))} dias atrás (estimativa)`);
-            return parsedData;
+            ultimoValorReal = parsedData;
+            console.log(`📦 Último valor REAL conhecido: ${formatNumber(parsedData.views)} views`);
         }
     }
     
-    // ===== 2. TENTAR API REAL PRIMEIRO =====
+    // ===== 2. TENTAR API REAL (só para atualizar) =====
+    let tentouApi = false;
+    
     try {
+        // TENTAR VIA callAPI (seu backend)
         const result = await callAPI('get_youtube_stats', { video_id: videoId });
         
         if (result?.success && result.data) {
@@ -5571,61 +5565,39 @@ async function getYouTubeStats(videoId) {
                 comments: result.data.comments || 0,
                 estimated_earnings: result.data.estimated_earnings || 0,
                 is_estimate: false,
-                source: 'backend_api'
+                source: 'backend_api',
+                last_updated: Date.now()
             };
             
             console.log(`✅ Stats via backend para`, videoId, stats);
             
-            // Salvar no cache (agora com timestamp)
+            // Salvar no cache (sempre, sem expiração)
             localStorage.setItem(cacheKey, JSON.stringify(stats));
             localStorage.setItem(cacheTimeKey, Date.now().toString());
             
             return stats;
         }
+        tentouApi = true;
     } catch (error) {
         console.warn('⚠️ Erro ao buscar stats via backend:', error);
+        tentouApi = true;
     }
     
-    // ===== 3. TENTAR API DO YOUTUBE DIRETO =====
-    try {
-        const API_KEY = YOUTUBE_API_KEY;
-        if (API_KEY && API_KEY !== 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
-            console.log('📡 Chamando API do YouTube diretamente...');
-            
-            const url = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${API_KEY}`;
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            if (!data.error && data.items && data.items[0]) {
-                const stats = data.items[0].statistics;
-                const result = {
-                    views: parseInt(stats.viewCount) || 0,
-                    likes: parseInt(stats.likeCount) || 0,
-                    comments: parseInt(stats.commentCount) || 0,
-                    estimated_earnings: (parseInt(stats.viewCount) / 1000) * 1.5,
-                    is_estimate: false,
-                    source: 'youtube_api'
-                };
-                
-                console.log(`✅ Stats REAIS da API do YouTube para`, videoId, result);
-                
-                localStorage.setItem(cacheKey, JSON.stringify(result));
-                localStorage.setItem(cacheTimeKey, Date.now().toString());
-                
-                return result;
-            }
-            
-            if (data.error && data.error.code === 403) {
-                console.warn('⚠️ Quota da API excedida! Usando fallback...');
-            }
-        }
-    } catch (error) {
-        console.warn('⚠️ Erro ao chamar API do YouTube:', error);
+    // ===== 3. SE API FALHOU, USA ÚLTIMO VALOR REAL =====
+    if (tentouApi && ultimoValorReal) {
+        console.log(`📦 API falhou, usando ÚLTIMO VALOR REAL de ${formatNumber(ultimoValorReal.views)} views`);
+        
+        return {
+            ...ultimoValorReal,
+            using_cached_real: true,
+            last_updated: parseInt(cachedTime)
+        };
     }
     
-    // ===== 4. FALLBACK INTELIGENTE =====
-    console.log('📊 Gerando estimativa para', videoId);
+    // ===== 4. SE NUNCA TEVE VALOR REAL, USA FALLBACK =====
+    console.log('📊 Nunca teve dado real, gerando estimativa para', videoId);
     
+    // Lista de vídeos conhecidos com valores reais
     const popularVideos = {
         'dGHP0Nj9S0A': 450000000,
         '4NRXx6U8ABQ': 850000000,
@@ -5635,7 +5607,6 @@ async function getYouTubeStats(videoId) {
         'nfWlot6h_JM': 3300000000,
         'dvgZkm1xWPE': 800000000,
         'TUVcZfQe-Kw': 580000000,
-        'R3fWW-TA_qc': 25000,
     };
     
     let views;
@@ -5656,14 +5627,14 @@ async function getYouTubeStats(videoId) {
         comments: Math.floor(views * 0.005),
         estimated_earnings: earnings,
         is_estimate: true,
-        source: 'fallback'
+        source: 'fallback_inicial'
     };
     
-    // Salvar no cache (estimativa dura 7 dias)
+    // Salvar no cache (estimativa inicial)
     localStorage.setItem(cacheKey, JSON.stringify(result));
     localStorage.setItem(cacheTimeKey, Date.now().toString());
     
-    console.log(`📊 Estimativa salva no cache para`, videoId, result);
+    console.log(`📊 Estimativa inicial salva para`, videoId, result);
     return result;
 }
 
@@ -5685,11 +5656,11 @@ async function getYouTubeStats(videoId) {
      */
     function calculateEstimatedRevenue(views, platform = 'youtube') {
         const rates = {
-            youtube: 0.002,      // $0.002 por view (média)
-            spotify: 0.004,       // $0.004 por stream
-            deezer: 0.005,        // $0.005 por stream
-            apple_music: 0.007,   // $0.007 por stream
-            average: 0.0035       // Média ponderada
+            youtube: 0.0002,      // $0.002 por view (média)
+            spotify: 0.0004,       // $0.004 por stream
+            deezer: 0.0005,        // $0.005 por stream
+            apple_music: 0.0007,   // $0.007 por stream
+            average: 0.00035       // Média ponderada
         };
         
         const rate = rates[platform] || rates.average;
