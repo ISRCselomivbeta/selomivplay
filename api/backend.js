@@ -186,28 +186,40 @@ async function originalHandler(req, res) {
       });
     }
     
-    // ===== FUNÇÕES QUE USAM GAS =====
-    const gasActions = [
-      'login', 'get_musicas', 'get_external_musicas', 'get_saldo',
-      'get_carteira', 'get_extrato', 'get_top_investments', 'get_playlists',
-      'create_trade', 'get_trades', 'process_trade', 'upload_music',
-      'register_transaction', 'update_saldo', 'get_artist_data'
-    ];
-    
-    if (gasActions.includes(action)) {
-      console.log(`📡 Encaminhando ${action} para GAS...`);
-      
-      const { action: _, ...gasParams } = params;
-      
-      const gasResult = await callGAS(action, gasParams);
-      
-      if (gasResult.success) {
-        return res.status(200).json(gasResult.data);
-      } else {
-        console.log(`⚠️ GAS falhou para ${action}, usando fallback`);
-        return handleFallback(action, params, res);
-      }
-    }
+   // ===== FUNÇÕES QUE USAM GAS =====
+const gasActions = [
+  'login', 
+  'register',           // ← ADICIONADO!
+  'get_musicas', 
+  'get_external_musicas', 
+  'get_saldo',
+  'get_carteira', 
+  'get_extrato', 
+  'get_top_investments', 
+  'get_playlists',
+  'create_trade', 
+  'get_trades', 
+  'process_trade', 
+  'upload_music',
+  'register_transaction', 
+  'update_saldo', 
+  'get_artist_data'
+];
+
+if (gasActions.includes(action)) {
+  console.log(`📡 Encaminhando ${action} para GAS...`);
+  
+  const { action: _, ...gasParams } = params;
+  
+  const gasResult = await callGAS(action, gasParams);
+  
+  if (gasResult.success) {
+    return res.status(200).json(gasResult.data);
+  } else {
+    console.log(`⚠️ GAS falhou para ${action}, usando fallback`);
+    return handleFallback(action, params, res);
+  }
+}
     
     // ===== GET YOUTUBE STATS (NÃO VAI PARA GAS) =====
     if (action === 'get_youtube_stats') {
