@@ -3796,6 +3796,7 @@ a, .auth-link {
                 </div>
                 <div id="playerStatus" class="mt-2 small text-center"></div>
                 <div id="streamingRewardIndicator" class="mt-2 text-center" style="display: none;">
+                    
                     <div class="alert alert-success bg-success bg-opacity-10 border-success py-1 px-2 d-inline-flex align-items-center gap-2 rounded-pill">
                         <i class="bi bi-cash-stack text-success"></i>
                         <span id="streamingRewardAmount" class="fw-bold text-success">+0 SELO COIN</span>
@@ -3803,7 +3804,17 @@ a, .auth-link {
                         <span id="streamingMusicName" class="small text-success">Música atual</span>
                     </div>
                 </div>
-                
+                <!-- ADICIONAR AQUI - Indicador de verificação de view -->
+<div class="view-verification-status mt-2 text-center" id="viewVerificationStatus">
+    <div class="d-flex justify-content-center align-items-center gap-2">
+        <span class="badge bg-secondary" id="viewTimer">0s</span>
+        <span class="badge" id="viewStatus">⏳ Aguardando...</span>
+        <span class="badge" id="viewQuality"></span>
+    </div>
+    <div class="progress mt-2" style="height: 4px; max-width: 300px; margin: 0 auto;">
+        <div class="progress-bar bg-success" id="viewProgressBar" style="width: 0%"></div>
+    </div>
+</div>
                 <div class="expanded-controls bg-dark p-4 rounded-3">
                     <div class="expanded-progress-container mb-4">
                         <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
@@ -5519,7 +5530,219 @@ function renderSingleRecommendation(track, reason) {
         }
         return null;
     }
+// ===== SISTEMA DE VERIFICAÇÃO DE VIEWS REAIS DO YOUTUBE =====
+const VIEW_CONFIG = {
+    MIN_SECONDS: 30,           // Mínimo de segundos para contar
+    REQUIRED_PERCENTAGE: 0.5,  // 50% do vídeo precisa estar carregado
+    MAX_CONCURRENT_VIEWS: 1,   // Máximo de views simultâneas por usuário
+    COOLDOWN_MINUTES: 5,       // Tempo de espera entre views do mesmo vídeo
+    DAILY_LIMIT_PER_VIDEO: 5   // Limite diário de views por vídeo
+};
 
+// Armazenar histórico de views
+const viewHistory = {
+    currentView: null,
+    completedViews: JSON.parse(localStorage.getItem('miv_view_history')) || {},
+    
+    // Verificar se pode ver este vídeo
+    canWatch: function(videoId) {
+        const now = Date.now();
+        const today = new Date().toDateString();
+        
+        // Inicializar se não existir
+        if (!this.completedViews[videoId]) {
+            this.completedViews[videoId] = {
+                count: 0,
+                lastView: 0,
+                daily: {}
+            };
+        }
+        
+        const videoData = this.completedViews[videoId];
+        
+        // Reset contador diário se for novo dia
+        if (!videoData.daily[today]) {
+            videoData.daily[today] = 0;
+        }
+        
+        // Verificações
+        if (videoData.daily[today] >= VIEW_CONFIG.DAILY_LIMIT_PER_VIDEO) {
+            console.log(`⛔ Limite diário atingido para vídeo ${videoId}`);
+            return false;
+        }
+        
+        if (now - videoData.lastView < VIEW_CONFIG.COOLDOWN_MINUTES * 60 * 1000) {
+            console.log(`⏳ Aguarde ${VIEW_CONFIG.COOLDOWN_MINUTES} minutos entre views`);
+            return false;
+        }
+        
+        return true;
+    },
+    
+    // Registrar view concluída
+    registerView: function(videoId) {
+        const now = Date.now();
+        const today = new Date().toDateString();
+        
+        if (!this.completedViews[videoId]) {
+            this.completedViews[videoId] = {
+                count: 0,
+                lastView: 0,
+                daily: {}
+            };
+        }
+        
+        this.completedViews[videoId].count++;
+        this.completedViews[videoId].lastView = now;
+        this.completedViews[videoId].daily[today] = 
+            (this.completedViews[videoId].daily[today] || 0) + 1;
+        
+        // Salvar no localStorage
+        localStorage.setItem('miv_view_history', JSON.stringify(this.completedViews));
+        
+        console.log(`✅ View registrada para vídeo ${videoId}`);
+        return true;
+    }
+};
+
+// ===== VERIFICADOR DE VIEW REAL =====
+async function verifyRealYouTubeView() {
+    if (!state.youtubePlayer || !state.playerReady) {
+        return { isValid: false, reason: 'Player não pronto' };
+    }
+    
+    try {
+        // Coletar todas as informações do player
+        const playerState = state.youtubePlayer.getPlayerState();
+        const currentTime = state.youtubePlayer.getCurrentTime() || 0;
+        const duration = state.youtubePlayer.getDuration() || 0;
+        const loadedFraction = state.youtubePlayer.getVideoLoadedFraction() || 0;
+        const playbackRate = state.youtubePlayer.getPlaybackRate() || 1;
+        const availableQualities = state.youtubePlayer.getAvailableQualityLevels?.() || [];
+        const playbackQuality = state.youtubePlayer.getPlaybackQuality?.() || 'unknown';
+        const videoUrl = state.youtubePlayer.getVideoUrl?.() || '';
+        const volume = state.youtubePlayer.getVolume?.() || 0;
+        const muted = state.youtubePlayer.isMuted?.() || false;
+        
+        // Extrair ID do vídeo
+        const videoId = extractYouTubeId(videoUrl);
+        
+        // Verificações rigorosas
+        const isPlaying = playerState === YT.PlayerState.PLAYING;
+        const hasContent = duration > VIEW_CONFIG.MIN_SECONDS;
+        const isLoaded = loadedFraction > VIEW_CONFIG.REQUIRED_PERCENTAGE;
+        const hasQuality = availableQualities.length > 0;
+        const isProgressing = currentTime > 5;
+        const hasAudio = !muted && volume > 0;
+        const isHumanSpeed = playbackRate >= 0.5 && playbackRate <= 2;
+        const notLooping = currentTime < duration - 5; // Não está no final
+        
+        // View REAL requer TODAS essas condições
+        const isRealView = isPlaying && 
+                          hasContent && 
+                          isLoaded && 
+                          hasQuality && 
+                          isProgressing && 
+                          hasAudio && 
+                          isHumanSpeed && 
+                          notLooping &&
+                          currentTime >= VIEW_CONFIG.MIN_SECONDS;
+        
+        // Log detalhado
+        console.log('🔍 Verificação REAL do YouTube:', {
+            isPlaying,
+            hasContent,
+            isLoaded,
+            hasQuality,
+            isProgressing,
+            hasAudio,
+            isHumanSpeed,
+            notLooping,
+            currentTime: `${currentTime.toFixed(1)}s`,
+            duration: `${duration.toFixed(1)}s`,
+            loaded: `${(loadedFraction*100).toFixed(1)}%`,
+            quality: playbackQuality,
+            volume: volume,
+            result: isRealView ? '✅ VIEW REAL' : '❌ NÃO CONTOU'
+        });
+        
+        return {
+            isValid: isRealView,
+            videoId,
+            currentTime,
+            duration,
+            details: {
+                isPlaying,
+                hasContent,
+                isLoaded,
+                hasQuality,
+                isProgressing,
+                hasAudio,
+                isHumanSpeed,
+                notLooping
+            }
+        };
+        
+    } catch (error) {
+        console.error('❌ Erro na verificação:', error);
+        return { isValid: false, reason: error.message };
+    }
+}
+
+    // ===== MONITORAR PROGRESSO DA VIEW =====
+let viewMonitorInterval = null;
+
+function startViewMonitor() {
+    if (viewMonitorInterval) clearInterval(viewMonitorInterval);
+    
+    viewMonitorInterval = setInterval(async () => {
+        if (!state.youtubePlayer || !state.playerReady) return;
+        
+        const verification = await verifyRealYouTubeView();
+        const currentTime = state.youtubePlayer.getCurrentTime() || 0;
+        
+        // Atualizar timer
+        const timerEl = document.getElementById('viewTimer');
+        const statusEl = document.getElementById('viewStatus');
+        const qualityEl = document.getElementById('viewQuality');
+        const progressBar = document.getElementById('viewProgressBar');
+        
+        if (timerEl) {
+            timerEl.textContent = `${Math.floor(currentTime)}s`;
+        }
+        
+        if (statusEl) {
+            if (currentTime >= 30 && verification.isValid) {
+                statusEl.textContent = '✅ VIEW REAL';
+                statusEl.classList.add('valid');
+            } else if (currentTime >= 30) {
+                statusEl.textContent = '⏳ Verificando...';
+                statusEl.classList.remove('valid');
+            } else {
+                statusEl.textContent = `⏱️ Faltam ${Math.max(0, 30 - Math.floor(currentTime))}s`;
+                statusEl.classList.remove('valid');
+            }
+        }
+        
+        if (qualityEl && verification.details) {
+            const quality = state.youtubePlayer.getPlaybackQuality?.() || 'auto';
+            qualityEl.textContent = `📡 ${quality}`;
+        }
+        
+        if (progressBar) {
+            const percent = (currentTime / 30) * 100;
+            progressBar.style.width = `${Math.min(percent, 100)}%`;
+        }
+        
+    }, 1000);
+}
+
+function stopViewMonitor() {
+    if (viewMonitorInterval) {
+        clearInterval(viewMonitorInterval);
+        viewMonitorInterval = null;
+    }
+}
     /**
      * Busca estatísticas reais do YouTube via nossa API
      */
@@ -6810,8 +7033,8 @@ const modalHtml = `
                         </div>
                     </div>
                 </div>
-                
-                <style>
+
+                    <style>
                     @keyframes bounce {
                         0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
                         40% {transform: translateY(-20px);}
@@ -6822,6 +7045,37 @@ const modalHtml = `
                         70% { box-shadow: 0 0 0 15px rgba(0, 255, 136, 0); }
                         100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
                     }
+/* ===== INDICADORES DE VIEW ===== */
+.view-verification-status {
+    transition: all 0.3s ease;
+}
+
+.view-verification-status .badge {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+}
+
+#viewTimer {
+    background: #1e2329;
+    color: #00ff88;
+    font-family: monospace;
+}
+
+#viewStatus {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+#viewStatus.valid {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+}
+
+#viewQuality {
+    background: rgba(13, 202, 240, 0.2);
+    color: #0dcaf0;
+}
+    
                 </style>
             `;
             
@@ -8783,79 +9037,95 @@ function playTrack(index) {
         }
     }
 
-    async function registerRealStreamingReward(track, currentTime, duration) {
-        if (!track || !track.id || !state.currentUser) {
-            console.log('❌ Não foi possível registrar recompensa: dados incompletos');
-            return;
+// ===== REGISTRAR RECOMPENSA APENAS PARA VIEWS REAIS =====
+async function registerRealStreamingReward(track, currentTime, duration) {
+    if (!track || !track.id || !state.currentUser) {
+        console.log('❌ Dados incompletos');
+        return;
+    }
+    
+    // Verificar se é uma view REAL
+    const verification = await verifyRealYouTubeView();
+    
+    if (!verification.isValid) {
+        console.log('❌ View não contabilizada - não atende critérios reais');
+        
+        // Mostrar motivo no player
+        const realTimeStatus = document.getElementById('realTimeStatus');
+        if (realTimeStatus) {
+            let reason = '';
+            if (!verification.details?.hasAudio) reason = '🔇 Ative o áudio';
+            else if (!verification.details?.isProgressing) reason = '⏳ Assista por mais tempo';
+            else if (!verification.details?.hasQuality) reason = '📡 Aguarde carregamento';
+            else reason = '⏱️ Ainda não atingiu 30s';
+            
+            realTimeStatus.innerHTML = `<span class="text-warning"><i class="bi bi-info-circle"></i> ${reason}</span>`;
         }
+        return;
+    }
+    
+    // Verificar limite de views por vídeo
+    if (!viewHistory.canWatch(verification.videoId)) {
+        console.log('⛔ Limite de views atingido para este vídeo');
+        return;
+    }
+    
+    const musicRewardKey = `reward_${track.id}_${state.currentUser.id}`;
+    const hasReceivedReward = localStorage.getItem(musicRewardKey);
+    
+    if (hasReceivedReward) {
+        console.log('⏭️ Recompensa já foi paga para esta música');
+        return;
+    }
+    
+    console.log(`🎵 VIEW REAL CONFIRMADA! 30s completos em "${track.titulo}"`);
+    showToast(`⏱️ 30 segundos reais de "${track.titulo}"!`, 'success');
+    
+    try {
+        const result = await callAPI('register_streaming', {
+            music_id: track.id,
+            user_id: state.currentUser.id,
+            duration: Math.floor(currentTime),
+            total_duration: Math.floor(duration),
+            timestamp: new Date().toISOString(),
+            youtube_time: currentTime,
+            player_state: 'playing',
+            verification: 'real_view',
+            view_quality: verification.details
+        });
         
-        if (duration < 30) {
-            console.log('⏳ Vídeo muito curto para recompensa:', duration);
-            return;
-        }
+        console.log('📦 Resposta da API:', result);
         
-        if (currentTime < 30) {
-            console.log('⏳ Ainda não atingiu 30 segundos:', currentTime);
-            return;
-        }
-        
-        const musicRewardKey = `reward_${track.id}_${state.currentUser.id}`;
-        const hasReceivedReward = localStorage.getItem(musicRewardKey);
-        
-        if (hasReceivedReward) {
-            console.log('⏭️ Recompensa já foi paga para esta música:', track.titulo);
+        if (result?.success) {
+            const rewardAmount = result.data?.reward || 1;
+            
+            // Registrar view no histórico
+            viewHistory.registerView(verification.videoId);
+            
+            // Marcar como recebido
+            localStorage.setItem(musicRewardKey, 'true');
+            
+            showStreamingReward(rewardAmount, track.titulo);
+            
             const realTimeStatus = document.getElementById('realTimeStatus');
             if (realTimeStatus) {
-                realTimeStatus.innerHTML = '<span class="text-warning"><i class="bi bi-check-circle"></i> Recompensa já recebida</span>';
-            }
-            return;
-        }
-        
-        console.log(`🎵 STREAMING REAL: 30s completos em "${track.titulo}"! Registrando...`);
-        showToast(`⏱️ 30 segundos de "${track.titulo}"!`, 'info');
-        
-        try {
-            const result = await callAPI('register_streaming', {
-                music_id: track.id,
-                user_id: state.currentUser.id,
-                duration: Math.floor(currentTime),
-                total_duration: Math.floor(duration),
-                timestamp: new Date().toISOString(),
-                youtube_time: currentTime,
-                player_state: state.isPlaying ? 'playing' : 'paused',
-                verification: 'real'
-            });
-            
-            console.log('📦 Resposta da API de streaming:', result);
-            
-            if (result?.success) {
-                const rewardAmount = result.data?.reward || 1;
-                
-                localStorage.setItem(musicRewardKey, 'true');
-                
-                showStreamingReward(rewardAmount, track.titulo);
-                
-                const realTimeStatus = document.getElementById('realTimeStatus');
-                if (realTimeStatus) {
-                    realTimeStatus.innerHTML = `<span class="text-success"><i class="bi bi-cash-stack"></i> +${rewardAmount} SELO COIN recebido!</span>`;
-                }
-                
-                setTimeout(() => {
-                    updateBalanceDisplay(true);
-                    loadLedger(true);
-                    loadStreamingStats(true);
-                }, 2000);
-            } else {
-                console.log('⚠️ API não registrou streaming:', result?.message);
-                showToast('❌ Erro ao registrar streaming', 'error');
+                realTimeStatus.innerHTML = `<span class="text-success"><i class="bi bi-cash-stack"></i> +${rewardAmount} SELO COIN recebido!</span>`;
             }
             
-        } catch (error) {
-            console.error('❌ Erro ao registrar streaming REAL:', error);
-            showToast('❌ Falha na conexão', 'error');
+            setTimeout(() => {
+                updateBalanceDisplay(true);
+                loadLedger(true);
+                loadStreamingStats(true);
+            }, 2000);
+        } else {
+            console.log('⚠️ API não registrou streaming:', result?.message);
         }
+        
+    } catch (error) {
+        console.error('❌ Erro ao registrar streaming:', error);
+        showToast('❌ Falha na conexão', 'error');
     }
-
+}
     function showStreamingReward(amount, musicTitle) {
         const indicator = document.getElementById('streamingRewardIndicator');
         const amountEl = document.getElementById('streamingRewardAmount');
@@ -9142,7 +9412,35 @@ function initializeYouTubePlayer(videoId) {
         updatePlayerIcons();
         updateExpandedPlayer();
     }
-
+switch(event.data) {
+    case YT.PlayerState.PLAYING:
+        state.isPlaying = true;
+        state.isBuffering = false;
+        startViewMonitor(); // ← ADICIONE AQUI
+        if (loadingEl) loadingEl.style.display = 'none';
+        state.streamingProgress = 0;
+        if (!state.streamingTimer) startStreamingMonitor();
+        break;
+        
+    case YT.PlayerState.PAUSED:
+        state.isPlaying = false;
+        state.isBuffering = false;
+        stopViewMonitor(); // ← ADICIONE AQUI
+        break;
+        
+    case YT.PlayerState.ENDED:
+        state.isPlaying = false;
+        state.isBuffering = false;
+        stopViewMonitor(); // ← ADICIONE AQUI
+        state.streamingProgress = 0;
+        if (loadingEl) loadingEl.style.display = 'none';
+        
+        if (state.isRepeat) {
+            event.target.playVideo();
+        } else {
+            playNext();
+        }
+        break;
     function onPlayerError(event) {
         console.error('❌ Erro no player YouTube:', event.data);
         state.playerReady = false;
