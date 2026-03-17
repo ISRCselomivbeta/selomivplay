@@ -7314,7 +7314,8 @@ function renderMarketplace() {
                     coverImage = track.link_capa.trim();
                 } else if (track.link_youtube) {
                     const videoId = extractYouTubeId(track.link_youtube);
-                    if (videoId) coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
+                    if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
 
                 }
                 
@@ -7635,7 +7636,7 @@ function renderExternalMarketplace() {
         } else if (track.link_youtube) {
             const videoId = extractYouTubeId(track.link_youtube);
             if (videoId) {
-                coverImage = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
+                coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
             }
         }
         
@@ -7780,7 +7781,7 @@ function playExternalTrack(index) {
         if (track.link_youtube) {
             const videoId = extractYouTubeId(track.link_youtube);
             if (videoId) {
-                coverUrl = `/api/backend?action=youtube_thumbnail&videoId=${videoId}`;
+                coverUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
             }
         }
         
