@@ -186,10 +186,13 @@ async function originalHandler(req, res) {
       });
     }
     
-   // ===== FUNÇÕES QUE USAM GAS =====
+ // ===== FUNÇÕES QUE USAM GAS =====
 const gasActions = [
   'login', 
-  'register',           // ← ADICIONADO!
+  'register',
+  'request_password_reset',    // ← NOVO
+  'verify_reset_token',        // ← NOVO
+  'reset_password',            // ← NOVO
   'get_musicas', 
   'get_external_musicas', 
   'get_saldo',
