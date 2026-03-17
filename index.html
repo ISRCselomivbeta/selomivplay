@@ -4769,13 +4769,13 @@ a, .auth-link {
     
 <script>
     // ========== CONFIGURAÇÃO ==========
-    const CONFIG = {
-        API_URL: 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
-        DEV_MODE: false,
-        VERSION: '6.0.0',
-        MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
-        BLOCKCHAIN_ENABLED: true
-    };
+   const CONFIG = {
+    API_URL: 'https://selomivplay.vercel.app/api/backend', // ← USE O BACKEND!
+    DEV_MODE: false,
+    VERSION: '6.0.0',
+    MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
+    BLOCKCHAIN_ENABLED: true
+};
 
     // ========== PLACEHOLDERS ==========
     const PLACEHOLDERS = {
@@ -12274,6 +12274,75 @@ async function performSearch() {
 
     // Salvar ao sair da página
     window.addEventListener('beforeunload', saveAppState);
+// ===== FUNÇÕES PARA O BLOCKCHAIN EXPLORER =====
+function gerarBlocosSimulados(quantidade = 5) {
+    const blocos = [];
+    const musicas = [
+        'Bohemian Rhapsody - Queen',
+        'Blinding Lights - The Weeknd',
+        'Lose Yourself - Eminem',
+        'Shape of You - Ed Sheeran',
+        'Rolling in the Deep - Adele',
+        'Hotel California - Eagles',
+        'Imagine - John Lennon',
+        'Smells Like Teen Spirit - Nirvana'
+    ];
+    
+    for (let i = 0; i < quantidade; i++) {
+        const timestamp = new Date(Date.now() - i * 3600000).toISOString();
+        const hash = '0x' + (Date.now() + i).toString(16).padStart(16, '0');
+        const prevHash = i === 0 ? '0'.repeat(64) : '0x' + (Date.now() + i - 1).toString(16).padStart(16, '0');
+        
+        blocos.push({
+            block_index: 100 + i,
+            block_hash: hash,
+            previous_hash: prevHash,
+            timestamp: timestamp,
+            music_title: musicas[i % musicas.length],
+            miner_user_id: 'miner_' + (1000 + i),
+            reward_amount: (Math.random() * 5 + 0.5).toFixed(2),
+            stream_quality: 'SIMULATED'
+        });
+    }
+    
+    return blocos;
+}
+
+function gerarDadosSimulados() {
+    return `
+        <tr>
+            <td colspan="6" class="text-center py-4">
+                <i class="bi bi-link-45deg fs-1 text-muted d-block mb-3"></i>
+                <span class="text-muted">🔗 Dados simulados para demonstração</span>
+                <button class="btn btn-sm btn-outline-success mt-3" onclick="gerarBlocosSimuladosParaVisualizacao()">
+                    <i class="bi bi-magic me-2"></i> Gerar blocos de exemplo
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
+function gerarTransacoesSimuladas() {
+    const transacoes = [];
+    const tipos = ['🎵 Royalty', '💰 Investimento', '💸 Streaming', '⛓️ Contrato'];
+    
+    for (let i = 0; i < 5; i++) {
+        const hash = '0x' + (Date.now() + i).toString(16).substring(0, 16);
+        transacoes.push(`
+            <tr>
+                <td><span class="blockchain-hash">${hash.substring(0, 15)}...</span></td>
+                <td>${new Date(Date.now() - i * 3600000).toLocaleString()}</td>
+                <td>${tipos[i % tipos.length]}</td>
+                <td>Transação simulada #${i+1}</td>
+                <td><span class="badge bg-success">Confirmada</span></td>
+            </tr>
+        `);
+    }
+    
+    return transacoes.join('');
+}
+
+    
 </script>
     
 </body>
