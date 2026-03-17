@@ -10216,6 +10216,7 @@ const YOUTUBE_API_KEY = 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
 /**
  * Função principal de busca. Chamada ao submeter o formulário.
  */
+// ===== FUNÇÃO PERFORMSEARCH CORRIGIDA (VERSÃO ROBUSTA) =====
 async function performSearch() {
     const query = document.getElementById('searchInput').value.trim();
     if (!query) {
@@ -10230,19 +10231,55 @@ async function performSearch() {
     resultsContainer.style.display = 'block';
 
     try {
-        // 1. Busca na playlist interna do SELO MIV
-        const internalResults = state.playlist.filter(item =>
-            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
-            item.artista?.toLowerCase().includes(query.toLowerCase())
-        );
+        // Salvar no perfil do usuário
+        if (state.currentUser) {
+            await saveSearchToUserProfile(query);
+        }
+        
+        // Converter query para minúsculas uma vez
+        const queryLower = query.toLowerCase();
+        
+        // 1. Busca na playlist interna do SELO MIV (COM PROTEÇÃO TOTAL)
+        const internalResults = [];
+        if (state.playlist && Array.isArray(state.playlist)) {
+            for (let i = 0; i < state.playlist.length; i++) {
+                const item = state.playlist[i];
+                
+                // Verificar se o item existe e é um objeto
+                if (!item || typeof item !== 'object') continue;
+                
+                // Obter valores com segurança
+                const titulo = item.titulo ? String(item.titulo).toLowerCase() : '';
+                const artista = item.artista ? String(item.artista).toLowerCase() : '';
+                
+                // Verificar se algum campo corresponde
+                if (titulo.includes(queryLower) || artista.includes(queryLower)) {
+                    internalResults.push(item);
+                }
+            }
+        }
 
-        // 2. Busca na Bolsa Externa
-        const externalResults = state.externalPlaylist.filter(item =>
-            item.titulo?.toLowerCase().includes(query.toLowerCase()) ||
-            item.artista?.toLowerCase().includes(query.toLowerCase())
-        );
+        // 2. Busca na Bolsa Externa (COM PROTEÇÃO TOTAL)
+        const externalResults = [];
+        if (state.externalPlaylist && Array.isArray(state.externalPlaylist)) {
+            for (let i = 0; i < state.externalPlaylist.length; i++) {
+                const item = state.externalPlaylist[i];
+                
+                // Verificar se o item existe e é um objeto
+                if (!item || typeof item !== 'object') continue;
+                
+                // Obter valores com segurança
+                const titulo = item.titulo ? String(item.titulo).toLowerCase() : '';
+                const artista = item.artista ? String(item.artista).toLowerCase() : '';
+                
+                // Verificar se algum campo corresponde
+                if (titulo.includes(queryLower) || artista.includes(queryLower)) {
+                    externalResults.push(item);
+                }
+            }
+        }
 
-        // 3. Busca no YouTube (se a API Key estiver configurada)
+        // 3. Busca no YouTube
         let youtubeResults = [];
         if (YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
             youtubeResults = await searchYouTube(query);
@@ -10258,12 +10295,12 @@ async function performSearch() {
         resultsContainer.innerHTML = `<div class="p-4 text-center text-danger">
             <i class="bi bi-exclamation-triangle fs-1 d-block mb-3"></i>
             <p>Erro ao realizar a busca. Tente novamente.</p>
+            <small>${error.message}</small>
         </div>`;
     } finally {
         hideLoading();
     }
-}
-/**
+}/**
  * Busca vídeos no YouTube usando a API v3.
  */
 // ========== FUNÇÃO searchYouTube CORRIGIDA (SUBSTITUA ESTA) ==========
@@ -10517,6 +10554,9 @@ if (searchInput) {
 /**
  * Exibe os resultados combinados na interface.
  */
+/**
+ * Exibe os resultados combinados na interface.
+ */
 function displaySearchResults(internal, external, youtube, query) {
     const container = document.getElementById('searchResults');
     const allResults = [...internal, ...external, ...youtube];
@@ -10562,7 +10602,6 @@ function displaySearchResults(internal, external, youtube, query) {
         });
     }, 100);
 }
-
 /**
  * Toca o resultado selecionado e gera recomendações.
  */
