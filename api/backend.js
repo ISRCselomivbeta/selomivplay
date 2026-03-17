@@ -188,25 +188,84 @@ async function originalHandler(req, res) {
     
  // ===== FUNÇÕES QUE USAM GAS =====
 const gasActions = [
+  // Autenticação (7)
   'login', 
   'register',
-  'request_password_reset',    // ← NOVO
-  'verify_reset_token',        // ← NOVO
-  'reset_password',            // ← NOVO
+  'confirm_email',
+  'request_password_reset',
+  'verify_reset_token',
+  'reset_password',
+  'check_old_account',
+  
+  // Perfil (2)
+  'get_user_profile',
+  'update_profile',
+  
+  // Músicas (9)
   'get_musicas', 
-  'get_external_musicas', 
+  'get_music_details',
+  'upload_music',
+  'update_music',
+  'pause_music',
+  'delete_music',
+  'suggest_external_music',
+  'get_external_musicas',
+  'get_top_investments',
+  
+  // Financeiro (8)
   'get_saldo',
   'get_carteira', 
-  'get_extrato', 
-  'get_top_investments', 
+  'get_extrato',
+  'buy',
+  'buy_external',
+  'add_balance',
+  'request_withdrawal',
+  'get_withdrawals',
+  
+  // Social (3)
   'get_playlists',
+  'create_playlist',
+  'toggle_favorite',
+  
+  // Artista (1)
+  'get_artist_data',
+  
+  // Trading (6)
   'create_trade', 
   'get_trades', 
-  'process_trade', 
-  'upload_music',
-  'register_transaction', 
-  'update_saldo', 
-  'get_artist_data'
+  'process_trade',
+  'get_trade_details',
+  'add_transaction',
+  'transfer_shares',
+  
+  // Blockchain e Streaming (7)
+  'get_streaming_stats',
+  'register_streaming',
+  'get_mining_blocks',
+  'get_mining_stats',
+  'get_mining_ranking',
+  'mine_streaming_block',
+  'setup_streaming_blockchain',
+  
+  // YouTube (3)
+  'search_youtube',
+  'search_isrc',
+  'get_youtube_earnings',
+  
+  // Interações (2)
+  'register_interaction',
+  'get_recommendations',
+  
+  // PIX (3)
+  'create_pix_payment',
+  'check_pix_payment',
+  'get_user_pix_payments',
+  
+  // Sistema (4)
+  'health',
+  'setup',
+  'atualizar_base',
+  'backup'
 ];
 
 if (gasActions.includes(action)) {
