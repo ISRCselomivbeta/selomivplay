@@ -11601,6 +11601,9 @@ async function resendConfirmationEmailFromModal(email) {
     }
 }
     // ========== EXPOR FUNÇÕES GLOBAIS ==========
+console.log('Verificando funções antes de exportar:');
+console.log('declineTradeOffer definida?', typeof declineTradeOffer !== 'undefined');
+console.log('cancelTradeOffer definida?', typeof cancelTradeOffer !== 'undefined');    
 window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
 window.logout = logout;
