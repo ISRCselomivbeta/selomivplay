@@ -11472,7 +11472,111 @@ async function acceptTradeOffer(offerId) {
         }
     }
 }
+async function declineTradeOffer(offerId) {
+    if (!confirm('Recusar esta oferta?')) return;
+    
+    const btn = event?.target;
+    const originalText = btn?.innerHTML;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Recusando...';
+    }
+    
+    try {
+        const result = await callAPI('process_trade', { 
+            trade_id: offerId,
+            action_type: 'decline',
+            user_id: state.currentUser.id
+        });
+        
+        if (result?.success) {
+            showToast('Oferta recusada', 'info');
+            
+            // Remover a oferta da lista local
+            if (tradeOffers.received) {
+                tradeOffers.received = tradeOffers.received.filter(o => o.id !== offerId);
+            }
+            
+            // Adicionar ao histórico
+            const declinedOffer = tradeOffers.received?.find(o => o.id === offerId);
+            if (declinedOffer && tradeOffers.history) {
+                tradeOffers.history.unshift({
+                    ...declinedOffer,
+                    status: 'declined',
+                    completed_at: new Date().toISOString()
+                });
+            }
+            
+            // Atualizar UI
+            renderTradeOffers('received');
+            await loadTradeOffers();
+        } else {
+            showToast(result?.message || 'Erro ao recusar', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Erro ao recusar oferta:', error);
+        showToast('Erro ao recusar oferta', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
 
+async function cancelTradeOffer(offerId) {
+    if (!confirm('Cancelar esta oferta?')) return;
+    
+    const btn = event?.target;
+    const originalText = btn?.innerHTML;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cancelando...';
+    }
+    
+    try {
+        const result = await callAPI('process_trade', { 
+            trade_id: offerId,
+            action_type: 'cancel',
+            user_id: state.currentUser.id
+        });
+        
+        if (result?.success) {
+            showToast('Oferta cancelada', 'info');
+            
+            // Remover a oferta da lista local
+            if (tradeOffers.sent) {
+                tradeOffers.sent = tradeOffers.sent.filter(o => o.id !== offerId);
+            }
+            
+            // Adicionar ao histórico
+            const cancelledOffer = tradeOffers.sent?.find(o => o.id === offerId);
+            if (cancelledOffer && tradeOffers.history) {
+                tradeOffers.history.unshift({
+                    ...cancelledOffer,
+                    status: 'cancelled',
+                    completed_at: new Date().toISOString()
+                });
+            }
+            
+            // Atualizar UI
+            renderTradeOffers('sent');
+            await loadTradeOffers();
+        } else {
+            showToast(result?.message || 'Erro ao cancelar', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Erro ao cancelar oferta:', error);
+        showToast('Erro ao cancelar oferta', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
     // ========== FUNÇÕES DOS MODAIS DE TERMOS ==========
     function openTermsModal() {
         document.getElementById('termsContent').innerHTML = `
@@ -11601,9 +11705,6 @@ async function resendConfirmationEmailFromModal(email) {
     }
 }
     // ========== EXPOR FUNÇÕES GLOBAIS ==========
-console.log('Verificando funções antes de exportar:');
-console.log('declineTradeOffer definida?', typeof declineTradeOffer !== 'undefined');
-console.log('cancelTradeOffer definida?', typeof cancelTradeOffer !== 'undefined');    
 window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
 window.logout = logout;
