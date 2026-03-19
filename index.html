@@ -11351,8 +11351,20 @@ function formatTradeDate(dateString) {
     }
 
 async function acceptTradeOffer(offerId) {
-    if (!confirm('Confirmar negociação? O valor será debitado do seu saldo.')) return;
+    // Pega a oferta específica que está sendo aceita
+    const currentOffer = tradeOffers.received?.find(o => o.id === offerId);
     
+    if (!currentOffer) {
+        showToast('Oferta não encontrada.', 'error');
+        return;
+    }
+
+    const totalValue = currentOffer.total || (currentOffer.quantity * currentOffer.price);
+    
+    if (!confirm(`Confirmar compra de ${currentOffer.quantity || 0} ações de "${currentOffer.music_title}" por ${formatCurrency(totalValue)}?`)) {
+        return;
+    }
+
     const btn = event?.target;
     const originalText = btn?.innerHTML;
     if (btn) {
@@ -11360,10 +11372,10 @@ async function acceptTradeOffer(offerId) {
         btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Processando...';
     }
     
-    showToast('Processando negociação...', 'info');
+    showLoading('Processando negociação...');
     
     try {
-        // ===== CHAMAR API PARA PROCESSAR A NEGOCIAÇÃO =====
+        // CHAMAR API PARA PROCESSAR A NEGOCIAÇÃO
         const result = await callAPI('process_trade', { 
             trade_id: offerId,
             action_type: 'accept',
@@ -11371,99 +11383,89 @@ async function acceptTradeOffer(offerId) {
         });
         
         if (result?.success) {
+            // ===== ATUALIZAÇÃO MANUAL DO ESTADO LOCAL =====
+            
+            // 1. Atualizar saldo do comprador (você)
+            if (state.userBalance >= totalValue) {
+                state.userBalance -= totalValue;
+            } else {
+                console.warn('Saldo insuficiente para atualização local');
+            }
+            
+            // 2. Adicionar o novo ativo ao portfólio do comprador
+            const novoAtivo = {
+                id: 'asset_' + Date.now(),
+                music_id: currentOffer.music_id,
+                music_title: currentOffer.music_title,
+                artist: currentOffer.artist,
+                quantidade: currentOffer.quantity,
+                valor_unitario: currentOffer.price,
+                valor_total: totalValue,
+                data_compra: new Date().toISOString(),
+                status: 'ativo',
+                trade_id: offerId,
+                blockchain_hash: result.data?.blockchain_hash || '0x' + Date.now().toString(16)
+            };
+            
+            if (!state.portfolioAssets) state.portfolioAssets = [];
+            state.portfolioAssets.push(novoAtivo);
+            
+            // 3. Remover a oferta ACEITA da lista local
+            if (tradeOffers.received) {
+                tradeOffers.received = tradeOffers.received.filter(o => o.id !== offerId);
+            }
+            
+            // 4. Adicionar ao histórico de negociações
+            if (!tradeOffers.history) tradeOffers.history = [];
+            tradeOffers.history.unshift({
+                ...currentOffer,
+                status: 'accepted',
+                completed_at: new Date().toISOString()
+            });
+            
+            // 5. Atualizar UI imediatamente
+            updateBalanceDisplay(); // Atualiza o saldo na tela
+            renderTradeOffers('received'); // Remove a oferta da lista
+            renderPortfolio(); // Mostra o novo ativo no portfólio
+            
+            // 6. Registrar no extrato
+            if (!state.ledgerData) state.ledgerData = [];
+            state.ledgerData.unshift({
+                data: new Date().toISOString(),
+                tipo: 'INVESTIMENTO',
+                descricao: `Compra de ${currentOffer.quantity} ações de "${currentOffer.music_title}" via negociação`,
+                valor: -totalValue,
+                referencia: `TRADE_${offerId}`,
+                blockchain_hash: result.data?.blockchain_hash
+            });
+            
             showToast('✅ Negociação concluída com sucesso!', 'success');
             
-            // Atualizar dados
-            await Promise.all([
-                loadTradeOffers(),
-                updateBalanceDisplay(true),
-                loadPortfolio(true),
-                loadLedger(true)
-            ]);
+            // 7. Fechar o modal de negociação se estiver aberto
+            closeModal('tradeModal');
             
-            // Registrar na blockchain (simulado)
-            console.log('⛓️ Transação registrada:', result.data);
+            // 8. Atualizar dados do servidor em segundo plano (para garantir consistência)
+            setTimeout(async () => {
+                await Promise.all([
+                    updateBalanceDisplay(true),
+                    loadPortfolio(true),
+                    loadLedger(true),
+                    loadTradeOffers()
+                ]);
+                console.log('📊 Dados sincronizados com servidor');
+            }, 2000);
             
         } else {
             showToast(result?.message || 'Erro ao processar negociação', 'error');
+            // Se falhou, recarregar ofertas para garantir
+            await loadTradeOffers();
         }
         
     } catch (error) {
         console.error('Erro ao aceitar oferta:', error);
         showToast('Erro ao processar negociação: ' + error.message, 'error');
     } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        }
-    }
-}
-
-    async function declineTradeOffer(offerId) {
-    if (!confirm('Recusar esta oferta?')) return;
-    
-    const btn = event?.target;
-    const originalText = btn?.innerHTML;
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Recusando...';
-    }
-    
-    try {
-        // ===== CHAMAR API PARA RECUSAR =====
-        const result = await callAPI('process_trade', { 
-            trade_id: offerId,
-            action_type: 'decline',
-            user_id: state.currentUser.id
-        });
-        
-        if (result?.success) {
-            showToast('Oferta recusada', 'info');
-            await loadTradeOffers();
-        } else {
-            showToast(result?.message || 'Erro ao recusar', 'error');
-        }
-        
-    } catch (error) {
-        console.error('Erro ao recusar oferta:', error);
-        showToast('Erro ao recusar oferta', 'error');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        }
-    }
-}
-
-   async function cancelTradeOffer(offerId) {
-    if (!confirm('Cancelar esta oferta?')) return;
-    
-    const btn = event?.target;
-    const originalText = btn?.innerHTML;
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cancelando...';
-    }
-    
-    try {
-        // ===== CHAMAR API PARA CANCELAR =====
-        const result = await callAPI('process_trade', { 
-            trade_id: offerId,
-            action_type: 'cancel',
-            user_id: state.currentUser.id
-        });
-        
-        if (result?.success) {
-            showToast('Oferta cancelada', 'info');
-            await loadTradeOffers();
-        } else {
-            showToast(result?.message || 'Erro ao cancelar', 'error');
-        }
-        
-    } catch (error) {
-        console.error('Erro ao cancelar oferta:', error);
-        showToast('Erro ao cancelar oferta', 'error');
-    } finally {
+        hideLoading();
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalText;
