@@ -12767,7 +12767,145 @@ function gerarTransacoesSimuladas() {
     
     return transacoes.join('');
 }
+// ========== AQUI COLE O NOVO CÓDIGO ==========
+// ========== FORÇAR MODO DESKTOP PARA ÁUDIO EM BACKGROUND ==========
 
+// Função que tenta manter o áudio ativo mesmo com tela bloqueada
+function forceBackgroundAudio() {
+    console.log('🎵 Tentando manter áudio em background...');
+    
+    // 1. Criar um elemento de áudio "fantasma" que mantém o contexto ativo
+    if (!window._bgAudioContext) {
+        try {
+            // Criar um AudioContext que nunca é suspenso
+            window._bgAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Tentar manter o contexto ativo
+            if (window._bgAudioContext.state === 'suspended') {
+                window._bgAudioContext.resume();
+            }
+            
+            // Criar um oscilador silencioso que mantém o contexto ativo
+            const oscillator = window._bgAudioContext.createOscillator();
+            const gain = window._bgAudioContext.createGain();
+            gain.gain.value = 0.001; // Quase silencioso
+            oscillator.connect(gain);
+            gain.connect(window._bgAudioContext.destination);
+            oscillator.start();
+            
+            console.log('✅ Contexto de áudio de background ativado');
+        } catch (e) {
+            console.log('⚠️ Erro ao criar contexto de áudio:', e);
+        }
+    }
+}
+
+// 2. Forçar o player a continuar quando a tela é bloqueada
+function keepPlayerAlive() {
+    // Verificar se o player do YouTube existe
+    if (state.youtubePlayer && typeof state.youtubePlayer.getPlayerState === 'function') {
+        try {
+            const playerState = state.youtubePlayer.getPlayerState();
+            
+            // Se estiver pausado mas deveria estar tocando, reiniciar
+            if (playerState === 2 && state.isPlaying) {
+                console.log('🔄 Player pausado pelo sistema, reiniciando...');
+                state.youtubePlayer.playVideo();
+            }
+            
+            // Se estiver em buffering, forçar play
+            if (playerState === 3 && state.isPlaying) {
+                console.log('🔄 Player em buffering, forçando play...');
+                setTimeout(() => {
+                    try {
+                        state.youtubePlayer.playVideo();
+                    } catch (e) {}
+                }, 1000);
+            }
+        } catch (e) {
+            console.log('Erro ao verificar player:', e);
+        }
+    }
+}
+
+// 3. Detectar quando a tela é bloqueada/desbloqueada
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // Tela bloqueada ou app em segundo plano
+        console.log('📱 Tela bloqueada - mantendo áudio...');
+        forceBackgroundAudio();
+        
+        // Tentar manter o player a cada 5 segundos
+        if (window._keepAliveInterval) {
+            clearInterval(window._keepAliveInterval);
+        }
+        window._keepAliveInterval = setInterval(() => {
+            if (document.hidden && state.isPlaying) {
+                keepPlayerAlive();
+                forceBackgroundAudio();
+            }
+        }, 3000);
+        
+    } else {
+        // Tela desbloqueada
+        console.log('📱 Tela desbloqueada');
+        if (window._keepAliveInterval) {
+            clearInterval(window._keepAliveInterval);
+            window._keepAliveInterval = null;
+        }
+    }
+});
+
+// 4. Forçar o áudio quando o usuário interage com a tela
+document.addEventListener('touchstart', () => {
+    // Qualquer toque na tela mantém o áudio ativo
+    if (state.isPlaying && state.youtubePlayer) {
+        try {
+            const playerState = state.youtubePlayer.getPlayerState();
+            if (playerState !== 1) {
+                state.youtubePlayer.playVideo();
+            }
+        } catch (e) {}
+    }
+}, { passive: true });
+
+// 5. Prevenir que o navegador suspenda o áudio
+function preventAudioSuspension() {
+    // Criar um loop de áudio "fantasma" se necessário
+    if (!window._preventSuspend) {
+        window._preventSuspend = setInterval(() => {
+            try {
+                if (state.isPlaying && state.youtubePlayer) {
+                    const playerState = state.youtubePlayer.getPlayerState();
+                    // Se não estiver tocando mas deveria, reiniciar
+                    if (playerState !== 1 && playerState !== 3) {
+                        console.log('🔄 Prevenindo suspensão do áudio...');
+                        state.youtubePlayer.playVideo();
+                    }
+                }
+            } catch (e) {}
+        }, 5000);
+    }
+}
+
+// 6. Inicializar tudo
+function initBackgroundAudio() {
+    console.log('🎵 Inicializando sistema de áudio em background...');
+    forceBackgroundAudio();
+    preventAudioSuspension();
+}
+
+// Chamar a inicialização
+initBackgroundAudio();
+
+// Também chamar quando o player for criado
+const originalCreatePlayer = createYouTubePlayer;
+createYouTubePlayer = function(elementId, videoId) {
+    originalCreatePlayer(elementId, videoId);
+    setTimeout(forceBackgroundAudio, 1000);
+    setTimeout(preventAudioSuspension, 2000);
+};
+// ========== FIM DO CÓDIGO ADICIONADO ==========
     
 </script>
     
