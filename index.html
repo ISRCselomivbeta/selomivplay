@@ -5021,9 +5021,10 @@ document.addEventListener('DOMContentLoaded', () => {
         isBuffering: false,
         playerReady: false,
         streamingStats: null,
-        progressInterval: null
+        progressInterval: null,
+        recommendations: []
     };
-state.recommendations = [];
+
 // ===== FILA DE REPRODUÇÃO UNIFICADA (NOVO) =====
 const playQueue = {
     items: [], // { type: 'internal'|'external', index, track, trackId }
@@ -5176,6 +5177,106 @@ const playQueue = {
     }
 };
 // ===== FIM DA FILA =====
+
+// ===== INICIALIZAR RECOMENDAÇÕES =====
+async function initializeRecommendations() {
+  if (!state.currentUser || !state.currentUser.id) return;
+  
+  console.log('🎯 Inicializando recomendações...');
+  
+  try {
+    // Carregar favoritos primeiro
+    await loadUserFavorites();
+    
+    // Se tiver favoritos, gerar recomendações baseadas neles
+    if (state.favoriteMusicIds && state.favoriteMusicIds.length > 0) {
+      await generateRecommendationsFromFavorites();
+    } else {
+      // Se não tiver favoritos, buscar recomendações da API
+      const result = await callAPI('get_recommendations', {
+        user_id: state.currentUser.id,
+        limit: 5
+      });
+      
+      if (result.success && result.data && result.data.length > 0) {
+        state.recommendations = result.data;
+        renderRecommendations();
+        console.log('📊 Recomendações carregadas da API:', state.recommendations.length);
+      } else {
+        // Fallback: músicas mais populares
+        const popular = state.playlist
+          .sort((a, b) => (b.acoes_vendidas || 0) - (a.acoes_vendidas || 0))
+          .slice(0, 3);
+        
+        state.recommendations = popular.map(t => ({
+          ...t,
+          reason: '📊 Mais popular agora'
+        }));
+        renderRecommendations();
+        console.log('📊 Recomendações fallback (populares):', state.recommendations.length);
+      }
+    }
+    
+    // Carregar histórico de streaming
+    await loadUserStreamingHistory();
+    
+  } catch (error) {
+    console.error('Erro ao inicializar recomendações:', error);
+  }
+}
+
+// ===== SALVAR PESQUISAS NO PERFIL =====
+async function saveSearchToUserProfile(query) {
+    if (!state.currentUser || !query) return;
+    
+    try {
+        // Buscar pesquisas anteriores do servidor
+        let searches = [];
+        
+        try {
+            const userProfile = await callAPI('get_user_profile', {
+                user_id: state.currentUser.id
+            });
+            
+            if (userProfile.success && userProfile.data && userProfile.data.searches) {
+                try {
+                    searches = JSON.parse(userProfile.data.searches);
+                } catch (e) {
+                    searches = [];
+                }
+            }
+        } catch (e) {
+            console.log('Perfil não tem campo searches ainda');
+        }
+        
+        if (!Array.isArray(searches)) {
+            searches = [];
+        }
+        
+        // Remover duplicatas
+        searches = searches.filter(s => s.query !== query);
+        
+        // Adicionar nova pesquisa no início
+        searches.unshift({
+            query: query,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Manter apenas as últimas 20 pesquisas
+        searches = searches.slice(0, 20);
+        
+        // Salvar no servidor
+        await callAPI('update_profile', {
+            user_id: state.currentUser.id,
+            searches: JSON.stringify(searches)
+        });
+        
+        console.log('✅ Pesquisa salva no perfil:', query);
+    } catch (error) {
+        console.error('Erro ao salvar pesquisa:', error);
+    }
+}
+
     // ===== FUNÇÕES DE FAVORITOS E RECOMENDAÇÕES =====
 // ===== CARREGAR FAVORITOS DO USUÁRIO =====
 async function loadUserFavorites() {
@@ -6903,12 +7004,16 @@ const modalHtml = `
         }
     }
 
+// ===== FUNÇÃO initializeApp CORRIGIDA =====
 async function initializeApp() {
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
     updateUserInterface();
     await loadAllData();
-    await loadUserFavorites(); // ← NOVO
+    await loadUserFavorites();
+    
+    // ===== INICIALIZAR RECOMENDAÇÕES =====
+    await initializeRecommendations();
 
     loadYouTubeAPI();
     
@@ -7327,8 +7432,6 @@ function renderMarketplace() {
                 } else if (track.link_youtube) {
                     const videoId = extractYouTubeId(track.link_youtube);
                     if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-
-
                 }
                 
                 const vendasAtuais = track.vendas_atuais || 0;
@@ -9335,8 +9438,121 @@ function initializeYouTubePlayer(videoId) {
         }
     }
 
-    function playNext() {
-    playQueue.playNext();
+// ===== PRÓXIMA MÚSICA COM RECOMENDAÇÕES CORRIGIDA =====
+async function playNext() {
+  // Verificar se tem próxima na fila
+  if (playQueue.currentIndex < playQueue.items.length - 1) {
+    playQueue.currentIndex++;
+    playQueue.playCurrent();
+    return;
+  }
+  
+  // Se não tem mais na fila, buscar recomendações
+  if (state.currentUser) {
+    showLoading('Buscando próximas músicas...');
+    
+    try {
+      // 1. TENTAR RECOMENDAÇÕES PERSONALIZADAS DA API
+      const result = await callAPI('get_recommendations', {
+        user_id: state.currentUser.id,
+        limit: 10
+      });
+      
+      let tracks = [];
+      
+      if (result.success && result.data && result.data.length > 0) {
+        tracks = result.data;
+        console.log('🎯 Recomendações da API:', tracks.length);
+      } else {
+        // 2. FALLBACK: USAR FAVORITOS LOCAIS
+        console.log('🔄 API sem recomendações, usando favoritos locais');
+        tracks = state.playlist.filter(t => 
+          state.favoriteMusicIds.includes(t.id.toString())
+        );
+        
+        if (tracks.length === 0) {
+          // 3. FALLBACK FINAL: MÚSICAS POPULARES
+          tracks = state.playlist
+            .sort((a, b) => (b.acoes_vendidas || 0) - (a.acoes_vendidas || 0))
+            .slice(0, 5);
+        }
+      }
+      
+      // Remover músicas já na fila
+      const currentIds = playQueue.items.map(item => item.trackId);
+      const newTracks = tracks.filter(t => !currentIds.includes(t.id));
+      
+      if (newTracks.length > 0) {
+        let added = 0;
+        
+        for (const track of newTracks) {
+          // Procurar na playlist interna
+          let internalIndex = state.playlist.findIndex(m => m.id === track.id);
+          
+          if (internalIndex >= 0) {
+            playQueue.items.push({
+              type: 'internal',
+              index: internalIndex,
+              track: state.playlist[internalIndex],
+              trackId: track.id,
+              isRecommendation: true
+            });
+            added++;
+          } else {
+            // Procurar na externa
+            let externalIndex = state.externalPlaylist.findIndex(m => m.id === track.id);
+            if (externalIndex >= 0) {
+              playQueue.items.push({
+                type: 'external',
+                index: externalIndex,
+                track: state.externalPlaylist[externalIndex],
+                trackId: track.id,
+                isRecommendation: true
+              });
+              added++;
+            }
+          }
+        }
+        
+        if (added > 0) {
+          // Avançar para a próxima recomendação
+          playQueue.currentIndex++;
+          playQueue.playCurrent();
+          showToast(`🎵 +${added} recomendações adicionadas`, 'success', 2000);
+          hideLoading();
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar recomendações:', error);
+    }
+    
+    hideLoading();
+  }
+  
+  // FALLBACK FINAL: música aleatória da playlist
+  if (state.isRepeat) {
+    // Repetir a música atual
+    if (state.youtubePlayer && typeof state.youtubePlayer.seekTo === 'function') {
+      state.youtubePlayer.seekTo(0);
+      state.youtubePlayer.playVideo();
+      return;
+    }
+  }
+  
+  // Buscar música aleatória da playlist interna
+  const availableTracks = state.playlist.filter(t => t.status === 'ativo');
+  if (availableTracks.length > 0) {
+    const randomIndex = Math.floor(Math.random() * availableTracks.length);
+    const track = availableTracks[randomIndex];
+    const originalIndex = state.playlist.findIndex(t => t.id === track.id);
+    playTrack(originalIndex);
+    showToast('🎲 Tocando música aleatória', 'info', 1500);
+  } else {
+    showToast('Fim da fila de reprodução', 'info');
+    state.isPlaying = false;
+    updatePlayerIcons();
+  }
 }
 
    function playPrevious() {
@@ -9692,13 +9908,14 @@ async function confirmInvestment() {
         }
     }
 
-// ===== TOGGLE FAVORITO MELHORADO =====
+// ===== TOGGLE FAVORITO CORRIGIDO =====
 async function toggleFavoriteMusic(musicId, trackIndex = null) {
   if (!state.currentUser || !state.currentUser.id) { 
     showToast('Faça login para favoritar', 'error'); 
     return; 
   }
   
+  // Verificar se a música existe
   const musicExists = 
     state.playlist.some(m => m.id === musicId) || 
     state.externalPlaylist.some(m => m.id === musicId);
@@ -9710,13 +9927,11 @@ async function toggleFavoriteMusic(musicId, trackIndex = null) {
   
   const isFavorite = state.favoriteMusicIds?.includes(musicId.toString());
   
-  // Atualizar estado local
+  // Atualizar estado local IMEDIATAMENTE (UI Responsiva)
   if (isFavorite) {
     state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
-    showToast('⭐ Removido dos favoritos', 'success');
   } else {
     state.favoriteMusicIds.push(musicId.toString());
-    showToast('⭐ Adicionado aos favoritos!', 'success');
   }
   
   // Salvar no localStorage
@@ -9724,10 +9939,9 @@ async function toggleFavoriteMusic(musicId, trackIndex = null) {
     state.currentUser.favorite_music_ids = state.favoriteMusicIds;
     localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
     localStorage.setItem(`miv_favorites_${state.currentUser.id}`, JSON.stringify(state.favoriteMusicIds));
-    console.log('💾 Favoritos salvos:', state.favoriteMusicIds);
   }
   
-  // Atualizar UI
+  // Atualizar UI imediatamente
   renderMarketplace();
   renderExternalMarketplace();
   renderPlaylists();
@@ -9737,7 +9951,7 @@ async function toggleFavoriteMusic(musicId, trackIndex = null) {
     updateFavoriteButton(isNowFavorite);
   }
   
-  // Salvar no servidor
+  // Registrar no servidor (em background)
   try {
     const result = await callAPI('toggle_favorite', { 
       user_id: state.currentUser.id,
@@ -9746,14 +9960,37 @@ async function toggleFavoriteMusic(musicId, trackIndex = null) {
     });
     
     if (result.success) {
-      console.log('✅ Favorito sincronizado com servidor');
+      showToast(isFavorite ? '⭐ Removido dos favoritos' : '⭐ Adicionado aos favoritos!', 'success', 1500);
       
-      // GERAR NOVAS RECOMENDAÇÕES BASEADAS NOS FAVORITOS ATUALIZADOS
+      // Registrar interação para recomendações
+      await callAPI('register_interaction', {
+        user_id: state.currentUser.id,
+        music_id: musicId,
+        type: isFavorite ? 'unfavorite' : 'favorite',
+        value: isFavorite ? -5 : 10,
+        source: 'web'
+      });
+      
+      // ATUALIZAR RECOMENDAÇÕES
       await generateRecommendationsFromFavorites();
+      
+      console.log('✅ Favorito sincronizado com servidor');
+    } else {
+      // Reverter se falhou
+      if (isFavorite) {
+        state.favoriteMusicIds.push(musicId.toString());
+      } else {
+        state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
+      }
+      // Re-renderizar para mostrar estado correto
+      renderMarketplace();
+      renderExternalMarketplace();
+      renderPlaylists();
+      showToast('Erro ao salvar favorito', 'error');
     }
   } catch (error) {
     console.error('Erro ao sincronizar favorito:', error);
-    showToast('Favorito salvo localmente', 'warning');
+    showToast('Favorito salvo localmente', 'warning', 2000);
   }
 }
 
@@ -10312,7 +10549,9 @@ async function performSearch() {
     } finally {
         hideLoading();
     }
-}/**
+}
+
+/**
  * Busca vídeos no YouTube usando a API v3.
  */
 // ========== FUNÇÃO searchYouTube CORRIGIDA (SUBSTITUA ESTA) ==========
@@ -10554,7 +10793,7 @@ function showSearchHistory() {
     resultsContainer.style.display = 'block';
 }
 
-// Adicionar evento para mostrar histórico quando o input estiver vazio e em foco//
+// Adicionar evento para mostrar histórico quando o input estiver vazio e em foco
 const searchInput = document.getElementById('searchInput');
 if (searchInput) {
     searchInput.addEventListener('focus', () => {
@@ -10563,12 +10802,59 @@ if (searchInput) {
         }
     });
 }
-/**
- * Exibe os resultados combinados na interface.
- */
-/**
- * Exibe os resultados combinados na interface.
- */
+
+// ===== SALVAR PESQUISAS NO PERFIL =====
+async function saveSearchToUserProfile(query) {
+    if (!state.currentUser || !query) return;
+    
+    try {
+        // Buscar pesquisas anteriores do servidor
+        let searches = [];
+        
+        try {
+            const userProfile = await callAPI('get_user_profile', {
+                user_id: state.currentUser.id
+            });
+            
+            if (userProfile.success && userProfile.data && userProfile.data.searches) {
+                try {
+                    searches = JSON.parse(userProfile.data.searches);
+                } catch (e) {
+                    searches = [];
+                }
+            }
+        } catch (e) {
+            console.log('Perfil não tem campo searches ainda');
+        }
+        
+        if (!Array.isArray(searches)) {
+            searches = [];
+        }
+        
+        // Remover duplicatas
+        searches = searches.filter(s => s.query !== query);
+        
+        // Adicionar nova pesquisa no início
+        searches.unshift({
+            query: query,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Manter apenas as últimas 20 pesquisas
+        searches = searches.slice(0, 20);
+        
+        // Salvar no servidor
+        await callAPI('update_profile', {
+            user_id: state.currentUser.id,
+            searches: JSON.stringify(searches)
+        });
+        
+        console.log('✅ Pesquisa salva no perfil:', query);
+    } catch (error) {
+        console.error('Erro ao salvar pesquisa:', error);
+    }
+}
+
 /**
  * Exibe os resultados combinados na interface.
  */
@@ -10646,6 +10932,7 @@ function displaySearchResults(internal, external, youtube, query) {
         });
     }, 100);
 }
+
 /**
  * Toca o resultado selecionado e gera recomendações.
  */
@@ -10670,6 +10957,7 @@ async function playSearchResult(index, item) {
         }
     }
 }
+
 /**
  * Adiciona um vídeo do YouTube como item temporário na Bolsa Externa e toca.
  */
