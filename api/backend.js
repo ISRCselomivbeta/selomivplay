@@ -1,8 +1,7 @@
 // ========== BACKEND.JS - VERCEL SERVERLESS FUNCTION ==========
-// Versão 6.7.0 - CORREÇÃO DE TIMEOUT E FALLBACK FORÇADO
-// Atualizado em 19/07/2026
+// Versão 6.6.1 - CORREÇÃO DE CONFIRMAÇÃO DE EMAIL
+// Atualizado em 14/03/2026
 
-// ===== AUTO-FIX (OPCIONAL) =====
 let enhanceWithAutoFix, autoFix;
 try {
   const autoFixModule = await import('./lib/auto-fix-ia.js');
@@ -18,23 +17,13 @@ try {
 // ===== CONFIGURAÇÃO =====
 const SPREADSHEET_ID = '1CwF9hf-lsjYkol-V7r3WOT5ld3dQFqKRTQ8nHcV45Wo';
 
-// ===== GOOGLE APPS SCRIPT URL =====
+// ===== GOOGLE APPS SCRIPT URL (VERIFICADA) =====
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
 
-// ===== CONTROLE DE FALLBACK FORÇADO =====
-// ⭐ ALTERE PARA 'true' PARA FORÇAR USO DO FALLBACK SEMPRE
-const FORCE_FALLBACK = false; // Mudar para true para testes
-
-// ===== FUNÇÃO PARA CHAMAR O GAS COM TIMEOUT =====
+// ===== FUNÇÃO PARA CHAMAR O GAS COM RETRY =====
 async function callGAS(action, params = {}) {
-  const maxRetries = 2; // Reduzido para 2 tentativas
-  const retryDelay = 500; // 500ms entre tentativas
-  
-  // ⭐ SE FORCE_FALLBACK ESTIVER ATIVO, PULAR GAS
-  if (FORCE_FALLBACK) {
-    console.log(`🔄 [FORCE_FALLBACK] Pulando GAS para ${action}`);
-    return { success: false, error: 'Force fallback ativado', useFallback: true };
-  }
+  const maxRetries = 3;
+  const retryDelay = 1000;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -51,20 +40,13 @@ async function callGAS(action, params = {}) {
       
       gasUrl.searchParams.append('_t', Date.now().toString());
       
-      // ⭐ ADICIONADO TIMEOUT DE 5 SEGUNDOS
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
       const response = await fetch(gasUrl.toString(), {
         method: 'GET',
         headers: { 
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate'
-        },
-        signal: controller.signal
+        }
       });
-      
-      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -88,17 +70,13 @@ async function callGAS(action, params = {}) {
         console.log(`⏳ Aguardando ${retryDelay}ms antes de tentar novamente...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
       } else {
-        console.log(`🔄 [GAS] Todas as tentativas falharam para ${action}, usando fallback`);
-        return { 
-          success: false, 
-          error: error.message,
-          useFallback: true 
-        };
+        console.error(`❌ [GAS] Todas as ${maxRetries} tentativas falharam para ${action}`);
+        return { success: false, error: error.message };
       }
     }
   }
   
-  return { success: false, error: 'Máximo de tentativas excedido', useFallback: true };
+  return { success: false, error: 'Máximo de tentativas excedido' };
 }
 
 // ===== TESTE DE CONEXÃO COM GAS =====
@@ -119,12 +97,28 @@ async function testGASConnection() {
   }
 }
 
-// ===== HANDLER PRINCIPAL =====
+// 🆕 HANDLER PRINCIPAL
 async function originalHandler(req, res) {
-  // Configurar CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Configurar CORS - PERMITIR MÚLTIPLOS DOMÍNIOS
+  const allowedOrigins = [
+    'https://playmy.com.br',
+    'https://www.playmy.com.br',
+    'https://selomivplay.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ];
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    // Fallback para permitir todos (em desenvolvimento)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -134,7 +128,7 @@ async function originalHandler(req, res) {
   const params = req.method === 'POST' ? req.body : req.query;
   const { action } = params;
   
-  console.log('🚀 Backend Vercel chamado:', { action, params });
+  console.log('🚀 Backend Vercel chamado:', { action, params, origin: req.headers.origin });
   
   // ===== TESTAR CONEXÃO COM GAS =====
   if (action === 'test_gas') {
@@ -143,7 +137,6 @@ async function originalHandler(req, res) {
       success: connected,
       message: connected ? 'Conexão OK' : 'Falha na conexão',
       gas_url: GAS_URL,
-      force_fallback: FORCE_FALLBACK,
       timestamp: new Date().toISOString()
     });
   }
@@ -164,129 +157,42 @@ async function originalHandler(req, res) {
       return res.status(200).json({
         success: true,
         status: gasResult.success ? 'healthy' : 'degraded',
-        version: '6.7.0',
-        gas_status: gasResult.success ? gasResult.data : { error: gasResult.error, fallback: gasResult.useFallback },
-        force_fallback: FORCE_FALLBACK,
+        version: '6.6.1',
+        gas_status: gasResult.success ? gasResult.data : { error: gasResult.error },
         timestamp: new Date().toISOString()
       });
     }
     
-    // ============================================================
-    // ⭐ AÇÕES QUE USAM FALLBACK DIRETO (SEM TENTAR GAS)
-    // ============================================================
-    
-    // ===== SOLICITAR RESET DE SENHA (FALLBACK DIRETO) =====
-    if (action === 'request_password_reset') {
-      console.log('📧 Solicitando reset para:', params.email);
-      
-      // ⭐ GERAR TOKEN DIRETAMENTE (SEM CHAMAR GAS)
-      const token = Math.random().toString(36).substring(2, 15) + 
-                    Math.random().toString(36).substring(2, 15);
-      
-      // Em produção: salvar token em banco de dados com expiração
-      // Aqui estamos apenas simulando
-      
-      return res.status(200).json({
-        success: true,
-        message: 'Email enviado com sucesso!',
-        dev_link: `https://selomivplay.vercel.app/reset-password.html?token=${token}`,
-        data: {
-          token: token,
-          email: params.email,
-          expires_in: '1 hora'
-        }
-      });
-    }
-    
-    // ===== VERIFICAR TOKEN DE RESET (FALLBACK DIRETO) =====
-    if (action === 'verify_reset_token') {
-      console.log('🔍 Verificando token:', params.token ? params.token.substring(0, 10) + '...' : 'sem token');
-      
-      // ⭐ SIMULAR VERIFICAÇÃO DE TOKEN
-      // Em produção: verificar no banco de dados
-      const token = params.token || '';
-      
-      if (token.length < 10) {
-        return res.status(200).json({
-          success: false,
-          message: 'Token inválido'
-        });
-      }
-      
-      return res.status(200).json({
-        success: true,
-        message: 'Token válido',
-        data: {
-          email: 'usuario@email.com',
-          expires_in: '55 minutos'
-        }
-      });
-    }
-    
-    // ===== REDEFINIR SENHA (FALLBACK DIRETO) =====
-    if (action === 'reset_password') {
-      console.log('🔐 Redefinindo senha para token:', params.token ? params.token.substring(0, 10) + '...' : 'sem token');
-      
-      const { token, new_password, confirm_password } = params;
-      
-      if (!token || token.length < 10) {
-        return res.status(200).json({
-          success: false,
-          message: 'Token inválido'
-        });
-      }
-      
-      if (!new_password || !confirm_password) {
-        return res.status(200).json({
-          success: false,
-          message: 'Senhas não preenchidas'
-        });
-      }
-      
-      if (new_password !== confirm_password) {
-        return res.status(200).json({
-          success: false,
-          message: 'As senhas não coincidem'
-        });
-      }
-      
-      if (new_password.length < 6) {
-        return res.status(200).json({
-          success: false,
-          message: 'A senha deve ter no mínimo 6 caracteres'
-        });
-      }
-      
-      return res.status(200).json({
-        success: true,
-        message: 'Senha redefinida com sucesso!',
-        data: {
-          user_id: 'user_' + Date.now(),
-          email: 'usuario@email.com'
-        }
-      });
-    }
-    
-    // ===== CONFIRMAR EMAIL (FALLBACK DIRETO) =====
+    // ===== CONFIRMAR EMAIL =====
     if (action === 'confirm_email') {
       console.log('📧 Confirmando email com token:', params.token ? params.token.substring(0, 10) + '...' : 'sem token');
       
-      return res.status(200).json({
-        success: true,
-        message: 'Email confirmado com sucesso!',
-        data: {
-          already_confirmed: false,
-          user_id: 'user_' + Date.now(),
-          email: 'usuario@email.com',
-          nome: 'Usuário'
-        }
-      });
+      const gasResult = await callGAS('confirm_email', { token: params.token });
+      
+      if (gasResult.success) {
+        return res.status(200).json(gasResult.data);
+      } else {
+        // Fallback para quando GAS falha
+        return res.status(200).json({
+          success: true,
+          message: 'Email confirmado com sucesso! (modo fallback)',
+          data: {
+            already_confirmed: false,
+            user_id: 'user_' + Date.now(),
+            email: 'usuario@email.com',
+            nome: 'Usuário'
+          }
+        });
+      }
     }
     
     // ===== VERIFICAR CONTA ANTIGA =====
     if (action === 'check_old_account') {
-      console.log('🔍 Verificando conta antiga para token:', params.token ? params.token.substring(0, 10) + '...' : 'sem token');
+      const { token } = params;
       
+      console.log('🔍 Verificando conta antiga para token:', token ? token.substring(0, 10) + '...' : 'sem token');
+      
+      // Simular verificação de conta antiga
       return res.status(200).json({
         success: true,
         data: {
@@ -296,73 +202,102 @@ async function originalHandler(req, res) {
       });
     }
     
-    // ============================================================
-    // ⭐ AÇÕES QUE TENTAM GAS PRIMEIRO, DEPOIS FALLBACK
-    // ============================================================
-    
-    // ===== LISTA DE AÇÕES QUE VÃO PARA GAS =====
-    const gasActions = [
-      // Autenticação
-      'login', 'register',
-      
-      // Perfil
-      'get_user_profile', 'update_profile',
-      
-      // Músicas
-      'get_musicas', 'get_music_details', 'upload_music',
-      'update_music', 'pause_music', 'delete_music',
-      'suggest_external_music', 'get_external_musicas',
-      'get_top_investments',
-      
-      // Financeiro
-      'get_saldo', 'get_carteira', 'get_extrato',
-      'buy', 'buy_external', 'add_balance',
-      'request_withdrawal', 'get_withdrawals',
-      
-      // Social
-      'get_playlists', 'create_playlist', 'toggle_favorite',
-      
-      // Artista
-      'get_artist_data',
-      
-      // Trading
-      'create_trade', 'get_trades', 'process_trade',
-      'get_trade_details', 'add_transaction', 'transfer_shares',
-      
-      // Blockchain e Streaming
-      'get_streaming_stats', 'register_streaming',
-      'get_mining_blocks', 'get_mining_stats',
-      'get_mining_ranking', 'mine_streaming_block',
-      'setup_streaming_blockchain',
-      
-      // YouTube
-      'search_youtube', 'search_isrc', 'get_youtube_earnings',
-      
-      // Interações
-      'register_interaction', 'get_recommendations',
-      
-      // PIX
-      'create_pix_payment', 'check_pix_payment', 'get_user_pix_payments',
-      
-      // Sistema
-      'setup', 'atualizar_base', 'backup'
-    ];
-    
-    // ===== PROCESSAR AÇÕES QUE VÃO PARA GAS =====
-    if (gasActions.includes(action)) {
-      console.log(`📡 Encaminhando ${action} para GAS...`);
-      
-      const { action: _, ...gasParams } = params;
-      
-      const gasResult = await callGAS(action, gasParams);
-      
-      if (gasResult.success) {
-        return res.status(200).json(gasResult.data);
-      } else {
-        console.log(`⚠️ GAS falhou para ${action}, usando fallback`);
-        return handleFallback(action, params, res);
-      }
-    }
+ // ===== FUNÇÕES QUE USAM GAS =====
+const gasActions = [
+  // Autenticação (7)
+  'login', 
+  'register',
+  'confirm_email',
+  'request_password_reset',
+  'verify_reset_token',
+  'reset_password',
+  'check_old_account',
+  
+  // Perfil (2)
+  'get_user_profile',
+  'update_profile',
+  
+  // Músicas (9)
+  'get_musicas', 
+  'get_music_details',
+  'upload_music',
+  'update_music',
+  'pause_music',
+  'delete_music',
+  'suggest_external_music',
+  'get_external_musicas',
+  'get_top_investments',
+  
+  // Financeiro (8)
+  'get_saldo',
+  'get_carteira', 
+  'get_extrato',
+  'buy',
+  'buy_external',
+  'add_balance',
+  'request_withdrawal',
+  'get_withdrawals',
+  
+  // Social (3)
+  'get_playlists',
+  'create_playlist',
+  'toggle_favorite',
+  
+  // Artista (1)
+  'get_artist_data',
+  
+  // Trading (6)
+  'create_trade', 
+  'get_trades', 
+  'process_trade',
+  'get_trade_details',
+  'add_transaction',
+  'transfer_shares',
+  
+  // Blockchain e Streaming (7)
+  'get_streaming_stats',
+  'register_streaming',
+  'get_mining_blocks',
+  'get_mining_stats',
+  'get_mining_ranking',
+  'mine_streaming_block',
+  'setup_streaming_blockchain',
+  
+  // YouTube (3)
+  'search_youtube',
+  'search_isrc',
+  'get_youtube_earnings',
+  
+  // Interações (2)
+  'register_interaction',
+  'get_recommendations',
+  
+  // PIX (3)
+  'create_pix_payment',
+  'check_pix_payment',
+  'get_user_pix_payments',
+  
+  // Sistema (4)
+  'health',
+  'setup',
+  'atualizar_base',
+  'backup'
+];
+
+if (gasActions.includes(action)) {
+  console.log(`📡 Encaminhando ${action} para GAS...`);
+  
+  const { action: _, ...gasParams } = params;
+  
+  const gasResult = await callGAS(action, gasParams);
+  
+  if (gasResult.success) {
+    return res.status(200).json(gasResult.data);
+  } else {
+    console.log(`⚠️ GAS falhou para ${action}, usando fallback`);
+    return handleFallback(action, params, res);
+  }
+}
     
     // ===== GET YOUTUBE STATS (NÃO VAI PARA GAS) =====
     if (action === 'get_youtube_stats') {
@@ -374,24 +309,19 @@ async function originalHandler(req, res) {
       return handleYouTubeInfo(params, res);
     }
     
-    // ============================================================
-    // ⭐ DEFAULT - RESPOSTA PADRÃO DA API
-    // ============================================================
+    // ===== DEFAULT =====
     return res.status(200).json({
       success: true,
       message: '✅ SELO MIV API ONLINE',
-      version: '6.7.0',
-      action: action || 'none',
-      force_fallback: FORCE_FALLBACK,
-      endpoints_disponiveis: [
-        'ping', 'health', 'test_gas',
-        'request_password_reset', 'verify_reset_token', 'reset_password',
-        'confirm_email', 'check_old_account',
-        'login', 'register', 'get_musicas', 'get_saldo',
-        'get_carteira', 'get_extrato', 'get_top_investments',
-        'get_playlists', 'get_youtube_stats', 'get_youtube_info',
-        'get_external_musicas', 'create_trade', 'get_trades',
-        'process_trade', 'upload_music', 'get_artist_data'
+      version: '6.6.1',
+      action: action,
+      endpoints: [
+        'ping', 'health', 'test_gas', 'login', 'get_musicas', 'get_saldo', 
+        'get_carteira', 'get_extrato', 'get_top_investments', 'get_playlists', 
+        'get_youtube_stats', 'get_youtube_info', 'get_external_musicas', 
+        'create_trade', 'get_trades', 'process_trade', 'upload_music', 
+        'register_transaction', 'update_saldo', 'get_artist_data',
+        'confirm_email', 'check_old_account'
       ],
       timestamp: new Date().toISOString()
     });
@@ -400,7 +330,7 @@ async function originalHandler(req, res) {
     console.error('❌ Erro geral:', error);
     return res.status(200).json({
       success: false,
-      message: 'Erro processado pelo servidor',
+      message: 'Erro processado',
       error: error.message,
       fallback: true,
       timestamp: new Date().toISOString()
@@ -408,9 +338,7 @@ async function originalHandler(req, res) {
   }
 }
 
-// ============================================================
-// ⭐ HANDLERS ESPECÍFICOS
-// ============================================================
+// ===== HANDLERS ESPECÍFICOS =====
 
 async function handleYouTubeStats(params, res) {
   console.log('📊 Buscando stats do YouTube para:', params.video_id);
@@ -449,7 +377,6 @@ async function handleYouTubeStats(params, res) {
     console.log('⚠️ Erro ao buscar stats do YouTube:', error.message);
   }
   
-  // Fallback para dados simulados
   const hash = video_id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
   const views = 100000 + (hash % 900000);
   const earnings = views * 0.013;
@@ -511,15 +438,11 @@ async function handleYouTubeInfo(params, res) {
   });
 }
 
-// ============================================================
-// ⭐ FALLBACK COMPLETO PARA TODAS AS AÇÕES
-// ============================================================
-
+// ===== FALLBACK PARA QUANDO GAS FALHA =====
 function handleFallback(action, params, res) {
   console.log(`📦 Usando fallback para ${action}`);
   
   const fallbacks = {
-    // ===== AUTENTICAÇÃO =====
     login: () => ({
       success: true,
       data: {
@@ -534,140 +457,28 @@ function handleFallback(action, params, res) {
       }
     }),
     
-    register: () => ({
-      success: true,
-      message: 'Cadastro realizado com sucesso!',
-      data: {
-        id: 'user_' + Date.now(),
-        nome: params.nome || 'Usuário',
-        email: params.email || 'usuario@email.com',
-        tipo: 'ouvinte'
-      }
-    }),
-    
-    // ===== PERFIL =====
-    get_user_profile: () => ({
-      success: true,
-      data: {
-        id: 'user_' + Date.now(),
-        nome: 'Usuário SELO MIV',
-        email: 'usuario@email.com',
-        tipo: 'ouvinte',
-        saldo: 5000,
-        foto: null,
-        data_cadastro: new Date().toISOString()
-      }
-    }),
-    
-    update_profile: () => ({
-      success: true,
-      message: 'Perfil atualizado com sucesso!',
-      data: params
-    }),
-    
-    // ===== MÚSICAS =====
     get_musicas: () => ({
       success: true,
       data: [
-        { 
-          id: '1', 
-          titulo: 'RIO DE JANEIRO', 
-          artista: 'Elzo Henschell', 
-          link_capa: 'https://i.scdn.co/image/ab67616d0000b273e8b066f70c206551210d902b', 
-          link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ', 
-          valor_acao: 25.50, 
-          percentual_disponivel: 38, 
-          acoes_vendidas: 150, 
-          total_investidores: 45, 
-          rentabilidade_media: 12.5, 
-          status: 'ativo', 
-          genero: 'URBAN', 
-          elo_rating: 1850 
-        },
-        { 
-          id: '2', 
-          titulo: 'Blinding Lights', 
-          artista: 'The Weeknd', 
-          link_capa: 'https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36', 
-          link_youtube: 'https://www.youtube.com/watch?v=4NRXx6U8ABQ', 
-          valor_acao: 32.80, 
-          percentual_disponivel: 25, 
-          acoes_vendidas: 80, 
-          total_investidores: 32, 
-          rentabilidade_media: 8.3, 
-          status: 'ativo', 
-          genero: 'POP', 
-          elo_rating: 1620 
-        },
-        { 
-          id: '3', 
-          titulo: 'Bohemian Rhapsody', 
-          artista: 'Queen', 
-          link_capa: 'https://i.scdn.co/image/ab67616d0000b273e8b066f70c206551210d902b', 
-          link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ', 
-          valor_acao: 45.90, 
-          percentual_disponivel: 15, 
-          acoes_vendidas: 220, 
-          total_investidores: 78, 
-          rentabilidade_media: 18.2, 
-          status: 'ativo', 
-          genero: 'ROCK', 
-          elo_rating: 2100 
-        }
+        { id: '1', titulo: 'RIO DE JANEIRO', artista: 'Elzo Henschell', link_capa: 'https://i.scdn.co/image/ab67616d0000b273e8b066f70c206551210d902b', link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ', valor_acao: 25.50, percentual_disponivel: 38, acoes_vendidas: 150, total_investidores: 45, rentabilidade_media: 12.5, status: 'ativo', genero: 'URBAN', elo_rating: 1850 },
+        { id: '2', titulo: 'Blinding Lights', artista: 'The Weeknd', link_capa: 'https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36', link_youtube: 'https://www.youtube.com/watch?v=4NRXx6U8ABQ', valor_acao: 32.80, percentual_disponivel: 25, acoes_vendidas: 80, total_investidores: 32, rentabilidade_media: 8.3, status: 'ativo', genero: 'POP', elo_rating: 1620 },
+        { id: '3', titulo: 'Bohemian Rhapsody', artista: 'Queen', link_capa: 'https://i.scdn.co/image/ab67616d0000b273e8b066f70c206551210d902b', link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ', valor_acao: 45.90, percentual_disponivel: 15, acoes_vendidas: 220, total_investidores: 78, rentabilidade_media: 18.2, status: 'ativo', genero: 'ROCK', elo_rating: 2100 }
       ]
     }),
     
-    get_music_details: () => ({
+    get_saldo: () => ({
       success: true,
-      data: {
-        id: params.music_id || '1',
-        titulo: 'Música Exemplo',
-        artista: 'Artista Exemplo',
-        valor_acao: 25.50,
-        percentual_disponivel: 38,
-        acoes_vendidas: 150,
-        total_investidores: 45,
-        rentabilidade_media: 12.5,
-        status: 'ativo'
-      }
+      data: { saldo_disponivel: 5000 }
     }),
     
-    upload_music: () => ({
+    get_carteira: () => ({
       success: true,
-      message: 'Música cadastrada com sucesso!',
-      data: { 
-        id: 'MUS_' + Date.now(), 
-        blockchain_hash: '0x' + Date.now().toString(16), 
-        timestamp: new Date().toISOString() 
-      }
+      data: { investimentos: [], total_investido: 0, valor_atual: 0 }
     }),
     
-    update_music: () => ({
+    get_extrato: () => ({
       success: true,
-      message: 'Música atualizada com sucesso!'
-    }),
-    
-    pause_music: () => ({
-      success: true,
-      message: 'Música pausada com sucesso!'
-    }),
-    
-    delete_music: () => ({
-      success: true,
-      message: 'Música excluída com sucesso!'
-    }),
-    
-    suggest_external_music: () => ({
-      success: true,
-      message: 'Música sugerida com sucesso!',
-      data: { id: 'EXT_' + Date.now() }
-    }),
-    
-    get_external_musicas: () => ({
-      success: true,
-      data: [
-        { id: 'ext1', titulo: 'Música Externa 1', artista: 'Artista Externo', valor_acao: 15.00, percentual_disponivel: 50 }
-      ]
+      data: []
     }),
     
     get_top_investments: () => ({
@@ -679,95 +490,16 @@ function handleFallback(action, params, res) {
       ]
     }),
     
-    // ===== FINANCEIRO =====
-    get_saldo: () => ({
-      success: true,
-      data: { saldo_disponivel: 5000 }
-    }),
-    
-    get_carteira: () => ({
-      success: true,
-      data: { 
-        investimentos: [
-          { music_id: '1', titulo: 'RIO DE JANEIRO', artista: 'Elzo Henschell', quantidade: 10, valor_pago: 255.00, valor_atual: 280.50 }
-        ], 
-        total_investido: 255.00, 
-        valor_atual: 280.50 
-      }
-    }),
-    
-    get_extrato: () => ({
-      success: true,
-      data: [
-        { id: '1', data: new Date().toISOString(), descricao: 'Depósito inicial', valor: 5000, tipo: 'entrada' }
-      ]
-    }),
-    
-    buy: () => ({
-      success: true,
-      message: 'Compra realizada com sucesso!',
-      data: { 
-        id: 'TRX_' + Date.now(), 
-        music_id: params.music_id, 
-        quantidade: params.quantidade || 1,
-        valor_total: (params.quantidade || 1) * 25.50,
-        timestamp: new Date().toISOString() 
-      }
-    }),
-    
-    buy_external: () => ({
-      success: true,
-      message: 'Compra externa realizada com sucesso!',
-      data: { id: 'EXT_TRX_' + Date.now() }
-    }),
-    
-    add_balance: () => ({
-      success: true,
-      message: 'Saldo adicionado com sucesso!',
-      data: { novo_saldo: 5000 + parseInt(params.valor || 0) }
-    }),
-    
-    request_withdrawal: () => ({
-      success: true,
-      message: 'Solicitação de saque enviada!',
-      data: { id: 'WTH_' + Date.now(), status: 'pendente' }
-    }),
-    
-    get_withdrawals: () => ({
-      success: true,
-      data: []
-    }),
-    
-    // ===== SOCIAL =====
     get_playlists: () => ({
       success: true,
       data: []
     }),
     
-    create_playlist: () => ({
+    get_external_musicas: () => ({
       success: true,
-      message: 'Playlist criada com sucesso!',
-      data: { id: 'PL_' + Date.now() }
+      data: []
     }),
     
-    toggle_favorite: () => ({
-      success: true,
-      message: 'Favorito alterado com sucesso!'
-    }),
-    
-    // ===== ARTISTA =====
-    get_artist_data: () => ({
-      success: true,
-      data: { 
-        total_musicas: 0, 
-        total_royalties: 0, 
-        total_shares_sold: 0, 
-        monthly_earnings: 0, 
-        musics: [] 
-      }
-    }),
-    
-    // ===== TRADING =====
     create_trade: () => ({
       success: true,
       message: 'Oferta de negociação enviada!',
@@ -785,142 +517,57 @@ function handleFallback(action, params, res) {
       data: { trade_id: params.trade_id, block_hash: '0x' + Date.now().toString(16), timestamp: new Date().toISOString() }
     }),
     
-    get_trade_details: () => ({
+    upload_music: () => ({
       success: true,
-      data: { id: params.trade_id || 'trade_123', status: 'concluida', valor: 100 }
+      message: 'Música cadastrada com sucesso!',
+      data: { id: 'MUS_' + Date.now(), blockchain_hash: '0x' + Date.now().toString(16), timestamp: new Date().toISOString() }
     }),
     
-    add_transaction: () => ({
+    register_transaction: () => ({
       success: true,
       message: 'Transação registrada',
       data: { id: 'TRX_' + Date.now(), timestamp: new Date().toISOString() }
     }),
     
-    transfer_shares: () => ({
+    update_saldo: () => ({
       success: true,
-      message: 'Ações transferidas com sucesso!'
+      message: 'Saldo atualizado (modo fallback)',
+      data: { novo_saldo: params.valor, timestamp: new Date().toISOString() }
     }),
     
-    // ===== BLOCKCHAIN E STREAMING =====
-    get_streaming_stats: () => ({
+    get_artist_data: () => ({
       success: true,
-      data: { total_streams: 0, earnings: 0, rank: 0 }
+      data: { total_musicas: 0, total_royalties: 0, total_shares_sold: 0, monthly_earnings: 0, musics: [] }
     }),
     
-    register_streaming: () => ({
+    // ⭐ FALLBACK PARA RESET DE SENHA (CASO O GAS FALHE)
+    request_password_reset: () => ({
       success: true,
-      message: 'Streaming registrado!',
-      data: { id: 'STR_' + Date.now() }
+      message: 'Email enviado com sucesso! (modo fallback)',
+      dev_link: `https://${req.headers.host || 'selomivplay.vercel.app'}/reset-password.html?token=${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
     }),
     
-    get_mining_blocks: () => ({
+    verify_reset_token: () => ({
       success: true,
-      data: []
+      message: 'Token válido (modo fallback)',
+      data: { email: 'usuario@email.com' }
     }),
     
-    get_mining_stats: () => ({
+    reset_password: () => ({
       success: true,
-      data: { blocks_mined: 0, total_earnings: 0, hashrate: 0 }
-    }),
-    
-    get_mining_ranking: () => ({
-      success: true,
-      data: []
-    }),
-    
-    mine_streaming_block: () => ({
-      success: true,
-      message: 'Bloco minerado com sucesso!',
-      data: { block_hash: '0x' + Date.now().toString(16) }
-    }),
-    
-    setup_streaming_blockchain: () => ({
-      success: true,
-      message: 'Blockchain configurada com sucesso!'
-    }),
-    
-    // ===== YOUTUBE =====
-    search_youtube: () => ({
-      success: true,
-      data: { results: [] }
-    }),
-    
-    search_isrc: () => ({
-      success: true,
-      data: { found: false }
-    }),
-    
-    get_youtube_earnings: () => ({
-      success: true,
-      data: { total: 0, last_month: 0 }
-    }),
-    
-    // ===== INTERAÇÕES =====
-    register_interaction: () => ({
-      success: true,
-      message: 'Interação registrada!'
-    }),
-    
-    get_recommendations: () => ({
-      success: true,
-      data: []
-    }),
-    
-    // ===== PIX =====
-    create_pix_payment: () => ({
-      success: true,
-      data: { 
-        pix_code: '00020126360014br.gov.bcb.pix0114...', 
-        qr_code: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=...',
-        expires_in: '15 minutos'
-      }
-    }),
-    
-    check_pix_payment: () => ({
-      success: true,
-      data: { status: 'pending', confirmed: false }
-    }),
-    
-    get_user_pix_payments: () => ({
-      success: true,
-      data: []
-    }),
-    
-    // ===== SISTEMA =====
-    setup: () => ({
-      success: true,
-      message: 'Sistema configurado com sucesso!'
-    }),
-    
-    atualizar_base: () => ({
-      success: true,
-      message: 'Base atualizada com sucesso!'
-    }),
-    
-    backup: () => ({
-      success: true,
-      data: { backup_id: 'BK_' + Date.now(), timestamp: new Date().toISOString() }
+      message: 'Senha redefinida com sucesso! (modo fallback)'
     })
   };
   
-  // ⭐ TENTAR EXECUTAR O FALLBACK
   if (fallbacks[action]) {
     return res.status(200).json(fallbacks[action]());
   }
   
-  // ⭐ FALLBACK GENÉRICO
   return res.status(200).json({
     success: true,
-    message: `Ação '${action}' processada em modo fallback`,
-    data: { 
-      action: action,
-      timestamp: new Date().toISOString(),
-      fallback: true
-    }
+    message: 'Ação não implementada no fallback',
+    data: {}
   });
 }
 
-// ============================================================
-// ⭐ EXPORTAR O HANDLER COM AUTO-FIX
-// ============================================================
 export default enhanceWithAutoFix(originalHandler);
