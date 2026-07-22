@@ -4891,8 +4891,8 @@ function addShareButton() {
 // Chamar após o login
 setTimeout(addShareButton, 2000);
 
-// ========== FUNCIONAR EM BACKGROUND (STREAMING) ==========
-// Substituir a função checkStreamingProgress existente por esta versão melhorada
+// ========== FUNCIONAR EM BACKGROUND (STREAMING) - CORRIGIDO ==========
+// Esta versão restaura a funcionalidade de áudio em segundo plano
 async function checkStreamingProgress() {
     if (!state.youtubePlayer || !state.playerReady) return;
     
@@ -4906,8 +4906,10 @@ async function checkStreamingProgress() {
         const playerState = state.youtubePlayer.getPlayerState();
         const currentTime = state.youtubePlayer.getCurrentTime() || 0;
         const duration = state.youtubePlayer.getDuration() || 0;
+        const loadedFraction = state.youtubePlayer.getVideoLoadedFraction ? 
+            state.youtubePlayer.getVideoLoadedFraction() : 0;
         
-        // Atualizar progresso mesmo em background
+        // Atualizar progresso (sempre)
         if (duration > 0) {
             const percent = (currentTime / duration) * 100;
             
@@ -4929,8 +4931,8 @@ async function checkStreamingProgress() {
             }
         }
         
-        // Registrar streaming mesmo em background
-        if (playerState === 1 && duration > 0 && currentTime >= 30) { // PLAYING
+        // ===== REGISTRAR STREAMING MESMO EM BACKGROUND =====
+        if (playerState === 1 && duration > 0 && currentTime >= 30) {
             const now = Date.now();
             
             if (now - state.streamingLastReward > 29000) {
@@ -4954,9 +4956,9 @@ async function checkStreamingProgress() {
                         registerRealStreamingReward(currentTrack, currentTime, duration);
                         state.streamingLastReward = now;
                         
-                        // Mostrar notificação se estiver em background
+                        // ===== NOTIFICAÇÃO MESMO EM BACKGROUND (CRÍTICO) =====
                         if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-                            new Notification('SELO MIV', {
+                            new Notification('PLAY MY', {
                                 body: `🎵 +1 SELO COIN por streaming de "${currentTrack.titulo}"`,
                                 icon: 'https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png',
                                 silent: true
@@ -4970,6 +4972,49 @@ async function checkStreamingProgress() {
     } catch (error) {
         console.error('Erro no monitoramento de streaming:', error);
     }
+}
+
+// ===== FUNÇÃO PARA VERIFICAR VIEW REAL DO YOUTUBE =====
+function verifyYouTubeView() {
+    return new Promise((resolve) => {
+        if (!state.youtubePlayer || !state.playerReady) {
+            resolve(false);
+            return;
+        }
+        
+        try {
+            const playerState = state.youtubePlayer.getPlayerState();
+            const currentTime = state.youtubePlayer.getCurrentTime() || 0;
+            const duration = state.youtubePlayer.getDuration() || 0;
+            const loadedFraction = state.youtubePlayer.getVideoLoadedFraction ? 
+                state.youtubePlayer.getVideoLoadedFraction() : 0;
+            const availableQuality = state.youtubePlayer.getAvailableQualityLevels ? 
+                state.youtubePlayer.getAvailableQualityLevels() : [];
+            
+            const isPlaying = playerState === YT.PlayerState.PLAYING;
+            const hasContent = duration > 30;
+            const isLoaded = loadedFraction > 0.5;
+            const hasQuality = availableQuality.length > 0;
+            const isProgressing = currentTime > 5;
+            
+            const isRealView = isPlaying && hasContent && isLoaded && hasQuality && isProgressing;
+            
+            console.log('🔍 Verificação REAL do YouTube:', {
+                isPlaying,
+                hasContent,
+                isLoaded,
+                hasQuality,
+                isProgressing,
+                result: isRealView ? '✅ VIEW REAL' : '❌ NÃO CONTOU'
+            });
+            
+            resolve(isRealView);
+            
+        } catch (error) {
+            console.error('Erro ao verificar view:', error);
+            resolve(false);
+        }
+    });
 }
 
 // ========== INICIALIZAR PWA ==========
@@ -8812,62 +8857,8 @@ function playTrack(index) {
         document.head.appendChild(tag);
     }
 
-    function checkStreamingProgress() {
-        if (!state.youtubePlayer || !state.playerReady) return;
-        
-        try {
-            if (typeof state.youtubePlayer.getPlayerState !== 'function' ||
-                typeof state.youtubePlayer.getCurrentTime !== 'function' ||
-                typeof state.youtubePlayer.getDuration !== 'function' ||
-                typeof state.youtubePlayer.getVideoLoadedFraction !== 'function') {
-                return;
-            }
-            
-            const playerState = state.youtubePlayer.getPlayerState();
-            const currentTime = state.youtubePlayer.getCurrentTime() || 0;
-            const duration = state.youtubePlayer.getDuration() || 0;
-            const loadedFraction = state.youtubePlayer.getVideoLoadedFraction() || 0;
-            
-            if (duration === 0 || loadedFraction === 0) {
-                showLoadingMessage('Carregando vídeo...', true);
-                return;
-            }
-            
-            hideLoadingMessage();
-            updateRealProgress(currentTime, duration);
-            
-            if (playerState === YT.PlayerState.PLAYING && 
-                !state.isBuffering && 
-                duration > 0 && 
-                currentTime > 0) {
-                
-                if (currentTime >= 30) {
-                    const now = Date.now();
-                    
-                    if (now - state.streamingLastReward > 29000) {
-                        if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
-                            const currentTrack = state.playlist[state.currentTrackIndex];
-                            
-                            if (currentTrack && currentTrack.id !== state.streamingTrackId) {
-                                state.streamingTrackId = currentTrack.id;
-                                state.streamingLastReward = 0;
-                            }
-                            
-                            if (state.streamingLastReward === 0 || now - state.streamingLastReward > 29000) {
-                                registerRealStreamingReward(currentTrack, currentTime, duration);
-                                state.streamingLastReward = now;
-                            }
-                        }
-                    }
-                }
-            } else {
-                console.log(`📊 Status real: State=${playerState}, Time=${currentTime.toFixed(1)}s, Loaded=${(loadedFraction*100).toFixed(1)}%`);
-            }
-            
-        } catch (error) {
-            console.error('Erro no monitoramento de streaming:', error);
-        }
-    }
+    // ===== VERSÃO CORRIGIDA DO checkStreamingProgress =====
+    // (Já está definida acima, mantendo a versão corrigida)
 
     function updateRealProgress(currentTime, duration) {
         const progressBar = document.getElementById('playerProgressBar');
@@ -9062,46 +9053,6 @@ function playTrack(index) {
             state.streamingTimer = null;
         }
         console.log('⏹️ Monitoramento de streaming parado');
-    }
-
-    function verifyYouTubeView() {
-        return new Promise((resolve) => {
-            if (!state.youtubePlayer || !state.playerReady) {
-                resolve(false);
-                return;
-            }
-            
-            try {
-                const playerState = state.youtubePlayer.getPlayerState();
-                const currentTime = state.youtubePlayer.getCurrentTime() || 0;
-                const duration = state.youtubePlayer.getDuration() || 0;
-                const loadedFraction = state.youtubePlayer.getVideoLoadedFraction() || 0;
-                const availableQuality = state.youtubePlayer.getAvailableQualityLevels?.() || [];
-                
-                const isPlaying = playerState === YT.PlayerState.PLAYING;
-                const hasContent = duration > 30;
-                const isLoaded = loadedFraction > 0.5;
-                const hasQuality = availableQuality.length > 0;
-                const isProgressing = currentTime > 5;
-                
-                const isRealView = isPlaying && hasContent && isLoaded && hasQuality && isProgressing;
-                
-                console.log('🔍 Verificação REAL do YouTube:', {
-                    isPlaying,
-                    hasContent,
-                    isLoaded,
-                    hasQuality,
-                    isProgressing,
-                    result: isRealView ? '✅ VIEW REAL' : '❌ NÃO CONTOU'
-                });
-                
-                resolve(isRealView);
-                
-            } catch (error) {
-                console.error('Erro ao verificar view:', error);
-                resolve(false);
-            }
-        });
     }
 
     function extractYouTubeId(url) {
