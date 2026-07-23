@@ -12857,7 +12857,209 @@ createYouTubePlayer = function(elementId, videoId) {
     setTimeout(preventAudioSuspension, 2000);
 };
 // ========== FIM DO CÓDIGO ADICIONADO ==========
+// ============================================
+// ===== ÁUDIO EM SEGUNDO PLANO - NAVEGADOR =====
+// ============================================
+
+// 1. CRIAR CONTEXTO DE ÁUDIO "FANTASMA"
+let bgAudioContext = null;
+let silentOscillator = null;
+
+function createSilentAudioContext() {
+    try {
+        // Criar AudioContext (funciona no Chrome, Firefox, Safari)
+        bgAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Se estiver suspenso, resume
+        if (bgAudioContext.state === 'suspended') {
+            bgAudioContext.resume();
+        }
+        
+        // Criar oscilador silencioso (volume quase zero)
+        silentOscillator = bgAudioContext.createOscillator();
+        const gain = bgAudioContext.createGain();
+        gain.gain.value = 0.001; // Quase silencioso
+        silentOscillator.connect(gain);
+        gain.connect(bgAudioContext.destination);
+        silentOscillator.start();
+        
+        console.log('🔊 Contexto de áudio fantasma ativado');
+        return true;
+    } catch (e) {
+        console.log('⚠️ Erro ao criar contexto de áudio:', e);
+        return false;
+    }
+}
+
+// 2. FORÇAR PLAYER A CONTINUAR EM BACKGROUND
+function forcePlayerInBackground() {
+    if (!state.youtubePlayer) return;
     
+    try {
+        // Verificar estado atual
+        const playerState = state.youtubePlayer.getPlayerState();
+        const currentTime = state.youtubePlayer.getCurrentTime();
+        const duration = state.youtubePlayer.getDuration();
+        
+        // Se a música acabou, não fazer nada
+        if (duration > 0 && currentTime >= duration - 1) {
+            return;
+        }
+        
+        // Se o player está pausado mas deveria estar tocando
+        if (playerState === 2 && state.isPlaying) {
+            console.log('🔄 Player pausado pelo sistema - reiniciando...');
+            state.youtubePlayer.playVideo();
+        }
+        
+        // Se está em buffering, forçar play
+        if (playerState === 3 && state.isPlaying) {
+            console.log('🔄 Player em buffering - forçando play...');
+            setTimeout(() => {
+                try {
+                    state.youtubePlayer.playVideo();
+                } catch (e) {}
+            }, 500);
+        }
+        
+        // Se está parado mas deveria tocar
+        if (playerState === -1 || playerState === 0) {
+            if (state.isPlaying) {
+                console.log('🔄 Player parado - reiniciando...');
+                state.youtubePlayer.playVideo();
+            }
+        }
+    } catch (e) {
+        console.log('Erro ao forçar player:', e);
+    }
+}
+
+// 3. MONITORAR BACKGROUND
+let backgroundCheckInterval = null;
+
+function startBackgroundMonitoring() {
+    if (backgroundCheckInterval) return;
+    
+    // Verificar a cada 2 segundos
+    backgroundCheckInterval = setInterval(() => {
+        // Se o app está em segundo plano (página invisível)
+        if (document.hidden && state.isPlaying) {
+            forcePlayerInBackground();
+            
+            // Recriar contexto de áudio se necessário
+            if (!bgAudioContext || bgAudioContext.state === 'suspended') {
+                createSilentAudioContext();
+            }
+        }
+    }, 2000);
+    
+    console.log('📡 Monitoramento de background iniciado');
+}
+
+// 4. MANTER ÁUDIO QUANDO TELA É BLOQUEADA
+function keepAudioOnScreenLock() {
+    // Para iOS: criar elemento de áudio que mantém o app ativo
+    if (!window._keepAudioElement) {
+        try {
+            const audioEl = document.createElement('audio');
+            audioEl.id = 'keepAliveAudio';
+            audioEl.style.display = 'none';
+            audioEl.loop = true;
+            audioEl.volume = 0.001; // Quase silencioso
+            
+            // Criar um pequeno arquivo de áudio em memória (beep silencioso)
+            const silentBase64 = 'data:audio/wav;base64,UklGRnoAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoAAACBhYqFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYWG';
+            
+            audioEl.src = silentBase64;
+            audioEl.muted = true; // Silencioso
+            document.body.appendChild(audioEl);
+            window._keepAudioElement = audioEl;
+            
+            // Tocar quando detectar que vai para background
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && state.isPlaying) {
+                    try {
+                        audioEl.play();
+                    } catch (e) {}
+                }
+            });
+            
+            console.log('🔊 Elemento de áudio de manutenção criado');
+        } catch (e) {
+            console.log('⚠️ Erro ao criar elemento de áudio:', e);
+        }
+    }
+}
+
+// 5. INICIALIZAR TUDO
+function initBackgroundAudioForBrowser() {
+    console.log('🎵 Inicializando áudio em segundo plano para navegador...');
+    
+    // Criar contexto de áudio fantasma
+    const audioReady = createSilentAudioContext();
+    
+    // Iniciar monitoramento
+    startBackgroundMonitoring();
+    
+    // Para iOS: criar elemento de áudio
+    keepAudioOnScreenLock();
+    
+    // Para Android: forçar áudio ao tocar na tela
+    document.addEventListener('touchstart', () => {
+        if (state.isPlaying && state.youtubePlayer) {
+            try {
+                const playerState = state.youtubePlayer.getPlayerState();
+                if (playerState !== 1) {
+                    state.youtubePlayer.playVideo();
+                }
+            } catch (e) {}
+        }
+        
+        // Recriar contexto se necessário
+        if (bgAudioContext && bgAudioContext.state === 'suspended') {
+            bgAudioContext.resume();
+        }
+    }, { passive: true });
+    
+    // Verificar periodicamente
+    setInterval(() => {
+        if (document.hidden && state.isPlaying) {
+            // Se o contexto de áudio foi suspenso, recriar
+            if (!bgAudioContext || bgAudioContext.state === 'suspended') {
+                createSilentAudioContext();
+            }
+        }
+    }, 10000);
+    
+    console.log('✅ Áudio em segundo plano configurado!');
+}
+
+// 6. CHAMAR A INICIALIZAÇÃO
+// Chamar após o DOM carregar
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initBackgroundAudioForBrowser, 2000);
+});
+
+// Também chamar após o login (quando o player for iniciado)
+const originalPlayTrack = playTrack;
+playTrack = function(index) {
+    originalPlayTrack(index);
+    setTimeout(() => {
+        if (state.isPlaying) {
+            initBackgroundAudioForBrowser();
+        }
+    }, 1000);
+};
+
+const originalPlayExternalTrack = playExternalTrack;
+playExternalTrack = function(index) {
+    originalPlayExternalTrack(index);
+    setTimeout(() => {
+        if (state.isPlaying) {
+            initBackgroundAudioForBrowser();
+        }
+    }, 1000);
+};    
 </script>
     
 </body>
