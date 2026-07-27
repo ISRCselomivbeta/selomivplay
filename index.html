@@ -2247,6 +2247,32 @@ async function loadArtistData(forceRefresh = false) {
     }
 }
 
+function updatePortfolioValue() {
+    const el = document.getElementById('portfolioValue');
+    if (!el) return;
+    
+    let totalValue = 0;
+    const assets = Array.isArray(state.portfolioAssets) ? state.portfolioAssets : [];
+    
+    // Calcular valor total do portfólio
+    assets.forEach(asset => {
+        const music = state.playlist.find(m => m.id === asset.music_id);
+        if (music && music.valor_acao) {
+            totalValue += (asset.quantidade || 0) * music.valor_acao;
+        } else {
+            totalValue += asset.valor_total || 0;
+        }
+    });
+    
+    // Atualizar elemento na tela
+    el.textContent = formatCurrency(totalValue);
+    
+    // Atualizar timestamp
+    const updateEl = document.getElementById('portfolioUpdateTime');
+    if (updateEl) {
+        updateEl.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+}    
 // ========== RECOMENDAÇÕES ==========
 async function loadUserFavorites() {
     if (!state.currentUser || !state.currentUser.id) return { success: false, data: [] };
