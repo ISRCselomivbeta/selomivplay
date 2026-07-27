@@ -1705,6 +1705,97 @@ function maskEmail(email) {
     return `${local.substring(0, 2)}***@${domain}`;
 }
 
+// ============================================================
+// ===== FUNÇÕES PARA ATUALIZAR CARDS COM DADOS REAIS =====
+// ============================================================
+
+// Função para atualizar card com dados do YouTube
+async function updateCardWithRealData(track, cardElement) {
+    if (!track || !track.link_youtube) return;
+    
+    const videoId = extractYouTubeId(track.link_youtube);
+    if (!videoId) return;
+    
+    const viewsEl = cardElement.querySelector('.youtube-views');
+    const earningsEl = cardElement.querySelector('.estimated-earnings');
+    
+    // Mostrar loading
+    if (viewsEl) viewsEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    if (earningsEl) earningsEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    
+    try {
+        const stats = await getYouTubeStats(videoId);
+        
+        if (stats) {
+            const revenue = calculateEstimatedRevenue(stats.views);
+            
+            if (viewsEl) {
+                viewsEl.innerHTML = `
+                    <i class="bi bi-eye-fill me-1"></i>
+                    ${formatNumber(stats.views)} views
+                `;
+            }
+            
+            if (earningsEl) {
+                earningsEl.innerHTML = `
+                    <i class="bi bi-cash-stack me-1"></i>
+                    ${revenue.formatted}
+                `;
+            }
+            
+            // Salvar no objeto track
+            track.youtube_stats = stats;
+            track.youtube_views = stats.views;
+        }
+    } catch (error) {
+        console.error('❌ Erro ao atualizar card:', error);
+        if (viewsEl) viewsEl.innerHTML = '<i class="bi bi-eye-fill me-1"></i> N/A';
+        if (earningsEl) earningsEl.innerHTML = '<i class="bi bi-cash-stack me-1"></i> N/A';
+    }
+}
+
+// Função para atualizar card externo
+async function updateExternalCardWithRealData(track, cardElement) {
+    if (!track || !track.link_youtube) return;
+    
+    const videoId = extractYouTubeId(track.link_youtube);
+    if (!videoId) return;
+    
+    const viewsEl = cardElement.querySelector('.youtube-views');
+    const earningsEl = cardElement.querySelector('.estimated-earnings');
+    
+    if (viewsEl) viewsEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    if (earningsEl) earningsEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    
+    try {
+        const stats = await getYouTubeStats(videoId);
+        
+        if (stats) {
+            const revenue = calculateEstimatedRevenue(stats.views);
+            
+            if (viewsEl) {
+                viewsEl.innerHTML = `
+                    <i class="bi bi-eye-fill me-1"></i>
+                    ${formatNumber(stats.views)} views
+                `;
+            }
+            
+            if (earningsEl) {
+                earningsEl.innerHTML = `
+                    <i class="bi bi-cash-stack me-1"></i>
+                    ${revenue.formatted}
+                `;
+            }
+            
+            track.youtube_stats = stats;
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar card externo:', error);
+        if (viewsEl) viewsEl.innerHTML = '<i class="bi bi-eye-fill me-1"></i> N/A';
+        if (earningsEl) earningsEl.innerHTML = '<i class="bi bi-cash-stack me-1"></i> N/A';
+    }
+}
+
 // ========== PLACEHOLDERS ==========
 const PLACEHOLDERS = {
     MIV_56: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'56\' height=\'56\' viewBox=\'0 0 56 56\'%3E%3Crect width=\'56\' height=\'56\' fill=\'%231a1e24\'/%3E%3Ccircle cx=\'28\' cy=\'28\' r=\'24\' fill=\'%2300ff88\' stroke=\'%23ffffff\' stroke-width=\'2\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial, sans-serif\' font-size=\'18\' font-weight=\'bold\' fill=\'%23000000\'%3ESM%3C/text%3E%3C/svg%3E',
