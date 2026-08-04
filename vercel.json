@@ -28,63 +28,15 @@
       "dest": "/api/backend.js"
     },
     {
-      "src": "/confirm-email.html",
-      "dest": "/public/confirm-email.html"
-    },
-    {
-      "src": "/reset-password.html",
-      "dest": "/public/reset-password.html"
-    },
-    {
-      "src": "/offline.html",
-      "dest": "/public/offline.html"
-    },
-    {
-      "src": "/manifest.json",
-      "dest": "/public/manifest.json"
-    },
-    {
-      "src": "/security-bridge.js",
-      "dest": "/public/security-bridge.js"
-    },
-    {
-      "src": "/sw.js",
-      "dest": "/public/sw.js"
-    },
-    {
       "src": "/(.*)",
       "dest": "/public/$1"
     }
   ],
   "headers": [
     {
-      "source": "/",
-      "headers": [
-        { "key": "Content-Type", "value": "text/html; charset=utf-8" }
-      ]
-    },
-    {
       "source": "*.html",
       "headers": [
         { "key": "Content-Type", "value": "text/html; charset=utf-8" }
-      ]
-    },
-    {
-      "source": "/manifest.json",
-      "headers": [
-        { "key": "Content-Type", "value": "application/json" }
-      ]
-    },
-    {
-      "source": "/sw.js",
-      "headers": [
-        { "key": "Service-Worker-Allowed", "value": "/" }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
       ]
     }
   ]
