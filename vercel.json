@@ -68,6 +68,12 @@
       ]
     },
     {
+      "source": "*.html",
+      "headers": [
+        { "key": "Content-Type", "value": "text/html; charset=utf-8" }
+      ]
+    },
+    {
       "source": "/manifest.json",
       "headers": [
         { "key": "Content-Type", "value": "application/json" }
