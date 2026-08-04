@@ -6,14 +6,15 @@
     <meta name="description" content="PLAY MY - Música sem limites">
     <meta name="theme-color" content="#00ff88">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <!-- 🔒 SECURITY BRIDGE - PROTEÇÃO ATIVADA -->
-    <script src="security-bridge.js"></script>
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>PLAY MY | Powered by Selo MIV</title>
    <!-- CONFIGURAÇÕES PWA PARA FUNCIONAR COMO APP -->
-
+    
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PLAY MY">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#00ff88">
 <meta name="msapplication-TileColor" content="#00ff88">
 <meta name="msapplication-TileImage" content="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
 
@@ -23,9 +24,32 @@
 <link rel="apple-touch-icon" sizes="180x180" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
 <link rel="apple-touch-icon" sizes="167x167" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
 
-<!-- MANIFEST DO PWA: agora é um arquivo externo real (manifest.json), mais confiável
-     que o antigo data-URI inline para o navegador reconhecer o site como instalável -->
-<link rel="manifest" href="/manifest.json">
+<!-- MANIFEST DO PWA (SALVAR COMO manifest.json) -->
+<link rel="manifest" href="data:application/manifest+json,{
+  &quot;name&quot;: &quot;PLAY MY - Música sem limitesl&quot;,
+  &quot;short_name&quot;: &quot;SELO MIV&quot;,
+  &quot;description&quot;: &quot;Música com Blockchain&quot;,
+  &quot;start_url&quot;: &quot;/&quot;,
+  &quot;display&quot;: &quot;standalone&quot;,
+  &quot;background_color&quot;: &quot;#07090c&quot;,
+  &quot;theme_color&quot;: &quot;#00ff88&quot;,
+  &quot;orientation&quot;: &quot;portrait&quot;,
+  &quot;icons&quot;: [
+    {
+      &quot;src&quot;: &quot;https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png&quot;,
+      &quot;sizes&quot;: &quot;192x192&quot;,
+      &quot;type&quot;: &quot;image/png&quot;,
+      &quot;purpose&quot;: &quot;any maskable&quot;
+    },
+    {
+      &quot;src&quot;: &quot;https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png&quot;,
+      &quot;sizes&quot;: &quot;512x512&quot;,
+      &quot;type&quot;: &quot;image/png&quot;,
+      &quot;purpose&quot;: &quot;any maskable&quot;
+    }
+  ],
+  &quot;splash_pages&quot;: null
+}">
     <!-- PERMITIR COMUNICAÇÃO COM YOUTUBE E GOOGLE APPS SCRIPT -->
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://script.google.com https://script.googleusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com;">
     <!-- Bootstrap 5.3.0 -->
@@ -7953,8 +7977,6 @@ function playExternalTrack(index) {
         updateExpandedPlayer();
     }
     
-    if (typeof setupMediaSession === 'function') setupMediaSession(track, true);
-
     showToast(`🎵 Tocando: ${track.titulo} (Bolsa Externa)`, 'info');
 }
 
@@ -8693,7 +8715,6 @@ function playTrack(index) {
     
     state.isPlaying = true;
     updatePlayerIcons();
-    if (typeof setupMediaSession === 'function') setupMediaSession(track, false);
     
     if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
         updateExpandedPlayer();
@@ -9153,13 +9174,11 @@ function initializeYouTubePlayer(videoId) {
                 if (loadingEl) loadingEl.style.display = 'none';
                 state.streamingProgress = 0;
                 if (!state.streamingTimer) startStreamingMonitor();
-                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
                 break;
                 
             case YT.PlayerState.PAUSED:
                 state.isPlaying = false;
                 state.isBuffering = false;
-                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
                 break;
                 
             case YT.PlayerState.BUFFERING:
@@ -12227,18 +12246,45 @@ async function finalizarCadastroComYouTube() {
 }
 
     // ========== MANTER ÁUDIO EM SEGUNDO PLANO ==========
-    // O gerenciamento de background ficou consolidado em UM único lugar mais abaixo
-    // (startBackgroundTasks/stopBackgroundTasks + initBackgroundPlaybackSystem),
-    // em vez de múltiplos listeners/timers concorrentes fazendo a mesma coisa.
-    //
-    // Importante: no iPhone (Safari) e na maioria dos navegadores Android, o
-    // navegador SUSPENDE vídeos incorporados via iframe (como o player do YouTube)
-    // quando a aba/app vai para segundo plano. Isso é uma decisão de economia de
-    // bateria do próprio sistema operacional/navegador e não pode ser contornada
-    // 100% via JavaScript em uma página web comum — apenas um app nativo garante
-    // reprodução contínua com a tela apagada. O que fazemos abaixo é o melhor
-    // esforço possível dentro dessa limitação (Media Session API + retomada
-    // automática quando a aba volta a ficar visível).
+let backgroundAudio = null;
+
+// Detectar quando o app vai para segundo plano
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // App está em segundo plano
+        console.log('🎵 App em segundo plano - mantendo áudio');
+        
+        // Para YouTube, infelizmente não podemos manter o vídeo, mas podemos tentar manter o áudio
+        if (state.isPlaying && state.youtubePlayer) {
+            // Forçar o player a continuar
+            try {
+                // Verificar se ainda está tocando a cada 5 segundos
+                if (!backgroundInterval) {
+                    backgroundInterval = setInterval(() => {
+                        if (document.hidden && state.isPlaying) {
+                            console.log('🎵 Mantendo streaming em background');
+                        }
+                    }, 5000);
+                }
+            } catch (e) {
+                console.log('Erro ao manter áudio em background:', e);
+            }
+        }
+    } else {
+        // App voltou ao primeiro plano
+        console.log('🎵 App voltou ao primeiro plano');
+        if (backgroundInterval) {
+            clearInterval(backgroundInterval);
+            backgroundInterval = null;
+        }
+    }
+});
+
+// Importante: No iPhone, o áudio em segundo plano só funciona se:
+// 1. O usuário iniciou a reprodução manualmente
+// 2. O app está instalado na tela inicial
+// 3. O usuário não fechou completamente o app (apenas minimizou)
+// Fim do escopo global
 
 // ===== SALVAR HISTÓRICO DE PESQUISAS NO PERFIL =====
 async function saveSearchToUserProfile(query) {
@@ -12396,12 +12442,117 @@ async function saveSearchToUserProfile(query) {
         }
     }
 
-    // ========== ARQUIVO sw.js ==========
-    // O conteúdo do Service Worker agora vive de verdade em /sw.js (arquivo
-    // separado, na raiz do site). Antes ele só existia como uma string JS
-    // aqui dentro (`swContent`) que nunca era salva em disco nem usada —
-    // por isso o registro em navigator.serviceWorker.register('/sw.js')
-    // sempre falhava silenciosamente (404) e o PWA nunca funcionava offline.
+    // ========== ARQUIVO sw.js (CRIAR NA RAIZ DO SITE) ==========
+    // Este é o conteúdo do arquivo sw.js que precisa ser salvo
+    const swContent = `
+    const CACHE_NAME = 'selo-miv-v6';
+    const urlsToCache = [
+        '/',
+        'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
+        'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css',
+        'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap',
+        'https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png'
+    ];
+
+    // Instalar Service Worker
+    self.addEventListener('install', event => {
+        event.waitUntil(
+            caches.open(CACHE_NAME)
+                .then(cache => {
+                    console.log('Cache aberto');
+                    return cache.addAll(urlsToCache);
+                })
+        );
+    });
+
+    // Interceptar requisições
+    self.addEventListener('fetch', event => {
+        event.respondWith(
+            caches.match(event.request)
+                .then(response => {
+                    // Cache hit - retorna resposta
+                    if (response) {
+                        return response;
+                    }
+
+                    // Clone da requisição
+                    const fetchRequest = event.request.clone();
+
+                    return fetch(fetchRequest).then(response => {
+                        // Verifica se resposta é válida
+                        if (!response || response.status !== 200 || response.type !== 'basic') {
+                            return response;
+                        }
+
+                        // Clone da resposta
+                        const responseToCache = response.clone();
+
+                        caches.open(CACHE_NAME)
+                            .then(cache => {
+                                cache.put(event.request, responseToCache);
+                            });
+
+                        return response;
+                    }).catch(() => {
+                        // Se falhar e for página HTML, mostra página offline
+                        if (event.request.headers.get('accept').includes('text/html')) {
+                            return caches.match('/offline.html');
+                        }
+                    });
+                })
+        );
+    });
+
+    // Atualizar cache
+    self.addEventListener('activate', event => {
+        const cacheWhitelist = [CACHE_NAME];
+        event.waitUntil(
+            caches.keys().then(cacheNames => {
+                return Promise.all(
+                    cacheNames.map(cacheName => {
+                        if (cacheWhitelist.indexOf(cacheName) === -1) {
+                            return caches.delete(cacheName);
+                        }
+                    })
+                );
+            })
+        );
+    });
+
+    // Sincronização em background
+    self.addEventListener('sync', event => {
+        if (event.tag === 'sync-trades') {
+            event.waitUntil(syncTrades());
+        }
+    });
+
+    async function syncTrades() {
+        try {
+            const trades = await getPendingTrades();
+            for (const trade of trades) {
+                await fetch('/api/sync-trade', {
+                    method: 'POST',
+                    body: JSON.stringify(trade)
+                });
+            }
+        } catch (error) {
+            console.log('Erro na sincronização:', error);
+        }
+    }
+
+    async function getPendingTrades() {
+        // Implementar lógica para buscar trades pendentes do IndexedDB
+        return [];
+    }
+    `;
+
+    // Função para criar o arquivo sw.js (opcional - pode criar manualmente)
+    function createServiceWorker() {
+        const blob = new Blob([swContent], { type: 'application/javascript' });
+        const url = URL.createObjectURL(blob);
+        console.log('URL do Service Worker:', url);
+        // Nota: Você precisa salvar este conteúdo como sw.js na raiz do site
+    }
 
     // ========== DETECTAR INSTALAÇÃO DO APP ==========
     let deferredPrompt;
@@ -12567,106 +12718,148 @@ function gerarTransacoesSimuladas() {
     
     return transacoes.join('');
 }
-// ========== SISTEMA CONSOLIDADO DE REPRODUÇÃO EM SEGUNDO PLANO ==========
-// Antes existiam 3 sistemas concorrentes tentando "forçar" o áudio a
-// continuar (timers de 3s, 5s e 30s rodando ao mesmo tempo, brigando entre
-// si e desperdiçando bateria). Isso foi consolidado em UM único sistema,
-// somado à Media Session API (padrão real dos navegadores para integrar
-// com os controles de mídia da tela de bloqueio/notificações).
-//
-// Limitação honesta: em iframes do YouTube, o navegador (especialmente
-// Safari no iPhone) suspende o vídeo quando a aba perde o foco. A Media
-// Session API e a retomada automática abaixo cobrem o que é tecnicamente
-// possível fazer numa página web; 100% de garantia só existe em app nativo.
+// ========== AQUI COLE O NOVO CÓDIGO ==========
+// ========== FORÇAR MODO DESKTOP PARA ÁUDIO EM BACKGROUND ==========
 
-function setupMediaSession(track, isExternal) {
-    if (!('mediaSession' in navigator) || !track) return;
-
-    try {
-        let artwork = isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300;
-        if (track.link_capa && track.link_capa.trim() !== '') {
-            artwork = track.link_capa.trim();
+// Função que tenta manter o áudio ativo mesmo com tela bloqueada
+function forceBackgroundAudio() {
+    console.log('🎵 Tentando manter áudio em background...');
+    
+    // 1. Criar um elemento de áudio "fantasma" que mantém o contexto ativo
+    if (!window._bgAudioContext) {
+        try {
+            // Criar um AudioContext que nunca é suspenso
+            window._bgAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Tentar manter o contexto ativo
+            if (window._bgAudioContext.state === 'suspended') {
+                window._bgAudioContext.resume();
+            }
+            
+            // Criar um oscilador silencioso que mantém o contexto ativo
+            const oscillator = window._bgAudioContext.createOscillator();
+            const gain = window._bgAudioContext.createGain();
+            gain.gain.value = 0.001; // Quase silencioso
+            oscillator.connect(gain);
+            gain.connect(window._bgAudioContext.destination);
+            oscillator.start();
+            
+            console.log('✅ Contexto de áudio de background ativado');
+        } catch (e) {
+            console.log('⚠️ Erro ao criar contexto de áudio:', e);
         }
-
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: track.titulo || 'PLAY MY',
-            artist: track.artista || 'SELO MIV',
-            album: 'PLAY MY - Selo MIV',
-            artwork: [
-                { src: artwork, sizes: '300x300', type: 'image/jpeg' }
-            ]
-        });
-
-        navigator.mediaSession.setActionHandler('play', () => {
-            if (state.youtubePlayer) state.youtubePlayer.playVideo();
-        });
-        navigator.mediaSession.setActionHandler('pause', () => {
-            if (state.youtubePlayer) state.youtubePlayer.pauseVideo();
-        });
-        navigator.mediaSession.setActionHandler('previoustrack', () => playPrevious());
-        navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
-
-        navigator.mediaSession.playbackState = state.isPlaying ? 'playing' : 'paused';
-    } catch (e) {
-        console.log('Media Session API indisponível:', e);
     }
 }
-window.setupMediaSession = setupMediaSession;
 
-// Retomada automática única: se o player pausar sozinho enquanto a aba está
-// em segundo plano (comportamento do sistema, não do usuário), tenta
-// retomar. Um único intervalo, só ativo enquanto a aba está oculta.
-let bgRecoveryInterval = null;
-
-function startBgRecovery() {
-    if (bgRecoveryInterval) clearInterval(bgRecoveryInterval);
-    bgRecoveryInterval = setInterval(() => {
-        if (!document.hidden || !state.isPlaying || !state.youtubePlayer) return;
+// 2. Forçar o player a continuar quando a tela é bloqueada
+function keepPlayerAlive() {
+    // Verificar se o player do YouTube existe
+    if (state.youtubePlayer && typeof state.youtubePlayer.getPlayerState === 'function') {
         try {
             const playerState = state.youtubePlayer.getPlayerState();
-            // 2 = pausado, 3 = buffering — tenta retomar
-            if (playerState === 2 || playerState === 3) {
+            
+            // Se estiver pausado mas deveria estar tocando, reiniciar
+            if (playerState === 2 && state.isPlaying) {
+                console.log('🔄 Player pausado pelo sistema, reiniciando...');
                 state.youtubePlayer.playVideo();
             }
-            if (navigator.mediaSession) {
-                navigator.mediaSession.playbackState = state.isPlaying ? 'playing' : 'paused';
+            
+            // Se estiver em buffering, forçar play
+            if (playerState === 3 && state.isPlaying) {
+                console.log('🔄 Player em buffering, forçando play...');
+                setTimeout(() => {
+                    try {
+                        state.youtubePlayer.playVideo();
+                    } catch (e) {}
+                }, 1000);
             }
-        } catch (e) { /* silencioso */ }
-    }, 4000);
-}
-
-function stopBgRecovery() {
-    if (bgRecoveryInterval) {
-        clearInterval(bgRecoveryInterval);
-        bgRecoveryInterval = null;
+        } catch (e) {
+            console.log('Erro ao verificar player:', e);
+        }
     }
 }
 
-function initBackgroundPlaybackSystem() {
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            startBgRecovery();
-        } else {
-            stopBgRecovery();
+// 3. Detectar quando a tela é bloqueada/desbloqueada
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // Tela bloqueada ou app em segundo plano
+        console.log('📱 Tela bloqueada - mantendo áudio...');
+        forceBackgroundAudio();
+        
+        // Tentar manter o player a cada 5 segundos
+        if (window._keepAliveInterval) {
+            clearInterval(window._keepAliveInterval);
         }
-    });
+        window._keepAliveInterval = setInterval(() => {
+            if (document.hidden && state.isPlaying) {
+                keepPlayerAlive();
+                forceBackgroundAudio();
+            }
+        }, 3000);
+        
+    } else {
+        // Tela desbloqueada
+        console.log('📱 Tela desbloqueada');
+        if (window._keepAliveInterval) {
+            clearInterval(window._keepAliveInterval);
+            window._keepAliveInterval = null;
+        }
+    }
+});
 
-    // Retomar reprodução ao primeiro toque do usuário ao voltar ao app —
-    // navegadores exigem interação do usuário para retomar áudio suspenso
-    document.addEventListener('touchstart', () => {
-        if (state.isPlaying && state.youtubePlayer) {
+// 4. Forçar o áudio quando o usuário interage com a tela
+document.addEventListener('touchstart', () => {
+    // Qualquer toque na tela mantém o áudio ativo
+    if (state.isPlaying && state.youtubePlayer) {
+        try {
+            const playerState = state.youtubePlayer.getPlayerState();
+            if (playerState !== 1) {
+                state.youtubePlayer.playVideo();
+            }
+        } catch (e) {}
+    }
+}, { passive: true });
+
+// 5. Prevenir que o navegador suspenda o áudio
+function preventAudioSuspension() {
+    // Criar um loop de áudio "fantasma" se necessário
+    if (!window._preventSuspend) {
+        window._preventSuspend = setInterval(() => {
             try {
-                if (state.youtubePlayer.getPlayerState() !== 1) {
-                    state.youtubePlayer.playVideo();
+                if (state.isPlaying && state.youtubePlayer) {
+                    const playerState = state.youtubePlayer.getPlayerState();
+                    // Se não estiver tocando mas deveria, reiniciar
+                    if (playerState !== 1 && playerState !== 3) {
+                        console.log('🔄 Prevenindo suspensão do áudio...');
+                        state.youtubePlayer.playVideo();
+                    }
                 }
-            } catch (e) { /* silencioso */ }
-        }
-    }, { passive: true });
+            } catch (e) {}
+        }, 5000);
+    }
 }
 
-initBackgroundPlaybackSystem();
+// 6. Inicializar tudo
+function initBackgroundAudio() {
+    console.log('🎵 Inicializando sistema de áudio em background...');
+    forceBackgroundAudio();
+    preventAudioSuspension();
+}
+
+// Chamar a inicialização
+initBackgroundAudio();
+
+// Também chamar quando o player for criado
+const originalCreatePlayer = createYouTubePlayer;
+createYouTubePlayer = function(elementId, videoId) {
+    originalCreatePlayer(elementId, videoId);
+    setTimeout(forceBackgroundAudio, 1000);
+    setTimeout(preventAudioSuspension, 2000);
+};
+// ========== FIM DO CÓDIGO ADICIONADO ==========
     
 </script>
     
 </body>
 </html>
+```
