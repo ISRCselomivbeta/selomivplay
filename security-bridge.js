@@ -353,24 +353,41 @@
     // ============================================
     
     const securityMeta = [
-        { httpEquiv: 'Content-Security-Policy', content: [
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://*.googleapis.com https://www.youtube.com https://s.ytimg.com",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
-            "img-src 'self' data: https: blob:",
-            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
-            "connect-src 'self' https://script.google.com https://*.vercel.app https://api.github.com",
-            "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
-            "frame-ancestors 'none'",
-            "form-action 'self'",
-            "base-uri 'self'",
-            "upgrade-insecure-requests"
-        ].join('; ') },
-        { name: 'X-Content-Type-Options', content: 'nosniff' },
-        { name: 'X-Frame-Options', content: 'DENY' },
-        { name: 'X-XSS-Protection', content: '1; mode=block' },
-        { name: 'Referrer-Policy', content: 'strict-origin-when-cross-origin' },
-        { name: 'Permissions-Policy', content: 'geolocation=(), microphone=(), camera=(), payment=()' }
+        { 
+            httpEquiv: 'Content-Security-Policy', 
+            content: [
+                "default-src 'self'",
+                "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://*.googleapis.com https://www.youtube.com https://s.ytimg.com",
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+                "img-src 'self' data: https: blob:",
+                "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
+                "connect-src 'self' https://script.google.com https://*.vercel.app https://api.github.com",
+                "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+                "form-action 'self'",
+                "base-uri 'self'",
+                "upgrade-insecure-requests"
+            ].join('; ') 
+        },
+        { 
+            name: 'X-Content-Type-Options', 
+            content: 'nosniff' 
+        },
+        { 
+            name: 'X-Frame-Options', 
+            content: 'DENY' 
+        },
+        { 
+            name: 'X-XSS-Protection', 
+            content: '1; mode=block' 
+        },
+        { 
+            name: 'Referrer-Policy', 
+            content: 'strict-origin-when-cross-origin' 
+        },
+        { 
+            name: 'Permissions-Policy', 
+            content: 'geolocation=(), microphone=(), camera=(), payment=()' 
+        }
     ];
 
     securityMeta.forEach(({ httpEquiv, name, content }) => {
