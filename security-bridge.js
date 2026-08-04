@@ -351,7 +351,8 @@
     // ============================================
     // 9. HEADERS DE SEGURANÇA (meta tags)
     // ============================================
-        const securityMeta = [
+    
+    const securityMeta = [
         { httpEquiv: 'Content-Security-Policy', content: [
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://*.googleapis.com https://www.youtube.com https://s.ytimg.com",
@@ -360,7 +361,7 @@
             "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
             "connect-src 'self' https://script.google.com https://*.vercel.app https://api.github.com",
             "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
-            // "frame-ancestors 'none'",  // ← REMOVIDA - não funciona em meta tag
+            "frame-ancestors 'none'",
             "form-action 'self'",
             "base-uri 'self'",
             "upgrade-insecure-requests"
