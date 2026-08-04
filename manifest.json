@@ -1,0 +1,25 @@
+{
+  "name": "PLAY MY - Música sem limites",
+  "short_name": "PLAY MY",
+  "description": "Música com Blockchain - Powered by Selo MIV",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07090c",
+  "theme_color": "#00ff88",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
