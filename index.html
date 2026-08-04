@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Play My | Musica Sem Limites">
+    <meta name="description" content="PLAY MY - Música sem limites">
     <meta name="theme-color" content="#00ff88">
     <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Play My | Musica Sem Limites </title>
+    <title>PLAY MY | Powered by Selo MIV</title>
    <!-- CONFIGURAÇÕES PWA PARA FUNCIONAR COMO APP -->
     
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="SELO MIV">
+<meta name="apple-mobile-web-app-title" content="PLAY MY">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#00ff88">
 <meta name="msapplication-TileColor" content="#00ff88">
@@ -26,9 +26,9 @@
 
 <!-- MANIFEST DO PWA (SALVAR COMO manifest.json) -->
 <link rel="manifest" href="data:application/manifest+json,{
-  &quot;name&quot;: &quot;SELO MIV - Investimento Musical&quot;,
+  &quot;name&quot;: &quot;PLAY MY - Música sem limitesl&quot;,
   &quot;short_name&quot;: &quot;SELO MIV&quot;,
-  &quot;description&quot;: &quot;Plataforma de Investimento em Música com Blockchain&quot;,
+  &quot;description&quot;: &quot;Música com Blockchain&quot;,
   &quot;start_url&quot;: &quot;/&quot;,
   &quot;display&quot;: &quot;standalone&quot;,
   &quot;background_color&quot;: &quot;#07090c&quot;,
@@ -3048,7 +3048,7 @@ a, .auth-link {
     <div class="loading-content">
         <!-- APENAS O LOGO (já é redondo) -->
         <img src="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png" 
-             alt="SELO MIV" 
+             alt="PLAY MY" 
              width="80" 
              height="80" 
              style="border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 2px solid var(--neon-green); animation: pulse 2s infinite;"
@@ -3075,8 +3075,8 @@ a, .auth-link {
          style="border-radius: 50%; object-fit: cover; margin-bottom: 1.5rem; border: 2px solid var(--neon-green);"
          onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'120\' viewBox=\'0 0 120 120\'%3E%3Crect width=\'120\' height=\'120\' fill=\'%23111418\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'24\' fill=\'%2300ff88\'%3ESELO MIV%3C/text%3E%3C/svg%3E'">
     
-    <h2 class="text-white mb-2">SELO MIV</h2>
-    <p class="text-muted">Plataforma de Investimento em Música </p>
+    <h2 class="text-white mb-2">PLAY MY</h2>
+    <p class="text-muted"> Música sem limites </p>
 </div>
         <!-- Login Form -->
         <div id="loginForm">
@@ -4891,8 +4891,8 @@ function addShareButton() {
 // Chamar após o login
 setTimeout(addShareButton, 2000);
 
-// ========== FUNCIONAR EM BACKGROUND (STREAMING) ==========
-// Substituir a função checkStreamingProgress existente por esta versão melhorada
+// ========== FUNCIONAR EM BACKGROUND (STREAMING) - CORRIGIDO ==========
+// Esta versão restaura a funcionalidade de áudio em segundo plano
 async function checkStreamingProgress() {
     if (!state.youtubePlayer || !state.playerReady) return;
     
@@ -4906,8 +4906,10 @@ async function checkStreamingProgress() {
         const playerState = state.youtubePlayer.getPlayerState();
         const currentTime = state.youtubePlayer.getCurrentTime() || 0;
         const duration = state.youtubePlayer.getDuration() || 0;
+        const loadedFraction = state.youtubePlayer.getVideoLoadedFraction ? 
+            state.youtubePlayer.getVideoLoadedFraction() : 0;
         
-        // Atualizar progresso mesmo em background
+        // Atualizar progresso (sempre)
         if (duration > 0) {
             const percent = (currentTime / duration) * 100;
             
@@ -4929,8 +4931,8 @@ async function checkStreamingProgress() {
             }
         }
         
-        // Registrar streaming mesmo em background
-        if (playerState === 1 && duration > 0 && currentTime >= 30) { // PLAYING
+        // ===== REGISTRAR STREAMING MESMO EM BACKGROUND =====
+        if (playerState === 1 && duration > 0 && currentTime >= 30) {
             const now = Date.now();
             
             if (now - state.streamingLastReward > 29000) {
@@ -4954,9 +4956,9 @@ async function checkStreamingProgress() {
                         registerRealStreamingReward(currentTrack, currentTime, duration);
                         state.streamingLastReward = now;
                         
-                        // Mostrar notificação se estiver em background
+                        // ===== NOTIFICAÇÃO MESMO EM BACKGROUND (CRÍTICO) =====
                         if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-                            new Notification('SELO MIV', {
+                            new Notification('PLAY MY', {
                                 body: `🎵 +1 SELO COIN por streaming de "${currentTrack.titulo}"`,
                                 icon: 'https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png',
                                 silent: true
@@ -4970,6 +4972,49 @@ async function checkStreamingProgress() {
     } catch (error) {
         console.error('Erro no monitoramento de streaming:', error);
     }
+}
+
+// ===== FUNÇÃO PARA VERIFICAR VIEW REAL DO YOUTUBE =====
+function verifyYouTubeView() {
+    return new Promise((resolve) => {
+        if (!state.youtubePlayer || !state.playerReady) {
+            resolve(false);
+            return;
+        }
+        
+        try {
+            const playerState = state.youtubePlayer.getPlayerState();
+            const currentTime = state.youtubePlayer.getCurrentTime() || 0;
+            const duration = state.youtubePlayer.getDuration() || 0;
+            const loadedFraction = state.youtubePlayer.getVideoLoadedFraction ? 
+                state.youtubePlayer.getVideoLoadedFraction() : 0;
+            const availableQuality = state.youtubePlayer.getAvailableQualityLevels ? 
+                state.youtubePlayer.getAvailableQualityLevels() : [];
+            
+            const isPlaying = playerState === YT.PlayerState.PLAYING;
+            const hasContent = duration > 30;
+            const isLoaded = loadedFraction > 0.5;
+            const hasQuality = availableQuality.length > 0;
+            const isProgressing = currentTime > 5;
+            
+            const isRealView = isPlaying && hasContent && isLoaded && hasQuality && isProgressing;
+            
+            console.log('🔍 Verificação REAL do YouTube:', {
+                isPlaying,
+                hasContent,
+                isLoaded,
+                hasQuality,
+                isProgressing,
+                result: isRealView ? '✅ VIEW REAL' : '❌ NÃO CONTOU'
+            });
+            
+            resolve(isRealView);
+            
+        } catch (error) {
+            console.error('Erro ao verificar view:', error);
+            resolve(false);
+        }
+    });
 }
 
 // ========== INICIALIZAR PWA ==========
@@ -5021,9 +5066,10 @@ document.addEventListener('DOMContentLoaded', () => {
         isBuffering: false,
         playerReady: false,
         streamingStats: null,
-        progressInterval: null
+        progressInterval: null,
+        recommendations: []
     };
-state.recommendations = [];
+
 // ===== FILA DE REPRODUÇÃO UNIFICADA (NOVO) =====
 const playQueue = {
     items: [], // { type: 'internal'|'external', index, track, trackId }
@@ -5176,6 +5222,106 @@ const playQueue = {
     }
 };
 // ===== FIM DA FILA =====
+
+// ===== INICIALIZAR RECOMENDAÇÕES =====
+async function initializeRecommendations() {
+  if (!state.currentUser || !state.currentUser.id) return;
+  
+  console.log('🎯 Inicializando recomendações...');
+  
+  try {
+    // Carregar favoritos primeiro
+    await loadUserFavorites();
+    
+    // Se tiver favoritos, gerar recomendações baseadas neles
+    if (state.favoriteMusicIds && state.favoriteMusicIds.length > 0) {
+      await generateRecommendationsFromFavorites();
+    } else {
+      // Se não tiver favoritos, buscar recomendações da API
+      const result = await callAPI('get_recommendations', {
+        user_id: state.currentUser.id,
+        limit: 5
+      });
+      
+      if (result.success && result.data && result.data.length > 0) {
+        state.recommendations = result.data;
+        renderRecommendations();
+        console.log('📊 Recomendações carregadas da API:', state.recommendations.length);
+      } else {
+        // Fallback: músicas mais populares
+        const popular = state.playlist
+          .sort((a, b) => (b.acoes_vendidas || 0) - (a.acoes_vendidas || 0))
+          .slice(0, 3);
+        
+        state.recommendations = popular.map(t => ({
+          ...t,
+          reason: '📊 Mais popular agora'
+        }));
+        renderRecommendations();
+        console.log('📊 Recomendações fallback (populares):', state.recommendations.length);
+      }
+    }
+    
+    // Carregar histórico de streaming
+    await loadUserStreamingHistory();
+    
+  } catch (error) {
+    console.error('Erro ao inicializar recomendações:', error);
+  }
+}
+
+// ===== SALVAR PESQUISAS NO PERFIL =====
+async function saveSearchToUserProfile(query) {
+    if (!state.currentUser || !query) return;
+    
+    try {
+        // Buscar pesquisas anteriores do servidor
+        let searches = [];
+        
+        try {
+            const userProfile = await callAPI('get_user_profile', {
+                user_id: state.currentUser.id
+            });
+            
+            if (userProfile.success && userProfile.data && userProfile.data.searches) {
+                try {
+                    searches = JSON.parse(userProfile.data.searches);
+                } catch (e) {
+                    searches = [];
+                }
+            }
+        } catch (e) {
+            console.log('Perfil não tem campo searches ainda');
+        }
+        
+        if (!Array.isArray(searches)) {
+            searches = [];
+        }
+        
+        // Remover duplicatas
+        searches = searches.filter(s => s.query !== query);
+        
+        // Adicionar nova pesquisa no início
+        searches.unshift({
+            query: query,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Manter apenas as últimas 20 pesquisas
+        searches = searches.slice(0, 20);
+        
+        // Salvar no servidor
+        await callAPI('update_profile', {
+            user_id: state.currentUser.id,
+            searches: JSON.stringify(searches)
+        });
+        
+        console.log('✅ Pesquisa salva no perfil:', query);
+    } catch (error) {
+        console.error('Erro ao salvar pesquisa:', error);
+    }
+}
+
     // ===== FUNÇÕES DE FAVORITOS E RECOMENDAÇÕES =====
 // ===== CARREGAR FAVORITOS DO USUÁRIO =====
 async function loadUserFavorites() {
@@ -6903,12 +7049,16 @@ const modalHtml = `
         }
     }
 
+// ===== FUNÇÃO initializeApp CORRIGIDA =====
 async function initializeApp() {
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
     updateUserInterface();
     await loadAllData();
-    await loadUserFavorites(); // ← NOVO
+    await loadUserFavorites();
+    
+    // ===== INICIALIZAR RECOMENDAÇÕES =====
+    await initializeRecommendations();
 
     loadYouTubeAPI();
     
@@ -7327,8 +7477,6 @@ function renderMarketplace() {
                 } else if (track.link_youtube) {
                     const videoId = extractYouTubeId(track.link_youtube);
                     if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-
-
                 }
                 
                 const vendasAtuais = track.vendas_atuais || 0;
@@ -8709,62 +8857,8 @@ function playTrack(index) {
         document.head.appendChild(tag);
     }
 
-    function checkStreamingProgress() {
-        if (!state.youtubePlayer || !state.playerReady) return;
-        
-        try {
-            if (typeof state.youtubePlayer.getPlayerState !== 'function' ||
-                typeof state.youtubePlayer.getCurrentTime !== 'function' ||
-                typeof state.youtubePlayer.getDuration !== 'function' ||
-                typeof state.youtubePlayer.getVideoLoadedFraction !== 'function') {
-                return;
-            }
-            
-            const playerState = state.youtubePlayer.getPlayerState();
-            const currentTime = state.youtubePlayer.getCurrentTime() || 0;
-            const duration = state.youtubePlayer.getDuration() || 0;
-            const loadedFraction = state.youtubePlayer.getVideoLoadedFraction() || 0;
-            
-            if (duration === 0 || loadedFraction === 0) {
-                showLoadingMessage('Carregando vídeo...', true);
-                return;
-            }
-            
-            hideLoadingMessage();
-            updateRealProgress(currentTime, duration);
-            
-            if (playerState === YT.PlayerState.PLAYING && 
-                !state.isBuffering && 
-                duration > 0 && 
-                currentTime > 0) {
-                
-                if (currentTime >= 30) {
-                    const now = Date.now();
-                    
-                    if (now - state.streamingLastReward > 29000) {
-                        if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
-                            const currentTrack = state.playlist[state.currentTrackIndex];
-                            
-                            if (currentTrack && currentTrack.id !== state.streamingTrackId) {
-                                state.streamingTrackId = currentTrack.id;
-                                state.streamingLastReward = 0;
-                            }
-                            
-                            if (state.streamingLastReward === 0 || now - state.streamingLastReward > 29000) {
-                                registerRealStreamingReward(currentTrack, currentTime, duration);
-                                state.streamingLastReward = now;
-                            }
-                        }
-                    }
-                }
-            } else {
-                console.log(`📊 Status real: State=${playerState}, Time=${currentTime.toFixed(1)}s, Loaded=${(loadedFraction*100).toFixed(1)}%`);
-            }
-            
-        } catch (error) {
-            console.error('Erro no monitoramento de streaming:', error);
-        }
-    }
+    // ===== VERSÃO CORRIGIDA DO checkStreamingProgress =====
+    // (Já está definida acima, mantendo a versão corrigida)
 
     function updateRealProgress(currentTime, duration) {
         const progressBar = document.getElementById('playerProgressBar');
@@ -8959,46 +9053,6 @@ function playTrack(index) {
             state.streamingTimer = null;
         }
         console.log('⏹️ Monitoramento de streaming parado');
-    }
-
-    function verifyYouTubeView() {
-        return new Promise((resolve) => {
-            if (!state.youtubePlayer || !state.playerReady) {
-                resolve(false);
-                return;
-            }
-            
-            try {
-                const playerState = state.youtubePlayer.getPlayerState();
-                const currentTime = state.youtubePlayer.getCurrentTime() || 0;
-                const duration = state.youtubePlayer.getDuration() || 0;
-                const loadedFraction = state.youtubePlayer.getVideoLoadedFraction() || 0;
-                const availableQuality = state.youtubePlayer.getAvailableQualityLevels?.() || [];
-                
-                const isPlaying = playerState === YT.PlayerState.PLAYING;
-                const hasContent = duration > 30;
-                const isLoaded = loadedFraction > 0.5;
-                const hasQuality = availableQuality.length > 0;
-                const isProgressing = currentTime > 5;
-                
-                const isRealView = isPlaying && hasContent && isLoaded && hasQuality && isProgressing;
-                
-                console.log('🔍 Verificação REAL do YouTube:', {
-                    isPlaying,
-                    hasContent,
-                    isLoaded,
-                    hasQuality,
-                    isProgressing,
-                    result: isRealView ? '✅ VIEW REAL' : '❌ NÃO CONTOU'
-                });
-                
-                resolve(isRealView);
-                
-            } catch (error) {
-                console.error('Erro ao verificar view:', error);
-                resolve(false);
-            }
-        });
     }
 
     function extractYouTubeId(url) {
@@ -9335,8 +9389,121 @@ function initializeYouTubePlayer(videoId) {
         }
     }
 
-    function playNext() {
-    playQueue.playNext();
+// ===== PRÓXIMA MÚSICA COM RECOMENDAÇÕES CORRIGIDA =====
+async function playNext() {
+  // Verificar se tem próxima na fila
+  if (playQueue.currentIndex < playQueue.items.length - 1) {
+    playQueue.currentIndex++;
+    playQueue.playCurrent();
+    return;
+  }
+  
+  // Se não tem mais na fila, buscar recomendações
+  if (state.currentUser) {
+    showLoading('Buscando próximas músicas...');
+    
+    try {
+      // 1. TENTAR RECOMENDAÇÕES PERSONALIZADAS DA API
+      const result = await callAPI('get_recommendations', {
+        user_id: state.currentUser.id,
+        limit: 10
+      });
+      
+      let tracks = [];
+      
+      if (result.success && result.data && result.data.length > 0) {
+        tracks = result.data;
+        console.log('🎯 Recomendações da API:', tracks.length);
+      } else {
+        // 2. FALLBACK: USAR FAVORITOS LOCAIS
+        console.log('🔄 API sem recomendações, usando favoritos locais');
+        tracks = state.playlist.filter(t => 
+          state.favoriteMusicIds.includes(t.id.toString())
+        );
+        
+        if (tracks.length === 0) {
+          // 3. FALLBACK FINAL: MÚSICAS POPULARES
+          tracks = state.playlist
+            .sort((a, b) => (b.acoes_vendidas || 0) - (a.acoes_vendidas || 0))
+            .slice(0, 5);
+        }
+      }
+      
+      // Remover músicas já na fila
+      const currentIds = playQueue.items.map(item => item.trackId);
+      const newTracks = tracks.filter(t => !currentIds.includes(t.id));
+      
+      if (newTracks.length > 0) {
+        let added = 0;
+        
+        for (const track of newTracks) {
+          // Procurar na playlist interna
+          let internalIndex = state.playlist.findIndex(m => m.id === track.id);
+          
+          if (internalIndex >= 0) {
+            playQueue.items.push({
+              type: 'internal',
+              index: internalIndex,
+              track: state.playlist[internalIndex],
+              trackId: track.id,
+              isRecommendation: true
+            });
+            added++;
+          } else {
+            // Procurar na externa
+            let externalIndex = state.externalPlaylist.findIndex(m => m.id === track.id);
+            if (externalIndex >= 0) {
+              playQueue.items.push({
+                type: 'external',
+                index: externalIndex,
+                track: state.externalPlaylist[externalIndex],
+                trackId: track.id,
+                isRecommendation: true
+              });
+              added++;
+            }
+          }
+        }
+        
+        if (added > 0) {
+          // Avançar para a próxima recomendação
+          playQueue.currentIndex++;
+          playQueue.playCurrent();
+          showToast(`🎵 +${added} recomendações adicionadas`, 'success', 2000);
+          hideLoading();
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar recomendações:', error);
+    }
+    
+    hideLoading();
+  }
+  
+  // FALLBACK FINAL: música aleatória da playlist
+  if (state.isRepeat) {
+    // Repetir a música atual
+    if (state.youtubePlayer && typeof state.youtubePlayer.seekTo === 'function') {
+      state.youtubePlayer.seekTo(0);
+      state.youtubePlayer.playVideo();
+      return;
+    }
+  }
+  
+  // Buscar música aleatória da playlist interna
+  const availableTracks = state.playlist.filter(t => t.status === 'ativo');
+  if (availableTracks.length > 0) {
+    const randomIndex = Math.floor(Math.random() * availableTracks.length);
+    const track = availableTracks[randomIndex];
+    const originalIndex = state.playlist.findIndex(t => t.id === track.id);
+    playTrack(originalIndex);
+    showToast('🎲 Tocando música aleatória', 'info', 1500);
+  } else {
+    showToast('Fim da fila de reprodução', 'info');
+    state.isPlaying = false;
+    updatePlayerIcons();
+  }
 }
 
    function playPrevious() {
@@ -9692,13 +9859,14 @@ async function confirmInvestment() {
         }
     }
 
-// ===== TOGGLE FAVORITO MELHORADO =====
+// ===== TOGGLE FAVORITO CORRIGIDO =====
 async function toggleFavoriteMusic(musicId, trackIndex = null) {
   if (!state.currentUser || !state.currentUser.id) { 
     showToast('Faça login para favoritar', 'error'); 
     return; 
   }
   
+  // Verificar se a música existe
   const musicExists = 
     state.playlist.some(m => m.id === musicId) || 
     state.externalPlaylist.some(m => m.id === musicId);
@@ -9710,13 +9878,11 @@ async function toggleFavoriteMusic(musicId, trackIndex = null) {
   
   const isFavorite = state.favoriteMusicIds?.includes(musicId.toString());
   
-  // Atualizar estado local
+  // Atualizar estado local IMEDIATAMENTE (UI Responsiva)
   if (isFavorite) {
     state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
-    showToast('⭐ Removido dos favoritos', 'success');
   } else {
     state.favoriteMusicIds.push(musicId.toString());
-    showToast('⭐ Adicionado aos favoritos!', 'success');
   }
   
   // Salvar no localStorage
@@ -9724,10 +9890,9 @@ async function toggleFavoriteMusic(musicId, trackIndex = null) {
     state.currentUser.favorite_music_ids = state.favoriteMusicIds;
     localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
     localStorage.setItem(`miv_favorites_${state.currentUser.id}`, JSON.stringify(state.favoriteMusicIds));
-    console.log('💾 Favoritos salvos:', state.favoriteMusicIds);
   }
   
-  // Atualizar UI
+  // Atualizar UI imediatamente
   renderMarketplace();
   renderExternalMarketplace();
   renderPlaylists();
@@ -9737,7 +9902,7 @@ async function toggleFavoriteMusic(musicId, trackIndex = null) {
     updateFavoriteButton(isNowFavorite);
   }
   
-  // Salvar no servidor
+  // Registrar no servidor (em background)
   try {
     const result = await callAPI('toggle_favorite', { 
       user_id: state.currentUser.id,
@@ -9746,14 +9911,37 @@ async function toggleFavoriteMusic(musicId, trackIndex = null) {
     });
     
     if (result.success) {
-      console.log('✅ Favorito sincronizado com servidor');
+      showToast(isFavorite ? '⭐ Removido dos favoritos' : '⭐ Adicionado aos favoritos!', 'success', 1500);
       
-      // GERAR NOVAS RECOMENDAÇÕES BASEADAS NOS FAVORITOS ATUALIZADOS
+      // Registrar interação para recomendações
+      await callAPI('register_interaction', {
+        user_id: state.currentUser.id,
+        music_id: musicId,
+        type: isFavorite ? 'unfavorite' : 'favorite',
+        value: isFavorite ? -5 : 10,
+        source: 'web'
+      });
+      
+      // ATUALIZAR RECOMENDAÇÕES
       await generateRecommendationsFromFavorites();
+      
+      console.log('✅ Favorito sincronizado com servidor');
+    } else {
+      // Reverter se falhou
+      if (isFavorite) {
+        state.favoriteMusicIds.push(musicId.toString());
+      } else {
+        state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
+      }
+      // Re-renderizar para mostrar estado correto
+      renderMarketplace();
+      renderExternalMarketplace();
+      renderPlaylists();
+      showToast('Erro ao salvar favorito', 'error');
     }
   } catch (error) {
     console.error('Erro ao sincronizar favorito:', error);
-    showToast('Favorito salvo localmente', 'warning');
+    showToast('Favorito salvo localmente', 'warning', 2000);
   }
 }
 
@@ -10312,7 +10500,9 @@ async function performSearch() {
     } finally {
         hideLoading();
     }
-}/**
+}
+
+/**
  * Busca vídeos no YouTube usando a API v3.
  */
 // ========== FUNÇÃO searchYouTube CORRIGIDA (SUBSTITUA ESTA) ==========
@@ -10554,7 +10744,7 @@ function showSearchHistory() {
     resultsContainer.style.display = 'block';
 }
 
-// Adicionar evento para mostrar histórico quando o input estiver vazio e em foco//
+// Adicionar evento para mostrar histórico quando o input estiver vazio e em foco
 const searchInput = document.getElementById('searchInput');
 if (searchInput) {
     searchInput.addEventListener('focus', () => {
@@ -10563,12 +10753,59 @@ if (searchInput) {
         }
     });
 }
-/**
- * Exibe os resultados combinados na interface.
- */
-/**
- * Exibe os resultados combinados na interface.
- */
+
+// ===== SALVAR PESQUISAS NO PERFIL =====
+async function saveSearchToUserProfile(query) {
+    if (!state.currentUser || !query) return;
+    
+    try {
+        // Buscar pesquisas anteriores do servidor
+        let searches = [];
+        
+        try {
+            const userProfile = await callAPI('get_user_profile', {
+                user_id: state.currentUser.id
+            });
+            
+            if (userProfile.success && userProfile.data && userProfile.data.searches) {
+                try {
+                    searches = JSON.parse(userProfile.data.searches);
+                } catch (e) {
+                    searches = [];
+                }
+            }
+        } catch (e) {
+            console.log('Perfil não tem campo searches ainda');
+        }
+        
+        if (!Array.isArray(searches)) {
+            searches = [];
+        }
+        
+        // Remover duplicatas
+        searches = searches.filter(s => s.query !== query);
+        
+        // Adicionar nova pesquisa no início
+        searches.unshift({
+            query: query,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Manter apenas as últimas 20 pesquisas
+        searches = searches.slice(0, 20);
+        
+        // Salvar no servidor
+        await callAPI('update_profile', {
+            user_id: state.currentUser.id,
+            searches: JSON.stringify(searches)
+        });
+        
+        console.log('✅ Pesquisa salva no perfil:', query);
+    } catch (error) {
+        console.error('Erro ao salvar pesquisa:', error);
+    }
+}
+
 /**
  * Exibe os resultados combinados na interface.
  */
@@ -10646,6 +10883,7 @@ function displaySearchResults(internal, external, youtube, query) {
         });
     }, 100);
 }
+
 /**
  * Toca o resultado selecionado e gera recomendações.
  */
@@ -10670,6 +10908,7 @@ async function playSearchResult(index, item) {
         }
     }
 }
+
 /**
  * Adiciona um vídeo do YouTube como item temporário na Bolsa Externa e toca.
  */
@@ -11472,7 +11711,111 @@ async function acceptTradeOffer(offerId) {
         }
     }
 }
+async function declineTradeOffer(offerId) {
+    if (!confirm('Recusar esta oferta?')) return;
+    
+    const btn = event?.target;
+    const originalText = btn?.innerHTML;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Recusando...';
+    }
+    
+    try {
+        const result = await callAPI('process_trade', { 
+            trade_id: offerId,
+            action_type: 'decline',
+            user_id: state.currentUser.id
+        });
+        
+        if (result?.success) {
+            showToast('Oferta recusada', 'info');
+            
+            // Remover a oferta da lista local
+            if (tradeOffers.received) {
+                tradeOffers.received = tradeOffers.received.filter(o => o.id !== offerId);
+            }
+            
+            // Adicionar ao histórico
+            const declinedOffer = tradeOffers.received?.find(o => o.id === offerId);
+            if (declinedOffer && tradeOffers.history) {
+                tradeOffers.history.unshift({
+                    ...declinedOffer,
+                    status: 'declined',
+                    completed_at: new Date().toISOString()
+                });
+            }
+            
+            // Atualizar UI
+            renderTradeOffers('received');
+            await loadTradeOffers();
+        } else {
+            showToast(result?.message || 'Erro ao recusar', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Erro ao recusar oferta:', error);
+        showToast('Erro ao recusar oferta', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
 
+async function cancelTradeOffer(offerId) {
+    if (!confirm('Cancelar esta oferta?')) return;
+    
+    const btn = event?.target;
+    const originalText = btn?.innerHTML;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Cancelando...';
+    }
+    
+    try {
+        const result = await callAPI('process_trade', { 
+            trade_id: offerId,
+            action_type: 'cancel',
+            user_id: state.currentUser.id
+        });
+        
+        if (result?.success) {
+            showToast('Oferta cancelada', 'info');
+            
+            // Remover a oferta da lista local
+            if (tradeOffers.sent) {
+                tradeOffers.sent = tradeOffers.sent.filter(o => o.id !== offerId);
+            }
+            
+            // Adicionar ao histórico
+            const cancelledOffer = tradeOffers.sent?.find(o => o.id === offerId);
+            if (cancelledOffer && tradeOffers.history) {
+                tradeOffers.history.unshift({
+                    ...cancelledOffer,
+                    status: 'cancelled',
+                    completed_at: new Date().toISOString()
+                });
+            }
+            
+            // Atualizar UI
+            renderTradeOffers('sent');
+            await loadTradeOffers();
+        } else {
+            showToast(result?.message || 'Erro ao cancelar', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Erro ao cancelar oferta:', error);
+        showToast('Erro ao cancelar oferta', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
     // ========== FUNÇÕES DOS MODAIS DE TERMOS ==========
     function openTermsModal() {
         document.getElementById('termsContent').innerHTML = `
@@ -12375,7 +12718,145 @@ function gerarTransacoesSimuladas() {
     
     return transacoes.join('');
 }
+// ========== AQUI COLE O NOVO CÓDIGO ==========
+// ========== FORÇAR MODO DESKTOP PARA ÁUDIO EM BACKGROUND ==========
 
+// Função que tenta manter o áudio ativo mesmo com tela bloqueada
+function forceBackgroundAudio() {
+    console.log('🎵 Tentando manter áudio em background...');
+    
+    // 1. Criar um elemento de áudio "fantasma" que mantém o contexto ativo
+    if (!window._bgAudioContext) {
+        try {
+            // Criar um AudioContext que nunca é suspenso
+            window._bgAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Tentar manter o contexto ativo
+            if (window._bgAudioContext.state === 'suspended') {
+                window._bgAudioContext.resume();
+            }
+            
+            // Criar um oscilador silencioso que mantém o contexto ativo
+            const oscillator = window._bgAudioContext.createOscillator();
+            const gain = window._bgAudioContext.createGain();
+            gain.gain.value = 0.001; // Quase silencioso
+            oscillator.connect(gain);
+            gain.connect(window._bgAudioContext.destination);
+            oscillator.start();
+            
+            console.log('✅ Contexto de áudio de background ativado');
+        } catch (e) {
+            console.log('⚠️ Erro ao criar contexto de áudio:', e);
+        }
+    }
+}
+
+// 2. Forçar o player a continuar quando a tela é bloqueada
+function keepPlayerAlive() {
+    // Verificar se o player do YouTube existe
+    if (state.youtubePlayer && typeof state.youtubePlayer.getPlayerState === 'function') {
+        try {
+            const playerState = state.youtubePlayer.getPlayerState();
+            
+            // Se estiver pausado mas deveria estar tocando, reiniciar
+            if (playerState === 2 && state.isPlaying) {
+                console.log('🔄 Player pausado pelo sistema, reiniciando...');
+                state.youtubePlayer.playVideo();
+            }
+            
+            // Se estiver em buffering, forçar play
+            if (playerState === 3 && state.isPlaying) {
+                console.log('🔄 Player em buffering, forçando play...');
+                setTimeout(() => {
+                    try {
+                        state.youtubePlayer.playVideo();
+                    } catch (e) {}
+                }, 1000);
+            }
+        } catch (e) {
+            console.log('Erro ao verificar player:', e);
+        }
+    }
+}
+
+// 3. Detectar quando a tela é bloqueada/desbloqueada
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // Tela bloqueada ou app em segundo plano
+        console.log('📱 Tela bloqueada - mantendo áudio...');
+        forceBackgroundAudio();
+        
+        // Tentar manter o player a cada 5 segundos
+        if (window._keepAliveInterval) {
+            clearInterval(window._keepAliveInterval);
+        }
+        window._keepAliveInterval = setInterval(() => {
+            if (document.hidden && state.isPlaying) {
+                keepPlayerAlive();
+                forceBackgroundAudio();
+            }
+        }, 3000);
+        
+    } else {
+        // Tela desbloqueada
+        console.log('📱 Tela desbloqueada');
+        if (window._keepAliveInterval) {
+            clearInterval(window._keepAliveInterval);
+            window._keepAliveInterval = null;
+        }
+    }
+});
+
+// 4. Forçar o áudio quando o usuário interage com a tela
+document.addEventListener('touchstart', () => {
+    // Qualquer toque na tela mantém o áudio ativo
+    if (state.isPlaying && state.youtubePlayer) {
+        try {
+            const playerState = state.youtubePlayer.getPlayerState();
+            if (playerState !== 1) {
+                state.youtubePlayer.playVideo();
+            }
+        } catch (e) {}
+    }
+}, { passive: true });
+
+// 5. Prevenir que o navegador suspenda o áudio
+function preventAudioSuspension() {
+    // Criar um loop de áudio "fantasma" se necessário
+    if (!window._preventSuspend) {
+        window._preventSuspend = setInterval(() => {
+            try {
+                if (state.isPlaying && state.youtubePlayer) {
+                    const playerState = state.youtubePlayer.getPlayerState();
+                    // Se não estiver tocando mas deveria, reiniciar
+                    if (playerState !== 1 && playerState !== 3) {
+                        console.log('🔄 Prevenindo suspensão do áudio...');
+                        state.youtubePlayer.playVideo();
+                    }
+                }
+            } catch (e) {}
+        }, 5000);
+    }
+}
+
+// 6. Inicializar tudo
+function initBackgroundAudio() {
+    console.log('🎵 Inicializando sistema de áudio em background...');
+    forceBackgroundAudio();
+    preventAudioSuspension();
+}
+
+// Chamar a inicialização
+initBackgroundAudio();
+
+// Também chamar quando o player for criado
+const originalCreatePlayer = createYouTubePlayer;
+createYouTubePlayer = function(elementId, videoId) {
+    originalCreatePlayer(elementId, videoId);
+    setTimeout(forceBackgroundAudio, 1000);
+    setTimeout(preventAudioSuspension, 2000);
+};
+// ========== FIM DO CÓDIGO ADICIONADO ==========
     
 </script>
     
