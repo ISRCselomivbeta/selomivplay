@@ -10,18 +10,38 @@
       "use": "@vercel/static"
     },
     {
-      "src": "public/**/*.pdf",
+      "src": "*.js",
       "use": "@vercel/static"
     },
     {
-      "src": "sw.js",
+      "src": "*.json",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "public/**/*.pdf",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/",
-      "dest": "/index.html"
+      "src": "/api/backend",
+      "dest": "/api/backend.js"
+    },
+    {
+      "src": "/api/backend.js",
+      "dest": "/api/backend.js"
+    },
+    {
+      "src": "/sw.js",
+      "dest": "/sw.js"
+    },
+    {
+      "src": "/manifest.json",
+      "dest": "/manifest.json"
+    },
+    {
+      "src": "/security-bridge.js",
+      "dest": "/security-bridge.js"
     },
     {
       "src": "/confirm-email.html",
@@ -32,20 +52,8 @@
       "dest": "/reset-password.html"
     },
     {
-      "src": "/sw.js",
-      "dest": "/sw.js"
-    },
-    {
       "src": "/termos-de-uso.pdf",
       "dest": "/public/TERMOS%20DE%20USO%20-%20SELO%20MIV%20PLATFORM.pdf"
-    },
-    {
-      "src": "/api/backend",
-      "dest": "/api/backend.js"
-    },
-    {
-      "src": "/api/backend.js",
-      "dest": "/api/backend.js"
     },
     {
       "src": "/(.*)",
@@ -57,6 +65,18 @@
       "source": "/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Service-Worker-Allowed", "value": "/" }
       ]
     }
   ]
