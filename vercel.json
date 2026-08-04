@@ -6,62 +6,54 @@
       "use": "@vercel/node"
     },
     {
-      "src": "*.html",
+      "src": "public/**/*.html",
       "use": "@vercel/static"
     },
     {
-      "src": "*.js",
+      "src": "public/**/*.js",
       "use": "@vercel/static"
     },
     {
-      "src": "*.json",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "public/**/*.pdf",
+      "src": "public/**/*.json",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/",
-      "dest": "/index.html"
+      "dest": "/public/index.html"
     },
     {
       "src": "/api/backend",
       "dest": "/api/backend.js"
     },
     {
-      "src": "/api/backend.js",
-      "dest": "/api/backend.js"
-    },
-    {
-      "src": "/sw.js",
-      "dest": "/sw.js"
-    },
-    {
-      "src": "/manifest.json",
-      "dest": "/manifest.json"
-    },
-    {
-      "src": "/security-bridge.js",
-      "dest": "/security-bridge.js"
-    },
-    {
       "src": "/confirm-email.html",
-      "dest": "/confirm-email.html"
+      "dest": "/public/confirm-email.html"
     },
     {
       "src": "/reset-password.html",
-      "dest": "/reset-password.html"
+      "dest": "/public/reset-password.html"
     },
     {
-      "src": "/termos-de-uso.pdf",
-      "dest": "/public/TERMOS%20DE%20USO%20-%20SELO%20MIV%20PLATFORM.pdf"
+      "src": "/offline.html",
+      "dest": "/public/offline.html"
+    },
+    {
+      "src": "/manifest.json",
+      "dest": "/public/manifest.json"
+    },
+    {
+      "src": "/security-bridge.js",
+      "dest": "/public/security-bridge.js"
+    },
+    {
+      "src": "/sw.js",
+      "dest": "/public/sw.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "/public/$1"
     }
   ],
   "headers": [
@@ -78,12 +70,6 @@
       ]
     },
     {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
-      ]
-    },
-    {
       "source": "/manifest.json",
       "headers": [
         { "key": "Content-Type", "value": "application/json" }
@@ -93,6 +79,12 @@
       "source": "/sw.js",
       "headers": [
         { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
       ]
     }
   ]
