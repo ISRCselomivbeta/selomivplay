@@ -540,17 +540,19 @@ function handleFallback(action, params, res) {
       data: { total_musicas: 0, total_royalties: 0, total_shares_sold: 0, monthly_earnings: 0, musics: [] }
     }),
     
-    // ⭐ FALLBACK PARA RESET DE SENHA (CASO O GAS FALHE)
     request_password_reset: () => ({
       success: true,
       message: 'Email enviado com sucesso! (modo fallback)',
-      dev_link: `https://${req.headers.host || 'selomivplay.vercel.app'}/reset-password.html?token=${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
+      data: {
+        token: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+        email: params.email || 'usuario@email.com'
+      }
     }),
     
     verify_reset_token: () => ({
       success: true,
       message: 'Token válido (modo fallback)',
-      data: { email: 'usuario@email.com' }
+      data: { email: params.email || 'usuario@email.com' }
     }),
     
     reset_password: () => ({
