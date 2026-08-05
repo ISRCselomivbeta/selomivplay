@@ -1,13 +1,188 @@
 {
-  "name": "selo-miv-backend",
-  "version": "7.0.2",
-  "description": "PLAY MY - Backend API",
-  "main": "api/backend.js",
-  "scripts": {
-    "vercel-build": "echo OK"
+  "version": 2,
+  "name": "selo-miv-play",
+  "description": "PLAY MY - Plataforma de Música com Investimentos",
+  "public": false,
+  
+  "builds": [
+    {
+      "src": "api/backend.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "api/**/*.js"
+        ]
+      }
+    }
+  ],
+
+  "routes": [
+    {
+      "src": "/api/backend",
+      "dest": "/api/backend.js",
+      "methods": ["GET", "POST", "OPTIONS"]
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/backend.js",
+      "methods": ["GET", "POST", "OPTIONS"]
+    }
+  ],
+
+  "headers": [
+    {
+      "source": "/(.*).html",
+      "headers": [
+        { "key": "Content-Type", "value": "text/html; charset=utf-8" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" }
+      ]
+    },
+    {
+      "source": "/(.*).js",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
+    {
+      "source": "/(.*).json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
+    {
+      "source": "/(.*).css",
+      "headers": [
+        { "key": "Content-Type", "value": "text/css; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
+    {
+      "source": "/(.*).png",
+      "headers": [
+        { "key": "Content-Type", "value": "image/png" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*).jpg",
+      "headers": [
+        { "key": "Content-Type", "value": "image/jpeg" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*).svg",
+      "headers": [
+        { "key": "Content-Type", "value": "image/svg+xml" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*).ico",
+      "headers": [
+        { "key": "Content-Type", "value": "image/x-icon" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization, X-CSRF-Token, X-Requested-With" },
+        { "key": "Access-Control-Expose-Headers", "value": "X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset" },
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Pragma", "value": "no-cache" },
+        { "key": "Expires", "value": "0" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" }
+      ]
+    }
+  ],
+
+  "rewrites": [
+    {
+      "source": "/api/backend",
+      "destination": "/api/backend.js"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/backend.js"
+    }
+  ],
+
+  "redirects": [
+    {
+      "source": "/api",
+      "destination": "/api/backend",
+      "permanent": true
+    }
+  ],
+
+  "env": {
+    "JWT_SECRET": "@jwt_secret",
+    "EMAIL_PASS": "@email_pass",
+    "GAS_URL": "@gas_url",
+    "NODE_ENV": "production",
+    "DEBUG": "false"
   },
-  "dependencies": {
-    "node-fetch": "^3.3.0",
-    "nodemailer": "^6.9.0"
+
+  "functions": {
+    "api/backend.js": {
+      "memory": 1024,
+      "maxDuration": 10,
+      "runtime": "nodejs20.x"
+    }
+  },
+
+  "crons": [
+    {
+      "path": "/api/backend?action=ping",
+      "schedule": "0 */6 * * *"
+    }
+  ],
+
+  "github": {
+    "enabled": true,
+    "silent": true,
+    "autoAlias": true
+  },
+
+  "regions": ["gru1"],
+  "preview": {
+    "enabled": true,
+    "expire": 86400
+  },
+
+  "traffic": {
+    "percentage": 100
   }
 }
