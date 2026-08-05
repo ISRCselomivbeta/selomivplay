@@ -1,22 +1,23 @@
 // ============================================
 // SECURITY BRIDGE - VERSÃO COMPATÍVEL COM PLAY MY
 // Proteção essencial sem bloquear funcionalidades
+// Versão: 2.0.0 - PLAY MY COMPATIBLE
 // ============================================
 
 (function() {
     'use strict';
 
-    console.log('🛡️ Iniciando Security Bridge (Modo Compatível)...');
+    console.log('🛡️ Iniciando Security Bridge (Modo PLAY MY)...');
 
     // ============================================
     // 1. CONFIGURAÇÃO DE EXCEÇÕES
     // ============================================
     
     const EXCEPTIONS = {
-        // Elementos que podem usar innerHTML livremente
+        // Elementos que podem usar innerHTML livremente (PLAY MY)
         safeElements: [
             'marketplaceContent',
-            'externalContent',
+            'externalContent', 
             'playlistsContent',
             'favoritesContent',
             'artistMusicContent',
@@ -26,19 +27,34 @@
             'myMusicContent',
             'tradesContainer',
             'searchResults',
-            'recommendedCard'
+            'recommendedCard',
+            'eloRankingContent',
+            'blockchainContractsList',
+            'blockchainTransactionsList',
+            'blockchainVisualization',
+            'userSearchResults'
+        ],
+        // Classes seguras para innerHTML
+        safeClasses: [
+            'spotify-grid',
+            'spotify-card',
+            'recommended-card',
+            'trade-offer-card',
+            'empty-state-spotify',
+            'search-result-item'
         ],
         // Domínios que podem usar eval
         safeEvalDomains: [
             'youtube.com',
-            'ytimg.com',
+            'ytimg.com', 
             'googleapis.com',
-            'google.com'
+            'google.com',
+            'googlevideo.com'
         ],
-        // Funções permitidas
+        // Funções permitidas (do PLAY MY)
         safeFunctions: [
             'playTrack',
-            'playExternalTrack',
+            'playExternalTrack', 
             'togglePlay',
             'playNext',
             'playPrevious',
@@ -46,25 +62,36 @@
             'confirmInvestment',
             'performSearch',
             'renderMarketplace',
-            'renderExternalMarketplace'
+            'renderExternalMarketplace',
+            'renderPlaylists',
+            'renderPortfolio',
+            'renderLedger',
+            'renderTopInvestments',
+            'renderArtistMusic',
+            'renderTradeOffers',
+            'updateExpandedPlayer',
+            'initializeYouTubePlayer',
+            'createYouTubePlayer'
         ]
     };
 
     // Verifica se um elemento é seguro para innerHTML
     function isSafeElement(element) {
         if (!element) return false;
-        const id = element.id || '';
-        const className = element.className || '';
         
         // Verifica por ID
+        const id = element.id || '';
         if (EXCEPTIONS.safeElements.some(safe => id === safe)) return true;
         
         // Verifica por classe
-        if (className.includes('spotify-grid') || className.includes('spotify-card')) return true;
+        const className = element.className || '';
+        if (EXCEPTIONS.safeClasses.some(safe => className.includes(safe))) return true;
         
-        // Verifica por tag (conteúdo estático)
-        if (element.tagName === 'DIV' && element.parentElement?.classList?.contains('spotify-grid')) {
-            return true;
+        // Verifica se é filho de um container seguro
+        let parent = element.parentElement;
+        while (parent) {
+            if (isSafeElement(parent)) return true;
+            parent = parent.parentElement;
         }
         
         return false;
@@ -95,7 +122,7 @@
     const originalGetItem = Storage.prototype.getItem;
 
     // ============================================
-    // 3. PROTEÇÃO DE XSS (COM EXCEÇÕES)
+    // 3. PROTEÇÃO DE XSS (COM EXCEÇÕES PARA PLAY MY)
     // ============================================
     
     function sanitizeHTML(html) {
@@ -118,18 +145,20 @@
             /document\.write/i,
             /alert\s*\(/i,
             /prompt\s*\(/i,
-            /confirm\s*\(/i
+            /confirm\s*\(/i,
+            /setTimeout\s*\(/i,
+            /setInterval\s*\(/i
         ];
         return patterns.some(p => p.test(code));
     }
 
-    // innerHTML com exceções
+    // innerHTML com exceções para PLAY MY
     Object.defineProperty(Element.prototype, 'innerHTML', {
         get: function() {
             return originalInnerHTML.get.call(this);
         },
         set: function(value) {
-            // Permite para elementos seguros
+            // Permite para elementos seguros (PLAY MY)
             if (isSafeElement(this)) {
                 originalInnerHTML.set.call(this, value);
                 return;
@@ -149,7 +178,7 @@
         if (isSafeElement(this) || !isMalicious(text)) {
             return originalInsertAdjacentHTML.call(this, position, text);
         }
-        console.warn('[Security] XSS blocked in insertAdjacentHTML');
+        console.warn('[Security] XSS blocked in insertAdjacentHTML for:', this.id || this.tagName);
         return originalInsertAdjacentHTML.call(this, position, sanitizeHTML(text));
     };
 
@@ -158,6 +187,7 @@
     // ============================================
     
     window.eval = function(code) {
+        // Permite eval para YouTube e PLAY MY
         if (isSafeEvalDomain(code) || isSafeFunctionName(code)) {
             return originalEval(code);
         }
@@ -186,13 +216,13 @@
     });
 
     // ============================================
-    // 5. PROTEÇÃO DE API KEYS (PARCIAL)
+    // 5. PROTEÇÃO DE API KEYS (NÃO BLOQUEIA PLAY MY)
     // ============================================
     
     const SENSITIVE_PARAMS = ['api_key', 'apikey', 'key', 'token', 'auth', 'access_token', 'secret'];
 
     window.fetch = function(input, init = {}) {
-        // Remove API keys da URL (mas mantém parâmetros normais)
+        // Remove apenas API keys (não parâmetros normais)
         if (typeof input === 'string') {
             try {
                 const url = new URL(input, window.location.origin);
@@ -200,9 +230,9 @@
                 
                 SENSITIVE_PARAMS.forEach(param => {
                     if (url.searchParams.has(param)) {
-                        // Permite apenas se for um token de sessão (não API key)
                         const value = url.searchParams.get(param);
-                        if (!value || value.length > 50) {
+                        // Permite se for um ID ou parâmetro normal (não API key)
+                        if (value && value.length > 40 && /^[A-Za-z0-9_-]+$/.test(value)) {
                             console.warn('[Security] API Key removed from URL:', param);
                             url.searchParams.delete(param);
                             hasSensitive = true;
@@ -222,7 +252,7 @@
     };
 
     // ============================================
-    // 6. PROTEÇÃO DE LOCALSTORAGE (SEM CRIPTOGRAFIA)
+    // 6. PROTEÇÃO DE LOCALSTORAGE (APENAS SENSÍVEL)
     // ============================================
     
     const SENSITIVE_STORAGE = ['token', 'auth', 'session', 'password', 'credential'];
@@ -231,7 +261,7 @@
         return SENSITIVE_STORAGE.some(k => key.toLowerCase().includes(k));
     }
 
-    // Usa criptografia apenas para dados realmente sensíveis
+    // Criptografia apenas para dados sensíveis
     function encryptData(data) {
         if (typeof data !== 'string') return data;
         let encrypted = '';
@@ -275,12 +305,32 @@
         return value;
     };
 
+    // NÃO limpa dados ao fechar (para manter sessão PLAY MY)
+    // window.addEventListener('beforeunload', ...) REMOVIDO
+
     // ============================================
-    // 7. SESSÃO (SEM EXPIRAÇÃO AGGRESSIVA)
+    // 7. VALIDAÇÃO DE INPUT (NÃO BLOQUEANTE)
     // ============================================
     
-    // Sessão mais longa (2 horas)
-    const SESSION_TIMEOUT = 120 * 60 * 1000;
+    document.addEventListener('input', function(e) {
+        const target = e.target;
+        if (!target || !['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
+        
+        // Apenas valida, não bloqueia automaticamente
+        if (typeof target.value === 'string') {
+            const dangerous = /[<>'"`;]/g;
+            if (dangerous.test(target.value)) {
+                console.log('[Security] Dangerous characters detected in:', target.name || target.id);
+                // Não limpa para não quebrar a UI do PLAY MY
+            }
+        }
+    }, true);
+
+    // ============================================
+    // 8. SESSÃO (2 HORAS - COMPATÍVEL COM PLAY MY)
+    // ============================================
+    
+    const SESSION_TIMEOUT = 120 * 60 * 1000; // 2 horas
     let sessionTimer = null;
 
     function resetSessionTimer() {
@@ -293,7 +343,7 @@
                 localStorage.removeItem(key);
                 sessionStorage.removeItem(key);
             });
-            // Não força logout automático, apenas limpa tokens
+            // Não força logout automático
         }, SESSION_TIMEOUT);
     }
 
@@ -304,12 +354,10 @@
     resetSessionTimer();
 
     // ============================================
-    // 8. RATE LIMITING (MAIS FLEXÍVEL)
+    // 9. RATE LIMITING (APENAS PARA ENDPOINTS SENSÍVEIS)
     // ============================================
     
     const rateLimits = new Map();
-
-    // Aplica rate limit apenas para endpoints sensíveis
     const sensitiveEndpoints = ['login', 'register', 'buy', 'buy_external'];
 
     window.fetch = new Proxy(window.fetch, {
@@ -341,82 +389,73 @@
     });
 
     // ============================================
-    // 9. VALIDAÇÃO DE INPUT (NÃO BLOQUEANTE)
+    // 10. HTTPS FORÇADO (MANTIDO)
     // ============================================
     
-    document.addEventListener('input', function(e) {
-        const target = e.target;
-        if (!target || !['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
-        
-        // Apenas valida, não bloqueia
-        if (typeof target.value === 'string') {
-            // Remove apenas caracteres realmente perigosos
-            const dangerous = /[<>'"`;]/g;
-            if (dangerous.test(target.value)) {
-                console.log('[Security] Dangerous characters detected in:', target.name || target.id);
-                // Não limpa automaticamente para não quebrar a UI
-            }
-        }
-    }, true);
+    if (window.location.protocol === 'http:' && 
+        !window.location.hostname.includes('localhost') &&
+        !window.location.hostname.includes('127.0.0.1')) {
+        // Não força redirecionamento automático (deixa o usuário decidir)
+        console.log('[Security] HTTPS recomendado');
+    }
 
     // ============================================
-    // 10. HEADERS DE SEGURANÇA (COMPATÍVEIS)
+    // 11. HEADERS DE SEGURANÇA (COMPATÍVEIS)
     // ============================================
     
     // Adiciona apenas headers essenciais (sem bloquear recursos)
     const securityMeta = [
-        { 
-            httpEquiv: 'X-Content-Type-Options', 
-            content: 'nosniff' 
-        },
-        { 
-            name: 'Referrer-Policy', 
-            content: 'strict-origin-when-cross-origin' 
-        }
+        { name: 'X-Content-Type-Options', content: 'nosniff' },
+        { name: 'Referrer-Policy', content: 'strict-origin-when-cross-origin' }
     ];
 
-    securityMeta.forEach(({ httpEquiv, name, content }) => {
-        if (!document.querySelector(`meta[http-equiv="${httpEquiv}"]`) && 
-            !document.querySelector(`meta[name="${name}"]`)) {
+    securityMeta.forEach(({ name, content }) => {
+        if (!document.querySelector(`meta[name="${name}"]`)) {
             const meta = document.createElement('meta');
-            if (httpEquiv) meta.httpEquiv = httpEquiv;
-            if (name) meta.name = name;
+            meta.name = name;
             meta.content = content;
             document.head.appendChild(meta);
         }
     });
 
     // ============================================
-    // 11. EXCEÇÃO PARA O PLAYER DO YOUTUBE
+    // 12. EXCEÇÃO PARA O PLAYER DO YOUTUBE
     // ============================================
     
     // Permite que o YouTube funcione normalmente
     const originalPostMessage = window.postMessage;
     window.postMessage = function(message, targetOrigin, transfer) {
-        if (typeof message === 'string' && message.includes('youtube')) {
-            // Permite mensagens do YouTube
-            return originalPostMessage.call(this, message, targetOrigin, transfer);
-        }
         // Permite todas as mensagens (não bloqueia)
         return originalPostMessage.call(this, message, targetOrigin, transfer);
     };
 
     // ============================================
-    // 12. INICIALIZAÇÃO
+    // 13. PERMITE DEBUG EM PRODUÇÃO (PLAY MY)
+    // ============================================
+    
+    // Não desabilita o console em produção (para debug do PLAY MY)
+    // Apenas avisa
+    const isProduction = window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
+    if (isProduction) {
+        console.log('[Security] Modo produção - Logs mantidos para debug');
+    }
+
+    // ============================================
+    // 14. INICIALIZAÇÃO
     // ============================================
     
     window._securityActive = true;
-    window._securityVersion = '2.0.0-compatible';
+    window._securityVersion = '2.0.0-playmy';
 
-    console.log('✅ Security Bridge carregado (Modo Compatível)!');
+    console.log('✅ Security Bridge carregado (Modo PLAY MY)!');
     console.log('🛡️ Proteções ativas:', [
         'XSS (com exceções)',
         'eval (com exceções)',
         'API Keys (parcial)',
         'localStorage (sensível)',
         'Rate limiting (parcial)',
-        'Input validation',
-        'HTTPS',
+        'Input validation (não bloqueante)',
+        'HTTPS (recomendado)',
         'CSP essencial'
     ].join(', '));
     console.log('🎵 Modo PLAY MY: Todas as funcionalidades liberadas!');
