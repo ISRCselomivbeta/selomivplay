@@ -205,6 +205,7 @@ module.exports = async (req, res) => {
                 return res.status(200).json(gasResult.data);
             }
 
+            // Fallback com dados conhecidos
             const realStats = {
                 'fJ9rUzIMcZQ': { views: 6200000000, likes: 18000000, comments: 2000000 },
                 '4NRXx6U8ABQ': { views: 850000000, likes: 12000000, comments: 800000 }
@@ -250,6 +251,7 @@ module.exports = async (req, res) => {
                 return res.status(200).json(gasResult.data);
             }
 
+            // Fallback apenas para teste
             return res.status(200).json({
                 success: true,
                 data: {
@@ -340,18 +342,6 @@ module.exports = async (req, res) => {
             });
         }
 
-        // ===== REQUEST WITHDRAWAL =====
-        if (action === 'request_withdrawal') {
-            const gasResult = await callGAS('request_withdrawal', params);
-            if (gasResult.success && gasResult.data) {
-                return res.status(200).json(gasResult.data);
-            }
-            return res.status(200).json({
-                success: true,
-                message: 'Saque solicitado!'
-            });
-        }
-
         // ===== DEFAULT =====
         return res.status(200).json({
             success: true,
@@ -363,7 +353,7 @@ module.exports = async (req, res) => {
                 'get_musicas', 'get_saldo', 'get_carteira', 'get_extrato',
                 'get_top_investments', 'get_playlists',
                 'buy', 'toggle_favorite', 'register_streaming', 'get_streaming_stats',
-                'get_youtube_stats', 'get_external_musicas', 'request_withdrawal'
+                'get_youtube_stats', 'get_external_musicas'
             ],
             timestamp: new Date().toISOString()
         });
