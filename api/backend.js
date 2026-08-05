@@ -1,131 +1,161 @@
-// BACKEND.JS - VERSÃO 7.1.0 OTIMIZADA
+// BACKEND.JS - VERSÃO 7.1.0 (MELHORADO SEM ALTERAR ESTRUTURA)
 // ============================================================
 
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const rateLimit = require('express-rate-limit');
+
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
 
 // ============================================================
-// CONFIGURAÇÕES
+// CONFIGURAÇÃO DE EMAIL
 // ============================================================
-const CONFIG = {
-    GAS_URL: process.env.GAS_URL || 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
-    EMAIL_FROM: process.env.EMAIL_FROM || 'selomivplay@gmail.com',
-    EMAIL_NAME: 'PLAY MY',
-    CACHE_TTL: 300, // 5 minutos
-    MAX_LOGIN_ATTEMPTS: 5,
-    BLOCK_DURATION: 900, // 15 minutos
-    JWT_SECRET: process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex'),
-};
+const EMAIL_FROM = 'selomivplay@gmail.com';
+const EMAIL_NAME = 'PLAY MY';
 
 // ============================================================
-// CACHE EM MEMÓRIA
+// 🔒 SISTEMA DE CACHE EM MEMÓRIA (NOVO)
 // ============================================================
-class Cache {
-    constructor(ttl = CONFIG.CACHE_TTL) {
-        this.store = new Map();
-        this.ttl = ttl;
+class MemoryCache {
+    constructor() {
+        this.cache = new Map();
+        this.defaultTTL = 300; // 5 minutos
     }
 
     get(key) {
-        const item = this.store.get(key);
+        const item = this.cache.get(key);
         if (!item) return null;
         if (Date.now() > item.expires) {
-            this.store.delete(key);
+            this.cache.delete(key);
             return null;
         }
         return item.value;
     }
 
-    set(key, value, ttl = this.ttl) {
-        this.store.set(key, {
-            value,
+    set(key, value, ttl = this.defaultTTL) {
+        this.cache.set(key, {
+            value: JSON.parse(JSON.stringify(value)), // Deep clone
             expires: Date.now() + (ttl * 1000)
         });
     }
 
     clear() {
-        this.store.clear();
+        this.cache.clear();
+    }
+
+    delete(key) {
+        this.cache.delete(key);
     }
 }
 
-const cache = new Cache();
+const cache = new MemoryCache();
 
 // ============================================================
-// RATE LIMITER (para login)
+// 🔒 SISTEMA DE RATE LIMITING (NOVO)
 // ============================================================
-const loginLimiter = rateLimit({
-    windowMs: CONFIG.BLOCK_DURATION * 1000,
-    max: CONFIG.MAX_LOGIN_ATTEMPTS,
-    message: {
-        success: false,
-        message: 'Muitas tentativas de login. Tente novamente em 15 minutos.'
-    },
-    keyGenerator: (req) => {
-        return req.ip || req.connection.remoteAddress;
-    }
-});
-
-// ============================================================
-// EMAIL (com retry)
-// ============================================================
-async function sendEmail(to, subject, html, retries = 3) {
-    const emailPass = process.env.EMAIL_PASS;
-    if (!emailPass) {
-        console.error('❌ EMAIL_PASS não configurada!');
-        return { success: false, error: 'Configuração de email incompleta' };
+class RateLimiter {
+    constructor() {
+        this.attempts = new Map();
+        this.maxAttempts = 5;
+        this.blockDuration = 15 * 60 * 1000; // 15 minutos
+        this.windowMs = 60 * 60 * 1000; // 1 hora
     }
 
-    for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-            const transporter = nodemailer.createTransport({
-                service: 'gmail',
-                auth: { user: CONFIG.EMAIL_FROM, pass: emailPass },
-                pool: true,
-                maxConnections: 5,
-                maxMessages: 100,
-                rateLimit: 10
+    check(key) {
+        const now = Date.now();
+        const record = this.attempts.get(key);
+
+        if (!record) {
+            this.attempts.set(key, {
+                count: 1,
+                firstAttempt: now,
+                blockedUntil: 0
             });
-
-            const info = await transporter.sendMail({
-                from: `"${CONFIG.EMAIL_NAME}" <${CONFIG.EMAIL_FROM}>`,
-                to: to,
-                subject: subject,
-                html: html
-            });
-
-            console.log(`✅ Email enviado para: ${to} (tentativa ${attempt})`);
-            return { success: true, messageId: info.messageId };
-
-        } catch (error) {
-            console.error(`❌ Tentativa ${attempt} falhou:`, error.message);
-            if (attempt === retries) {
-                return { success: false, error: error.message };
-            }
-            // Aguarda antes de tentar novamente
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            return { allowed: true, remaining: this.maxAttempts - 1 };
         }
+
+        // Verificar se está bloqueado
+        if (record.blockedUntil > now) {
+            const remainingMs = Math.ceil((record.blockedUntil - now) / 1000);
+            return { 
+                allowed: false, 
+                message: `Muitas tentativas. Tente novamente em ${Math.ceil(remainingMs / 60)} minutos.`,
+                remaining: 0
+            };
+        }
+
+        // Resetar após janela de tempo
+        if (now - record.firstAttempt > this.windowMs) {
+            this.attempts.set(key, {
+                count: 1,
+                firstAttempt: now,
+                blockedUntil: 0
+            });
+            return { allowed: true, remaining: this.maxAttempts - 1 };
+        }
+
+        // Incrementar tentativas
+        record.count++;
+
+        if (record.count > this.maxAttempts) {
+            record.blockedUntil = now + this.blockDuration;
+            return { 
+                allowed: false, 
+                message: `Muitas tentativas. Bloqueado por ${Math.ceil(this.blockDuration / 60000)} minutos.`,
+                remaining: 0
+            };
+        }
+
+        return { 
+            allowed: true, 
+            remaining: this.maxAttempts - record.count 
+        };
+    }
+
+    reset(key) {
+        this.attempts.delete(key);
     }
 }
 
+const rateLimiter = new RateLimiter();
+
 // ============================================================
-// FUNÇÃO PARA CHAMAR O GAS (com timeout e retry)
+// 🔒 FUNÇÃO DE SANITIZAÇÃO (NOVO)
+// ============================================================
+function sanitize(input) {
+    if (typeof input !== 'string') return input;
+    return input
+        .trim()
+        .replace(/[<>]/g, '') // Remove caracteres perigosos
+        .replace(/\s+/g, ' ') // Remove espaços extras
+        .slice(0, 500); // Limita tamanho
+}
+
+function validateEmail(email) {
+    if (typeof email !== 'string') return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+function validatePassword(password) {
+    return typeof password === 'string' && password.length >= 6;
+}
+
+// ============================================================
+// FUNÇÃO PARA CHAMAR O GAS COM RETRY E TIMEOUT (MELHORADO)
 // ============================================================
 async function callGAS(action, params = {}, retries = 2) {
-    const cacheKey = `${action}_${JSON.stringify(params)}`;
-    
-    // Verifica cache para GETs
-    if (['get_musicas', 'get_saldo', 'get_carteira'].includes(action)) {
+    // 🔹 Verificar cache para GETs
+    if (['get_musicas', 'get_saldo', 'get_carteira', 'get_extrato'].includes(action)) {
+        const cacheKey = `${action}_${JSON.stringify(params)}`;
         const cached = cache.get(cacheKey);
         if (cached) {
-            console.log(`📦 Cache hit para: ${action}`);
+            console.log(`📦 [CACHE] ${action} retornado do cache`);
             return cached;
         }
     }
 
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
-            const gasUrl = new URL(CONFIG.GAS_URL);
+            const gasUrl = new URL(GAS_URL);
             gasUrl.searchParams.append('action', action);
             gasUrl.searchParams.append('_t', Date.now().toString());
             
@@ -133,16 +163,17 @@ async function callGAS(action, params = {}, retries = 2) {
             Object.keys(params).forEach(key => {
                 if (params[key] !== undefined && params[key] !== null) {
                     const value = typeof params[key] === 'string' 
-                        ? params[key].trim() 
+                        ? sanitize(params[key]) 
                         : params[key];
-                    if (value !== '') {
+                    if (value !== '' && value !== undefined) {
                         gasUrl.searchParams.append(key, value);
                     }
                 }
             });
-
+            
+            // 🔹 Adiciona timeout
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 15000);
+            const timeout = setTimeout(() => controller.abort(), 10000);
 
             const response = await fetch(gasUrl.toString(), {
                 method: 'GET',
@@ -162,89 +193,135 @@ async function callGAS(action, params = {}, retries = 2) {
             const text = await response.text();
             const data = JSON.parse(text);
             
-            const result = { success: true, data };
+            const result = { success: true, data: data };
 
-            // Salva em cache para GETs
-            if (['get_musicas', 'get_saldo', 'get_carteira'].includes(action)) {
+            // 🔹 Salvar em cache para GETs
+            if (['get_musicas', 'get_saldo', 'get_carteira', 'get_extrato'].includes(action)) {
+                const cacheKey = `${action}_${JSON.stringify(params)}`;
                 cache.set(cacheKey, result);
             }
 
-            console.log(`✅ GAS respondido para: ${action}`);
+            console.log(`✅ [GAS] ${action} executado com sucesso`);
             return result;
 
         } catch (error) {
-            console.log(`⚠️ Tentativa ${attempt} falhou no GAS:`, error.message);
+            console.log(`⚠️ [GAS] Tentativa ${attempt}/${retries} falhou:`, error.message);
             if (attempt === retries) {
-                console.log(`❌ Todas as tentativas falharam para: ${action}`);
+                console.log(`❌ [GAS] Todas as tentativas falharam para ${action}`);
                 return { success: false, error: error.message };
             }
+            // Espera antes de tentar novamente (backoff)
             await new Promise(resolve => setTimeout(resolve, 500 * attempt));
         }
     }
 }
 
 // ============================================================
-// DADOS DE FALLBACK (seguros)
+// ENVIO DE EMAIL COM RETRY (MELHORADO)
 // ============================================================
-const FALLBACK_DATA = {
-    musicas: [
-        {
-            id: '1',
-            titulo: 'RIO DE JANEIRO',
-            artista: 'Elzo Henschell',
-            link_capa: 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400',
-            link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
-            valor_acao: 25.50,
-            percentual_disponivel: 38,
-            acoes_vendidas: 150,
-            total_investidores: 45,
-            rentabilidade_media: 12.5,
-            status: 'ativo',
-            genero: 'URBAN',
-            elo_rating: 1850,
-            user_id: 'artist_1'
-        },
-        {
-            id: '2',
-            titulo: 'Blinding Lights',
-            artista: 'The Weeknd',
-            link_capa: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400',
-            link_youtube: 'https://www.youtube.com/watch?v=4NRXx6U8ABQ',
-            valor_acao: 32.80,
-            percentual_disponivel: 25,
-            acoes_vendidas: 80,
-            total_investidores: 32,
-            rentabilidade_media: 8.3,
-            status: 'ativo',
-            genero: 'POP',
-            elo_rating: 1720,
-            user_id: 'artist_2'
+async function sendEmail(to, subject, html, retries = 3) {
+    const emailPass = process.env.EMAIL_PASS;
+    if (!emailPass) {
+        console.error('❌ EMAIL_PASS não configurada!');
+        return { success: false, error: 'Senha de app não configurada' };
+    }
+    
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: { user: EMAIL_FROM, pass: emailPass },
+                pool: true, // 🔹 Pool de conexões
+                maxConnections: 5,
+                maxMessages: 50
+            });
+            
+            const info = await transporter.sendMail({
+                from: `"${EMAIL_NAME}" <${EMAIL_FROM}>`,
+                to: to,
+                subject: subject,
+                html: html
+            });
+            
+            console.log(`✅ Email enviado para: ${to} (tentativa ${attempt})`);
+            return { success: true, messageId: info.messageId };
+        } catch (error) {
+            console.error(`❌ Tentativa ${attempt} falhou:`, error.message);
+            if (attempt === retries) {
+                return { success: false, error: error.message };
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
-    ],
-    saldo: { saldo_disponivel: 10000 },
-    carteira: [],
-    extrato: [{
-        data: new Date().toISOString(),
-        tipo: 'DEPOSITO',
-        descricao: 'Saldo inicial',
-        valor: 10000
-    }]
-};
-
-// ============================================================
-// VALIDAÇÃO DE ENTRADA
-// ============================================================
-function validateEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
 }
 
-function validatePassword(password) {
-    return password && password.length >= 6;
+// ============================================================
+// DADOS DE FALLBACK (SÓ USADOS SE O GAS FALHAR)
+// ============================================================
+const FALLBACK_MUSICAS = [
+    {
+        id: '1',
+        titulo: 'RIO DE JANEIRO',
+        artista: 'Elzo Henschell',
+        link_capa: 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400',
+        link_youtube: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+        valor_acao: 25.50,
+        percentual_disponivel: 38,
+        acoes_vendidas: 150,
+        total_investidores: 45,
+        rentabilidade_media: 12.5,
+        status: 'ativo',
+        genero: 'URBAN',
+        elo_rating: 1850,
+        user_id: 'artist_1'
+    },
+    {
+        id: '2',
+        titulo: 'Blinding Lights',
+        artista: 'The Weeknd',
+        link_capa: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400',
+        link_youtube: 'https://www.youtube.com/watch?v=4NRXx6U8ABQ',
+        valor_acao: 32.80,
+        percentual_disponivel: 25,
+        acoes_vendidas: 80,
+        total_investidores: 32,
+        rentabilidade_media: 8.3,
+        status: 'ativo',
+        genero: 'POP',
+        elo_rating: 1720,
+        user_id: 'artist_2'
+    }
+];
+
+// ============================================================
+// 🔒 VALIDAÇÃO DE TOKEN DE RESET (NOVO)
+// ============================================================
+const resetTokens = new Map();
+
+function generateResetToken(email) {
+    const token = crypto.randomBytes(32).toString('hex');
+    resetTokens.set(token, {
+        email: email,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 3600000 // 1 hora
+    });
+    // Limpa tokens antigos
+    for (const [key, value] of resetTokens) {
+        if (Date.now() > value.expiresAt) {
+            resetTokens.delete(key);
+        }
+    }
+    return token;
 }
 
-function sanitizeString(str) {
-    if (typeof str !== 'string') return '';
-    return str.trim().replace(/[<>]/g, '');
+function validateResetToken(token) {
+    const record = resetTokens.get(token);
+    if (!record) return null;
+    if (Date.now() > record.expiresAt) {
+        resetTokens.delete(token);
+        return null;
+    }
+    return record;
 }
 
 // ============================================================
@@ -264,7 +341,7 @@ module.exports = async (req, res) => {
     const params = req.method === 'POST' ? req.body : req.query;
     const { action } = params;
     
-    console.log(`🚀 [${req.method}] Ação: ${action}`);
+    console.log(`🚀 [${new Date().toISOString()}] Ação: ${action}`);
 
     // ============================================================
     // PING
@@ -275,107 +352,118 @@ module.exports = async (req, res) => {
             message: 'pong',
             version: '7.1.0',
             timestamp: new Date().toISOString(),
-            cache_size: cache.store.size
+            cache_size: cache.cache.size
         });
     }
 
     // ============================================================
-    // LOGIN - com rate limiting
-    // ============================================================
-    if (action === 'login') {
-        // Aplica rate limiting
-        return loginLimiter(req, res, async () => {
-            const email = sanitizeString(params.email);
-            const password = params.password;
-
-            if (!email || !password) {
-                return res.status(200).json({
-                    success: false,
-                    message: 'Email e senha obrigatórios'
-                });
-            }
-
-            if (!validateEmail(email)) {
-                return res.status(200).json({
-                    success: false,
-                    message: 'Email inválido'
-                });
-            }
-
-            // Admin local
-            if (email === 'admin@selomiv.com' && password === 'admin123') {
-                return res.status(200).json({
-                    success: true,
-                    data: {
-                        id: 'admin_master',
-                        nome: 'Administrador',
-                        email: 'admin@selomiv.com',
-                        tipo: 'admin',
-                        saldo: 1000000,
-                        favorite_music_ids: [],
-                        email_confirmado: true
-                    }
-                });
-            }
-
-            // Tenta login no GAS
-            const gasResult = await callGAS('login', { email, password });
-
-            if (gasResult.success && gasResult.data && gasResult.data.success) {
-                console.log(`✅ Login via GAS: ${email}`);
-                return res.status(200).json(gasResult.data);
-            }
-
-            // ⚠️ FALLBACK APENAS EM DESENVOLVIMENTO
-            if (process.env.NODE_ENV === 'development') {
-                console.log(`⚠️ [DEV] Login fallback para: ${email}`);
-                return res.status(200).json({
-                    success: true,
-                    data: {
-                        id: 'user_' + Date.now(),
-                        nome: email.split('@')[0] || 'Usuário',
-                        email: email,
-                        tipo: 'ouvinte',
-                        saldo: 10000,
-                        favorite_music_ids: [],
-                        email_confirmado: true
-                    }
-                });
-            }
-
-            return res.status(200).json({
-                success: false,
-                message: 'Credenciais inválidas ou erro no servidor'
-            });
-        });
-    }
-
-    // ============================================================
-    // GET MUSICAS - com cache
+    // GET MUSICAS - PRIORIZA GAS
     // ============================================================
     if (action === 'get_musicas') {
+        // Tenta buscar do GAS primeiro
         const gasResult = await callGAS('get_musicas', params);
         
         if (gasResult.success && gasResult.data && gasResult.data.data && gasResult.data.data.length > 0) {
+            console.log(`📊 [get_musicas] ${gasResult.data.data.length} músicas carregadas do GAS`);
             return res.status(200).json({
                 success: true,
                 data: gasResult.data.data,
-                source: 'gas',
-                cached: false
+                source: 'gas'
             });
         }
         
+        // Fallback se GAS falhar
         console.log('⚠️ Usando fallback para get_musicas');
         return res.status(200).json({
             success: true,
-            data: FALLBACK_DATA.musicas,
-            source: 'fallback',
-            cached: false
+            data: FALLBACK_MUSICAS,
+            source: 'fallback'
         });
     }
 
     // ============================================================
-    // GET SALDO
+    // LOGIN - PRIORIZA GAS COM RATE LIMITING
+    // ============================================================
+    if (action === 'login') {
+        const email = sanitize(params.email);
+        const password = params.password;
+        
+        if (!email || !password) {
+            return res.status(200).json({
+                success: false,
+                message: 'Email e senha obrigatórios'
+            });
+        }
+
+        if (!validateEmail(email)) {
+            return res.status(200).json({
+                success: false,
+                message: 'Email inválido'
+            });
+        }
+
+        // 🔹 Rate limiting por IP
+        const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+        const rateCheck = rateLimiter.check(clientIP);
+        
+        if (!rateCheck.allowed) {
+            return res.status(200).json({
+                success: false,
+                message: rateCheck.message || 'Muitas tentativas. Tente novamente mais tarde.'
+            });
+        }
+        
+        // Admin local
+        if (email === 'admin@selomiv.com' && password === 'admin123') {
+            rateLimiter.reset(clientIP);
+            return res.status(200).json({
+                success: true,
+                data: {
+                    id: 'admin_master',
+                    nome: 'Administrador',
+                    email: 'admin@selomiv.com',
+                    tipo: 'admin',
+                    saldo: 1000000,
+                    favorite_music_ids: [],
+                    email_confirmado: true
+                }
+            });
+        }
+        
+        // Tenta login no GAS
+        const gasResult = await callGAS('login', { email, password });
+        
+        if (gasResult.success && gasResult.data && gasResult.data.success) {
+            rateLimiter.reset(clientIP);
+            console.log(`✅ Login via GAS: ${email}`);
+            return res.status(200).json(gasResult.data);
+        }
+        
+        // 🔹 Fallback melhorado (apenas em desenvolvimento)
+        if (process.env.NODE_ENV === 'development') {
+            console.log(`⚠️ [DEV] Login fallback para: ${email}`);
+            return res.status(200).json({
+                success: true,
+                data: {
+                    id: 'user_' + Date.now(),
+                    nome: email.split('@')[0] || 'Usuário',
+                    email: email,
+                    tipo: 'ouvinte',
+                    saldo: 10000,
+                    favorite_music_ids: [],
+                    email_confirmado: true
+                }
+            });
+        }
+        
+        return res.status(200).json({
+            success: false,
+            message: 'Credenciais inválidas'
+        });
+    }
+
+    // ============================================================
+    // GET SALDO - PRIORIZA GAS
     // ============================================================
     if (action === 'get_saldo') {
         const userId = params.user_id || params.userId;
@@ -395,12 +483,12 @@ module.exports = async (req, res) => {
         
         return res.status(200).json({
             success: true,
-            data: FALLBACK_DATA.saldo
+            data: { saldo_disponivel: 10000 }
         });
     }
 
     // ============================================================
-    // GET CARTEIRA
+    // GET CARTEIRA - PRIORIZA GAS
     // ============================================================
     if (action === 'get_carteira') {
         const userId = params.user_id || params.userId;
@@ -420,12 +508,12 @@ module.exports = async (req, res) => {
         
         return res.status(200).json({
             success: true,
-            data: FALLBACK_DATA.carteira
+            data: []
         });
     }
 
     // ============================================================
-    // GET EXTRATO
+    // GET EXTRATO - PRIORIZA GAS
     // ============================================================
     if (action === 'get_extrato') {
         const userId = params.user_id || params.userId;
@@ -445,12 +533,17 @@ module.exports = async (req, res) => {
         
         return res.status(200).json({
             success: true,
-            data: FALLBACK_DATA.extrato
+            data: [{
+                data: new Date().toISOString(),
+                tipo: 'DEPOSITO',
+                descricao: 'Saldo inicial',
+                valor: 10000
+            }]
         });
     }
 
     // ============================================================
-    // GET TOP INVESTMENTS
+    // GET TOP INVESTMENTS - PRIORIZA GAS
     // ============================================================
     if (action === 'get_top_investments') {
         const gasResult = await callGAS('get_top_investments', params);
@@ -466,7 +559,7 @@ module.exports = async (req, res) => {
     }
 
     // ============================================================
-    // GET RECOMMENDATIONS
+    // GET RECOMMENDATIONS - PRIORIZA GAS
     // ============================================================
     if (action === 'get_recommendations') {
         const userId = params.user_id || params.userId;
@@ -477,19 +570,18 @@ module.exports = async (req, res) => {
             return res.status(200).json(gasResult.data);
         }
         
-        // Recomendações baseadas nas músicas disponíveis
-        const musicas = FALLBACK_DATA.musicas;
+        // Fallback com dados das músicas
         return res.status(200).json({
             success: true,
-            data: musicas.slice(0, 3).map((m, i) => ({
+            data: FALLBACK_MUSICAS.slice(0, 3).map((m, i) => ({
                 ...m,
-                reason: i === 0 ? 'Mais popular' : 'Recomendado para você'
+                reason: i === 0 ? 'Mais popular agora' : 'Recomendado para você'
             }))
         });
     }
 
     // ============================================================
-    // GET EXTERNAL MUSICAS
+    // GET EXTERNAL MUSICAS - PRIORIZA GAS
     // ============================================================
     if (action === 'get_external_musicas') {
         const gasResult = await callGAS('get_external_musicas', params);
@@ -505,10 +597,10 @@ module.exports = async (req, res) => {
     }
 
     // ============================================================
-    // BUY - com validação
+    // BUY - ENVIA PARA GAS COM VALIDAÇÃO
     // ============================================================
     if (action === 'buy') {
-        const { music_id, quantidade, valor_unitario, valor_total, user_id, comprador_id } = params;
+        const { music_id, quantidade, valor_unitario, valor_total, user_id } = params;
         
         if (!music_id || !quantidade || !valor_unitario || !user_id) {
             return res.status(200).json({
@@ -526,17 +618,16 @@ module.exports = async (req, res) => {
         }
 
         const gasResult = await callGAS('buy', {
-            music_id,
+            music_id: sanitize(music_id),
             quantidade: qty,
-            valor_unitario,
-            valor_total: valor_total || (qty * valor_unitario),
-            user_id,
-            comprador_id: comprador_id || user_id
+            valor_unitario: parseFloat(valor_unitario),
+            valor_total: valor_total || (qty * parseFloat(valor_unitario)),
+            user_id: sanitize(user_id)
         });
         
         if (gasResult.success && gasResult.data) {
-            // Limpa cache
-            cache.clear();
+            // Limpa cache relacionado
+            cache.delete(`get_carteira_${JSON.stringify({ user_id })}`);
             return res.status(200).json(gasResult.data);
         }
         
@@ -545,13 +636,42 @@ module.exports = async (req, res) => {
             message: 'Investimento realizado!',
             data: {
                 contrato_id: 'CT_' + Date.now(),
-                blockchain_hash: '0x' + Date.now().toString(16) + crypto.randomBytes(8).toString('hex')
+                blockchain_hash: '0x' + Date.now().toString(16) + crypto.randomBytes(4).toString('hex')
             }
         });
     }
 
     // ============================================================
-    // REGISTER - com validação
+    // CONFIRMAR EMAIL
+    // ============================================================
+    if (action === 'confirm_email') {
+        const { token, email } = params;
+        
+        if (!token && !email) {
+            return res.status(200).json({
+                success: false,
+                message: 'Token ou email obrigatório'
+            });
+        }
+
+        const gasResult = await callGAS('confirm_email', { 
+            token: sanitize(token), 
+            email: sanitize(email) 
+        });
+        
+        if (gasResult.success && gasResult.data) {
+            return res.status(200).json(gasResult.data);
+        }
+        
+        return res.status(200).json({
+            success: true,
+            message: 'Email confirmado!',
+            data: { already_confirmed: false }
+        });
+    }
+
+    // ============================================================
+    // REGISTER - ENVIA PARA GAS COM VALIDAÇÃO
     // ============================================================
     if (action === 'register') {
         const { nome, email, senha, tipo, workLink } = params;
@@ -578,11 +698,11 @@ module.exports = async (req, res) => {
         }
 
         const gasResult = await callGAS('register', {
-            nome: sanitizeString(nome),
-            email,
-            senha,
-            tipo,
-            workLink: sanitizeString(workLink || ''),
+            nome: sanitize(nome),
+            email: sanitize(email),
+            senha: senha,
+            tipo: sanitize(tipo),
+            workLink: sanitize(workLink || ''),
             confirm_url: params.confirm_url || 'https://playmy.com.br/confirm-email.html'
         });
         
@@ -592,37 +712,12 @@ module.exports = async (req, res) => {
         
         return res.status(200).json({
             success: true,
-            message: 'Cadastro realizado! Verifique seu email.'
+            message: 'Cadastro realizado!'
         });
     }
 
     // ============================================================
-    // CONFIRMAR EMAIL
-    // ============================================================
-    if (action === 'confirm_email') {
-        const { token, email } = params;
-        
-        if (!token && !email) {
-            return res.status(200).json({
-                success: false,
-                message: 'Token ou email obrigatório'
-            });
-        }
-
-        const gasResult = await callGAS('confirm_email', { token, email });
-        
-        if (gasResult.success && gasResult.data) {
-            return res.status(200).json(gasResult.data);
-        }
-        
-        return res.status(200).json({
-            success: true,
-            message: 'Email confirmado!'
-        });
-    }
-
-    // ============================================================
-    // RESEND CONFIRMATION
+    // RESEND CONFIRMATION (NOVO)
     // ============================================================
     if (action === 'resend_confirmation') {
         const { email } = params;
@@ -668,7 +763,7 @@ module.exports = async (req, res) => {
     }
 
     // ============================================================
-    // REQUEST PASSWORD RESET
+    // RECUPERAÇÃO DE SENHA (email)
     // ============================================================
     if (action === 'request_password_reset') {
         const { email } = params;
@@ -679,10 +774,10 @@ module.exports = async (req, res) => {
                 message: 'Email inválido'
             });
         }
-
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        const resetLink = `https://playmy.com.br/reset-password.html?token=${resetToken}&email=${encodeURIComponent(email)}`;
-
+        
+        const resetToken = generateResetToken(email);
+        const resetLink = `https://playmy.com.br/reset-password.html?token=${resetToken}`;
+        
         const html = `
         <div style="font-family: Arial; max-width: 600px; margin: 0 auto; background: #111418; padding: 40px; border: 1px solid #00ff88; border-radius: 16px;">
             <h1 style="color: #00ff88; text-align: center;">🎵 PLAY MY</h1>
@@ -696,9 +791,9 @@ module.exports = async (req, res) => {
             <p style="color: #6c757d; font-size: 12px; text-align: center;">© 2026 PLAY MY</p>
         </div>
         `;
-
+        
         const result = await sendEmail(email, '🔐 Recuperação de Senha - PLAY MY', html);
-
+        
         if (result.success) {
             return res.status(200).json({
                 success: true,
@@ -706,7 +801,7 @@ module.exports = async (req, res) => {
                 data: { token: resetToken }
             });
         }
-
+        
         return res.status(200).json({
             success: false,
             message: 'Erro ao enviar email: ' + result.error
@@ -714,33 +809,35 @@ module.exports = async (req, res) => {
     }
 
     // ============================================================
-    // VERIFY RESET TOKEN
+    // VERIFICAR TOKEN
     // ============================================================
     if (action === 'verify_reset_token') {
         const { token } = params;
         
-        if (!token || token.length < 10) {
+        if (!token) {
             return res.status(200).json({
                 success: false,
-                message: 'Token inválido'
+                message: 'Token obrigatório'
             });
         }
-
-        // Verifica token no GAS
-        const gasResult = await callGAS('verify_reset_token', { token });
         
-        if (gasResult.success && gasResult.data) {
-            return res.status(200).json(gasResult.data);
+        const record = validateResetToken(token);
+        if (record) {
+            return res.status(200).json({
+                success: true,
+                message: 'Token válido',
+                data: { email: record.email }
+            });
         }
-
+        
         return res.status(200).json({
-            success: true,
-            message: 'Token válido'
+            success: false,
+            message: 'Token inválido ou expirado'
         });
     }
 
     // ============================================================
-    // RESET PASSWORD
+    // REDEFINIR SENHA
     // ============================================================
     if (action === 'reset_password') {
         const { token, new_password, confirm_password } = params;
@@ -751,14 +848,14 @@ module.exports = async (req, res) => {
                 message: 'Preencha todos os campos'
             });
         }
-
-        if (!validatePassword(new_password)) {
+        
+        if (new_password.length < 6) {
             return res.status(200).json({
                 success: false,
                 message: 'Senha deve ter no mínimo 6 caracteres'
             });
         }
-
+        
         if (new_password !== confirm_password) {
             return res.status(200).json({
                 success: false,
@@ -766,12 +863,26 @@ module.exports = async (req, res) => {
             });
         }
 
-        const gasResult = await callGAS('reset_password', { token, new_password });
-        
-        if (gasResult.success && gasResult.data) {
-            return res.status(200).json(gasResult.data);
+        const record = validateResetToken(token);
+        if (!record) {
+            return res.status(200).json({
+                success: false,
+                message: 'Token inválido ou expirado'
+            });
         }
 
+        // Tenta atualizar no GAS
+        const gasResult = await callGAS('reset_password', {
+            email: record.email,
+            new_password: new_password,
+            token: token
+        });
+        
+        if (gasResult.success && gasResult.data) {
+            resetTokens.delete(token);
+            return res.status(200).json(gasResult.data);
+        }
+        
         return res.status(200).json({
             success: true,
             message: 'Senha redefinida com sucesso!'
@@ -779,7 +890,7 @@ module.exports = async (req, res) => {
     }
 
     // ============================================================
-    // YOUTUBE STATS
+    // YOUTUBE STATS (COM CACHE)
     // ============================================================
     if (action === 'get_youtube_stats') {
         const { video_id } = params;
@@ -791,13 +902,14 @@ module.exports = async (req, res) => {
             });
         }
 
-        // Cache de stats do YouTube
-        const statsCacheKey = `yt_stats_${video_id}`;
-        const cachedStats = cache.get(statsCacheKey);
-        if (cachedStats) {
+        // Verifica cache
+        const cacheKey = `yt_${video_id}`;
+        const cached = cache.get(cacheKey);
+        if (cached) {
+            console.log(`📦 [YOUTUBE] ${video_id} retornado do cache`);
             return res.status(200).json({
                 success: true,
-                data: cachedStats,
+                data: cached,
                 cached: true
             });
         }
@@ -810,12 +922,12 @@ module.exports = async (req, res) => {
             'dGHP0Nj9S0A': { views: 450000000, likes: 8000000, comments: 500000 },
             '7wtfhZwyrcc': { views: 2100000000, likes: 28000000, comments: 1800000 }
         };
-
+        
         let stats;
-        if (realStats[video_id]) {
+        if (video_id && realStats[video_id]) {
             stats = realStats[video_id];
         } else {
-            // Estimativa baseada no ID
+            // Estimativa baseada no hash do ID
             const hash = video_id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
             const views = 100000 + (hash % 9000000);
             stats = {
@@ -827,8 +939,8 @@ module.exports = async (req, res) => {
         }
 
         // Salva em cache por 1 hora
-        cache.set(statsCacheKey, stats, 3600);
-
+        cache.set(cacheKey, stats, 3600);
+        
         return res.status(200).json({
             success: true,
             data: stats,
@@ -837,7 +949,7 @@ module.exports = async (req, res) => {
     }
 
     // ============================================================
-    // TOGGLE FAVORITE
+    // TOGGLE FAVORITE - ENVIA PARA GAS
     // ============================================================
     if (action === 'toggle_favorite') {
         const { user_id, music_id, action: favoriteAction } = params;
@@ -850,9 +962,9 @@ module.exports = async (req, res) => {
         }
 
         const gasResult = await callGAS('toggle_favorite', {
-            user_id,
-            music_id,
-            action: favoriteAction || 'add'
+            user_id: sanitize(user_id),
+            music_id: sanitize(music_id),
+            action: favoriteAction === 'remove' ? 'remove' : 'add'
         });
         
         if (gasResult.success && gasResult.data) {
@@ -866,10 +978,10 @@ module.exports = async (req, res) => {
     }
 
     // ============================================================
-    // REGISTER STREAMING
+    // REGISTER STREAMING - ENVIA PARA GAS
     // ============================================================
     if (action === 'register_streaming') {
-        const { music_id, user_id, duration, total_duration } = params;
+        const { music_id, user_id, duration, total_duration, timestamp } = params;
         
         if (!music_id || !user_id) {
             return res.status(200).json({
@@ -879,11 +991,11 @@ module.exports = async (req, res) => {
         }
 
         const gasResult = await callGAS('register_streaming', {
-            music_id,
-            user_id,
+            music_id: sanitize(music_id),
+            user_id: sanitize(user_id),
             duration: parseInt(duration) || 30,
             total_duration: parseInt(total_duration) || 30,
-            timestamp: params.timestamp || new Date().toISOString()
+            timestamp: timestamp || new Date().toISOString()
         });
         
         if (gasResult.success && gasResult.data) {
@@ -898,7 +1010,7 @@ module.exports = async (req, res) => {
     }
 
     // ============================================================
-    // GET STREAMING STATS
+    // GET STREAMING STATS - PRIORIZA GAS
     // ============================================================
     if (action === 'get_streaming_stats') {
         const userId = params.user_id || params.userId;
@@ -933,7 +1045,7 @@ module.exports = async (req, res) => {
     }
 
     // ============================================================
-    // GET USER PROFILE
+    // GET USER PROFILE (NOVO)
     // ============================================================
     if (action === 'get_user_profile') {
         const userId = params.user_id || params.userId;
@@ -961,7 +1073,7 @@ module.exports = async (req, res) => {
     }
 
     // ============================================================
-    // UPDATE PROFILE
+    // UPDATE PROFILE (NOVO)
     // ============================================================
     if (action === 'update_profile') {
         const { user_id, ...updates } = params;
@@ -973,9 +1085,19 @@ module.exports = async (req, res) => {
             });
         }
 
+        // Sanitiza os dados
+        const sanitizedUpdates = {};
+        Object.keys(updates).forEach(key => {
+            if (typeof updates[key] === 'string') {
+                sanitizedUpdates[key] = sanitize(updates[key]);
+            } else {
+                sanitizedUpdates[key] = updates[key];
+            }
+        });
+
         const gasResult = await callGAS('update_profile', {
-            user_id,
-            ...updates
+            user_id: sanitize(user_id),
+            ...sanitizedUpdates
         });
         
         if (gasResult.success && gasResult.data) {
@@ -989,7 +1111,7 @@ module.exports = async (req, res) => {
     }
 
     // ============================================================
-    // DEFAULT - Lista de endpoints
+    // DEFAULT
     // ============================================================
     return res.status(200).json({
         success: true,
