@@ -1,15 +1,12 @@
 {
-  "name": "playmy-backend",
-  "version": "6.7.0",
-  "description": "PLAY MY - Backend API",
+  "name": "selo-miv-backend",
+  "version": "6.3.1",
+  "description": "Backend SELO MIV para Vercel",
   "main": "api/backend.js",
-  "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "nodemailer": "^6.9.0",
-    "crypto": "^1.0.1"
-  },
   "scripts": {
-    "start": "node api/backend.js"
+    "vercel-build": "echo OK"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.0"
   }
 }
