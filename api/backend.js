@@ -1,7 +1,6 @@
 // BACKEND.JS - VERCEL SERVERLESS FUNCTION
 // Versão 6.7.0 - PLAY MY
 // ============================================================
-
 // ===== CONFIGURAÇÃO =====
 const SPREADSHEET_ID = '1CwF9hf-lsjYkol-V7r3WOT5ld3dQFqKRTQ8nHcV45Wo';
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
