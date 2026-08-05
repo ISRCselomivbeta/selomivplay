@@ -1,46 +1,5 @@
+esse faz deploy o seu não ?
 {
-  "version": 2,
-  "public": true,
-  "builds": [
-    {
-      "src": "api/backend.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/backend",
-      "dest": "/api/backend.js"
-    },
-    {
-      "src": "/confirm-email.html",
-      "dest": "/public/confirm-email.html"
-    },
-    {
-      "src": "/reset-password.html",
-      "dest": "/public/reset-password.html"
-    },
-    {
-      "src": "/manifest.json",
-      "dest": "/public/manifest.json"
-    },
-    {
-      "src": "/sw.js",
-      "dest": "/public/sw.js"
-    },
-    {
-      "src": "/security-bridge.js",
-      "dest": "/public/security-bridge.js"
-    },
-    {
-      "src": "/offline.html",
-      "dest": "/public/offline.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/index.html"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*).html",
