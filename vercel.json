@@ -13,7 +13,7 @@
       "dest": "/api/backend.js"
     },
     {
-      "src": "/confirm-email.html",
+      "src": "/confirm-email.html", 
       "dest": "/confirm-email.html"
     },
     {
