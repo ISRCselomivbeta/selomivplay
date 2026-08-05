@@ -1,6 +1,5 @@
 🎵 SELO MIV — Plataforma de Participação em Receitas Musicais
 🚀 Visão
-
 O SELO MIV é uma plataforma que transforma músicas em ativos digitais de participação, conectando artistas e público em um novo modelo de monetização baseado em desempenho real.
 
 Nosso objetivo é redefinir a forma como a música é financiada, consumida e monetizada.
