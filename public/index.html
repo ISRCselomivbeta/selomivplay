@@ -4895,16 +4895,6 @@
     };
 
     // ===== FUNÇÕES UTILITÁRIAS =====
-    function formatCurrency(value) {
-        if (value === null || value === undefined || isNaN(value)) value = 0;
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(Number(value));
-    }
-
     function hideLoading() {
         const loading = document.getElementById('loadingScreen');
         if (loading) loading.style.display = 'none';
@@ -5489,8 +5479,8 @@ const CONFIG = {
     MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
     BLOCKCHAIN_ENABLED: true
 };
-        
-// ===== FUNÇÕES UTILITÁRIAS =====
+
+// ===== FUNÇÕES UTILITÁRIAS BÁSICAS =====
 function formatCurrency(value) {
     if (value === null || value === undefined || isNaN(value)) value = 0;
     return new Intl.NumberFormat('pt-BR', {
@@ -5499,13 +5489,6 @@ function formatCurrency(value) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     }).format(Number(value));
-}
-
-function escapeHTML(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
 }
 
 function formatDate(dateString) {
