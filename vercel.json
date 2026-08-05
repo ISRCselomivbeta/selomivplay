@@ -14,27 +14,31 @@
     },
     {
       "src": "/confirm-email.html",
-      "dest": "/confirm-email.html"
+      "dest": "/public/confirm-email.html"
     },
     {
       "src": "/reset-password.html",
-      "dest": "/reset-password.html"
+      "dest": "/public/reset-password.html"
     },
     {
       "src": "/manifest.json",
-      "dest": "/manifest.json"
+      "dest": "/public/manifest.json"
     },
     {
       "src": "/sw.js",
-      "dest": "/sw.js"
+      "dest": "/public/sw.js"
     },
     {
       "src": "/security-bridge.js",
-      "dest": "/security-bridge.js"
+      "dest": "/public/security-bridge.js"
+    },
+    {
+      "src": "/offline.html",
+      "dest": "/public/offline.html"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/public/index.html"
     }
   ],
   "headers": [
