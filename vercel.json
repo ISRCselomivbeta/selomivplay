@@ -1,4 +1,30 @@
 {
+  "version": 2,
+  "public": true,
+  "builds": [
+    {
+      "src": "api/backend.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/backend",
+      "dest": "/api/backend.js"
+    },
+    {
+      "src": "/confirm-email.html",
+      "dest": "/confirm-email.html"
+    },
+    {
+      "src": "/reset-password.html",
+      "dest": "/reset-password.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*).html",
