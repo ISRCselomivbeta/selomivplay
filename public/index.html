@@ -4754,7 +4754,7 @@ a, .auth-link {
 <script>
     // ========== CONFIGURAÇÃO ==========
    const CONFIG = {
-API_URL: 'https://selomivplay.vercel.app/api/backend', // URL absoluta
+    API_URL: typeof BACKEND_CONFIG !== 'undefined' ? BACKEND_CONFIG.API_URL : '/api/backend',
     DEV_MODE: false,
     VERSION: '6.0.0',
     MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
