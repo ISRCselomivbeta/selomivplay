@@ -1,44 +1,53 @@
 // ============================================
-// SECURITY BRIDGE - VERSÃO PLAY MY
-// APENAS PROTEÇÕES ESSENCIAIS - NÃO BLOQUEIA
+// SECURITY BRIDGE - PLAY MY COMPATIBLE
+// VERSÃO: SEM BLOQUEIOS
 // ============================================
 
 (function() {
     'use strict';
 
-    console.log('🛡️ Security Bridge (Modo PLAY MY)');
+    console.log('🛡️ Security Bridge (Play My Mode - Sem bloqueios)');
 
     // ===== SALVAR REFERÊNCIAS ORIGINAIS =====
     const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
     const originalInsertAdjacentHTML = Element.prototype.insertAdjacentHTML;
+    const originalEval = window.eval;
+    const originalFetch = window.fetch;
 
-    // ===== INNERHTML - NÃO BLOQUEIA NADA =====
+    // ===== 1. INNERHTML - PERMITE TUDO =====
     Object.defineProperty(Element.prototype, 'innerHTML', {
         get: function() {
             return originalInnerHTML.get.call(this);
         },
         set: function(value) {
-            // PERMITE TUDO - SEM BLOQUEIO
+            // PERMITE QUALQUER VALOR - SEM BLOQUEIO
             originalInnerHTML.set.call(this, value);
         },
         configurable: true
     });
 
-    // ===== INSERTADJACENTHTML - NÃO BLOQUEIA =====
+    // ===== 2. INSERTADJACENTHTML - PERMITE TUDO =====
     Element.prototype.insertAdjacentHTML = function(position, text) {
         return originalInsertAdjacentHTML.call(this, position, text);
     };
 
-    // ===== EVAL - PERMITE =====
-    // Não bloqueia eval
+    // ===== 3. EVAL - PERMITE TUDO (necessário para YouTube) =====
+    window.eval = function(code) {
+        return originalEval(code);
+    };
 
-    // ===== FETCH - NÃO BLOQUEIA =====
-    // Não bloqueia fetch
+    // ===== 4. FETCH - PERMITE TUDO =====
+    window.fetch = function(input, init) {
+        return originalFetch.call(this, input, init);
+    };
 
-    // ===== LOCALSTORAGE - NÃO BLOQUEIA =====
-    // Não bloqueia localStorage
+    // ===== 5. LOCALSTORAGE - PERMITE TUDO =====
+    // Não modifica localStorage
 
-    console.log('✅ Security Bridge carregado (Modo PLAY MY - sem bloqueios)');
+    // ===== 6. SESSÃO - NÃO EXPIRA =====
+    // Remove o timer de expiração
+
+    console.log('✅ Security Bridge: Modo Play My - SEM BLOQUEIOS');
     console.log('🎵 Todas as funcionalidades liberadas!');
 
 })();
