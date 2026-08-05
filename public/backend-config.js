@@ -1,5 +1,5 @@
 /**
- * BACKEND CONFIG - PLAY MY
+ * BACKEND CONFIG -PLAY MY
  * Versão: 2.0.0 - Modo Seguro
  */
 (function() {
