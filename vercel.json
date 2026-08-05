@@ -1,4 +1,42 @@
 {
+  "version": 2,
+  "public": true,
+  "builds": [
+    {
+      "src": "api/backend.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/backend",
+      "dest": "/api/backend.js"
+    },
+    {
+      "src": "/confirm-email.html",
+      "dest": "/confirm-email.html"
+    },
+    {
+      "src": "/reset-password.html",
+      "dest": "/reset-password.html"
+    },
+    {
+      "src": "/manifest.json",
+      "dest": "/manifest.json"
+    },
+    {
+      "src": "/sw.js",
+      "dest": "/sw.js"
+    },
+    {
+      "src": "/security-bridge.js",
+      "dest": "/security-bridge.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*).html",
