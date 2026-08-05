@@ -27,8 +27,15 @@
      que o antigo data-URI inline para o navegador reconhecer o site como instalável -->
 <link rel="manifest" href="/manifest.json">
     <!-- PERMITIR COMUNICAÇÃO COM YOUTUBE E GOOGLE APPS SCRIPT -->
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://script.google.com https://script.googleusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com;">
-    <!-- Bootstrap 5.3.0 -->
+<!-- ✅ CSP CORRIGIDO -->
+<meta http-equiv="Content-Security-Policy" content="
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://script.google.com https://script.googleusercontent.com https://www.google.com;
+    frame-src https://www.youtube.com https://www.youtube-nocookie.com;
+    connect-src 'self' https://*.vercel.app https://script.google.com https://*.googleapis.com https://*.mercadopago.com.br;
+    img-src 'self' data: https://*.scdn.co https://i.scdn.co https://img.youtube.com https://*.githubusercontent.com https://images.unsplash.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com;
+">    <!-- Bootstrap 5.3.0 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
@@ -12306,19 +12313,51 @@ async function saveSearchToUserProfile(query) {
 </div>
 <!-- SERVICE WORKER PARA FUNCIONAR OFFLINE E EM SEGUNDO PLANO -->
 <script>
-    // ========== SERVICE WORKER PARA PWA ==========
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', async () => {
-            try {
-                // Registrar Service Worker
-                const registration = await navigator.serviceWorker.register('/sw.js');
-                console.log('✅ Service Worker registrado:', registration.scope);
-                
-                // Solicitar permissão para notificações
-                if ('Notification' in window) {
-                    const permission = await Notification.requestPermission();
-                    console.log('📱 Permissão de notificação:', permission);
-                }
+// ========== SERVICE WORKER PARA PWA ==========
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+        try {
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            console.log('✅ Service Worker registrado:', registration.scope);
+            
+            // ✅ NÃO PEDE PERMISSÃO AUTOMATICAMENTE
+            if ('Notification' in window) {
+                console.log('📱 Notificações disponíveis');
+                // A permissão será solicitada quando o usuário clicar
+            }
+            
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                console.log('📱 Rodando como app instalado');
+                document.body.classList.add('app-mode');
+            }
+            
+        } catch (error) {
+            console.error('❌ Erro no Service Worker:', error);
+        }
+    });
+}
+
+// ✅ FUNÇÃO PARA SOLICITAR PERMISSÃO APENAS COM CLIQUE
+function requestNotificationOnClick() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        document.addEventListener('click', function requestPermission() {
+            Notification.requestPermission().then(permission => {
+                console.log('📱 Permissão de notificação:', permission);
+            });
+            document.removeEventListener('click', requestPermission);
+        }, { once: true });
+    }
+}
+
+// Chama a função para preparar a solicitação
+requestNotificationOnClick();
+// Chama esta função em vez de pedir diretamente
+// No lugar do código antigo, coloque:
+if ('Notification' in window) {
+    // Não pede permissão automaticamente
+    console.log('📱 Notificações disponíveis (aguardando interação)');
+    // A permissão será solicitada apenas quando o usuário interagir
+}
                 
                 // Verificar se está rodando como app instalado
                 if (window.matchMedia('(display-mode: standalone)').matches) {
