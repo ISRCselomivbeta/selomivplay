@@ -18,6 +18,18 @@
 
   "routes": [
     {
+      "src": "/backend-config.js",
+      "dest": "/backend-config.js"
+    },
+    {
+      "src": "/security-bridge.js",
+      "dest": "/security-bridge.js"
+    },
+    {
+      "src": "/(.*).js",
+      "dest": "/$1.js"
+    },
+    {
       "src": "/api/backend",
       "dest": "/api/backend.js",
       "methods": ["GET", "POST", "OPTIONS"]
@@ -26,6 +38,10 @@
       "src": "/api/(.*)",
       "dest": "/api/backend.js",
       "methods": ["GET", "POST", "OPTIONS"]
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
 
