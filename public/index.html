@@ -1,10 +1,13 @@
-
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="PLAY MY - Música sem limites">
     <meta name="theme-color" content="#00ff88">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="backend-config.js"></script>
+<script src="security-bridge.js"></script>
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>PLAY MY | Powered by Selo MIV</title>
     <meta name="apple-mobile-web-app-title" content="PLAY MY">
@@ -23,147 +26,8 @@
     <link rel="icon" type="image/png" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
     <link rel="apple-touch-icon" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
     <link rel="shortcut icon" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png" type="image/x-icon">
-    
-    <!-- ===== SCRIPTS INLINE (CORRIGIDOS) ===== -->
-    <script>
-        // ===== BACKEND CONFIG INLINE =====
-        (function() {
-            'use strict';
-            console.log('🔧 Iniciando Backend Config (inline)...');
-            
-            const BACKEND_CONFIG = {
-                VERSION: '7.0.5',
-                API_URL: 'https://selomivplay.vercel.app/api/backend',
-                TIMEOUT: 30000,
-                MAX_RETRIES: 3,
-                OFFLINE_MODE: false,
-                ENVIRONMENT: 'production',
-                DEBUG: false,
-                DEFAULT_HEADERS: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                PUBLIC_ROUTES: [
-                    'login', 'register', 'resend_confirmation',
-                    'confirm_email', 'get_musicas', 'get_external_musicas',
-                    'get_top_investments', 'search_youtube', 'get_youtube_stats'
-                ]
-            };
-            
-            window.BACKEND_CONFIG = BACKEND_CONFIG;
-            
-            // Compatibilidade
-            if (typeof window.CONFIG === 'undefined') {
-                window.CONFIG = {
-                    API_URL: BACKEND_CONFIG.API_URL,
-                    VERSION: BACKEND_CONFIG.VERSION,
-                    DEV_MODE: false,
-                    BLOCKCHAIN_ENABLED: true,
-                    MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv'
-                };
-            }
-            
-            console.log('✅ Backend Config carregado (inline)');
-        })();
-    </script>
-    
-    <script>
-        // ===== SECURITY BRIDGE INLINE =====
-        (function() {
-            'use strict';
-            console.log('🛡️ Iniciando Security Bridge (inline)...');
-            
-            const SECURITY_CONFIG = {
-                sanitizationLevel: 'moderate',
-                allowedDomains: [
-                    'selomivplay.vercel.app',
-                    'playmy.com.br',
-                    'youtube.com',
-                    'ytimg.com',
-                    'cdn.jsdelivr.net',
-                    'fonts.googleapis.com',
-                    'github.com',
-                    'script.google.com',
-                    'googleusercontent.com'
-                ],
-                blockXSS: true,
-                validateURLs: true,
-                protectLocalStorage: true,
-                logSuspicious: true
-            };
-            
-            window.__SECURITY_CONFIG = SECURITY_CONFIG;
-            
-            // Função de escape (já existente no sistema)
-            if (typeof window.escapeHTML === 'undefined') {
-                window.escapeHTML = function(str) {
-                    if (!str) return '';
-                    const div = document.createElement('div');
-                    div.textContent = str;
-                    return div.innerHTML;
-                };
-            }
-            
-            // Exporta helpers
-            window.__security = {
-                escapeHTML: window.escapeHTML,
-                sanitize: function(str) {
-                    if (!str) return '';
-                    return window.escapeHTML(str);
-                },
-                config: SECURITY_CONFIG
-            };
-            
-            // Proteção básica de localStorage
-            if (SECURITY_CONFIG.protectLocalStorage) {
-                const originalSetItem = Storage.prototype.setItem;
-                Storage.prototype.setItem = function(key, value) {
-                    if (typeof value !== 'string') {
-                        value = JSON.stringify(value);
-                    }
-                    return originalSetItem.call(this, key, value);
-                };
-            }
-            
-            console.log('✅ Security Bridge carregado (inline)');
-        })();
-    </script>
-    
-    <script>
-        // ===== TIMEOUT PARA LOADING =====
-        (function() {
-            console.log('⏱️ Configurando timeout de loading...');
-            
-            // Força o fim do loading após 8 segundos
-            setTimeout(function() {
-                const loadingScreen = document.getElementById('loadingScreen');
-                if (loadingScreen && loadingScreen.style.display !== 'none') {
-                    loadingScreen.style.display = 'none';
-                    console.warn('⏱️ Loading screen forçada a fechar (timeout)');
-                    
-                    // Tenta mostrar a tela de autenticação
-                    const authScreen = document.getElementById('authScreen');
-                    if (authScreen && authScreen.style.display === 'none') {
-                        authScreen.style.display = 'flex';
-                    }
-                }
-            }, 8000);
-            
-            // Fallback para funções que podem não estar carregadas
-            window.openAddExternalMusicModal = function() {
-                console.warn('⚠️ openAddExternalMusicModal - função temporária');
-                const modal = document.getElementById('addExternalMusicModal');
-                if (modal) {
-                    modal.classList.add('show');
-                } else {
-                    alert('Função em desenvolvimento. Por favor, aguarde o carregamento completo.');
-                }
-            };
-        })();
-    </script>
-    
     <script src="https://www.youtube.com/iframe_api"></script>
+    <style>
         /* ========== CSS COMPLETO ========== */
         :root {
             --neon-green: #00ff88;
@@ -10825,4 +10689,9 @@ function shareTrack() {
         navigator.clipboard.writeText(`${text}\n${window.location.href}`).then(() => showToast('Link copiado!', 'success'));
     }
 }
+
+// ===== FIM DO JAVASCRIPT =====
 </script>
+<!-- ============================================================ -->
+<!-- ========== FIM DA PARTE 3/3 ========== -->
+<!-- ============================================================ -->
