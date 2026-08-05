@@ -1,5 +1,4 @@
 // ===== SERVICE WORKER - PLAY MY / SELO MIV =====
-// Este arquivo substitui o /sw.js que já existe na raiz do projeto.
 // Antes, o conteúdo do service worker também existia duplicado como uma
 // string JS morta (`swContent`) dentro do index.html, nunca usada de fato —
 // isso foi removido do index.html para não haver duas fontes de verdade.
