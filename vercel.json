@@ -1,72 +1,31 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/backend.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.js",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.json",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.css",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/backend",
-      "dest": "/api/backend.js"
-    },
-    {
-      "src": "/api/backend.js",
-      "dest": "/api/backend.js"
-    },
-    {
-      "src": "/",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
   "headers": [
     {
-      "source": "*.html",
+      "source": "/(.*).html",
       "headers": [
         { "key": "Content-Type", "value": "text/html; charset=utf-8" }
       ]
     },
     {
-      "source": "*.js",
+      "source": "/(.*).js",
       "headers": [
         { "key": "Content-Type", "value": "application/javascript; charset=utf-8" }
       ]
     },
     {
-      "source": "*.json",
+      "source": "/(.*).json",
       "headers": [
         { "key": "Content-Type", "value": "application/json; charset=utf-8" }
       ]
     },
     {
-      "source": "*.css",
+      "source": "/(.*).css",
       "headers": [
         { "key": "Content-Type", "value": "text/css; charset=utf-8" }
       ]
     },
     {
-      "source": "api/backend.js",
+      "source": "/api/backend.js",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
