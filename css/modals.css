@@ -1,0 +1,179 @@
+/* ============================================================
+   MODALS.CSS - Todos os Modais
+   ============================================================ */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100000 !important;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    z-index: 100001 !important;
+}
+
+.modal-overlay.show .modal-content {
+    transform: translateY(0);
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    color: var(--text-light);
+    font-weight: 700;
+    margin-bottom: 0;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: var(--text-light);
+}
+
+/* ===== CONTRACT VIEW ===== */
+.contract-view {
+    background: white;
+    color: #000;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    font-family: 'Courier New', monospace;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* ===== ELO RANKING ===== */
+.elo-ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.elo-ranking-table th {
+    background: rgba(255,255,255,0.05);
+    padding: 12px;
+    text-align: left;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.elo-ranking-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.elo-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+}
+
+.elo-trend-up { color: #28a745; }
+.elo-trend-down { color: #dc3545; }
+.elo-trend-stable { color: #ffc107; }
+
+/* ===== TRADE MODAL ===== */
+#tradeModal.modal-overlay,
+#tradeModal .modal-content {
+    z-index: 200000 !important;
+}
+
+.trade-offer-card {
+    transition: all 0.3s ease;
+}
+
+.trade-offer-card:hover {
+    border-color: var(--neon-green) !important;
+}
+
+.trade-offer-card.pending {
+    border-left: 4px solid #ffc107;
+}
+
+.trade-offer-card.accepted {
+    border-left: 4px solid #28a745;
+}
+
+.trade-offer-card.declined {
+    border-left: 4px solid #dc3545;
+}
+
+.user-search-result {
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.user-search-result:hover {
+    background: rgba(13, 202, 240, 0.1);
+}
+
+/* ===== RESPONSIVE MODALS ===== */
+@media (max-width: 576px) {
+    .modal-content {
+        width: 95%;
+        margin: 10px;
+        max-height: 85vh;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    .btn-group {
+        flex-wrap: wrap;
+    }
+    
+    .btn-group .btn {
+        flex: 1 1 auto;
+        margin: 2px;
+        font-size: 0.8rem;
+        padding: 0.5rem;
+    }
+}
