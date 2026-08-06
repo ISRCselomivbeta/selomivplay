@@ -3,7 +3,7 @@
 // string JS morta (`swContent`) dentro do index.html, nunca usada de fato —
 // isso foi removido do index.html para não haver duas fontes de verdade.
 
-const CACHE_NAME = 'selo-miv-v6.1';
+const CACHE_NAME = 'selo-miv-v6.2';  // ← Nova versão força atualização
 const urlsToCache = [
     '/',
     '/index.html',
