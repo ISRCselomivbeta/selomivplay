@@ -1,0 +1,188 @@
+/* ============================================================
+   RESPONSIVE.CSS - Media Queries
+   ============================================================ */
+
+/* ===== TABLET ===== */
+@media (max-width: 1024px) {
+    .expanded-title {
+        font-size: 2.5rem;
+    }
+    
+    .expanded-album-art {
+        width: 200px;
+        height: 200px;
+    }
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 768px) {
+    :root {
+        --player-height: 250px;
+    }
+
+    body {
+        padding-bottom: calc(250px + env(safe-area-inset-bottom, 0px));
+    }
+    
+    .btn, .btn-miv, .btn-invest, .nav-link, .player-btn, .control-btn {
+        min-height: 48px;
+        min-width: 48px;
+        padding: 12px !important;
+    }
+    
+    .modal-content {
+        max-height: 85vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .player-miv {
+        padding-bottom: env(safe-area-inset-bottom, 10px);
+        height: auto;
+        min-height: var(--player-height);
+        background: linear-gradient(to top, rgba(18,18,18,0.98), rgba(30,30,30,0.95));
+        backdrop-filter: blur(10px);
+    }
+
+    .player-miv {
+        height: auto;
+        min-height: var(--player-height);
+        padding: 0.5rem 1rem;
+    }
+
+    .sidebar {
+        width: 80vw;
+        left: -80vw;
+    }
+    .sidebar.open {
+        left: 0;
+    }
+
+    .youtube-container-expanded {
+        aspect-ratio: 16/9;
+        height: auto;
+    }
+
+    .player-bar {
+        flex-direction: column;
+        height: auto;
+        padding: 1rem 0;
+        gap: 1rem;
+    }
+    
+    .player-track-info,
+    .player-controls-center,
+    .player-controls-right {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .player-track-info { order: 1; }
+    .player-controls-center { order: 2; }
+    .player-controls-right { order: 3; }
+    
+    .expanded-track-info {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .expanded-album-art {
+        width: 200px;
+        height: 200px;
+    }
+    
+    .expanded-title {
+        font-size: 2rem;
+    }
+    
+    .expanded-meta {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .expanded-actions {
+        justify-content: center;
+    }
+
+    .app-header .header-content {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .search-container {
+        order: 3;
+        max-width: 100%;
+        margin: 10px 0 0 0;
+        width: 100%;
+    }
+    
+    .search-submit-btn {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .search-results {
+        position: fixed;
+        top: auto;
+        left: 10px;
+        right: 10px;
+        max-height: 50vh;
+    }
+}
+
+/* ===== SMALL MOBILE ===== */
+@media (max-width: 480px) {
+    .player-miv {
+        padding: 0 1rem;
+    }
+    
+    .expanded-title {
+        font-size: 1.75rem;
+    }
+    
+    .expanded-album-art {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .expanded-controls-top {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+
+/* ===== EXTRA SMALL ===== */
+@media (max-width: 399px) {
+    .spotify-title {
+        font-size: 11px !important;
+    }
+    
+    .spotify-artist {
+        font-size: 9px !important;
+    }
+    
+    .external-badge {
+        font-size: 0.55rem !important;
+        padding: 1px 4px !important;
+    }
+    
+    .spotify-elo {
+        font-size: 8px !important;
+        padding: 1px 3px !important;
+    }
+    
+    .spotify-price {
+        font-size: 10px !important;
+    }
+    
+    .btn-invest {
+        font-size: 8px !important;
+        padding: 3px !important;
+    }
+}
