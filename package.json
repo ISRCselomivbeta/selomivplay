@@ -1,13 +1,13 @@
 {
-  "name": "selo-miv-backend",
+  "name": "selo-miv-platform",
   "version": "7.0.5",
-  "description": "PLAY MY - Backend API Segura",
+  "description": "PLAY MY - Plataforma de Música e Investimentos",
   "main": "api/backend.js",
   "engines": {
     "node": ">=16.0.0"
   },
   "scripts": {
-    "vercel-build": "npm install"
+    "vercel-build": "echo 'Build concluído com sucesso!'"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
