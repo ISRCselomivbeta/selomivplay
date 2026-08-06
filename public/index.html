@@ -13,29 +13,29 @@
     
     <title>PLAY MY | Powered by Selo MIV</title>
     
-    <!-- ===== CSS - CAMINHOS PARA A RAIZ ===== -->
-    <link rel="stylesheet" href="../css/main.css">
-    <link rel="stylesheet" href="../css/auth.css">
-    <link rel="stylesheet" href="../css/player.css">
-    <link rel="stylesheet" href="../css/marketplace.css">
-    <link rel="stylesheet" href="../css/modals.css">
-    <link rel="stylesheet" href="../css/blockchain.css">
-    <link rel="stylesheet" href="../css/responsive.css">
+    <!-- ===== CSS - CAMINHOS ABSOLUTOS ===== -->
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/auth.css">
+    <link rel="stylesheet" href="/css/player.css">
+    <link rel="stylesheet" href="/css/marketplace.css">
+    <link rel="stylesheet" href="/css/modals.css">
+    <link rel="stylesheet" href="/css/blockchain.css">
+    <link rel="stylesheet" href="/css/responsive.css">
     
     <!-- ===== EXTERNAL LIBS ===== -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
     
-    <!-- ===== PWA - DENTRO DE public/ ===== -->
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="images/logo.png">
-    <link rel="apple-touch-icon" href="images/logo.png">
-    <link rel="shortcut icon" href="images/logo.png" type="image/x-icon">
-    <meta name="msapplication-TileImage" content="images/logo.png">
+    <!-- ===== PWA ===== -->
+    <link rel="manifest" href="/public/manifest.json">
+    <link rel="icon" type="image/png" href="/public/images/logo.png">
+    <link rel="apple-touch-icon" href="/public/images/logo.png">
+    <link rel="shortcut icon" href="/public/images/logo.png" type="image/x-icon">
+    <meta name="msapplication-TileImage" content="/public/images/logo.png">
     
     <!-- ===== SECURITY ===== -->
-    <script src="security-bridge.js"></script>
+    <script src="/public/security-bridge.js"></script>
     
     <!-- ===== YOUTUBE API ===== -->
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -45,7 +45,7 @@
 <!-- ===== LOADING SCREEN ===== -->
 <div id="loadingScreen" class="loading-screen">
     <div class="loading-content">
-        <img src="images/logo.png" alt="PLAY MY" width="80" height="80" 
+        <img src="/public/images/logo.png" alt="PLAY MY" width="80" height="80" 
              style="border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 2px solid var(--neon-green); animation: pulse 2s infinite;">
         <p class="text-muted" id="loadingMessage">Carregando dados...</p>
         <div class="progress-loading">
@@ -68,13 +68,13 @@
 <div id="authScreen" class="auth-screen">
     <div class="auth-card">
         <div class="logo-header">
-            <img src="images/logo.png" alt="SELO MIV" width="120" height="120" 
+            <img src="/public/images/logo.png" alt="SELO MIV" width="120" height="120" 
                  style="border-radius: 50%; object-fit: cover; margin-bottom: 1.5rem; border: 2px solid var(--neon-green);">
             <h2 class="text-white mb-2">PLAY MY</h2>
             <p class="text-muted">Música sem limites</p>
         </div>
         
-        <!-- Login Form -->
+        <!-- ===== LOGIN FORM ===== -->
         <div id="loginForm">
             <div id="loginMessage" class="alert d-none"></div>
             <div class="form-group">
@@ -91,7 +91,7 @@
             
             <div class="text-center mb-3">
                 <button type="button" class="btn btn-link btn-sm text-success p-0" 
-                        onclick="window.location.href='reset-password.html'"
+                        onclick="window.location.href='/public/reset-password.html'"
                         style="text-decoration: none; font-size: 0.9rem; font-weight: 600;">
                     <i class="bi bi-question-circle me-1"></i> Esqueceu sua senha?
                 </button>
@@ -102,7 +102,7 @@
             </p>
         </div>
         
-        <!-- Register Form -->
+        <!-- ===== REGISTER FORM ===== -->
         <div id="registerForm" style="display: none;">
             <div id="registerMessage" class="alert d-none"></div>
             <div class="form-group">
@@ -131,10 +131,10 @@
                 <small class="text-muted">Para artistas: informe um link do seu portfólio</small>
             </div>
             
-            <!-- Termos -->
+            <!-- ===== TERMOS ===== -->
             <div class="terms-checkbox">
                 <div class="mb-3">
-                    <a href="termos-de-uso.pdf" target="_blank" class="auth-link">
+                    <a href="/public/termos-de-uso.pdf" target="_blank" class="auth-link">
                         <i class="bi bi-file-text"></i> Termos de Uso
                     </a>
                     <span class="text-muted mx-2">|</span>
@@ -146,7 +146,7 @@
                     <input type="checkbox" id="acceptTermsField" required>
                     <span>
                         <strong class="text-white">Li e concordo</strong> com os
-                        <a href="termos-de-uso.pdf" target="_blank" class="text-muted text-decoration-none">
+                        <a href="/public/termos-de-uso.pdf" target="_blank" class="text-muted text-decoration-none">
                             <i class="bi bi-file-text"></i> Termos de Uso
                         </a>
                         e a
@@ -186,7 +186,7 @@
     <div id="sidebar" class="sidebar">
         <div class="sidebar-header">
             <div class="d-flex align-items-center gap-2">
-                <img src="images/logo.png" alt="SELO MIV" height="32" style="object-fit: contain;">
+                <img src="/public/images/logo.png" alt="SELO MIV" height="32" style="object-fit: contain;">
                 <h4 class="text-white mb-0">MIV PRO</h4>
             </div>
             <button class="sidebar-close" onclick="toggleSidebar()">
@@ -215,15 +215,20 @@
     <header class="app-header">
         <div class="header-content">
             <div class="d-flex align-items-center">
-                <button class="btn text-white me-3" onclick="toggleSidebar()"><i class="bi bi-list fs-3"></i></button>
+                <button class="btn text-white me-3" onclick="toggleSidebar()">
+                    <i class="bi bi-list fs-3"></i>
+                </button>
                 <div class="saldo-display">
                     <h6>CRÉDITO DISPONÍVEL</h6>
                     <h4 id="currentBalance">R$ 0,00</h4>
                 </div>
             </div>
+            
             <div class="d-flex align-items-center">
-                <img src="images/logo.png" alt="SELO MIV" height="32" style="object-fit: contain; margin-right: 10px;">
+                <img src="/public/images/logo.png" alt="SELO MIV" height="32" style="object-fit: contain; margin-right: 10px;">
             </div>
+            
+            <!-- Search -->
             <div class="search-container">
                 <form id="searchForm" onsubmit="event.preventDefault(); performSearch();">
                     <i class="bi bi-search search-icon"></i>
@@ -232,6 +237,7 @@
                 </form>
                 <div id="searchResults" class="search-results" style="display: none;"></div>
             </div>
+
             <div class="d-flex align-items-center gap-2">
                 <span class="blockchain-badge" id="blockchainStatus">⛓️ Blockchain Ativa</span>
                 <div class="user-badge" id="userBadge">Ouvinte</div>
@@ -240,72 +246,178 @@
     </header>
 
     <!-- ============================================================ -->
-    <!-- ===== SECTIONS (RESUMIDAS) ===== -->
+    <!-- ===== SECTIONS ===== -->
     <!-- ============================================================ -->
 
-    <!-- MARKETPLACE -->
+    <!-- ===== MARKETPLACE ===== -->
     <section id="marketplaceSection" class="section active">
         <div class="marketplace-spotify">
-            <div class="section-header-spotify"><h2>Seus mixes mais ouvidos</h2><a href="#" onclick="filterMarketplace('trending')">Mostrar tudo</a></div>
+            <div class="section-header-spotify">
+                <h2>Seus mixes mais ouvidos</h2>
+                <a href="#" onclick="filterMarketplace('trending')">Mostrar tudo</a>
+            </div>
             <div id="marketplaceContent" class="spotify-grid"></div>
-            <div class="section-header-spotify" style="margin-top: 24px;"><h2>Artistas e Playlists</h2><a href="#" onclick="changeSection('playlists')">Ver todas</a></div>
+            
+            <div class="section-header-spotify" style="margin-top: 24px;">
+                <h2>Artistas e Playlists</h2>
+                <a href="#" onclick="changeSection('playlists')">Ver todas</a>
+            </div>
             <div id="artistsPlaylistsGrid" class="spotify-grid"></div>
-            <div class="section-header-spotify" style="margin-top: 32px;"><h2><i class="bi bi-globe" style="color: #ff6b6b; margin-right: 8px;"></i>Bolsa Externa</h2><a href="#" onclick="changeSection('external')">Ver todas</a></div>
+            
+            <div class="section-header-spotify" style="margin-top: 32px;">
+                <h2><i class="bi bi-globe" style="color: #ff6b6b; margin-right: 8px;"></i>Bolsa Externa</h2>
+                <a href="#" onclick="changeSection('external')">Ver todas</a>
+            </div>
             <div id="externalMarketplaceGrid" class="spotify-grid"></div>
-            <div class="recommended-section"><div class="section-header-spotify"><h2>Recomendado para hoje</h2></div><div id="recommendedCard" class="recommended-card"></div></div>
-            <div class="connection-footer"><i class="bi bi-bluetooth"></i><span>Conexão com • SELO MIV Streaming</span></div>
+            
+            <div class="recommended-section">
+                <div class="section-header-spotify">
+                    <h2>Recomendado para hoje</h2>
+                </div>
+                <div id="recommendedCard" class="recommended-card"></div>
+            </div>
+            
+            <div class="connection-footer">
+                <i class="bi bi-bluetooth"></i>
+                <span>Conexão com • SELO MIV Streaming</span>
+            </div>
         </div>
     </section>
 
-    <!-- PORTFOLIO -->
+    <!-- ===== PORTFOLIO ===== -->
     <section id="portfolioSection" class="section">
         <div class="portfolio-summary">
             <h6 class="text-muted">VALOR TOTAL DA CARTEIRA</h6>
             <div class="portfolio-value" id="portfolioValue">R$ 0,00</div>
             <small class="text-muted" id="portfolioUpdateTime">Atualizado em tempo real</small>
-            <div class="mt-2 blockchain-verified"><i class="bi bi-shield-check"></i> Todos os ativos registrados na blockchain</div>
+            <div class="mt-2 blockchain-verified">
+                <i class="bi bi-shield-check"></i> Todos os ativos registrados na blockchain
+            </div>
         </div>
-        <div class="section-header"><h2 class="section-title">📊 Meus Ativos</h2><span class="badge bg-secondary" id="assetsCount">0 ativos</span></div>
+        <div class="section-header">
+            <h2 class="section-title">📊 Meus Ativos</h2>
+            <span class="badge bg-secondary" id="assetsCount">0 ativos</span>
+        </div>
         <div id="portfolioContent" class="spotify-grid"></div>
     </section>
 
-    <!-- LEDGER -->
+    <!-- ===== LEDGER ===== -->
     <section id="ledgerSection" class="section">
         <div class="section-header">
             <h2 class="section-title">📋 Histórico de Transações</h2>
-            <div><button class="btn btn-sm btn-outline-success" onclick="loadLedger(true)"><i class="bi bi-arrow-clockwise"></i> Atualizar</button><button class="btn btn-sm btn-outline-info ms-2" onclick="exportExtrato()"><i class="bi bi-download"></i> Exportar</button></div>
+            <div>
+                <button class="btn btn-sm btn-outline-success" onclick="loadLedger(true)">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                </button>
+                <button class="btn btn-sm btn-outline-info ms-2" onclick="exportExtrato()">
+                    <i class="bi bi-download"></i> Exportar
+                </button>
+            </div>
         </div>
-        <div class="table-responsive"><table class="ledger-table"><thead><tr><th>Data</th><th>Descrição</th><th class="text-end">Valor</th><th>Contrato</th><th>Blockchain</th></tr></thead><tbody id="ledgerContent"></tbody></table></div>
+        <div class="table-responsive">
+            <table class="ledger-table">
+                <thead>
+                    <tr><th>Data</th><th>Descrição</th><th class="text-end">Valor</th><th>Contrato</th><th>Blockchain</th></tr>
+                </thead>
+                <tbody id="ledgerContent"></tbody>
+            </table>
+        </div>
+        
         <div class="card bg-dark border-info mb-3">
-            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center"><h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i> Ganhos por Streaming</h6><span class="badge bg-light text-dark" id="totalStreamingEarnings">R$ 0,00</span></div>
-            <div class="card-body"><div class="row text-center"><div class="col-4"><div class="stat-icon-small"><i class="bi bi-music-note-beamed text-info"></i></div><div class="stat-value-small" id="streamingSongsCount">0</div><div class="stat-label-small">Músicas ouvidas</div></div><div class="col-4"><div class="stat-icon-small"><i class="bi bi-clock text-info"></i></div><div class="stat-value-small" id="streamingMinutesCount">0</div><div class="stat-label-small">Minutos</div></div><div class="col-4"><div class="stat-icon-small"><i class="bi bi-trophy text-info"></i></div><div class="stat-value-small" id="streamingRank">#0</div><div class="stat-label-small">Ranking</div></div></div></div>
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i> Ganhos por Streaming</h6>
+                <span class="badge bg-light text-dark" id="totalStreamingEarnings">R$ 0,00</span>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="stat-icon-small"><i class="bi bi-music-note-beamed text-info"></i></div>
+                        <div class="stat-value-small" id="streamingSongsCount">0</div>
+                        <div class="stat-label-small">Músicas ouvidas</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-icon-small"><i class="bi bi-clock text-info"></i></div>
+                        <div class="stat-value-small" id="streamingMinutesCount">0</div>
+                        <div class="stat-label-small">Minutos</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-icon-small"><i class="bi bi-trophy text-info"></i></div>
+                        <div class="stat-value-small" id="streamingRank">#0</div>
+                        <div class="stat-label-small">Ranking</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
-    <!-- BEST INVESTMENTS -->
+    <!-- ===== BEST INVESTMENTS ===== -->
     <section id="investmentsSection" class="section">
-        <div class="section-header"><h2 class="section-title">📈 Melhores Investimentos</h2><div><small class="text-muted">Baseado em algoritmo ELO</small><button class="btn btn-sm btn-outline-success ms-2" onclick="loadTopInvestments(true)"><i class="bi bi-arrow-clockwise"></i></button></div></div>
-        <div class="alert alert-info bg-dark border-info mb-3"><i class="bi bi-lightbulb me-2"></i>Nosso algoritmo ELO analisa vendas, disponibilidade e potencial de retorno para indicar os melhores investimentos.</div>
+        <div class="section-header">
+            <h2 class="section-title">📈 Melhores Investimentos</h2>
+            <div>
+                <small class="text-muted">Baseado em algoritmo ELO</small>
+                <button class="btn btn-sm btn-outline-success ms-2" onclick="loadTopInvestments(true)">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+        <div class="alert alert-info bg-dark border-info mb-3">
+            <i class="bi bi-lightbulb me-2"></i>
+            Nosso algoritmo ELO analisa vendas, disponibilidade e potencial de retorno para indicar os melhores investimentos.
+        </div>
         <div id="investmentsContent" class="spotify-grid"></div>
     </section>
 
-    <!-- PLAYLISTS -->
+    <!-- ===== PLAYLISTS ===== -->
     <section id="playlistsSection" class="section">
-        <div class="section-header"><h2 class="section-title">🎶 Minhas Playlists</h2><div><button class="btn-miv btn-sm" onclick="openCreatePlaylistModal()"><i class="bi bi-plus-circle"></i> Nova Playlist</button></div></div>
+        <div class="section-header">
+            <h2 class="section-title">🎶 Minhas Playlists</h2>
+            <div>
+                <button class="btn-miv btn-sm" onclick="openCreatePlaylistModal()">
+                    <i class="bi bi-plus-circle"></i> Nova Playlist
+                </button>
+            </div>
+        </div>
         <div id="playlistsContent"></div>
-        <div class="mt-4"><h5 class="section-title">⭐ Músicas Favoritas</h5><div id="favoritesContent" class="spotify-grid"></div></div>
+        <div class="mt-4">
+            <h5 class="section-title">⭐ Músicas Favoritas</h5>
+            <div id="favoritesContent" class="spotify-grid"></div>
+        </div>
     </section>
 
-    <!-- EXTERNAL -->
+    <!-- ===== EXTERNAL ===== -->
     <section id="externalSection" class="section">
-        <div class="section-header"><h2 class="section-title">🌐 Bolsa Externa</h2><div><button class="btn-miv btn-sm" onclick="openAddExternalMusicModal()"><i class="bi bi-plus-circle"></i> Sugerir Música</button><button class="btn btn-sm btn-outline-success ms-2" onclick="loadExternalMarketplace(true)"><i class="bi bi-arrow-clockwise"></i></button></div></div>
-        <div class="alert alert-warning bg-dark border-warning mb-3"><i class="bi bi-exclamation-triangle me-2"></i><strong>Investimento Antecipado:</strong> Músicas que ainda não são do SELO MIV. Se atingirem 1 milhão em vendas, o artista pode aceitar entrar no SELO. Se recusar, você recebe seu investimento de volta com desconto de 0,99% pela especulação.</div>
+        <div class="section-header">
+            <h2 class="section-title">🌐 Bolsa Externa</h2>
+            <div>
+                <button class="btn-miv btn-sm" onclick="openAddExternalMusicModal()">
+                    <i class="bi bi-plus-circle"></i> Sugerir Música
+                </button>
+                <button class="btn btn-sm btn-outline-success ms-2" onclick="loadExternalMarketplace(true)">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+        <div class="alert alert-warning bg-dark border-warning mb-3">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Investimento Antecipado:</strong> Músicas que ainda não são do SELO MIV. Se atingirem 1 milhão em vendas, o artista pode aceitar entrar no SELO. Se recusar, você recebe seu investimento de volta com desconto de 0,99% pela especulação.
+        </div>
         <div id="externalContent" class="spotify-grid"></div>
     </section>
 
-    <!-- ARTIST PANEL -->
+    <!-- ===== ARTIST PANEL ===== -->
     <section id="artistSection" class="section">
-        <div class="section-header"><h2 class="section-title">🎤 Painel Artista</h2><div><button class="btn-miv btn-sm" onclick="openAddMusicModal()"><i class="bi bi-plus-circle"></i> Nova Música</button><button class="btn btn-sm btn-outline-info ms-2" onclick="loadArtistData(true)"><i class="bi bi-arrow-clockwise"></i></button></div></div>
+        <div class="section-header">
+            <h2 class="section-title">🎤 Painel Artista</h2>
+            <div>
+                <button class="btn-miv btn-sm" onclick="openAddMusicModal()">
+                    <i class="bi bi-plus-circle"></i> Nova Música
+                </button>
+                <button class="btn btn-sm btn-outline-info ms-2" onclick="loadArtistData(true)">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
         <div class="artist-stats">
             <div class="stat-card"><div class="stat-icon"><i class="bi bi-music-note-beamed"></i></div><div class="stat-value" id="artistMusicCount">0</div><div class="stat-label">Músicas Cadastradas</div></div>
             <div class="stat-card"><div class="stat-icon"><i class="bi bi-cash-coin"></i></div><div class="stat-value" id="artistRoyalties">R$ 0,00</div><div class="stat-label">Royalties Acumulados</div></div>
@@ -316,40 +428,110 @@
         <div id="artistMusicContent" class="spotify-grid"></div>
     </section>
 
-    <!-- BLOCKCHAIN EXPLORER -->
+    <!-- ===== BLOCKCHAIN EXPLORER ===== -->
     <section id="blockchainSection" class="section">
-        <div class="section-header"><h2 class="section-title"><i class="bi bi-link-45deg text-purple me-2"></i> Blockchain Explorer</h2><div><button class="btn btn-sm btn-outline-purple" onclick="loadBlockchainData()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button></div></div>
-        <div class="alert alert-info bg-dark border-purple mb-4"><i class="bi bi-info-circle me-2"></i>Todos os contratos e transações são registrados permanentemente na blockchain SELO MIV.</div>
+        <div class="section-header">
+            <h2 class="section-title"><i class="bi bi-link-45deg text-purple me-2"></i> Blockchain Explorer</h2>
+            <div>
+                <button class="btn btn-sm btn-outline-purple" onclick="loadBlockchainData()">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                </button>
+            </div>
+        </div>
+        
+        <div class="alert alert-info bg-dark border-purple mb-4">
+            <i class="bi bi-info-circle me-2"></i>
+            Todos os contratos e transações são registrados permanentemente na blockchain SELO MIV.
+        </div>
+        
         <div class="row mb-4">
             <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><i class="bi bi-link"></i></div><div class="stat-value" id="blockchainContractsCount">0</div><div class="stat-label">Contratos</div></div></div>
             <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><i class="bi bi-arrow-left-right"></i></div><div class="stat-value" id="blockchainTransactionsCount">0</div><div class="stat-label">Transações</div></div></div>
             <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><i class="bi bi-shield-check"></i></div><div class="stat-value" id="blockchainLastBlock">0</div><div class="stat-label">Blocos</div></div></div>
             <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><i class="bi bi-clock-history"></i></div><div class="stat-value" id="blockchainLastUpdate">-</div><div class="stat-label">Último bloco</div></div></div>
         </div>
-        <div class="card bg-dark border-purple mb-4"><div class="card-header bg-purple text-white d-flex justify-content-between align-items-center"><h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i> Últimos Contratos</h5><span class="badge bg-light text-dark">Block #<span id="currentBlockNumber">0</span></span></div><div class="card-body"><div class="table-responsive"><table class="ledger-table"><thead><tr><th>Hash</th><th>Timestamp</th><th>Música</th><th>Valor</th><th>Status</th><th>Previous Hash</th></tr></thead><tbody id="blockchainContractsList"><tr><td colspan="6" class="text-center py-4"><i class="bi bi-link-45deg fs-1 text-muted d-block mb-3"></i><span class="text-muted">Nenhum contrato na blockchain</span></td></tr></tbody></table></div></div></div>
-        <div class="card bg-dark border-purple"><div class="card-header bg-purple text-white"><h5 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i> Últimas Transações</h5></div><div class="card-body"><div class="table-responsive"><table class="ledger-table"><thead><tr><th>Hash</th><th>Timestamp</th><th>Tipo</th><th>Detalhes</th><th>Status</th></tr></thead><tbody id="blockchainTransactionsList"><tr><td colspan="5" class="text-center py-4"><i class="bi bi-arrow-left-right fs-1 text-muted d-block mb-3"></i><span class="text-muted">Nenhuma transação na blockchain</span></td></tr></tbody></table></div></div></div>
-        <div class="mt-4"><h5 class="section-title"><i class="bi bi-diagram-3 me-2"></i> Visualização da Blockchain</h5><div class="card bg-dark border-purple"><div class="card-body"><div id="blockchainVisualization" class="d-flex flex-wrap gap-3 justify-content-center"></div></div></div></div>
+        
+        <div class="card bg-dark border-purple mb-4">
+            <div class="card-header bg-purple text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i> Últimos Contratos</h5>
+                <span class="badge bg-light text-dark">Block #<span id="currentBlockNumber">0</span></span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="ledger-table">
+                        <thead><tr><th>Hash</th><th>Timestamp</th><th>Música</th><th>Valor</th><th>Status</th><th>Previous Hash</th></tr></thead>
+                        <tbody id="blockchainContractsList">
+                            <tr><td colspan="6" class="text-center py-4"><i class="bi bi-link-45deg fs-1 text-muted d-block mb-3"></i><span class="text-muted">Nenhum contrato na blockchain</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card bg-dark border-purple">
+            <div class="card-header bg-purple text-white">
+                <h5 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i> Últimas Transações</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="ledger-table">
+                        <thead><tr><th>Hash</th><th>Timestamp</th><th>Tipo</th><th>Detalhes</th><th>Status</th></tr></thead>
+                        <tbody id="blockchainTransactionsList">
+                            <tr><td colspan="5" class="text-center py-4"><i class="bi bi-arrow-left-right fs-1 text-muted d-block mb-3"></i><span class="text-muted">Nenhuma transação na blockchain</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <h5 class="section-title"><i class="bi bi-diagram-3 me-2"></i> Visualização da Blockchain</h5>
+            <div class="card bg-dark border-purple">
+                <div class="card-body">
+                    <div id="blockchainVisualization" class="d-flex flex-wrap gap-3 justify-content-center"></div>
+                </div>
+            </div>
+        </div>
     </section>
 
-    <!-- MY MUSIC -->
+    <!-- ===== MY MUSIC ===== -->
     <section id="myMusicSection" class="section">
-        <div class="section-header"><h2 class="section-title"><i class="bi bi-clock-history me-2 text-info"></i> Minhas Músicas</h2><div><button class="btn btn-sm btn-outline-info" onclick="loadUserStreamingHistory(true)"><i class="bi bi-arrow-clockwise"></i> Atualizar</button></div></div>
+        <div class="section-header">
+            <h2 class="section-title"><i class="bi bi-clock-history me-2 text-info"></i> Minhas Músicas</h2>
+            <div>
+                <button class="btn btn-sm btn-outline-info" onclick="loadUserStreamingHistory(true)">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                </button>
+            </div>
+        </div>
+        
         <ul class="nav nav-tabs border-0 mb-3" id="myMusicTabs">
             <li class="nav-item"><a class="nav-link text-muted active" href="#" onclick="switchMyMusicTab('recent')"><i class="bi bi-clock"></i> Ouvidas Recentemente</a></li>
             <li class="nav-item"><a class="nav-link text-muted" href="#" onclick="switchMyMusicTab('favorites')"><i class="bi bi-star-fill text-warning"></i> Favoritas</a></li>
             <li class="nav-item"><a class="nav-link text-muted" href="#" onclick="switchMyMusicTab('playlists')"><i class="bi bi-music-note-list"></i> Minhas Playlists</a></li>
         </ul>
+        
         <div id="myMusicContent" class="spotify-grid"></div>
     </section>
 
-    <!-- TRADES -->
+    <!-- ===== TRADES ===== -->
     <section id="tradesSection" class="section">
-        <div class="section-header"><h2 class="section-title"><i class="bi bi-arrow-left-right me-2 text-info"></i> Minhas Negociações</h2><div class="d-flex gap-2"><button class="btn btn-sm btn-outline-info" onclick="loadTradeOffers()" id="refreshTradesBtn"><i class="bi bi-arrow-clockwise me-1"></i> Atualizar</button><span class="badge bg-info" id="pendingTradesCount">0 pendentes</span></div></div>
+        <div class="section-header">
+            <h2 class="section-title"><i class="bi bi-arrow-left-right me-2 text-info"></i> Minhas Negociações</h2>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-info" onclick="loadTradeOffers()" id="refreshTradesBtn">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Atualizar
+                </button>
+                <span class="badge bg-info" id="pendingTradesCount">0 pendentes</span>
+            </div>
+        </div>
+        
         <ul class="nav nav-tabs border-0 mb-3" id="tradeTabs">
             <li class="nav-item"><a class="nav-link text-muted active" href="#" onclick="switchTradeTab('received')"><i class="bi bi-inbox me-1"></i> Recebidas</a></li>
             <li class="nav-item"><a class="nav-link text-muted" href="#" onclick="switchTradeTab('sent')"><i class="bi bi-send me-1"></i> Enviadas</a></li>
             <li class="nav-item"><a class="nav-link text-muted" href="#" onclick="switchTradeTab('history')"><i class="bi bi-clock-history me-1"></i> Histórico</a></li>
         </ul>
+        
         <div id="tradesList" class="mt-3">
             <div id="tradesLoading" style="display: none;" class="text-center py-5"><div class="spinner-border text-info mb-3"></div><p class="text-muted">Carregando negociações...</p></div>
             <div id="tradesEmpty" class="empty-state-actionable"><i class="bi bi-arrow-left-right empty-icon text-info"></i><h5 class="text-muted">Nenhuma negociação</h5><p class="text-muted">Você ainda não tem negociações ativas</p><button class="btn btn-outline-info mt-3" onclick="changeSection('portfolio')"><i class="bi bi-briefcase me-2"></i> Ver meu portfólio</button></div>
@@ -357,34 +539,80 @@
         </div>
     </section>
 
-    <!-- PLAYER EXPANDIDO -->
+    <!-- ===== PLAYER EXPANDIDO ===== -->
     <section id="playerExpandedSection" class="section">
         <div class="section-header">
-            <div class="d-flex align-items-center gap-3"><img src="images/logo.png" alt="SELO MIV" height="30" style="object-fit: contain;"><h2 class="section-title mb-0"><i class="bi bi-music-player-fill me-2 text-success"></i>Player Expandido</h2></div>
-            <button class="btn btn-outline-success" onclick="closePlayerExpanded()"><i class="bi bi-arrows-angle-contract me-2"></i>Minimizar Player</button>
+            <div class="d-flex align-items-center gap-3">
+                <img src="/public/images/logo.png" alt="SELO MIV" height="30" style="object-fit: contain;">
+                <h2 class="section-title mb-0">
+                    <i class="bi bi-music-player-fill me-2 text-success"></i>
+                    Player Expandido
+                </h2>
+            </div>
+            <button class="btn btn-outline-success" onclick="closePlayerExpanded()">
+                <i class="bi bi-arrows-angle-contract me-2"></i>
+                Minimizar Player
+            </button>
         </div>
+        
         <div class="expanded-content">
             <div class="row">
                 <div class="col-md-4 mb-4 mb-md-0">
                     <div class="text-center">
-                        <img src="images/logo.png" class="expanded-album-art img-fluid rounded" alt="Album Art" id="expandedAlbumArt">
+                        <img src="/public/images/logo.png" class="expanded-album-art img-fluid rounded" alt="Album Art" id="expandedAlbumArt">
                         <h3 class="expanded-title text-white" id="expandedTitle">Nenhuma música tocando</h3>
                         <p class="expanded-artist text-muted" id="expandedArtist">Selecione uma música</p>
-                        <div class="expanded-meta d-flex justify-content-center gap-3 mb-3"><span class="meta-item"><i class="bi bi-music-note-beamed text-success"></i><span id="expandedGenre">Música</span></span><span class="meta-item"><i class="bi bi-clock text-success"></i><span id="expandedDuration">0:00</span></span></div>
+                        <div class="expanded-meta d-flex justify-content-center gap-3 mb-3">
+                            <span class="meta-item"><i class="bi bi-music-note-beamed text-success"></i><span id="expandedGenre">Música</span></span>
+                            <span class="meta-item"><i class="bi bi-clock text-success"></i><span id="expandedDuration">0:00</span></span>
+                        </div>
                     </div>
                 </div>
+                
                 <div class="col-md-8">
                     <div class="youtube-container-expanded mb-4">
                         <div id="youtubePlayerExpanded" style="width: 100%; height: 100%;"></div>
-                        <div class="player-loading" id="playerLoadingExpanded"><div class="loading-spinner"></div><span id="loadingMessageText">Carregando vídeo...</span><span id="realTimeStatus"></span></div>
+                        <div class="player-loading" id="playerLoadingExpanded">
+                            <div class="loading-spinner"></div>
+                            <span id="loadingMessageText">Carregando vídeo...</span>
+                            <span id="realTimeStatus"></span>
+                        </div>
                     </div>
                     <div id="playerStatus" class="mt-2 small text-center"></div>
-                    <div id="streamingRewardIndicator" class="mt-2 text-center" style="display: none;"><div class="alert alert-success bg-success bg-opacity-10 border-success py-1 px-2 d-inline-flex align-items-center gap-2 rounded-pill"><i class="bi bi-cash-stack text-success"></i><span id="streamingRewardAmount" class="fw-bold text-success">+0 SELO COIN</span><span class="text-muted small">|</span><span id="streamingMusicName" class="small text-success">Música atual</span></div></div>
-                    <div class="expanded-controls bg-dark p-4 rounded-3">
-                        <div class="expanded-progress-container mb-4"><div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer"><div class="expanded-progress-fill" id="expandedProgressBar"></div></div><div class="expanded-time-display d-flex justify-content-between mt-2"><span id="expandedCurrentTime" class="text-muted">0:00</span><span id="expandedTotalTime" class="text-muted">0:00</span></div></div>
-                        <div class="expanded-controls-bottom d-flex justify-content-center align-items-center gap-4"><button class="btn btn-outline-success" onclick="playPrevious()"><i class="bi bi-skip-backward-fill"></i></button><button class="btn btn-success btn-lg rounded-circle" onclick="togglePlay()" id="expandedPlayPauseBtn" style="width: 60px; height: 60px;"><i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i></button><button class="btn btn-outline-success" onclick="playNext()"><i class="bi bi-skip-forward-fill"></i></button></div>
-                        <div class="expanded-controls-top d-flex justify-content-center gap-3 mt-4"><button class="btn btn-outline-success" onclick="toggleShuffle()" id="expandedShuffleBtn"><i class="bi bi-shuffle me-2"></i>Aleatório</button><button class="btn btn-outline-success" onclick="toggleRepeat()" id="expandedRepeatBtn"><i class="bi bi-repeat me-2"></i>Repetir</button><button class="btn btn-outline-success" onclick="toggleFavorite()" id="expandedFavoriteBtn"><i class="bi bi-star" id="expandedFavoriteIcon"></i></button><button class="btn btn-success" onclick="openInvestModalFromPlayer()"><i class="bi bi-currency-dollar me-2"></i>Investir</button></div>
+                    <div id="streamingRewardIndicator" class="mt-2 text-center" style="display: none;">
+                        <div class="alert alert-success bg-success bg-opacity-10 border-success py-1 px-2 d-inline-flex align-items-center gap-2 rounded-pill">
+                            <i class="bi bi-cash-stack text-success"></i>
+                            <span id="streamingRewardAmount" class="fw-bold text-success">+0 SELO COIN</span>
+                            <span class="text-muted small">|</span>
+                            <span id="streamingMusicName" class="small text-success">Música atual</span>
+                        </div>
                     </div>
+                    
+                    <div class="expanded-controls bg-dark p-4 rounded-3">
+                        <div class="expanded-progress-container mb-4">
+                            <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
+                                <div class="expanded-progress-fill" id="expandedProgressBar"></div>
+                            </div>
+                            <div class="expanded-time-display d-flex justify-content-between mt-2">
+                                <span id="expandedCurrentTime" class="text-muted">0:00</span>
+                                <span id="expandedTotalTime" class="text-muted">0:00</span>
+                            </div>
+                        </div>
+                        
+                        <div class="expanded-controls-bottom d-flex justify-content-center align-items-center gap-4">
+                            <button class="btn btn-outline-success" onclick="playPrevious()"><i class="bi bi-skip-backward-fill"></i></button>
+                            <button class="btn btn-success btn-lg rounded-circle" onclick="togglePlay()" id="expandedPlayPauseBtn" style="width: 60px; height: 60px;"><i class="bi bi-pause-fill" id="expandedPlayPauseIcon"></i></button>
+                            <button class="btn btn-outline-success" onclick="playNext()"><i class="bi bi-skip-forward-fill"></i></button>
+                        </div>
+                        
+                        <div class="expanded-controls-top d-flex justify-content-center gap-3 mt-4">
+                            <button class="btn btn-outline-success" onclick="toggleShuffle()" id="expandedShuffleBtn"><i class="bi bi-shuffle me-2"></i>Aleatório</button>
+                            <button class="btn btn-outline-success" onclick="toggleRepeat()" id="expandedRepeatBtn"><i class="bi bi-repeat me-2"></i>Repetir</button>
+                            <button class="btn btn-outline-success" onclick="toggleFavorite()" id="expandedFavoriteBtn"><i class="bi bi-star" id="expandedFavoriteIcon"></i></button>
+                            <button class="btn btn-success" onclick="openInvestModalFromPlayer()"><i class="bi bi-currency-dollar me-2"></i>Investir</button>
+                        </div>
+                    </div>
+                    
                     <div class="track-info-section mt-4">
                         <h4 class="text-white mb-3"><i class="bi bi-info-circle text-success me-2"></i>Sobre esta música</h4>
                         <div class="info-grid">
@@ -406,10 +634,13 @@
 <!-- ============================================================ -->
 <div class="connection-footer" style="justify-content: space-between; margin-top: 40px; padding: 20px;">
     <div class="d-flex align-items-center gap-2">
-        <img src="images/logo.png" alt="SELO MIV" height="24" style="object-fit: contain;">
+        <img src="/public/images/logo.png" alt="SELO MIV" height="24" style="object-fit: contain;">
         <span class="text-muted small">© 2026 SELO MIV - Todos os direitos reservados</span>
     </div>
-    <div><i class="bi bi-bluetooth me-2"></i><span class="text-muted small">Conexão Blockchain Ativa 🔒</span></div>
+    <div>
+        <i class="bi bi-bluetooth me-2"></i>
+        <span class="text-muted small">Conexão Blockchain Ativa 🔒</span>
+    </div>
 </div>
 
 <!-- ============================================================ -->
@@ -419,53 +650,90 @@
     <div class="player-bar">
         <div class="player-track-info">
             <div class="track-image-container">
-                <img src="images/logo.png" class="track-image" alt="Album Art" id="playerAlbumArt">
-                <div class="track-image-overlay" onclick="event.stopPropagation(); togglePlay()" id="trackImageOverlay"><i class="bi bi-play-fill" id="trackOverlayIcon"></i></div>
+                <img src="/public/images/logo.png" class="track-image" alt="Album Art" id="playerAlbumArt">
+                <div class="track-image-overlay" onclick="event.stopPropagation(); togglePlay()" id="trackImageOverlay">
+                    <i class="bi bi-play-fill" id="trackOverlayIcon"></i>
+                </div>
             </div>
-            <div class="track-details"><div class="track-title" id="playerTitle">Nenhuma música tocando</div><div class="track-artist" id="playerArtist">Selecione uma música para começar</div></div>
-            <div class="track-actions"><button class="player-btn favorite-btn" onclick="event.stopPropagation(); toggleFavorite()" id="favoriteBtn" title="Favoritar"><i class="bi bi-star" id="favoriteIcon"></i></button><button class="player-btn" onclick="event.stopPropagation(); openInvestModalFromPlayer()" title="Investir"><i class="bi bi-currency-dollar"></i></button></div>
+            <div class="track-details">
+                <div class="track-title" id="playerTitle">Nenhuma música tocando</div>
+                <div class="track-artist" id="playerArtist">Selecione uma música para começar</div>
+            </div>
+            <div class="track-actions">
+                <button class="player-btn favorite-btn" onclick="event.stopPropagation(); toggleFavorite()" id="favoriteBtn" title="Favoritar">
+                    <i class="bi bi-star" id="favoriteIcon"></i>
+                </button>
+                <button class="player-btn" onclick="event.stopPropagation(); openInvestModalFromPlayer()" title="Investir">
+                    <i class="bi bi-currency-dollar"></i>
+                </button>
+            </div>
         </div>
+        
         <div class="player-controls-center">
             <div class="control-buttons">
-                <button class="control-btn shuffle-btn" onclick="event.stopPropagation(); toggleShuffle()" id="shuffleBtn" title="Aleatório"><i class="bi bi-shuffle" id="shuffleIcon"></i></button>
-                <button class="control-btn prev-btn" onclick="event.stopPropagation(); playPrevious()" title="Anterior"><i class="bi bi-skip-backward-fill"></i></button>
-                <button class="control-btn play-btn" onclick="event.stopPropagation(); togglePlay()" id="playPauseBtn" title="Play/Pause"><i class="bi bi-play-fill" id="playPauseIcon"></i></button>
-                <button class="control-btn next-btn" onclick="event.stopPropagation(); playNext()" title="Próxima"><i class="bi bi-skip-forward-fill"></i></button>
-                <button class="control-btn repeat-btn" onclick="event.stopPropagation(); toggleRepeat()" id="repeatBtn" title="Repetir"><i class="bi bi-repeat" id="repeatIcon"></i></button>
+                <button class="control-btn shuffle-btn" onclick="event.stopPropagation(); toggleShuffle()" id="shuffleBtn" title="Aleatório">
+                    <i class="bi bi-shuffle" id="shuffleIcon"></i>
+                </button>
+                <button class="control-btn prev-btn" onclick="event.stopPropagation(); playPrevious()" title="Anterior">
+                    <i class="bi bi-skip-backward-fill"></i>
+                </button>
+                <button class="control-btn play-btn" onclick="event.stopPropagation(); togglePlay()" id="playPauseBtn" title="Play/Pause">
+                    <i class="bi bi-play-fill" id="playPauseIcon"></i>
+                </button>
+                <button class="control-btn next-btn" onclick="event.stopPropagation(); playNext()" title="Próxima">
+                    <i class="bi bi-skip-forward-fill"></i>
+                </button>
+                <button class="control-btn repeat-btn" onclick="event.stopPropagation(); toggleRepeat()" id="repeatBtn" title="Repetir">
+                    <i class="bi bi-repeat" id="repeatIcon"></i>
+                </button>
             </div>
             <div class="progress-container" onclick="event.stopPropagation()">
                 <span class="time-current" id="currentTimeDisplay">0:00</span>
-                <div class="progress-bar" onclick="handleProgressClick(event)" id="progressContainer"><div class="progress-fill" id="playerProgressBar"></div><div class="progress-handle" id="progressHandle"></div></div>
+                <div class="progress-bar" onclick="handleProgressClick(event)" id="progressContainer">
+                    <div class="progress-fill" id="playerProgressBar"></div>
+                    <div class="progress-handle" id="progressHandle"></div>
+                </div>
                 <span class="time-total" id="totalTimeDisplay">0:00</span>
             </div>
         </div>
+        
         <div class="player-controls-right">
-            <button class="player-btn queue-btn" onclick="event.stopPropagation(); toggleQueue()" title="Fila de reprodução"><i class="bi bi-music-note-list"></i></button>
+            <button class="player-btn queue-btn" onclick="event.stopPropagation(); toggleQueue()" title="Fila de reprodução">
+                <i class="bi bi-music-note-list"></i>
+            </button>
             <div class="volume-container" onclick="event.stopPropagation()">
-                <button class="player-btn volume-btn" onclick="event.stopPropagation(); toggleMute()" title="Volume" id="volumeBtn"><i class="bi bi-volume-up" id="volumeIcon"></i></button>
-                <div class="volume-slider-container"><div class="volume-slider" onclick="handleVolumeClick(event)" id="volumeSlider"><div class="volume-slider-fill" id="volumeSliderBar"></div></div></div>
+                <button class="player-btn volume-btn" onclick="event.stopPropagation(); toggleMute()" title="Volume" id="volumeBtn">
+                    <i class="bi bi-volume-up" id="volumeIcon"></i>
+                </button>
+                <div class="volume-slider-container">
+                    <div class="volume-slider" onclick="handleVolumeClick(event)" id="volumeSlider">
+                        <div class="volume-slider-fill" id="volumeSliderBar"></div>
+                    </div>
+                </div>
             </div>
-            <button class="player-btn expand-btn" onclick="openPlayerExpanded()" title="Abrir player expandido"><i class="bi bi-arrows-angle-expand" id="expandIcon"></i></button>
+            <button class="player-btn expand-btn" onclick="openPlayerExpanded()" title="Abrir player expandido">
+                <i class="bi bi-arrows-angle-expand" id="expandIcon"></i>
+            </button>
         </div>
     </div>
 </div>
 
 <!-- ============================================================ -->
-<!-- ===== JAVASCRIPT - CAMINHOS PARA A RAIZ ===== -->
+<!-- ===== JAVASCRIPT - CAMINHOS ABSOLUTOS ===== -->
 <!-- ============================================================ -->
-<script src="../js/config.js"></script>
-<script src="../js/state.js"></script>
-<script src="../js/utils.js"></script>
-<script src="../js/api.js"></script>
-<script src="../js/auth.js"></script>
-<script src="../js/player.js"></script>
-<script src="../js/marketplace.js"></script>
-<script src="../js/portfolio.js"></script>
-<script src="../js/trades.js"></script>
-<script src="../js/blockchain.js"></script>
-<script src="../js/youtube.js"></script>
-<script src="../js/modals.js"></script>
-<script src="../js/app.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/state.js"></script>
+<script src="/js/utils.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/player.js"></script>
+<script src="/js/marketplace.js"></script>
+<script src="/js/portfolio.js"></script>
+<script src="/js/trades.js"></script>
+<script src="/js/blockchain.js"></script>
+<script src="/js/youtube.js"></script>
+<script src="/js/modals.js"></script>
+<script src="/js/app.js"></script>
 
 </body>
 </html>
