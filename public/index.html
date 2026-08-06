@@ -13,29 +13,29 @@
     
     <title>PLAY MY | Powered by Selo MIV</title>
     
-    <!-- ===== CSS - CAMINHOS ABSOLUTOS ===== -->
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/auth.css">
-    <link rel="stylesheet" href="/css/player.css">
-    <link rel="stylesheet" href="/css/marketplace.css">
-    <link rel="stylesheet" href="/css/modals.css">
-    <link rel="stylesheet" href="/css/blockchain.css">
-    <link rel="stylesheet" href="/css/responsive.css">
+    <!-- ===== CSS - DENTRO DE public/css/ ===== -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="css/player.css">
+    <link rel="stylesheet" href="css/marketplace.css">
+    <link rel="stylesheet" href="css/modals.css">
+    <link rel="stylesheet" href="css/blockchain.css">
+    <link rel="stylesheet" href="css/responsive.css">
     
     <!-- ===== EXTERNAL LIBS ===== -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
     
-    <!-- ===== PWA ===== -->
-    <link rel="manifest" href="/public/manifest.json">
-    <link rel="icon" type="image/png" href="/public/images/logo.png">
-    <link rel="apple-touch-icon" href="/public/images/logo.png">
-    <link rel="shortcut icon" href="/public/images/logo.png" type="image/x-icon">
-    <meta name="msapplication-TileImage" content="/public/images/logo.png">
+    <!-- ===== PWA - DENTRO DE public/ ===== -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="apple-touch-icon" href="images/logo.png">
+    <link rel="shortcut icon" href="images/logo.png" type="image/x-icon">
+    <meta name="msapplication-TileImage" content="images/logo.png">
     
     <!-- ===== SECURITY ===== -->
-    <script src="/public/security-bridge.js"></script>
+    <script src="security-bridge.js"></script>
     
     <!-- ===== YOUTUBE API ===== -->
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -45,7 +45,7 @@
 <!-- ===== LOADING SCREEN ===== -->
 <div id="loadingScreen" class="loading-screen">
     <div class="loading-content">
-        <img src="/public/images/logo.png" alt="PLAY MY" width="80" height="80" 
+        <img src="images/logo.png" alt="PLAY MY" width="80" height="80" 
              style="border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 2px solid var(--neon-green); animation: pulse 2s infinite;">
         <p class="text-muted" id="loadingMessage">Carregando dados...</p>
         <div class="progress-loading">
@@ -68,13 +68,13 @@
 <div id="authScreen" class="auth-screen">
     <div class="auth-card">
         <div class="logo-header">
-            <img src="/public/images/logo.png" alt="SELO MIV" width="120" height="120" 
+            <img src="images/logo.png" alt="SELO MIV" width="120" height="120" 
                  style="border-radius: 50%; object-fit: cover; margin-bottom: 1.5rem; border: 2px solid var(--neon-green);">
             <h2 class="text-white mb-2">PLAY MY</h2>
             <p class="text-muted">Música sem limites</p>
         </div>
         
-        <!-- ===== LOGIN FORM ===== -->
+        <!-- ===== LOGIN ===== -->
         <div id="loginForm">
             <div id="loginMessage" class="alert d-none"></div>
             <div class="form-group">
@@ -91,7 +91,7 @@
             
             <div class="text-center mb-3">
                 <button type="button" class="btn btn-link btn-sm text-success p-0" 
-                        onclick="window.location.href='/public/reset-password.html'"
+                        onclick="window.location.href='reset-password.html'"
                         style="text-decoration: none; font-size: 0.9rem; font-weight: 600;">
                     <i class="bi bi-question-circle me-1"></i> Esqueceu sua senha?
                 </button>
@@ -102,7 +102,7 @@
             </p>
         </div>
         
-        <!-- ===== REGISTER FORM ===== -->
+        <!-- ===== REGISTER ===== -->
         <div id="registerForm" style="display: none;">
             <div id="registerMessage" class="alert d-none"></div>
             <div class="form-group">
@@ -134,7 +134,7 @@
             <!-- ===== TERMOS ===== -->
             <div class="terms-checkbox">
                 <div class="mb-3">
-                    <a href="/public/termos-de-uso.pdf" target="_blank" class="auth-link">
+                    <a href="termos-de-uso.pdf" target="_blank" class="auth-link">
                         <i class="bi bi-file-text"></i> Termos de Uso
                     </a>
                     <span class="text-muted mx-2">|</span>
@@ -146,7 +146,7 @@
                     <input type="checkbox" id="acceptTermsField" required>
                     <span>
                         <strong class="text-white">Li e concordo</strong> com os
-                        <a href="/public/termos-de-uso.pdf" target="_blank" class="text-muted text-decoration-none">
+                        <a href="termos-de-uso.pdf" target="_blank" class="text-muted text-decoration-none">
                             <i class="bi bi-file-text"></i> Termos de Uso
                         </a>
                         e a
@@ -186,7 +186,7 @@
     <div id="sidebar" class="sidebar">
         <div class="sidebar-header">
             <div class="d-flex align-items-center gap-2">
-                <img src="/public/images/logo.png" alt="SELO MIV" height="32" style="object-fit: contain;">
+                <img src="images/logo.png" alt="SELO MIV" height="32" style="object-fit: contain;">
                 <h4 class="text-white mb-0">MIV PRO</h4>
             </div>
             <button class="sidebar-close" onclick="toggleSidebar()">
@@ -225,7 +225,7 @@
             </div>
             
             <div class="d-flex align-items-center">
-                <img src="/public/images/logo.png" alt="SELO MIV" height="32" style="object-fit: contain; margin-right: 10px;">
+                <img src="images/logo.png" alt="SELO MIV" height="32" style="object-fit: contain; margin-right: 10px;">
             </div>
             
             <!-- Search -->
@@ -543,7 +543,7 @@
     <section id="playerExpandedSection" class="section">
         <div class="section-header">
             <div class="d-flex align-items-center gap-3">
-                <img src="/public/images/logo.png" alt="SELO MIV" height="30" style="object-fit: contain;">
+                <img src="images/logo.png" alt="SELO MIV" height="30" style="object-fit: contain;">
                 <h2 class="section-title mb-0">
                     <i class="bi bi-music-player-fill me-2 text-success"></i>
                     Player Expandido
@@ -559,7 +559,7 @@
             <div class="row">
                 <div class="col-md-4 mb-4 mb-md-0">
                     <div class="text-center">
-                        <img src="/public/images/logo.png" class="expanded-album-art img-fluid rounded" alt="Album Art" id="expandedAlbumArt">
+                        <img src="images/logo.png" class="expanded-album-art img-fluid rounded" alt="Album Art" id="expandedAlbumArt">
                         <h3 class="expanded-title text-white" id="expandedTitle">Nenhuma música tocando</h3>
                         <p class="expanded-artist text-muted" id="expandedArtist">Selecione uma música</p>
                         <div class="expanded-meta d-flex justify-content-center gap-3 mb-3">
@@ -634,7 +634,7 @@
 <!-- ============================================================ -->
 <div class="connection-footer" style="justify-content: space-between; margin-top: 40px; padding: 20px;">
     <div class="d-flex align-items-center gap-2">
-        <img src="/public/images/logo.png" alt="SELO MIV" height="24" style="object-fit: contain;">
+        <img src="images/logo.png" alt="SELO MIV" height="24" style="object-fit: contain;">
         <span class="text-muted small">© 2026 SELO MIV - Todos os direitos reservados</span>
     </div>
     <div>
@@ -650,7 +650,7 @@
     <div class="player-bar">
         <div class="player-track-info">
             <div class="track-image-container">
-                <img src="/public/images/logo.png" class="track-image" alt="Album Art" id="playerAlbumArt">
+                <img src="images/logo.png" class="track-image" alt="Album Art" id="playerAlbumArt">
                 <div class="track-image-overlay" onclick="event.stopPropagation(); togglePlay()" id="trackImageOverlay">
                     <i class="bi bi-play-fill" id="trackOverlayIcon"></i>
                 </div>
@@ -719,21 +719,21 @@
 </div>
 
 <!-- ============================================================ -->
-<!-- ===== JAVASCRIPT - CAMINHOS ABSOLUTOS ===== -->
+<!-- ===== JAVASCRIPT - DENTRO DE public/js/ ===== -->
 <!-- ============================================================ -->
-<script src="/js/config.js"></script>
-<script src="/js/state.js"></script>
-<script src="/js/utils.js"></script>
-<script src="/js/api.js"></script>
-<script src="/js/auth.js"></script>
-<script src="/js/player.js"></script>
-<script src="/js/marketplace.js"></script>
-<script src="/js/portfolio.js"></script>
-<script src="/js/trades.js"></script>
-<script src="/js/blockchain.js"></script>
-<script src="/js/youtube.js"></script>
-<script src="/js/modals.js"></script>
-<script src="/js/app.js"></script>
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/player.js"></script>
+<script src="js/marketplace.js"></script>
+<script src="js/portfolio.js"></script>
+<script src="js/trades.js"></script>
+<script src="js/blockchain.js"></script>
+<script src="js/youtube.js"></script>
+<script src="js/modals.js"></script>
+<script src="js/app.js"></script>
 
 </body>
 </html>
