@@ -88,36 +88,13 @@
       ]
     }
   ],
-  "routes": [
-    {
-      "src": "/backend-config.js",
-      "dest": "/backend-config.js"
-    },
-    {
-      "src": "/security-bridge.js",
-      "dest": "/security-bridge.js"
-    },
-    {
-      "src": "/(.*).js",
-      "dest": "/$1.js"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/backend.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
-}
-{
   "rewrites": [
     { "source": "/css/(.*)", "destination": "/css/$1" },
     { "source": "/js/(.*)", "destination": "/js/$1" },
     { "source": "/images/(.*)", "destination": "/images/$1" },
     { "source": "/lib/(.*)", "destination": "/lib/$1" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/public/(.*)", "destination": "/public/$1" },
     { "source": "/(.*)", "destination": "/public/index.html" }
   ],
   "functions": {
