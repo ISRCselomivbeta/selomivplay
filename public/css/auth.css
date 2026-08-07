@@ -1,4 +1,4 @@
-/* ============================================================ 
+/* ============================================================
    AUTH.CSS - Tela de Login e Registro
    ============================================================ */
 
@@ -33,23 +33,6 @@
 .logo-header {
     text-align: center;
     margin-bottom: 2.5rem;
-}
-
-.logo-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 80px;
-    height: 80px;
-    background: rgba(0, 255, 136, 0.1);
-    border-radius: 50%;
-    margin-bottom: 1.5rem;
-    border: 2px solid var(--neon-green);
-}
-
-.logo-icon i {
-    font-size: 2.5rem;
-    color: var(--neon-green);
 }
 
 /* ===== FORMS ===== */
