@@ -4,15 +4,12 @@
 
 // ===== INICIALIZAÇÃO =====
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 PLAY MY v' + CONFIG.VERSION);
-    
-    // Verificar sessão
+    console.log('🚀 SELO MIV v' + CONFIG.VERSION);
     const stored = localStorage.getItem('miv_user');
     if (stored) {
         try {
             state.currentUser = JSON.parse(stored);
             state.userBalance = state.currentUser.saldo || 0;
-            
             if (state.currentUser.favorite_music_ids) {
                 if (Array.isArray(state.currentUser.favorite_music_ids)) {
                     state.favoriteMusicIds = state.currentUser.favorite_music_ids;
@@ -24,7 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 state.favoriteMusicIds = [];
             }
-            
             setTimeout(() => loadYouTubeAPI(), 2000);
             initializeApp();
         } catch (e) { 
@@ -37,8 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
         hideLoading();
         setTimeout(() => loadYouTubeAPI(), 3000);
     }
-    
-    // Configurar eventos de visibilidade
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             if (state.streamingTimer) {
@@ -53,12 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-    
-    // Criar badge offline
     createOfflineBadge();
     updateOnlineStatus();
-    
-    // Adicionar botão de compartilhar
     setTimeout(addShareButton, 2000);
 });
 
@@ -71,17 +61,11 @@ async function initializeApp() {
     await loadUserFavorites();
     await initializeRecommendations();
     loadYouTubeAPI();
-    
     setInterval(() => {
-        if (state.currentUser) {
-            updateBalanceDisplay();
-        }
+        if (state.currentUser) updateBalanceDisplay();
     }, 30000);
-    
     setInterval(() => {
-        if (state.currentUser) {
-            loadStreamingStats();
-        }
+        if (state.currentUser) loadStreamingStats();
     }, 60000);
 }
 
@@ -97,9 +81,7 @@ async function loadAllData() {
             loadTopInvestments(),
             loadUserPlaylists()
         ]);
-        
         await updateBalanceDisplay();
-        
         if (state.currentUser?.tipo === 'artista') await loadArtistData();
         showToast('Sistema carregado!', 'success');
     } catch (error) {
@@ -116,7 +98,6 @@ window.addEventListener('offline', updateOnlineStatus);
 
 function updateOnlineStatus() {
     const offlineBadge = document.getElementById('offlineBadge') || createOfflineBadge();
-    
     if (navigator.onLine) {
         offlineBadge.style.display = 'none';
         showToast('📶 Conexão restabelecida!', 'success');
@@ -163,7 +144,6 @@ function addShareButton() {
     }
 }
 
-// ===== FECHAR MODAL PERSONALIZADO =====
 function closeCustomModal() {
     const modal = document.getElementById('confirmEmailModal');
     if (modal) {
@@ -175,13 +155,40 @@ function closeCustomModal() {
     }
 }
 
-// ===== EXPORTAR FUNÇÕES GLOBAIS =====
-// As funções já estão sendo exportadas nos arquivos individuais
-// Mas algumas precisam ser re-exportadas aqui para garantir
+// ===== CHANGE SECTION =====
+function changeSection(section) {
+    const activeSection = document.querySelector('.section.active');
+    if (activeSection) {
+        const sectionId = activeSection.id.replace('Section', '');
+        localStorage.setItem('lastSection', sectionId);
+    }
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    const sectionElement = document.getElementById(section + 'Section');
+    if (sectionElement) sectionElement.classList.add('active');
+    toggleSidebar();
+    window.scrollTo(0, 0);
+}
 
-window.initializeApp = initializeApp;
-window.loadAllData = loadAllData;
-window.updateOnlineStatus = updateOnlineStatus;
-window.shareAsApp = shareAsApp;
-window.addShareButton = addShareButton;
-window.closeCustomModal = closeCustomModal;
+function openBlockchainExplorer() {
+    console.log('openBlockchainExplorer chamado');
+    changeSection('blockchain');
+    setTimeout(() => {
+        if (typeof loadBlockchainData === 'function') {
+            loadBlockchainData();
+        } else {
+            console.warn('loadBlockchainData não disponível');
+        }
+    }, 100);
+}
+
+// ===== EXPORT =====
+if (typeof window !== 'undefined') {
+    window.initializeApp = initializeApp;
+    window.loadAllData = loadAllData;
+    window.updateOnlineStatus = updateOnlineStatus;
+    window.shareAsApp = shareAsApp;
+    window.addShareButton = addShareButton;
+    window.closeCustomModal = closeCustomModal;
+    window.changeSection = changeSection;
+    window.openBlockchainExplorer = openBlockchainExplorer;
+}
