@@ -37,31 +37,23 @@ function formatTime(seconds) {
 }
 
 function formatNumber(num) {
-    if (num >= 1000000) {
-        return (num / 1000000).toFixed(1) + 'M';
-    }
-    if (num >= 1000) {
-        return (num / 1000).toFixed(1) + 'K';
-    }
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
     return num.toString();
 }
 
 // ===== YOUTUBE ID EXTRACTOR =====
 function extractYouTubeId(url) {
     if (!url || typeof url !== 'string') return null;
-    
     const patterns = [
         /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
         /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
         /youtu\.be\/([^&\n?#]+)/,
         /youtube\.com\/shorts\/([^&\n?#]+)/
     ];
-    
     for (let pattern of patterns) {
         const match = url.match(pattern);
-        if (match && match[1] && match[1].length === 11) {
-            return match[1];
-        }
+        if (match && match[1] && match[1].length === 11) return match[1];
     }
     return null;
 }
@@ -85,17 +77,14 @@ function hideLoading() {
 function showToast(message, type = 'success', duration = 3000) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
-    
     const toastId = 'toast_' + Date.now();
     const toast = document.createElement('div');
     toast.id = toastId;
     toast.className = `toast ${type}`;
-    
     let icon = 'bi-info-circle';
     if (type === 'success') icon = 'bi-check-circle';
     if (type === 'error') icon = 'bi-exclamation-circle';
     if (type === 'warning') icon = 'bi-exclamation-triangle';
-    
     toast.innerHTML = `
         <i class="bi ${icon} toast-icon"></i>
         <div class="toast-message">${message}</div>
@@ -103,7 +92,6 @@ function showToast(message, type = 'success', duration = 3000) {
             <i class="bi bi-x"></i>
         </button>
     `;
-    
     container.appendChild(toast);
     setTimeout(() => toast.classList.add('show'), 10);
     setTimeout(() => {
@@ -135,7 +123,6 @@ function toggleSidebar() {
 }
 
 // ===== EXPORT =====
-// Exportar para uso global
 if (typeof window !== 'undefined') {
     window.formatCurrency = formatCurrency;
     window.formatDate = formatDate;
