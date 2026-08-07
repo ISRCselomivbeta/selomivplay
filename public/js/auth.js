@@ -7,18 +7,14 @@ async function handleLogin() {
     const email = document.getElementById('loginEmailField')?.value?.trim();
     const password = document.getElementById('loginPasswordField')?.value?.trim();
     const loginBtn = document.getElementById('loginBtn');
-    
     if (!email || !password) { 
         showToast('Preencha todos os campos', 'error'); 
         return; 
     }
-
     loginBtn.disabled = true;
     loginBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Autenticando...';
     showLoading('Autenticando...');
-
     try {
-        // Admin login (para testes)
         if (email === 'admin@selomiv.com' && password === 'admin123') {
             state.currentUser = { 
                 id: 'admin_master', 
@@ -39,22 +35,16 @@ async function handleLogin() {
             initializeApp();
             return;
         }
-
         const result = await callAPI('login', { email, password });
-        
         if (result?.success && result?.data) {
             const userData = result.data;
-            
-            // Verificar se é conta antiga (não confirmada)
             if (userData.is_old_account === true) {
                 await callAPI('mark_as_confirmed', { 
                     user_id: userData.id,
                     email: userData.email 
                 });
-                
                 state.currentUser = userData;
                 state.userBalance = userData.saldo || 0;
-                
                 if (userData.favorite_music_ids) {
                     if (Array.isArray(userData.favorite_music_ids)) {
                         state.favoriteMusicIds = userData.favorite_music_ids;
@@ -66,7 +56,6 @@ async function handleLogin() {
                 } else {
                     state.favoriteMusicIds = [];
                 }
-                
                 localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
                 localStorage.setItem('miv_session', Date.now().toString());
                 showToast('Login realizado! (Conta antiga confirmada automaticamente)', 'success');
@@ -75,8 +64,6 @@ async function handleLogin() {
                 initializeApp();
                 return;
             }
-            
-            // Verificar se email foi confirmado
             if (userData.email_confirmado === false) {
                 showToast('❌ Por favor, confirme seu email antes de fazer login', 'error', 5000);
                 showToast(`✉️ Enviamos um link para ${email}`, 'info', 5000);
@@ -85,10 +72,8 @@ async function handleLogin() {
                 hideLoading();
                 return;
             }
-            
             state.currentUser = userData;
             state.userBalance = userData.saldo || 0;
-            
             if (userData.favorite_music_ids) {
                 if (Array.isArray(userData.favorite_music_ids)) {
                     state.favoriteMusicIds = userData.favorite_music_ids;
@@ -100,14 +85,12 @@ async function handleLogin() {
             } else {
                 state.favoriteMusicIds = [];
             }
-            
             localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
             localStorage.setItem('miv_session', Date.now().toString());
             showToast('Login realizado!', 'success');
             document.getElementById('loginEmailField').value = '';
             document.getElementById('loginPasswordField').value = '';
             initializeApp();
-            
         } else {
             showToast(result?.message || 'Credenciais inválidas', 'error');
         }
@@ -131,7 +114,6 @@ async function handleRegister() {
     const acceptTerms = document.getElementById('acceptTermsField')?.checked;
     const acceptMarketing = document.getElementById('acceptMarketingField')?.checked || false;
     const registerBtn = document.getElementById('registerBtn');
-
     if (!name || !email || !password || !type) { 
         showToast('Preencha todos os campos obrigatórios', 'error'); 
         return; 
@@ -144,22 +126,18 @@ async function handleRegister() {
         showToast('Digite um e-mail válido', 'error'); 
         return; 
     }
-    
     if (!acceptTerms) {
         showToast('Você precisa aceitar os Termos de Uso para continuar', 'error');
         return;
     }
-
     const termsCheckbox = document.getElementById('acceptTermsField');
     if (!termsCheckbox || !termsCheckbox.checked) {
         showToast('Marque a caixa de aceite dos Termos de Uso', 'error');
         return;
     }
-
     registerBtn.disabled = true;
     registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
     showLoading('Criando conta...');
-
     try {
         const result = await callAPI('register', { 
             nome: name, 
@@ -173,18 +151,14 @@ async function handleRegister() {
             terms_accepted_at: new Date().toISOString(),
             accepted_marketing: acceptMarketing
         });
-        
         if (result?.success) {
             showToast('Cadastro realizado! Verifique seu email para confirmar.', 'success');
             hideLoading();
-            
             setTimeout(() => {
                 showToast(`✉️ Enviamos um email de confirmação para ${email}`, 'info', 5000);
             }, 1000);
-            
             // Modal de confirmação
             showConfirmationModal(email);
-            
             document.getElementById('registerNameField').value = '';
             document.getElementById('registerEmailField').value = '';
             document.getElementById('registerPasswordField').value = '';
@@ -192,9 +166,7 @@ async function handleRegister() {
             document.getElementById('registerLinkField').value = '';
             document.getElementById('acceptTermsField').checked = false;
             document.getElementById('acceptMarketingField').checked = false;
-            
             showLoginForm();
-            
         } else {
             showToast(result?.message || 'Erro ao cadastrar', 'error');
         }
@@ -226,31 +198,18 @@ function showConfirmationModal(email) {
                     <div style="font-size: 5rem; color: var(--neon-green); animation: bounce 2s infinite; margin-bottom: 1rem;">
                         <i class="bi bi-envelope-paper-fill"></i>
                     </div>
-                    
-                    <h3 style="color: white; font-weight: 700; margin-bottom: 1rem;">
-                        ÚLTIMO PASSO!
-                    </h3>
-                    
+                    <h3 style="color: white; font-weight: 700; margin-bottom: 1rem;">ÚLTIMO PASSO!</h3>
                     <p style="color: #b3b3b3; font-size: 1.1rem; margin-bottom: 0.5rem;">
                         <strong style="color: var(--neon-green);">${email}</strong>
                     </p>
-                    
                     <div style="background: rgba(0, 255, 136, 0.1); border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0; border: 1px dashed var(--neon-green);">
                         <i class="bi bi-check-circle-fill" style="color: var(--neon-green); font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
-                        <p style="color: white; font-size: 1.1rem; margin-bottom: 0;">
-                            Cadastro realizado com sucesso!
-                        </p>
-                        <p style="color: var(--neon-green); font-weight: 600; font-size: 1.2rem; margin: 0.5rem 0;">
-                            VERIFIQUE SEU E-MAIL
-                        </p>
-                        <p style="color: #b3b3b3;">
-                            Enviamos um link de confirmação para seu e-mail. Clique nele para ativar sua conta.
-                        </p>
+                        <p style="color: white; font-size: 1.1rem; margin-bottom: 0;">Cadastro realizado com sucesso!</p>
+                        <p style="color: var(--neon-green); font-weight: 600; font-size: 1.2rem; margin: 0.5rem 0;">VERIFIQUE SEU E-MAIL</p>
+                        <p style="color: #b3b3b3;">Enviamos um link de confirmação para seu e-mail. Clique nele para ativar sua conta.</p>
                     </div>
-                    
                     <button class="btn-miv" onclick="resendConfirmationEmailFromModal('${email}')" style="margin-top: 1rem; padding: 0.75rem 2rem; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px; width: auto;">
-                        <i class="bi bi-arrow-clockwise"></i>
-                        Reenviar e-mail de confirmação
+                        <i class="bi bi-arrow-clockwise"></i> Reenviar e-mail de confirmação
                     </button>
                 </div>
                 <div class="modal-footer" style="border-top: 1px solid var(--border); justify-content: center;">
@@ -261,10 +220,8 @@ function showConfirmationModal(email) {
             </div>
         </div>
     `;
-    
     const existingModal = document.getElementById('confirmEmailModal');
     if (existingModal) existingModal.remove();
-    
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     document.body.style.overflow = 'hidden';
 }
@@ -272,25 +229,20 @@ function showConfirmationModal(email) {
 // ===== REENVIAR CONFIRMAÇÃO =====
 async function resendConfirmationEmail() {
     const email = document.getElementById('loginEmailField')?.value?.trim();
-    
     if (!email) {
         showToast('Digite seu email primeiro', 'error');
         return;
     }
-    
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         showToast('Digite um email válido', 'error');
         return;
     }
-    
     showLoading('Enviando email...');
-    
     try {
         const result = await callAPI('resend_confirmation', { 
             email,
             confirm_url: window.location.origin + '/confirm-email.html'
         });
-        
         if (result?.success) {
             showToast(`✉️ Novo link enviado para ${email}!`, 'success', 5000);
         } else {
@@ -306,100 +258,7 @@ async function resendConfirmationEmail() {
 
 async function resendConfirmationEmailFromModal(email) {
     if (!email) return;
-    
     const btn = event?.currentTarget;
     const originalText = btn?.innerHTML;
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Enviando...';
-    }
-    
-    try {
-        const result = await callAPI('resend_confirmation', { 
-            email,
-            confirm_url: window.location.origin + '/confirm-email.html'
-        });
-        
-        if (result?.success) {
-            showToast(`✉️ Novo link enviado para ${email}!`, 'success', 4000);
-        } else {
-            showToast(result?.message || 'Erro ao enviar email', 'error');
-        }
-    } catch (error) {
-        console.error('Erro ao reenviar:', error);
-        showToast('Erro ao enviar email', 'error');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        }
-    }
-}
-
-// ===== LOGOUT =====
-function logout() { 
-    if (confirm('Deseja realmente sair?')) {
-        state.currentUser = null; 
-        state.userBalance = 0; 
-        state.playlist = []; 
-        state.externalPlaylist = []; 
-        state.portfolioAssets = []; 
-        state.ledgerData = []; 
-        state.favoriteMusicIds = []; 
-        state.currentTrackIndex = -1; 
-        state.isPlaying = false;
-        
-        localStorage.removeItem('miv_user'); 
-        localStorage.removeItem('miv_session');
-        
-        document.getElementById('mainApp').style.display = 'none'; 
-        document.getElementById('authScreen').style.display = 'flex'; 
-        document.getElementById('loginForm').style.display = 'block'; 
-        document.getElementById('registerForm').style.display = 'none';
-        document.getElementById('playerSpotify').style.display = 'none'; 
-        document.getElementById('playerExpanded')?.classList.remove('show');
-        
-        showToast('Logout realizado', 'success');
-    }
-}
-
-// ===== TOGGLE FORMULÁRIOS =====
-function showRegisterForm() { 
-    document.getElementById('loginForm').style.display = 'none'; 
-    document.getElementById('registerForm').style.display = 'block'; 
-}
-
-function showLoginForm() { 
-    document.getElementById('registerForm').style.display = 'none'; 
-    document.getElementById('loginForm').style.display = 'block'; 
-}
-
-function toggleArtistField() { 
-    const field = document.getElementById('artistLinkField'); 
-    if (field) field.style.display = document.getElementById('registerTypeField').value === 'artista' ? 'block' : 'none'; 
-}
-
-// ===== UPDATE USER INTERFACE =====
-function updateUserInterface() { 
-    if (!state.currentUser) return; 
-    const badge = document.getElementById('userBadge'); 
-    if (badge) { 
-        badge.textContent = state.currentUser.tipo === 'admin' ? 'Admin' : (state.currentUser.tipo === 'artista' ? 'Artista' : 'Ouvinte'); 
-        badge.style.background = state.currentUser.tipo === 'admin' ? '#ff3232' : (state.currentUser.tipo === 'artista' ? '#007bff' : 'var(--neon-green)'); 
-    } 
-    document.getElementById('artistNavItem').style.display = (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin') ? 'block' : 'none'; 
-    updateBalanceDisplay(); 
-}
-
-// ===== EXPORT =====
-if (typeof window !== 'undefined') {
-    window.handleLogin = handleLogin;
-    window.handleRegister = handleRegister;
-    window.logout = logout;
-    window.showRegisterForm = showRegisterForm;
-    window.showLoginForm = showLoginForm;
-    window.toggleArtistField = toggleArtistField;
-    window.updateUserInterface = updateUserInterface;
-    window.resendConfirmationEmail = resendConfirmationEmail;
-    window.resendConfirmationEmailFromModal = resendConfirmationEmailFromModal;
-}
