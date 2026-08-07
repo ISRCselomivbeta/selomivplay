@@ -1,9 +1,8 @@
-// ===== SERVICE WORKER - PLAY MY / SELO MIV =====
-// Antes, o conteúdo do service worker também existia duplicado como uma
-// string JS morta (`swContent`) dentro do index.html, nunca usada de fato —
-// isso foi removido do index.html para não haver duas fontes de verdade.
+// ============================================================
+// SERVICE WORKER - PLAY MY / SELO MIV
+// ============================================================
 
-const CACHE_NAME = 'selo-miv-v6.2';  // ← Nova versão força atualização
+const CACHE_NAME = 'selo-miv-v6.2';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -18,14 +17,12 @@ const urlsToCache = [
     'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap'
 ];
 
-// Instalar Service Worker
+// ===== INSTALAR =====
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
                 console.log('[SW] Cache aberto');
-                // Promise.allSettled evita que a instalação inteira falhe
-                // caso um único recurso (ex: um CDN externo) esteja fora do ar
                 return Promise.allSettled(
                     urlsToCache.map(url => cache.add(url).catch(err => {
                         console.warn('[SW] Falha ao cachear (ignorado):', url, err);
@@ -36,10 +33,9 @@ self.addEventListener('install', event => {
     self.skipWaiting();
 });
 
-// Interceptar requisições (cache-first com fallback de rede)
+// ===== INTERCEPTAR REQUISIÇÕES =====
 self.addEventListener('fetch', event => {
-    // Nunca interceptar API/backend, YouTube ou Google APIs — precisam
-    // sempre ser buscados em tempo real, nunca vir do cache
+    // Nunca interceptar API/backend, YouTube ou Google APIs
     if (
         event.request.method !== 'GET' ||
         event.request.url.includes('/api/') ||
@@ -74,7 +70,6 @@ self.addEventListener('fetch', event => {
                     return networkResponse;
                 }).catch(() => {
                     // Sem rede: se for navegação de página, mostra offline.html
-                    // (arquivo real do projeto)
                     if (event.request.mode === 'navigate') {
                         return caches.match('/offline.html');
                     }
@@ -83,7 +78,7 @@ self.addEventListener('fetch', event => {
     );
 });
 
-// Limpar caches antigos ao ativar uma nova versão
+// ===== ATIVAR E LIMPAR CACHES ANTIGAS =====
 self.addEventListener('activate', event => {
     const cacheWhitelist = [CACHE_NAME];
     event.waitUntil(
@@ -100,7 +95,7 @@ self.addEventListener('activate', event => {
     self.clients.claim();
 });
 
-// Sincronização em background (mantido do projeto original, para negociações pendentes)
+// ===== SINCRONIZAÇÃO EM BACKGROUND =====
 self.addEventListener('sync', event => {
     if (event.tag === 'sync-trades') {
         event.waitUntil(syncTrades());
@@ -126,3 +121,30 @@ async function getPendingTrades() {
     // Implementar lógica para buscar trades pendentes do IndexedDB, se desejar
     return [];
 }
+
+// ===== NOTIFICAÇÕES PUSH =====
+self.addEventListener('push', event => {
+    const data = event.data ? event.data.json() : {};
+    const title = data.title || 'PLAY MY';
+    const options = {
+        body: data.body || 'Novas atualizações disponíveis!',
+        icon: '/images/logo.png',
+        badge: '/images/logo.png',
+        vibrate: [200, 100, 200],
+        data: {
+            url: data.url || '/'
+        }
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(title, options)
+    );
+});
+
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    const url = event.notification.data?.url || '/';
+    event.waitUntil(
+        clients.openWindow(url)
+    );
+});
