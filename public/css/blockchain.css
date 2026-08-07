@@ -1,6 +1,7 @@
 /* ============================================================
    BLOCKCHAIN.CSS - Estilos do Blockchain Explorer
    ============================================================ */
+
 .btn-outline-purple {
     color: #9b59b6;
     border-color: #9b59b6;
@@ -11,77 +12,10 @@
     color: white;
 }
 
-/* ===== BLOCKCHAIN VISUALIZATION ===== */
 #blockchainVisualization {
     display: flex;
     flex-wrap: wrap;
     gap: 1.5rem;
     justify-content: center;
     padding: 1rem 0;
-}
-
-.blockchain-block {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 0.75rem;
-    padding: 1rem;
-    min-width: 180px;
-    max-width: 220px;
-    transition: all 0.3s ease;
-}
-
-.blockchain-block:hover {
-    border-color: var(--neon-green);
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-.blockchain-block .block-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border);
-}
-
-.blockchain-block .block-index {
-    font-weight: 700;
-    color: var(--text-light);
-}
-
-.blockchain-block .block-hash {
-    font-family: monospace;
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    word-break: break-all;
-}
-
-.blockchain-block .block-previous {
-    font-family: monospace;
-    font-size: 0.6rem;
-    color: var(--text-muted);
-    word-break: break-all;
-    margin-top: 0.25rem;
-}
-
-.blockchain-block .block-music {
-    margin-top: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    background: rgba(0, 255, 136, 0.1);
-    border-radius: 0.25rem;
-    font-size: 0.8rem;
-    color: var(--text-light);
-    text-align: center;
-}
-
-.blockchain-arrow {
-    display: flex;
-    align-items: center;
-    color: var(--blockchain-purple);
-    font-size: 1.5rem;
-}
-
-.blockchain-arrow i {
-    opacity: 0.5;
 }
