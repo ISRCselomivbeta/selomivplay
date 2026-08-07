@@ -113,7 +113,7 @@ const playQueue = {
     }
 };
 
-// Exportar para uso global
+// ===== EXPORTAR =====
 if (typeof window !== 'undefined') {
     window.state = state;
     window.playQueue = playQueue;
