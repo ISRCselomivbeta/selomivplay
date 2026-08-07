@@ -171,40 +171,27 @@
 
 /* PC GRANDE - 7 cards */
 @media (min-width: 1400px) {
-    .spotify-grid {
-        grid-template-columns: repeat(7, minmax(0, 1fr));
-    }
+    .spotify-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 
 /* PC MÉDIO - 6 cards */
 @media (min-width: 1200px) and (max-width: 1399px) {
-    .spotify-grid {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-    }
+    .spotify-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 
 /* NOTEBOOK - 5 cards */
 @media (min-width: 992px) and (max-width: 1199px) {
-    .spotify-grid {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
+    .spotify-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 /* TABLET - 4 cards */
 @media (min-width: 768px) and (max-width: 991px) {
-    .spotify-grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 16px;
-    }
+    .spotify-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* CELULAR - 2 cards */
 @media (max-width: 767px) {
-    .spotify-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-        padding: 0 0.5rem;
-    }
+    .spotify-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 0 0.5rem; }
 }
 
 /* ===== SPOTIFY CARD ===== */
@@ -291,17 +278,6 @@
     text-overflow: ellipsis;
 }
 
-.spotify-badge {
-    background: rgba(29, 185, 84, 0.2);
-    color: var(--spotify-green);
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 10px;
-    margin-top: 6px;
-    display: inline-block;
-}
-
 .btn-invest {
     width: 100%;
     margin-top: 8px !important;
@@ -312,7 +288,6 @@
     color: white;
     font-size: 11px !important;
     font-weight: 600;
-    letter-spacing: 0.5px;
     transition: all 0.3s ease;
     cursor: pointer;
 }
