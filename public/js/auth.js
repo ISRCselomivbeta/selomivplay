@@ -262,3 +262,90 @@ async function resendConfirmationEmailFromModal(email) {
     const originalText = btn?.innerHTML;
     if (btn) {
         btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Enviando...';
+    }
+    try {
+        const result = await callAPI('resend_confirmation', { 
+            email,
+            confirm_url: window.location.origin + '/confirm-email.html'
+        });
+        if (result?.success) {
+            showToast(`✉️ Novo link enviado para ${email}!`, 'success', 4000);
+        } else {
+            showToast(result?.message || 'Erro ao enviar email', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao reenviar:', error);
+        showToast('Erro ao enviar email', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
+
+// ===== LOGOUT =====
+function logout() { 
+    if (confirm('Deseja realmente sair?')) {
+        state.currentUser = null; 
+        state.userBalance = 0; 
+        state.playlist = []; 
+        state.externalPlaylist = []; 
+        state.portfolioAssets = []; 
+        state.ledgerData = []; 
+        state.favoriteMusicIds = []; 
+        state.currentTrackIndex = -1; 
+        state.isPlaying = false;
+        localStorage.removeItem('miv_user'); 
+        localStorage.removeItem('miv_session');
+        document.getElementById('mainApp').style.display = 'none'; 
+        document.getElementById('authScreen').style.display = 'flex'; 
+        document.getElementById('loginForm').style.display = 'block'; 
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('playerSpotify').style.display = 'none'; 
+        document.getElementById('playerExpanded')?.classList.remove('show');
+        showToast('Logout realizado', 'success');
+    }
+}
+
+// ===== TOGGLE FORMULÁRIOS =====
+function showRegisterForm() { 
+    document.getElementById('loginForm').style.display = 'none'; 
+    document.getElementById('registerForm').style.display = 'block'; 
+}
+
+function showLoginForm() { 
+    document.getElementById('registerForm').style.display = 'none'; 
+    document.getElementById('loginForm').style.display = 'block'; 
+}
+
+function toggleArtistField() { 
+    const field = document.getElementById('artistLinkField'); 
+    if (field) field.style.display = document.getElementById('registerTypeField').value === 'artista' ? 'block' : 'none'; 
+}
+
+// ===== UPDATE USER INTERFACE =====
+function updateUserInterface() { 
+    if (!state.currentUser) return; 
+    const badge = document.getElementById('userBadge'); 
+    if (badge) { 
+        badge.textContent = state.currentUser.tipo === 'admin' ? 'Admin' : (state.currentUser.tipo === 'artista' ? 'Artista' : 'Ouvinte'); 
+        badge.style.background = state.currentUser.tipo === 'admin' ? '#ff3232' : (state.currentUser.tipo === 'artista' ? '#007bff' : 'var(--neon-green)'); 
+    } 
+    document.getElementById('artistNavItem').style.display = (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin') ? 'block' : 'none'; 
+    updateBalanceDisplay(); 
+}
+
+// ===== EXPORT =====
+if (typeof window !== 'undefined') {
+    window.handleLogin = handleLogin;
+    window.handleRegister = handleRegister;
+    window.logout = logout;
+    window.showRegisterForm = showRegisterForm;
+    window.showLoginForm = showLoginForm;
+    window.toggleArtistField = toggleArtistField;
+    window.updateUserInterface = updateUserInterface;
+    window.resendConfirmationEmail = resendConfirmationEmail;
+    window.resendConfirmationEmailFromModal = resendConfirmationEmailFromModal;
+}
