@@ -1,5 +1,5 @@
 /* ============================================================
-   RESPONSIVE.CSS - Media Queries 
+   RESPONSIVE.CSS - Media Queries
    ============================================================ */
 
 /* ===== TABLET ===== */
@@ -40,16 +40,8 @@
         padding-bottom: env(safe-area-inset-bottom, 10px);
         height: auto;
         min-height: var(--player-height);
-        background: linear-gradient(to top, rgba(18,18,18,0.98), rgba(30,30,30,0.95));
-        backdrop-filter: blur(10px);
     }
-
-    .player-miv {
-        height: auto;
-        min-height: var(--player-height);
-        padding: 0.5rem 1rem;
-    }
-
+    
     .sidebar {
         width: 80vw;
         left: -80vw;
@@ -57,43 +49,16 @@
     .sidebar.open {
         left: 0;
     }
-
+    
     .youtube-container-expanded {
         aspect-ratio: 16/9;
         height: auto;
     }
-
-    .player-bar {
-        flex-direction: column;
-        height: auto;
-        padding: 1rem 0;
-        gap: 1rem;
-    }
-    
-    .player-track-info,
-    .player-controls-center,
-    .player-controls-right {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .player-track-info { order: 1; }
-    .player-controls-center { order: 2; }
-    .player-controls-right { order: 3; }
     
     .expanded-track-info {
         flex-direction: column;
         align-items: center;
         text-align: center;
-    }
-    
-    .expanded-album-art {
-        width: 200px;
-        height: 200px;
-    }
-    
-    .expanded-title {
-        font-size: 2rem;
     }
     
     .expanded-meta {
@@ -105,7 +70,7 @@
     .expanded-actions {
         justify-content: center;
     }
-
+    
     .app-header .header-content {
         flex-wrap: wrap;
         gap: 10px;
