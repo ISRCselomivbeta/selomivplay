@@ -19,22 +19,14 @@ function canMakeRequest(type) {
     const now = Date.now();
     const last = requestControl[`last${type}`];
     const count = requestControl[`${type.toLowerCase()}Count`];
-    
     if (now - requestControl.lastReset > 3600000) {
         requestControl.saldoCount = 0;
         requestControl.streamingCount = 0;
         requestControl.extratoCount = 0;
         requestControl.lastReset = now;
     }
-    
-    if (now - last < requestControl.MIN_INTERVAL) {
-        return false;
-    }
-    
-    if (count > requestControl.MAX_REQUESTS_PER_HOUR) {
-        return false;
-    }
-    
+    if (now - last < requestControl.MIN_INTERVAL) return false;
+    if (count > requestControl.MAX_REQUESTS_PER_HOUR) return false;
     return true;
 }
 
@@ -48,34 +40,25 @@ async function callAPI(action, data = {}) {
     if (state?.currentUser?.id && !data.user_id) {
         data.user_id = state.currentUser.id;
     }
-
     try {
         const url = new URL(CONFIG.API_URL, window.location.origin);
         url.searchParams.append('action', action);
-        
         Object.keys(data).forEach(key => {
             if (data[key] !== undefined && data[key] !== null) {
                 url.searchParams.append(key, data[key]);
             }
         });
-
         console.log(`📡 [${action}] Fetching:`, url.toString());
-
         const response = await fetch(url.toString(), {
             method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-            }
+            headers: { 'Accept': 'application/json' }
         });
-        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
         const result = await response.json();
         console.log(`✅ [${action}] Resposta:`, result);
         return result;
-
     } catch (error) {
         console.error(`❌ [${action}] Erro:`, error);
         showToast('Erro de conexão com o servidor', 'error');
@@ -86,7 +69,6 @@ async function callAPI(action, data = {}) {
 // ===== FALLBACK LOCAL =====
 function getFallbackData(action, data) {
     console.log(`📦 [${action}] Usando fallback local`);
-    
     if (action === 'get_musicas') {
         return {
             success: true,
@@ -139,26 +121,6 @@ function getFallbackData(action, data) {
             ]
         };
     }
-    
-    if (action === 'buy' && CONFIG.BLOCKCHAIN_ENABLED) {
-        const contract = Blockchain.createContract({
-            music_id: data.music_id,
-            user_id: data.user_id || 'user_' + Date.now(),
-            quantidade: data.quantidade,
-            valor_total: data.valor_total
-        });
-        
-        return {
-            success: true,
-            message: 'Ação realizada com sucesso!',
-            data: { 
-                contrato_id: contract.id,
-                blockchain_hash: contract.hash,
-                transaction: contract
-            }
-        };
-    }
-    
     if (['buy', 'buy_external', 'register', 'upload_music', 'suggest_external_music', 
          'create_playlist', 'toggle_favorite', 'request_withdrawal'].includes(action)) {
         return {
@@ -170,7 +132,6 @@ function getFallbackData(action, data) {
             }
         };
     }
-    
     return { success: true, data: [] };
 }
 
@@ -181,7 +142,6 @@ const Blockchain = {
         const random = Math.random().toString(36).substring(2, 15);
         return '0x' + timestamp.toString(16) + random + data.substring(0, 8);
     },
-
     createContract: function(investment) {
         const contract = {
             id: 'CT_' + Date.now(),
@@ -194,13 +154,10 @@ const Blockchain = {
             status: 'active',
             previousHash: state.blockchain.lastBlock ? state.blockchain.contracts[state.blockchain.contracts.length - 1].hash : '0x0'
         };
-        
         state.blockchain.contracts.push(contract);
         state.blockchain.lastBlock++;
-        
         return contract;
     },
-
     recordRoyalty: function(music_id, amount, investors) {
         const royalty = {
             id: 'ROY_' + Date.now(),
@@ -211,15 +168,12 @@ const Blockchain = {
             investors: investors,
             distributed: false
         };
-        
         state.blockchain.transactions.push(royalty);
         return royalty;
     },
-
     verifyContract: function(contractId) {
         const contract = state.blockchain.contracts.find(c => c.id === contractId);
         if (!contract) return false;
-        
         const index = state.blockchain.contracts.indexOf(contract);
         if (index > 0) {
             const prevContract = state.blockchain.contracts[index - 1];
@@ -227,13 +181,12 @@ const Blockchain = {
         }
         return true;
     },
-
     getContractHistory: function(music_id) {
         return state.blockchain.contracts.filter(c => c.music_id === music_id);
     }
 };
 
-// Exportar
+// ===== EXPORT =====
 if (typeof window !== 'undefined') {
     window.callAPI = callAPI;
     window.Blockchain = Blockchain;
