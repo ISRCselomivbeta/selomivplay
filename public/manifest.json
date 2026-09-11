@@ -79,14 +79,5 @@
         }
       ]
     }
-  ],
-  "screenshots": [
-    {
-      "src": "https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "PLAY MY — Marketplace"
-    }
   ]
 }
