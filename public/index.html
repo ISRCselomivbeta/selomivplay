@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PLAY MY - Música sem limites">
 <meta name="theme-color" content="#00ff88">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PLAY MY">
+<meta name="mobile-web-app-capable" content="yes">
 <title>PLAY MY | Powered by Selo MIV</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -19,22 +23,25 @@
 :root{
 --neon-green:#00ff88;--bg-dark:#07090c;--bg-card:#111418;--border:#1e2329;
 --text-light:#ffffff;--text-muted:#b3b3b3;--spotify-green:#1DB954;
---player-height:90px;--spotify-card:#181818;--spotify-card-hover:#282828;--blockchain-purple:#9b59b6;
+--player-height:90px;--spotify-card:#181818;--spotify-card-hover:#282828;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Outfit',sans-serif;background:var(--bg-dark);color:var(--text-light);min-height:100vh;overflow-x:hidden;padding-bottom:calc(var(--player-height) + env(safe-area-inset-bottom,0px))}
-.loading-screen{position:fixed;inset:0;background:var(--bg-dark);display:flex;align-items:center;justify-content:center;z-index:9999}
-.loading-content{text-align:center}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 @keyframes loading{0%{width:0%}50%{width:70%}100%{width:100%}}
+.loading-screen{position:fixed;inset:0;background:var(--bg-dark);display:flex;align-items:center;justify-content:center;z-index:9999}
+.loading-content{text-align:center}
+.progress-loading{width:200px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin:10px auto}
+.progress-loading-bar{height:100%;background:linear-gradient(90deg,var(--neon-green),#00cc6a);width:0%;animation:loading 2s infinite}
 .main-app{display:none;min-height:100vh}
 .app-header{background:linear-gradient(180deg,rgba(0,255,136,.1) 0%,rgba(7,9,12,.8) 100%);backdrop-filter:blur(10px);padding:1rem 1.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1000}
 .header-content{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .saldo-display h6{color:var(--text-muted);font-size:.75rem;margin-bottom:.25rem}
 .saldo-display h4{color:var(--neon-green);font-weight:700;margin:0}
 .user-badge{background:var(--neon-green);color:#000;padding:.25rem .75rem;border-radius:1rem;font-size:.75rem;font-weight:700}
+#healthBadge{font-size:11px;padding:4px 10px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid var(--border);font-weight:600;transition:all .3s}
 .sidebar{position:fixed;top:0;left:-300px;width:300px;height:100vh;background:#000;border-right:1px solid var(--border);z-index:10000;transition:left .3s ease;overflow-y:auto;padding:1.5rem}
 .sidebar.open{left:0}
 .sidebar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
@@ -170,8 +177,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg-dark);color:var(--text-
 .blockchain-badge{background:rgba(155,89,182,.2);color:#9b59b6;padding:4px 8px;border-radius:12px;font-size:12px;display:inline-flex;align-items:center;gap:4px}
 .blockchain-hash{font-family:monospace;font-size:11px;color:#9ca3af;word-break:break-all}
 .blockchain-verified{color:var(--neon-green);font-size:12px;display:inline-flex;align-items:center;gap:4px}
-.progress-loading{width:200px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin:10px auto}
-.progress-loading-bar{height:100%;background:linear-gradient(90deg,var(--neon-green),#00cc6a);width:0%;animation:loading 2s infinite}
 .search-container{position:relative;flex:1;max-width:500px;margin:0 20px}
 #searchForm{display:flex;align-items:center;background:rgba(255,255,255,.1);border-radius:30px;padding:5px 5px 5px 15px;border:1px solid var(--border);transition:all .3s}
 #searchForm:focus-within{background:rgba(255,255,255,.15);border-color:var(--neon-green)}
@@ -247,12 +252,16 @@ body{padding-bottom:calc(250px + env(safe-area-inset-bottom,0px))}
 <div id="loadingScreen" class="loading-screen">
 <div class="loading-content">
 <img src="/images/logo.png" alt="PLAY MY" width="80" height="80" style="border-radius:50%;object-fit:cover;margin-bottom:1rem;border:2px solid var(--neon-green);animation:pulse 2s infinite" onerror="this.style.display='none'">
-<p class="text-muted" id="loadingMessage">Carregando...</p>
+<p class="text-muted" id="loadingMessage">Iniciando...</p>
 <div class="progress-loading"><div class="progress-loading-bar"></div></div>
 </div>
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
+
+<div id="offlineBadge" style="display:none;position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(255,50,50,.9);color:#fff;padding:8px 16px;border-radius:30px;font-size:12px;font-weight:600;z-index:10001;backdrop-filter:blur(10px)">
+<i class="bi bi-wifi-off"></i> Offline
+</div>
 
 <div id="authScreen" class="auth-screen">
 <div class="auth-card">
@@ -365,7 +374,7 @@ body{padding-bottom:calc(250px + env(safe-area-inset-bottom,0px))}
 <div id="searchResults" class="search-results" style="display:none"></div>
 </div>
 <div class="d-flex align-items-center gap-2">
-<span class="blockchain-badge">⛓️ Ativa</span>
+<span id="healthBadge">🔄 Verificando...</span>
 <div class="user-badge" id="userBadge">Ouvinte</div>
 </div>
 </div>
@@ -402,7 +411,7 @@ body{padding-bottom:calc(250px + env(safe-area-inset-bottom,0px))}
 <section id="ledgerSection" class="section">
 <div class="section-header">
 <h2 class="section-title">📋 Histórico</h2>
-<button class="btn btn-sm btn-outline-success" onclick="loadLedger(true)"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+<button class="btn btn-sm btn-outline-success" onclick="loadLedger()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
 </div>
 <div class="table-responsive">
 <table class="ledger-table">
@@ -428,7 +437,7 @@ body{padding-bottom:calc(250px + env(safe-area-inset-bottom,0px))}
 <section id="investmentsSection" class="section">
 <div class="section-header">
 <h2 class="section-title">📈 Melhores Investimentos</h2>
-<button class="btn btn-sm btn-outline-success" onclick="loadTopInvestments(true)"><i class="bi bi-arrow-clockwise"></i></button>
+<button class="btn btn-sm btn-outline-success" onclick="loadTopInvestments()"><i class="bi bi-arrow-clockwise"></i></button>
 </div>
 <div class="alert alert-info bg-dark border-info mb-3"><i class="bi bi-lightbulb me-2"></i>Baseado em algoritmo ELO</div>
 <div id="investmentsContent" class="spotify-grid"></div>
@@ -512,11 +521,18 @@ body{padding-bottom:calc(250px + env(safe-area-inset-bottom,0px))}
 <div class="youtube-container-expanded mb-4">
 <div id="youtubePlayerExpanded" style="width:100%;height:100%"></div>
 <div class="player-loading" id="playerLoadingExpanded">
-<i class="bi bi-play-circle" style="font-size:3rem;color:#00ff88"></i>
+<div class="loading-spinner"></div>
 <span id="loadingMessageText">Carregando vídeo...</span>
+<span id="realTimeStatus"></span>
 </div>
 </div>
 <div id="playerStatus" class="mt-2 small text-center"></div>
+<div id="streamingRewardIndicator" class="mt-2 text-center" style="display:none">
+<div class="alert alert-success bg-success bg-opacity-10 border-success py-1 px-2 d-inline-flex align-items-center gap-2 rounded-pill">
+<i class="bi bi-cash-stack text-success"></i>
+<span id="streamingRewardAmount" class="fw-bold text-success">+0 SELO COIN</span>
+</div>
+</div>
 <div class="expanded-controls bg-dark p-4 rounded-3">
 <div class="expanded-progress-bar" onclick="handleExpandedProgressClick(event)" id="expandedProgressContainer">
 <div class="expanded-progress-fill" id="expandedProgressBar"></div>
@@ -700,12 +716,97 @@ const CONFIG = {
   BLOCKCHAIN_ENABLED: true,
   YOUTUBE_API_KEY: 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM'
 };
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
 const PLACEHOLDERS = {
   MIV_56: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'56\' height=\'56\'%3E%3Crect width=\'56\' height=\'56\' fill=\'%231a1e24\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-size=\'14\' fill=\'%2300ff88\'%3EMIV%3C/text%3E%3C/svg%3E',
-  MIV_300: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\'%3E%3Crect width=\'300\' height=\'300\' fill=\'%231a1e24\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-size=\'60\' fill=\'%2300ff88\'%3ESELO%3C/text%3E%3C/svg%3E',
+  MIV_300: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\'%3E%3Crect width=\'300\' height=\'300\' fill=\'%231a1e24\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-size=\'60\' fill=\'%2300ff88\'%3EPLAYMY%3C/text%3E%3C/svg%3E',
   EXT_56: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'56\' height=\'56\'%3E%3Crect width=\'56\' height=\'56\' fill=\'%231a1e24\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-size=\'14\' fill=\'%23ff6b6b\'%3EEXT%3C/text%3E%3C/svg%3E',
   EXT_300: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\'%3E%3Crect width=\'300\' height=\'300\' fill=\'%231a1e24\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-size=\'50\' fill=\'%23ff6b6b\'%3EEXT%3C/text%3E%3C/svg%3E',
   PLAYLIST: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\'%3E%3Crect width=\'60\' height=\'60\' fill=\'%2300ff88\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-size=\'32\'%3E%E2%99%AB%3C/text%3E%3C/svg%3E'
+};
+
+// ============ HEALTH CHECK INTELIGENTE ============
+const HealthCheck = {
+  backend: { online: null, lastCheck: 0 },
+  gas: { online: null, lastCheck: 0 },
+  youtube: { online: null, lastCheck: 0 },
+  mode: 'auto',
+  async testBackend() {
+    try {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 5000);
+      const r = await fetch('/api/backend?action=ping', { signal: ctrl.signal });
+      clearTimeout(timeout);
+      if (r.ok) {
+        const data = await r.json();
+        this.backend.online = data.success === true;
+        this.backend.version = data.version;
+        this.backend.lastCheck = Date.now();
+        return this.backend.online;
+      }
+    } catch (e) {}
+    this.backend.online = false;
+    this.backend.lastCheck = Date.now();
+    return false;
+  },
+  async testGAS() {
+    try {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 8000);
+      const r = await fetch(GAS_URL + '?action=ping', { signal: ctrl.signal });
+      clearTimeout(timeout);
+      if (r.ok) {
+        const data = await r.json();
+        this.gas.online = data.success === true;
+        this.gas.version = data.version;
+        this.gas.lastCheck = Date.now();
+        return this.gas.online;
+      }
+    } catch (e) {}
+    this.gas.online = false;
+    this.gas.lastCheck = Date.now();
+    return false;
+  },
+  async testYouTube() {
+    if (!CONFIG.YOUTUBE_API_KEY) { this.youtube.online = false; return false; }
+    try {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 5000);
+      const r = await fetch('https://www.googleapis.com/youtube/v3/videos?part=statistics&id=fJ9rUzIMcZQ&key=' + CONFIG.YOUTUBE_API_KEY, { signal: ctrl.signal });
+      clearTimeout(timeout);
+      const data = await r.json();
+      this.youtube.online = !data.error;
+      this.youtube.lastCheck = Date.now();
+      return this.youtube.online;
+    } catch (e) {
+      this.youtube.online = false;
+      return false;
+    }
+  },
+  async runAll() {
+    console.log('🔍 Health Check...');
+    await Promise.all([this.testBackend(), this.testGAS(), this.testYouTube()]);
+    if (this.backend.online) this.mode = 'backend';
+    else if (this.gas.online) this.mode = 'gas';
+    else this.mode = 'fallback';
+    console.log('📊 Modo:', this.mode, '| Backend:', this.backend.online, '| GAS:', this.gas.online, '| YT:', this.youtube.online);
+    this.updateBadge();
+    return this.mode;
+  },
+  updateBadge() {
+    const badge = document.getElementById('healthBadge');
+    if (!badge) return;
+    const modes = {
+      backend: { icon: '✅', text: 'Online', color: '#00ff88', bg: 'rgba(0,255,136,0.15)' },
+      gas: { icon: '⚠️', text: 'Modo Reserva', color: '#ffc107', bg: 'rgba(255,193,7,0.15)' },
+      fallback: { icon: '❌', text: 'Offline', color: '#ff3232', bg: 'rgba(255,50,50,0.15)' }
+    };
+    const m = modes[this.mode] || modes.fallback;
+    badge.innerHTML = m.icon + ' ' + m.text;
+    badge.style.color = m.color;
+    badge.style.background = m.bg;
+    badge.style.borderColor = m.color;
+  }
 };
 
 // ============ STATE ============
@@ -782,11 +883,23 @@ async function getYouTubeStats(videoId) {
   const key = 'yt_stats_' + videoId;
   const cached = localStorage.getItem(key);
   if (cached) { try { return JSON.parse(cached); } catch(e) {} }
+  if (!HealthCheck.youtube.online) return { views: 100000, likes: 3000, comments: 500, is_estimate: true };
   try {
-    const r = await callAPI('get_youtube_stats', { video_id: videoId });
-    if (r && r.success && r.data) { localStorage.setItem(key, JSON.stringify(r.data)); return r.data; }
+    const r = await fetch('https://www.googleapis.com/youtube/v3/videos?part=statistics&id=' + videoId + '&key=' + CONFIG.YOUTUBE_API_KEY);
+    const data = await r.json();
+    if (data.items && data.items[0]) {
+      const s = data.items[0].statistics;
+      const result = {
+        views: parseInt(s.viewCount) || 0,
+        likes: parseInt(s.likeCount) || 0,
+        comments: parseInt(s.commentCount) || 0,
+        is_estimate: false
+      };
+      localStorage.setItem(key, JSON.stringify(result));
+      return result;
+    }
   } catch (e) {}
-  return { views: 100000, likes: 3000, comments: 500 };
+  return { views: 100000, likes: 3000, comments: 500, is_estimate: true };
 }
 function calculateEstimatedRevenue(views) { const brl = (views/1000) * 1.5; return { brl: brl, formatted: formatCurrency(brl) }; }
 async function updateCardWithRealData(t, card) {
@@ -803,21 +916,55 @@ async function updateCardWithRealData(t, card) {
 }
 async function updateExternalCardWithRealData(t, c) { return updateCardWithRealData(t, c); }
 
-// ============ API ============
+// ============ API COM CASCATA ============
 async function callAPI(action, data) {
   data = data || {};
   if (state && state.currentUser && state.currentUser.id && !data.user_id) data.user_id = state.currentUser.id;
-  try {
-    const url = new URL(CONFIG.API_URL, window.location.origin);
-    url.searchParams.append('action', action);
-    Object.keys(data).forEach(k => { if (data[k] !== undefined && data[k] !== null) url.searchParams.append(k, data[k]); });
-    const r = await fetch(url.toString(), { method: 'GET', headers: { 'Accept': 'application/json' } });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return await r.json();
-  } catch (error) {
-    console.error('[' + action + '] Erro:', error);
-    return getFallbackData(action, data);
+
+  // ============ MODO BACKEND (prioritário) ============
+  if (HealthCheck.mode === 'backend' || HealthCheck.mode === 'auto') {
+    try {
+      const url = new URL(CONFIG.API_URL, window.location.origin);
+      url.searchParams.append('action', action);
+      Object.keys(data).forEach(k => { if (data[k] !== undefined && data[k] !== null) url.searchParams.append(k, data[k]); });
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 10000);
+      const r = await fetch(url.toString(), { signal: ctrl.signal, headers: { 'Accept': 'application/json' } });
+      clearTimeout(timeout);
+      if (r.ok) {
+        const json = await r.json();
+        if (json && json.success !== false) {
+          console.log('✅ [' + action + '] via Backend');
+          return json;
+        }
+      }
+    } catch (e) { console.warn('⚠️ Backend falhou:', e.message); }
   }
+
+  // ============ MODO GAS (fallback) ============
+  if (HealthCheck.mode === 'gas' || HealthCheck.gas.online) {
+    try {
+      const url = new URL(GAS_URL);
+      url.searchParams.append('action', action);
+      Object.keys(data).forEach(k => { if (data[k] !== undefined && data[k] !== null) url.searchParams.append(k, data[k]); });
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 15000);
+      const r = await fetch(url.toString(), { signal: ctrl.signal });
+      clearTimeout(timeout);
+      if (r.ok) {
+        const text = await r.text();
+        const json = JSON.parse(text);
+        if (json && json.success !== false) {
+          console.log('📦 [' + action + '] via GAS direto');
+          return json;
+        }
+      }
+    } catch (e) { console.warn('⚠️ GAS também falhou:', e.message); }
+  }
+
+  // ============ MODO FALLBACK (local) ============
+  console.warn('📦 [' + action + '] fallback local');
+  return getFallbackData(action, data);
 }
 function getFallbackData(action, data) {
   if (action === 'get_musicas') {
@@ -1072,7 +1219,7 @@ function createYouTubePlayer(elId, videoId) {
   if (state.youtubePlayer && state.youtubePlayer.destroy) { try { state.youtubePlayer.destroy(); } catch (e) {} }
   state.youtubePlayer = new YT.Player(div.id, {
     width: '100%', height: '100%', videoId: videoId,
-    playerVars: { autoplay: 1, controls: 1, modestbranding: 1, rel: 0, playsinline: 1, origin: window.location.origin, enablejsapi: 1 },
+    playerVars: { autoplay: 1, controls: 1, modestbranding: 1, rel: 0, playsinline: 1, enablejsapi: 1 },
     events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange, onError: onPlayerError }
   });
 }
@@ -1094,7 +1241,8 @@ function onPlayerStateChange(e) {
     case YT.PlayerState.BUFFERING: if (l) l.style.display = 'flex'; break;
     case YT.PlayerState.ENDED: state.isPlaying = false; if (l) l.style.display = 'none'; if (state.isRepeat) e.target.playVideo(); else playNext(); break;
   }
-  updatePlayerIcons(); updateExpandedPlayer();
+  updatePlayerIcons();
+  updateExpandedPlayer();
 }
 function onPlayerError(e) { showToast('Erro ao carregar vídeo', 'error'); }
 function updatePlayerProgress() {
@@ -1243,7 +1391,15 @@ function updateExternalInvestmentTotal() {
   document.getElementById('investExternalTotalPriceDisplay').textContent = formatCurrency(t);
 }
 function adjustExternalQuantity(a) { const i = document.getElementById('investExternalQuantityField'); i.value = Math.max(1, parseInt(i.value) + a); updateExternalInvestmentTotal(); }
-async function confirmExternalInvestment() { showToast('Investimento externo realizado!', 'success'); closeModal('investExternalModal'); }
+async function confirmExternalInvestment() {
+  if (!state.currentUser || !state.currentExternalTrack) { showToast('Erro', 'error'); return; }
+  const q = parseInt(document.getElementById('investExternalQuantityField').value) || 1;
+  const t = q * (state.currentExternalTrack.valor_acao || 0);
+  if (t > state.userBalance) { showToast('Saldo insuficiente', 'error'); return; }
+  const r = await callAPI('buy_external', { external_id: state.currentExternalTrack.id, quantidade: q, valor_unitario: state.currentExternalTrack.valor_acao || 0, valor_total: t });
+  if (r && r.success) { state.userBalance -= t; await updateBalanceDisplay(); showToast('✅ Investimento externo realizado!', 'success'); closeModal('investExternalModal'); loadExternalMarketplace(); }
+  else showToast((r && r.message) || 'Erro', 'error');
+}
 function openInvestModalFromPlayer() { if (state.currentTrackIndex < 0) return; if (state.currentTrackIndex >= 1000) openInvestExternalModal(state.currentTrackIndex - 1000); else openInvestModal(state.currentTrackIndex); }
 function openAddBalanceModal() { document.getElementById('balanceAmountField').value = 100; showModal('addBalanceModal'); }
 function openWithdrawalModal() { if (state.userBalance < 10) { showToast('Saldo mínimo R$ 10', 'warning'); return; } document.getElementById('withdrawalAmountField').value = state.userBalance; showModal('withdrawalModal'); }
@@ -1303,6 +1459,7 @@ function renderBlockchainVisualization(cs) {
   if (!cs || !cs.length) { c.innerHTML = '<div class="text-muted">Nenhum bloco</div>'; return; }
   c.innerHTML = cs.slice(-5).map((b, i) => '<div class="card bg-dark border-purple" style="width:200px"><div class="card-header bg-purple text-white py-2"><small>Bloco #' + (b.block_index || i + 1) + '</small></div><div class="card-body p-2"><small class="blockchain-hash">' + (b.block_hash || '0x').substring(0, 15) + '...</small></div></div>').join('');
 }
+function openBlockchainExplorer() { changeSection('blockchain'); setTimeout(loadBlockchainData, 100); }
 
 // ============ SEARCH ============
 async function performSearch() {
@@ -1341,8 +1498,17 @@ function playSearchResult(i, item) {
 }
 
 // ============ INIT ============
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 PLAY MY v' + CONFIG.VERSION);
+  createOfflineBadge();
+  updateOnlineStatus();
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+
+  showToast('🔍 Verificando serviços...', 'info', 2000);
+  await HealthCheck.runAll();
+  setInterval(() => HealthCheck.runAll(), 300000);
+
   const stored = localStorage.getItem('miv_user');
   if (stored) {
     try {
@@ -1357,8 +1523,22 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => loadYouTubeAPI(), 3000);
   }
 });
-window.addEventListener('online', () => showToast('📶 Online', 'success'));
-window.addEventListener('offline', () => showToast('📴 Offline', 'warning'));
+
+function createOfflineBadge() {
+  let b = document.getElementById('offlineBadge');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'offlineBadge';
+    b.style.cssText = 'display:none;position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(255,50,50,.9);color:#fff;padding:8px 16px;border-radius:30px;font-size:12px;font-weight:600;z-index:10001;backdrop-filter:blur(10px)';
+    b.innerHTML = '<i class="bi bi-wifi-off"></i> Offline';
+    document.body.appendChild(b);
+  }
+  return b;
+}
+function updateOnlineStatus() {
+  const b = createOfflineBadge();
+  b.style.display = navigator.onLine ? 'none' : 'block';
+}
 </script>
 
 </body>
