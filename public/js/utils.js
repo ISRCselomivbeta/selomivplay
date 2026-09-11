@@ -1,19 +1,24 @@
 // ============================================================
-// UTILS - PLAY MY v8.2
+// UTILS - PLAY MY v8.3 (GAS PRIMÁRIO + VERCEL STANDBY)
 // ============================================================
 const CONFIG = {
-  API_URL: 'https://selomivplay.vercel.app/api/backend',
+  // ⚠️ GAS é o backend REAL (planilha + cálculos)
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
+  // Vercel fica como STANDBY (só se GAS cair)
+  VERCEL_URL: 'https://selomivplay.vercel.app/api/backend',
   DEV_MODE: false,
-  VERSION: '8.2.0',
+  VERSION: '8.3.0',
   MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
   BLOCKCHAIN_ENABLED: true,
-  YOUTUBE_API_KEY: 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM',
   SELO_COIN_RATE: 1,
   RESET_PASSWORD_URL: 'https://playmy.com.br/reset-password.html',
   CONFIRM_EMAIL_URL: 'https://playmy.com.br/confirm-email.html',
   TERMS_PDF_URL: 'https://playmy.com.br/termos-de-uso.pdf'
 };
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
+
+// Alias para compatibilidade com código antigo
+const GAS_URL = CONFIG.GAS_URL;
+const API_URL = CONFIG.VERCEL_URL;
 
 const PLACEHOLDERS = {
   MIV_56: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><rect width="56" height="56" fill="%231c1c1e"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="14" fill="%2334c759">PM</text></svg>',
@@ -46,11 +51,25 @@ function extractYouTubeId(url) { if (!url || typeof url !== 'string') return nul
 function getCoverUrl(track, isExternal) { if (!track) return isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300; if (track.link_capa && track.link_capa.startsWith('http')) return track.link_capa; if (track.link_youtube) { const vid = extractYouTubeId(track.link_youtube); if (vid) return 'https://img.youtube.com/vi/' + vid + '/hqdefault.jpg'; } return isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300; }
 function getCoverUrlSmall(track, isExternal) { return getCoverUrl(track, isExternal); }
 
-async function getYouTubeStats(videoId) { if (!videoId) return null; const key = 'yt_stats_' + videoId; const cached = localStorage.getItem(key); if (cached) { try { return JSON.parse(cached); } catch (e) {} } try { const r = await callAPI('get_youtube_stats', { video_id: videoId }); if (r && r.success && r.data) { localStorage.setItem(key, JSON.stringify(r.data)); return r.data; } } catch (e) {} return { views: 100000, likes: 3000, comments: 500, is_estimate: true }; }
+async function getYouTubeStats(videoId) {
+  if (!videoId) return null;
+  const key = 'yt_stats_' + videoId;
+  const cached = localStorage.getItem(key);
+  if (cached) { try { return JSON.parse(cached); } catch (e) {} }
+  try {
+    const r = await callAPI('get_youtube_earnings', { video_id: videoId });
+    if (r && r.success && r.data) { localStorage.setItem(key, JSON.stringify(r.data)); return r.data; }
+  } catch (e) {}
+  return { views: 100000, likes: 3000, comments: 500, is_estimate: true };
+}
 function calculateEstimatedRevenue(views) { const brl = (views / 1000) * 1.5; return { brl: brl, formatted: formatCurrency(brl) }; }
 async function updateCardWithRealData(track, card) { if (!track || !track.link_youtube) return; const vid = extractYouTubeId(track.link_youtube); if (!vid) return; const vEl = card.querySelector('.youtube-views'); const eEl = card.querySelector('.estimated-earnings'); try { const stats = await getYouTubeStats(vid); const rev = calculateEstimatedRevenue(stats.views || 0); if (vEl) vEl.innerHTML = '<i class="bi bi-eye-fill me-1"></i>' + formatNumber(stats.views || 0); if (eEl) eEl.innerHTML = '<i class="bi bi-cash-stack me-1"></i>' + rev.formatted; track.youtube_stats = stats; } catch (e) {} }
 
 // Expose globalmente
+window.CONFIG = CONFIG;
+window.GAS_URL = GAS_URL;
+window.API_URL = API_URL;
+window.PLACEHOLDERS = PLACEHOLDERS;
 window.formatCurrency = formatCurrency;
 window.formatSelo = formatSelo;
 window.formatDate = formatDate;
