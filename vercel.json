@@ -1,16 +1,30 @@
 {
-  "builds": [
-    { "src": "public/index.html", "use": "@vercel/static" },
-    { "src": "api/backend.js", "use": "@vercel/node" }
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/backend"
+    },
+    {
+      "source": "/((?!manifest\\.json|sw\\.js|images/|api/|favicon\\.ico|robots\\.txt).*)",
+      "destination": "/index.html"
+    }
   ],
-  "routes": [
-    { "src": "/css/(.*)", "dest": "/css/$1" },
-    { "src": "/js/(.*)", "dest": "/js/$1" },
-    { "src": "/images/(.*)", "dest": "/images/$1" },
-    { "src": "/security-bridge.js", "dest": "/public/security-bridge.js" },
-    { "src": "/manifest.json", "dest": "/public/manifest.json" },
-    { "src": "/sw.js", "dest": "/public/sw.js" },
-    { "src": "/api/(.*)", "dest": "/api/backend.js" },
-    { "src": "/(.*)", "dest": "/public/index.html" }
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Content-Type", "value": "application/manifest+json; charset=utf-8" }
+      ]
+    }
   ]
 }
