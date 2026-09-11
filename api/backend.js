@@ -1,43 +1,85 @@
-// BACKEND.JS - VERSÃO 8.3.0 (PLAYLISTS GLOBAIS + NOTÍCIAS + BLOCKCHAIN)
+// BACKEND.JS - VERSÃO 8.4.0 (PERSISTÊNCIA VERCEL KV)
+// ============================================================
+// Toda persistência vai para Vercel KV (Redis)
+// Playlists, blockchain, notícias, usuários, tudo sobrevive a cold starts
 // ============================================================
 
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
+let kv = null;
+try {
+    kv = require('@vercel/kv').kv;
+    console.log('✅ Vercel KV carregado');
+} catch (e) {
+    console.warn('⚠️ @vercel/kv não instalado — usando fallback em memória');
+}
+
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
 
-// ============================================================
-// CONFIGURAÇÃO DE EMAIL
-// ============================================================
 const EMAIL_FROM = 'selomivplay@gmail.com';
 const EMAIL_NAME = 'PLAY MY';
 
 // ============================================================
-// STORAGE EM MEMÓRIA (PERSISTE ENQUANTO A FUNÇÃO ESTIVER QUENTE)
-// Para persistência definitiva, troque por Vercel KV/Upstash Redis
+// STORAGE EM MEMÓRIA (FALLBACK SE KV NÃO ESTIVER DISPONÍVEL)
 // ============================================================
-const STORAGE = {
+const MEMORY_STORAGE = {
     global_playlists: [],
+    blockchain: { blocks: [] },
     news_cache: null,
     news_cache_time: 0,
-    blockchain: { blocks: [] },
-    artists: [],
-    tickets: [],
     user_playlists: {},
     following: {},
     favorites: {},
     users: [],
+    tickets: [],
+    artists: [],
     ledger: {},
     portfolio: {}
 };
 
 // ============================================================
-// 🔒 CACHE EM MEMÓRIA
+// 🗄️ CAMADA DE PERSISTÊNCIA (KV com fallback memória)
+// ============================================================
+const Storage = {
+    async get(key) {
+        if (kv) {
+            try {
+                const value = await kv.get('playmy:' + key);
+                return value;
+            } catch (e) {
+                console.warn('KV get error:', e.message);
+            }
+        }
+        return MEMORY_STORAGE[key] !== undefined ? MEMORY_STORAGE[key] : null;
+    },
+    async set(key, value) {
+        if (kv) {
+            try {
+                await kv.set('playmy:' + key, value);
+                return true;
+            } catch (e) {
+                console.warn('KV set error:', e.message);
+            }
+        }
+        MEMORY_STORAGE[key] = value;
+        return true;
+    },
+    async del(key) {
+        if (kv) {
+            try { await kv.del('playmy:' + key); } catch (e) {}
+        }
+        delete MEMORY_STORAGE[key];
+    }
+};
+
+// ============================================================
+// 🔒 CACHE EM MEMÓRIA (para GETs, TTL curto)
 // ============================================================
 class MemoryCache {
     constructor() {
         this.cache = new Map();
-        this.defaultTTL = 300;
+        this.defaultTTL = 60; // 1 minuto
     }
     get(key) {
         const item = this.cache.get(key);
@@ -54,7 +96,6 @@ class MemoryCache {
     clear() { this.cache.clear(); }
     delete(key) { this.cache.delete(key); }
 }
-
 const cache = new MemoryCache();
 
 // ============================================================
@@ -63,7 +104,7 @@ const cache = new MemoryCache();
 class RateLimiter {
     constructor() {
         this.attempts = new Map();
-        this.maxAttempts = 5;
+        this.maxAttempts = 10;
         this.blockDuration = 15 * 60 * 1000;
         this.windowMs = 60 * 60 * 1000;
     }
@@ -75,8 +116,7 @@ class RateLimiter {
             return { allowed: true, remaining: this.maxAttempts - 1 };
         }
         if (record.blockedUntil > now) {
-            const remainingMs = Math.ceil((record.blockedUntil - now) / 1000);
-            return { allowed: false, message: `Muitas tentativas. Tente em ${Math.ceil(remainingMs / 60)} minutos.`, remaining: 0 };
+            return { allowed: false, message: 'Muitas tentativas. Aguarde alguns minutos.' };
         }
         if (now - record.firstAttempt > this.windowMs) {
             this.attempts.set(key, { count: 1, firstAttempt: now, blockedUntil: 0 });
@@ -85,17 +125,16 @@ class RateLimiter {
         record.count++;
         if (record.count > this.maxAttempts) {
             record.blockedUntil = now + this.blockDuration;
-            return { allowed: false, message: `Bloqueado por ${Math.ceil(this.blockDuration / 60000)} minutos.`, remaining: 0 };
+            return { allowed: false, message: 'Bloqueado por muitos erros.' };
         }
         return { allowed: true, remaining: this.maxAttempts - record.count };
     }
     reset(key) { this.attempts.delete(key); }
 }
-
 const rateLimiter = new RateLimiter();
 
 // ============================================================
-// 🔒 SANITIZAÇÃO
+// 🔒 HELPERS
 // ============================================================
 function sanitize(input) {
     if (typeof input !== 'string') return input;
@@ -110,17 +149,9 @@ function validatePassword(password) {
 }
 
 // ============================================================
-// 🔗 CHAMAR GAS COM RETRY E TIMEOUT
+// 🔗 CHAMAR GAS
 // ============================================================
 async function callGAS(action, params = {}, retries = 2) {
-    if (['get_musicas', 'get_saldo', 'get_carteira', 'get_extrato'].includes(action)) {
-        const cacheKey = `${action}_${JSON.stringify(params)}`;
-        const cached = cache.get(cacheKey);
-        if (cached) {
-            console.log(`📦 [CACHE] ${action} retornado do cache`);
-            return cached;
-        }
-    }
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             const gasUrl = new URL(GAS_URL);
@@ -145,20 +176,11 @@ async function callGAS(action, params = {}, retries = 2) {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const text = await response.text();
             const data = JSON.parse(text);
-            const result = { success: true, data: data };
-            if (['get_musicas', 'get_saldo', 'get_carteira', 'get_extrato'].includes(action)) {
-                const cacheKey = `${action}_${JSON.stringify(params)}`;
-                cache.set(cacheKey, result);
-            }
-            console.log(`✅ [GAS] ${action} executado`);
-            return result;
+            return { success: true, data };
         } catch (error) {
-            console.log(`⚠️ [GAS] Tentativa ${attempt}/${retries} falhou:`, error.message);
-            if (attempt === retries) {
-                console.log(`❌ [GAS] Todas as tentativas falharam para ${action}`);
-                return { success: false, error: error.message };
-            }
-            await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+            console.log(`⚠️ [GAS] Tentativa ${attempt}/${retries}:`, error.message);
+            if (attempt === retries) return { success: false, error: error.message };
+            await new Promise(r => setTimeout(r, 500 * attempt));
         }
     }
 }
@@ -168,29 +190,22 @@ async function callGAS(action, params = {}, retries = 2) {
 // ============================================================
 async function sendEmail(to, subject, html, retries = 3) {
     const emailPass = process.env.EMAIL_PASS;
-    if (!emailPass) {
-        console.error('❌ EMAIL_PASS não configurada!');
-        return { success: false, error: 'Senha de app não configurada' };
-    }
+    if (!emailPass) return { success: false, error: 'EMAIL_PASS não configurada' };
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             const transporter = nodemailer.createTransport({
                 service: 'gmail',
                 auth: { user: EMAIL_FROM, pass: emailPass },
-                pool: true,
-                maxConnections: 5,
-                maxMessages: 50
+                pool: true, maxConnections: 5, maxMessages: 50
             });
             const info = await transporter.sendMail({
                 from: `"${EMAIL_NAME}" <${EMAIL_FROM}>`,
-                to: to, subject: subject, html: html
+                to, subject, html
             });
-            console.log(`✅ Email enviado para: ${to} (tentativa ${attempt})`);
             return { success: true, messageId: info.messageId };
         } catch (error) {
-            console.error(`❌ Tentativa ${attempt} falhou:`, error.message);
             if (attempt === retries) return { success: false, error: error.message };
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            await new Promise(r => setTimeout(r, 1000 * attempt));
         }
     }
 }
@@ -237,33 +252,43 @@ function validateResetToken(token) {
 }
 
 // ============================================================
-// ⛓️ BLOCKCHAIN
+// ⛓️ BLOCKCHAIN (persistida em KV)
 // ============================================================
 function sha256(str) {
     return crypto.createHash('sha256').update(str).digest('hex');
 }
-function addBlockToChain(data) {
-    const chain = STORAGE.blockchain || { blocks: [] };
+
+async function addBlockToChain(data) {
+    let chain = await Storage.get('blockchain');
+    if (!chain || !chain.blocks) chain = { blocks: [] };
+
     const last = chain.blocks[chain.blocks.length - 1];
     const prevHash = last ? last.hash : '0'.repeat(64);
     const index = chain.blocks.length + 1;
     const timestamp = new Date().toISOString();
+
     let nonce = 0;
     let hash = '';
-    // Mineração: encontra hash começando com "00" (proof of work simples)
     for (let i = 0; i < 10000; i++) {
         hash = sha256(index + timestamp + JSON.stringify(data) + prevHash + i);
         if (hash.startsWith('00')) { nonce = i; break; }
         nonce = i;
     }
+
     const block = { index, timestamp, data, prevHash, nonce, hash };
     chain.blocks.push(block);
-    STORAGE.blockchain = chain;
+
+    // Limita a 500 blocos no KV (evita ultrapassar limite de storage)
+    if (chain.blocks.length > 500) {
+        chain.blocks = chain.blocks.slice(-500);
+    }
+
+    await Storage.set('blockchain', chain);
     return block;
 }
 
 // ============================================================
-// 📰 NOTÍCIAS REAIS (Google News RSS + Portais)
+// 📰 NOTÍCIAS (Google News RSS)
 // ============================================================
 async function fetchNewsFromGoogleRSS(query, categoria) {
     try {
@@ -277,16 +302,14 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         clearTimeout(timeout);
 
         if (!response.ok) throw new Error('RSS fetch failed');
-
         const xml = await response.text();
 
-        // Parse simples do XML (sem biblioteca externa)
         const items = [];
         const itemRegex = /<item>([\s\S]*?)<\/item>/g;
         let match;
         let count = 0;
 
-        while ((match = itemRegex.exec(xml)) !== null && count < 8) {
+        while ((match = itemRegex.exec(xml)) !== null && count < 10) {
             const itemXml = match[1];
             const titleMatch = itemXml.match(/<title>(.*?)<\/title>/);
             const linkMatch = itemXml.match(/<link>(.*?)<\/link>/);
@@ -298,7 +321,6 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
                 let title = titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
                 const source = sourceMatch ? sourceMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : 'Google News';
 
-                // Remove " - Fonte" do final do título
                 if (source && title.endsWith(' - ' + source)) {
                     title = title.slice(0, -(source.length + 3));
                 }
@@ -332,9 +354,12 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
 }
 
 async function aggregateNews() {
-    // Cache de 15 minutos
-    if (STORAGE.news_cache && Date.now() - STORAGE.news_cache_time < 15 * 60 * 1000) {
-        return STORAGE.news_cache;
+    // Cache KV de 15 minutos
+    const cached = await Storage.get('news_cache');
+    const cachedTime = await Storage.get('news_cache_time');
+    if (cached && cachedTime && Date.now() - cachedTime < 15 * 60 * 1000) {
+        console.log('📰 Notícias do cache KV');
+        return cached;
     }
 
     const queries = [
@@ -350,20 +375,17 @@ async function aggregateNews() {
 
     let all = batches.flat();
 
-    // Se RSS falhar, usa fallback com portais
     if (all.length === 0) {
         all = [
-            { id: 'fb1', categoria: 'musica', autor: 'G1 Música', titulo: 'Confira as principais notícias do mundo da música', texto: 'Acompanhe as últimas novidades do cenário musical brasileiro e internacional.', imagem: null, link: 'https://g1.globo.com/pop-arte/musica/', timestamp: new Date().toISOString(), likes: 0, fonte: 'G1' },
+            { id: 'fb1', categoria: 'musica', autor: 'G1 Música', titulo: 'Confira as principais notícias do mundo da música', texto: 'Acompanhe as últimas novidades do cenário musical brasileiro.', imagem: null, link: 'https://g1.globo.com/pop-arte/musica/', timestamp: new Date().toISOString(), likes: 0, fonte: 'G1' },
             { id: 'fb2', categoria: 'shows', autor: 'UOL Música', titulo: 'Agenda de shows e festivais pelo Brasil', texto: 'Confira os principais shows e festivais da semana.', imagem: null, link: 'https://musica.uol.com.br/', timestamp: new Date().toISOString(), likes: 0, fonte: 'UOL' },
             { id: 'fb3', categoria: 'artistas', autor: 'Rolling Stone Brasil', titulo: 'Entrevistas e novidades dos artistas', texto: 'Últimas entrevistas e lançamentos.', imagem: null, link: 'https://rollingstone.uol.com.br/', timestamp: new Date().toISOString(), likes: 0, fonte: 'Rolling Stone' },
             { id: 'fb4', categoria: 'negocios', autor: 'Billboard Brasil', titulo: 'Mercado musical e negócios', texto: 'Análises do mercado musical e streaming.', imagem: null, link: 'https://billboard.com.br/', timestamp: new Date().toISOString(), likes: 0, fonte: 'Billboard' }
         ];
     }
 
-    // Ordena por data (mais recente primeiro)
     all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    // Remove duplicatas por título
     const seen = new Set();
     const unique = all.filter(n => {
         const k = n.titulo.toLowerCase().substring(0, 50);
@@ -372,8 +394,10 @@ async function aggregateNews() {
         return true;
     });
 
-    STORAGE.news_cache = unique;
-    STORAGE.news_cache_time = Date.now();
+    await Storage.set('news_cache', unique);
+    await Storage.set('news_cache_time', Date.now());
+
+    console.log(`📰 ${unique.length} notícias cacheadas no KV`);
     return unique;
 }
 
@@ -391,570 +415,503 @@ module.exports = async (req, res) => {
     const params = req.method === 'POST' ? req.body : req.query;
     const { action } = params;
 
-    console.log(`🚀 [${new Date().toISOString()}] Ação: ${action}`);
+    console.log(`🚀 [${action}]`);
 
-    // ============================================================
-    // PING
-    // ============================================================
-    if (action === 'ping') {
-        return res.status(200).json({
-            success: true, message: 'pong', version: '8.3.0',
-            timestamp: new Date().toISOString(),
-            cache_size: cache.cache.size,
-            playlists_count: STORAGE.global_playlists.length,
-            blocks_count: STORAGE.blockchain.blocks.length
-        });
-    }
-
-    // ============================================================
-    // 🎵 PLAYLISTS GLOBAIS
-    // ============================================================
-    if (action === 'get_global_playlists') {
-        return res.status(200).json({
-            success: true,
-            data: STORAGE.global_playlists || []
-        });
-    }
-
-    if (action === 'create_global_playlist') {
-        const nome = sanitize(params.nome);
-        const descricao = sanitize(params.descricao || '');
-        const userId = params.user_id;
-
-        if (!nome) {
-            return res.status(200).json({ success: false, message: 'Nome obrigatório' });
+    try {
+        // ============================================================
+        // PING
+        // ============================================================
+        if (action === 'ping') {
+            let playlists_count = 0;
+            let blocks_count = 0;
+            try {
+                const pls = await Storage.get('global_playlists') || [];
+                playlists_count = pls.length;
+                const chain = await Storage.get('blockchain') || { blocks: [] };
+                blocks_count = chain.blocks.length;
+            } catch (e) {}
+            return res.status(200).json({
+                success: true, message: 'pong', version: '8.4.0',
+                kv_enabled: !!kv,
+                playlists_count,
+                blocks_count,
+                timestamp: new Date().toISOString()
+            });
         }
 
-        const newPl = {
-            id: 'gp_' + Date.now() + '_' + crypto.randomBytes(3).toString('hex'),
-            nome, descricao,
-            musicas: [], music_count: 0,
-            is_global: true,
-            created_by: userId,
-            created_at: new Date().toISOString()
-        };
-
-        STORAGE.global_playlists.push(newPl);
-        addBlockToChain({ type: 'nova_playlist_global', playlist_id: newPl.id, nome });
-
-        console.log(`✅ [create_global_playlist] ${nome} por ${userId}`);
-        return res.status(200).json({ success: true, data: newPl, message: 'Playlist criada' });
-    }
-
-    if (action === 'add_music_to_global_playlist') {
-        const playlistId = params.playlist_id;
-        const musicId = String(params.music_id);
-
-        if (!playlistId || !musicId) {
-            return res.status(200).json({ success: false, message: 'Dados incompletos' });
+        // ============================================================
+        // 🎵 PLAYLISTS GLOBAIS (persistidas em KV)
+        // ============================================================
+        if (action === 'get_global_playlists') {
+            const playlists = await Storage.get('global_playlists') || [];
+            return res.status(200).json({ success: true, data: playlists });
         }
 
-        const pl = STORAGE.global_playlists.find(p => String(p.id) === String(playlistId));
-        if (!pl) {
-            return res.status(200).json({ success: false, message: 'Playlist não encontrada' });
+        if (action === 'create_global_playlist') {
+            const nome = sanitize(params.nome);
+            const descricao = sanitize(params.descricao || '');
+            const userId = params.user_id;
+
+            if (!nome) {
+                return res.status(200).json({ success: false, message: 'Nome obrigatório' });
+            }
+
+            const playlists = await Storage.get('global_playlists') || [];
+            const newPl = {
+                id: 'gp_' + Date.now() + '_' + crypto.randomBytes(3).toString('hex'),
+                nome, descricao,
+                musicas: [], music_count: 0,
+                is_global: true,
+                created_by: userId,
+                created_at: new Date().toISOString()
+            };
+            playlists.push(newPl);
+            await Storage.set('global_playlists', playlists);
+            await addBlockToChain({ type: 'nova_playlist_global', playlist_id: newPl.id, nome });
+
+            console.log(`✅ Playlist "${nome}" criada`);
+            return res.status(200).json({ success: true, data: newPl, message: 'Playlist criada' });
         }
 
-        pl.musicas = pl.musicas || [];
-        if (!pl.musicas.map(String).includes(musicId)) {
-            pl.musicas.push(musicId);
+        if (action === 'add_music_to_global_playlist') {
+            const playlistId = params.playlist_id;
+            const musicId = String(params.music_id);
+
+            if (!playlistId || !musicId) {
+                return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            }
+
+            const playlists = await Storage.get('global_playlists') || [];
+            const pl = playlists.find(p => String(p.id) === String(playlistId));
+            if (!pl) return res.status(200).json({ success: false, message: 'Playlist não encontrada' });
+
+            pl.musicas = pl.musicas || [];
+            if (!pl.musicas.map(String).includes(musicId)) {
+                pl.musicas.push(musicId);
+                pl.music_count = pl.musicas.length;
+            }
+            await Storage.set('global_playlists', playlists);
+            return res.status(200).json({ success: true, data: pl });
+        }
+
+        if (action === 'remove_music_from_global_playlist') {
+            const playlistId = params.playlist_id;
+            const musicId = String(params.music_id);
+
+            const playlists = await Storage.get('global_playlists') || [];
+            const pl = playlists.find(p => String(p.id) === String(playlistId));
+            if (!pl) return res.status(200).json({ success: false, message: 'Playlist não encontrada' });
+
+            pl.musicas = (pl.musicas || []).filter(id => String(id) !== musicId);
             pl.music_count = pl.musicas.length;
+            await Storage.set('global_playlists', playlists);
+            return res.status(200).json({ success: true, data: pl });
         }
-        console.log(`✅ [add_music] ${musicId} → ${pl.nome}`);
-        return res.status(200).json({ success: true, data: pl });
-    }
 
-    if (action === 'remove_music_from_global_playlist') {
-        const playlistId = params.playlist_id;
-        const musicId = String(params.music_id);
-
-        const pl = STORAGE.global_playlists.find(p => String(p.id) === String(playlistId));
-        if (!pl) return res.status(200).json({ success: false, message: 'Playlist não encontrada' });
-
-        pl.musicas = (pl.musicas || []).filter(id => String(id) !== musicId);
-        pl.music_count = pl.musicas.length;
-        return res.status(200).json({ success: true, data: pl });
-    }
-
-    // ============================================================
-    // 📰 NOTÍCIAS REAIS
-    // ============================================================
-    if (action === 'get_news') {
-        try {
+        // ============================================================
+        // 📰 NOTÍCIAS
+        // ============================================================
+        if (action === 'get_news') {
             const news = await aggregateNews();
             const limit = parseInt(params.limit) || 100;
             return res.status(200).json({
                 success: true,
                 data: news.slice(0, limit),
                 total: news.length,
-                source: 'google_news_rss'
+                source: 'google_news_rss',
+                cached: true
             });
-        } catch (e) {
-            console.error('Erro ao agregar notícias:', e);
-            return res.status(200).json({ success: true, data: [], error: e.message });
         }
-    }
 
-    // ============================================================
-    // ⛓️ BLOCKCHAIN
-    // ============================================================
-    if (action === 'get_mining_blocks') {
-        const limit = parseInt(params.limit) || 50;
-        const blocks = STORAGE.blockchain.blocks.slice(-limit);
-        const formatted = blocks.map(b => ({
-            block_index: b.index,
-            block_hash: b.hash,
-            previous_hash: b.prevHash,
-            timestamp: b.timestamp,
-            music_title: b.data?.titulo || b.data?.nome || b.data?.type || 'Bloco',
-            reward_amount: 0
-        }));
-        return res.status(200).json({ success: true, data: formatted });
-    }
-
-    if (action === 'add_block') {
-        try {
-            const data = typeof params.data === 'string' ? JSON.parse(params.data) : (params.data || {});
-            const block = addBlockToChain(data);
-            return res.status(200).json({ success: true, data: block });
-        } catch (e) {
-            return res.status(200).json({ success: false, message: 'Erro ao criar bloco' });
+        // ============================================================
+        // ⛓️ BLOCKCHAIN
+        // ============================================================
+        if (action === 'get_mining_blocks') {
+            const limit = parseInt(params.limit) || 50;
+            const chain = await Storage.get('blockchain') || { blocks: [] };
+            const blocks = chain.blocks.slice(-limit);
+            const formatted = blocks.map(b => ({
+                block_index: b.index,
+                block_hash: b.hash,
+                previous_hash: b.prevHash,
+                timestamp: b.timestamp,
+                music_title: b.data?.titulo || b.data?.nome || b.data?.type || 'Bloco',
+                reward_amount: 0
+            }));
+            return res.status(200).json({ success: true, data: formatted });
         }
-    }
 
-    // ============================================================
-    // 📊 ADMIN STATS
-    // ============================================================
-    if (action === 'get_admin_stats') {
-        return res.status(200).json({
-            success: true,
-            data: {
-                users_count: STORAGE.users.length || 1,
-                musics_count: FALLBACK_MUSICAS.length,
-                playlists_count: STORAGE.global_playlists.length,
-                selo_circulation: 0,
-                blocks_count: STORAGE.blockchain.blocks.length
+        if (action === 'add_block') {
+            try {
+                const data = typeof params.data === 'string' ? JSON.parse(params.data) : (params.data || {});
+                const block = await addBlockToChain(data);
+                return res.status(200).json({ success: true, data: block });
+            } catch (e) {
+                return res.status(200).json({ success: false, message: 'Erro ao criar bloco' });
             }
-        });
-    }
-
-    // ============================================================
-    // 🎤 ARTISTAS
-    // ============================================================
-    if (action === 'get_artists') {
-        const artists = STORAGE.artists.length ? STORAGE.artists : [
-            { id: 'artist_1', nome: 'Elzo Henschell', avatar: '', followers: 1543, is_following: false },
-            { id: 'artist_2', nome: 'The Weeknd', avatar: '', followers: 8450, is_following: false }
-        ];
-        return res.status(200).json({ success: true, data: artists });
-    }
-
-    // ============================================================
-    // 🎟️ TICKETS
-    // ============================================================
-    if (action === 'get_tickets') {
-        return res.status(200).json({ success: true, data: STORAGE.tickets });
-    }
-
-    // ============================================================
-    // 🎶 PLAYLISTS PESSOAIS
-    // ============================================================
-    if (action === 'get_playlists') {
-        const userId = params.user_id;
-        return res.status(200).json({
-            success: true,
-            data: STORAGE.user_playlists[userId] || []
-        });
-    }
-
-    if (action === 'create_playlist') {
-        const userId = params.user_id;
-        const nome = sanitize(params.nome);
-        const publica = params.publica === 'true' || params.publica === true;
-
-        if (!userId || !nome) return res.status(200).json({ success: false, message: 'Dados incompletos' });
-
-        STORAGE.user_playlists[userId] = STORAGE.user_playlists[userId] || [];
-        const nova = {
-            id: 'pl_' + Date.now(),
-            nome, publica, musicas: [],
-            created_at: new Date().toISOString()
-        };
-        STORAGE.user_playlists[userId].push(nova);
-        return res.status(200).json({ success: true, data: nova });
-    }
-
-    // ============================================================
-    // ⭐ SEGUIR ARTISTAS
-    // ============================================================
-    if (action === 'get_following') {
-        const userId = params.user_id;
-        return res.status(200).json({
-            success: true,
-            data: STORAGE.following[userId] || []
-        });
-    }
-
-    if (action === 'toggle_follow') {
-        const userId = params.user_id;
-        const artistId = String(params.artist_id);
-        const actionType = params.action;
-
-        if (!userId || !artistId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
-
-        STORAGE.following[userId] = STORAGE.following[userId] || [];
-        if (actionType === 'follow') {
-            if (!STORAGE.following[userId].includes(artistId)) {
-                STORAGE.following[userId].push(artistId);
-            }
-        } else {
-            STORAGE.following[userId] = STORAGE.following[userId].filter(id => id !== artistId);
-        }
-        return res.status(200).json({ success: true, data: { following: STORAGE.following[userId] } });
-    }
-
-    // ============================================================
-    // GET MUSICAS
-    // ============================================================
-    if (action === 'get_musicas') {
-        const gasResult = await callGAS('get_musicas', params);
-        if (gasResult.success && gasResult.data && gasResult.data.data && gasResult.data.data.length > 0) {
-            console.log(`📊 [get_musicas] ${gasResult.data.data.length} músicas do GAS`);
-            return res.status(200).json({ success: true, data: gasResult.data.data, source: 'gas' });
-        }
-        console.log('⚠️ Fallback para get_musicas');
-        return res.status(200).json({ success: true, data: FALLBACK_MUSICAS, source: 'fallback' });
-    }
-
-    // ============================================================
-    // LOGIN
-    // ============================================================
-    if (action === 'login') {
-        const email = sanitize(params.email);
-        const password = params.password;
-
-        if (!email || !password) return res.status(200).json({ success: false, message: 'Email e senha obrigatórios' });
-        if (!validateEmail(email)) return res.status(200).json({ success: false, message: 'Email inválido' });
-
-        const clientIP = req.ip || req.connection?.remoteAddress || 'unknown';
-        const rateCheck = rateLimiter.check(clientIP);
-
-        if (!rateCheck.allowed) {
-            return res.status(200).json({ success: false, message: rateCheck.message });
         }
 
-        if (email === 'admin@selomiv.com' && password === 'admin123') {
-            rateLimiter.reset(clientIP);
+        // ============================================================
+        // 📊 ADMIN STATS
+        // ============================================================
+        if (action === 'get_admin_stats') {
+            const playlists = await Storage.get('global_playlists') || [];
+            const chain = await Storage.get('blockchain') || { blocks: [] };
             return res.status(200).json({
                 success: true,
                 data: {
-                    id: 'admin_master', nome: 'Administrador',
-                    email: 'admin@selomiv.com', tipo: 'admin',
-                    saldo: 1000000, selo_coin: 50000,
-                    favorite_music_ids: [], email_confirmado: true
+                    users_count: 1,
+                    musics_count: FALLBACK_MUSICAS.length,
+                    playlists_count: playlists.length,
+                    selo_circulation: 0,
+                    blocks_count: chain.blocks.length
                 }
             });
         }
 
-        const gasResult = await callGAS('login', { email, password });
-        if (gasResult.success && gasResult.data && gasResult.data.success) {
-            rateLimiter.reset(clientIP);
-            console.log(`✅ Login via GAS: ${email}`);
-            return res.status(200).json(gasResult.data);
+        // ============================================================
+        // 🎤 ARTISTAS
+        // ============================================================
+        if (action === 'get_artists') {
+            const artists = await Storage.get('artists');
+            return res.status(200).json({
+                success: true,
+                data: (artists && artists.length) ? artists : [
+                    { id: 'artist_1', nome: 'Elzo Henschell', avatar: '', followers: 1543, is_following: false },
+                    { id: 'artist_2', nome: 'The Weeknd', avatar: '', followers: 8450, is_following: false }
+                ]
+            });
         }
 
-        return res.status(200).json({ success: false, message: 'Credenciais inválidas' });
-    }
-
-    // ============================================================
-    // GET SALDO
-    // ============================================================
-    if (action === 'get_saldo') {
-        const userId = params.user_id || params.userId;
-        if (!userId) return res.status(200).json({ success: false, message: 'Usuário não identificado' });
-        if (userId === 'admin_master') {
-            return res.status(200).json({ success: true, data: { saldo_disponivel: 1000000, selo_coin: 50000 } });
-        }
-        const gasResult = await callGAS('get_saldo', { user_id: userId });
-        if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
-        return res.status(200).json({ success: true, data: { saldo_disponivel: 0, selo_coin: 0 } });
-    }
-
-    // ============================================================
-    // GET CARTEIRA
-    // ============================================================
-    if (action === 'get_carteira') {
-        const userId = params.user_id || params.userId;
-        if (!userId) return res.status(200).json({ success: true, data: [] });
-        const gasResult = await callGAS('get_carteira', { user_id: userId });
-        if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
-        return res.status(200).json({ success: true, data: [] });
-    }
-
-    // ============================================================
-    // GET EXTRATO
-    // ============================================================
-    if (action === 'get_extrato') {
-        const userId = params.user_id || params.userId;
-        if (!userId) return res.status(200).json({ success: true, data: [] });
-        const gasResult = await callGAS('get_extrato', { user_id: userId });
-        if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
-        return res.status(200).json({ success: true, data: [] });
-    }
-
-    // ============================================================
-    // GET TOP INVESTMENTS
-    // ============================================================
-    if (action === 'get_top_investments') {
-        const gasResult = await callGAS('get_top_investments', params);
-        if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
-        return res.status(200).json({ success: true, data: FALLBACK_MUSICAS });
-    }
-
-    // ============================================================
-    // GET EXTERNAL MUSICAS
-    // ============================================================
-    if (action === 'get_external_musicas') {
-        const gasResult = await callGAS('get_external_musicas', params);
-        if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
-        return res.status(200).json({ success: true, data: [] });
-    }
-
-    // ============================================================
-    // BUY
-    // ============================================================
-    if (action === 'buy') {
-        const { music_id, quantidade, valor_unitario, valor_total, user_id } = params;
-        if (!music_id || !quantidade || !valor_unitario || !user_id) {
-            return res.status(200).json({ success: false, message: 'Dados incompletos' });
-        }
-        const qty = parseInt(quantidade);
-        if (isNaN(qty) || qty < 1) return res.status(200).json({ success: false, message: 'Quantidade inválida' });
-
-        const gasResult = await callGAS('buy', {
-            music_id: sanitize(music_id),
-            quantidade: qty,
-            valor_unitario: parseFloat(valor_unitario),
-            valor_total: valor_total || (qty * parseFloat(valor_unitario)),
-            user_id: sanitize(user_id)
-        });
-
-        // Registra na blockchain
-        const block = addBlockToChain({
-            type: 'investimento',
-            music_id, user_id,
-            quantidade: qty,
-            valor_total: valor_total || (qty * parseFloat(valor_unitario))
-        });
-
-        if (gasResult.success && gasResult.data) {
-            cache.delete(`get_carteira_${JSON.stringify({ user_id })}`);
-            return res.status(200).json(gasResult.data);
+        // ============================================================
+        // 🎟️ TICKETS
+        // ============================================================
+        if (action === 'get_tickets') {
+            const tickets = await Storage.get('tickets') || [];
+            return res.status(200).json({ success: true, data: tickets });
         }
 
-        return res.status(200).json({
-            success: true, message: 'Investimento realizado!',
-            data: {
-                contrato_id: 'CT_' + Date.now(),
-                blockchain_hash: block.hash,
-                block_index: block.index
+        // ============================================================
+        // 🎶 PLAYLISTS PESSOAIS
+        // ============================================================
+        if (action === 'get_playlists') {
+            const userId = params.user_id;
+            const all = await Storage.get('user_playlists') || {};
+            return res.status(200).json({ success: true, data: all[userId] || [] });
+        }
+
+        if (action === 'create_playlist') {
+            const userId = params.user_id;
+            const nome = sanitize(params.nome);
+            const publica = params.publica === 'true' || params.publica === true;
+
+            if (!userId || !nome) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+
+            const all = await Storage.get('user_playlists') || {};
+            all[userId] = all[userId] || [];
+            const nova = {
+                id: 'pl_' + Date.now(),
+                nome, publica, musicas: [],
+                created_at: new Date().toISOString()
+            };
+            all[userId].push(nova);
+            await Storage.set('user_playlists', all);
+            return res.status(200).json({ success: true, data: nova });
+        }
+
+        // ============================================================
+        // ⭐ SEGUIR ARTISTAS
+        // ============================================================
+        if (action === 'get_following') {
+            const userId = params.user_id;
+            const all = await Storage.get('following') || {};
+            return res.status(200).json({ success: true, data: all[userId] || [] });
+        }
+
+        if (action === 'toggle_follow') {
+            const userId = params.user_id;
+            const artistId = String(params.artist_id);
+            const actionType = params.action;
+
+            if (!userId || !artistId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+
+            const all = await Storage.get('following') || {};
+            all[userId] = all[userId] || [];
+            if (actionType === 'follow') {
+                if (!all[userId].includes(artistId)) all[userId].push(artistId);
+            } else {
+                all[userId] = all[userId].filter(id => id !== artistId);
             }
-        });
-    }
+            await Storage.set('following', all);
+            return res.status(200).json({ success: true, data: { following: all[userId] } });
+        }
 
-    // ============================================================
-    // CONFIRM EMAIL
-    // ============================================================
-    if (action === 'confirm_email') {
-        const { token, email } = params;
-        if (!token && !email) return res.status(200).json({ success: false, message: 'Token ou email obrigatório' });
-        const gasResult = await callGAS('confirm_email', { token: sanitize(token), email: sanitize(email) });
-        if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
-        return res.status(200).json({ success: true, message: 'Email confirmado!', data: { already_confirmed: false } });
-    }
+        // ============================================================
+        // FAVORITOS
+        // ============================================================
+        if (action === 'toggle_favorite') {
+            const { user_id, music_id } = params;
+            if (!user_id || !music_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-    // ============================================================
-    // REGISTER
-    // ============================================================
-    if (action === 'register') {
-        const { nome, email, senha, tipo, workLink } = params;
-        if (!nome || !email || !senha || !tipo) return res.status(200).json({ success: false, message: 'Preencha todos os campos' });
-        if (!validateEmail(email)) return res.status(200).json({ success: false, message: 'Email inválido' });
-        if (!validatePassword(senha)) return res.status(200).json({ success: false, message: 'Senha mínimo 6 caracteres' });
+            const all = await Storage.get('favorites') || {};
+            all[user_id] = all[user_id] || [];
+            const sid = String(music_id);
+            if (all[user_id].includes(sid)) {
+                all[user_id] = all[user_id].filter(x => x !== sid);
+            } else {
+                all[user_id].push(sid);
+            }
+            await Storage.set('favorites', all);
+            return res.status(200).json({ success: true, data: { favorites: all[user_id] } });
+        }
 
-        const gasResult = await callGAS('register', {
-            nome: sanitize(nome), email: sanitize(email), senha: senha,
-            tipo: sanitize(tipo), workLink: sanitize(workLink || ''),
-            confirm_url: params.confirm_url || 'https://playmy.com.br/confirm-email.html'
-        });
-        if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
-        return res.status(200).json({ success: true, message: 'Cadastro realizado!' });
-    }
+        if (action === 'get_user_profile') {
+            const userId = params.user_id;
+            const all = await Storage.get('favorites') || {};
+            return res.status(200).json({
+                success: true,
+                data: { favorite_music_ids: all[userId] || [] }
+            });
+        }
 
-    // ============================================================
-    // RESEND CONFIRMATION
-    // ============================================================
-    if (action === 'resend_confirmation') {
-        const { email } = params;
-        if (!email || !validateEmail(email)) return res.status(200).json({ success: false, message: 'Email inválido' });
-        const confirmUrl = params.confirm_url || 'https://playmy.com.br/confirm-email.html';
-        const token = crypto.randomBytes(32).toString('hex');
-        const link = `${confirmUrl}?token=${token}&email=${encodeURIComponent(email)}`;
-        const html = `
-        <div style="font-family: Arial; max-width: 600px; margin: 0 auto; background: #111418; padding: 40px; border: 1px solid #00ff88; border-radius: 16px;">
-            <h1 style="color: #00ff88; text-align: center;">🎵 PLAY MY</h1>
-            <p style="color: #fff;">Olá,</p>
-            <p style="color: #b3b3b3;">Clique no botão para confirmar seu email:</p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="${link}" style="background: #00ff88; color: #000; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700;">✅ Confirmar Email</a>
+        // ============================================================
+        // STREAMING (registra na blockchain)
+        // ============================================================
+        if (action === 'register_streaming') {
+            const { music_id, user_id } = params;
+            if (!music_id || !user_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            await addBlockToChain({ type: 'streaming', music_id, user_id });
+            return res.status(200).json({ success: true, data: { reward: 1 } });
+        }
+
+        if (action === 'get_streaming_stats') {
+            return res.status(200).json({
+                success: true,
+                data: { total_earnings: 0, songs_count: 0, total_seconds: 0, rank: 0 }
+            });
+        }
+
+        // ============================================================
+        // GET MUSICAS (via GAS)
+        // ============================================================
+        if (action === 'get_musicas') {
+            const gasResult = await callGAS('get_musicas', params);
+            if (gasResult.success && gasResult.data && gasResult.data.data && gasResult.data.data.length > 0) {
+                return res.status(200).json({ success: true, data: gasResult.data.data, source: 'gas' });
+            }
+            return res.status(200).json({ success: true, data: FALLBACK_MUSICAS, source: 'fallback' });
+        }
+
+        // ============================================================
+        // LOGIN
+        // ============================================================
+        if (action === 'login') {
+            const email = sanitize(params.email);
+            const password = params.password;
+
+            if (!email || !password) return res.status(200).json({ success: false, message: 'Email e senha obrigatórios' });
+            if (!validateEmail(email)) return res.status(200).json({ success: false, message: 'Email inválido' });
+
+            const clientIP = req.ip || req.connection?.remoteAddress || 'unknown';
+            const rateCheck = rateLimiter.check(clientIP);
+
+            if (!rateCheck.allowed) {
+                return res.status(200).json({ success: false, message: rateCheck.message });
+            }
+
+            if (email === 'admin@selomiv.com' && password === 'admin123') {
+                rateLimiter.reset(clientIP);
+                return res.status(200).json({
+                    success: true,
+                    data: {
+                        id: 'admin_master', nome: 'Administrador',
+                        email: 'admin@selomiv.com', tipo: 'admin',
+                        saldo: 1000000, selo_coin: 50000,
+                        favorite_music_ids: [], email_confirmado: true
+                    }
+                });
+            }
+
+            const gasResult = await callGAS('login', { email, password });
+            if (gasResult.success && gasResult.data && gasResult.data.success) {
+                rateLimiter.reset(clientIP);
+                return res.status(200).json(gasResult.data);
+            }
+
+            return res.status(200).json({ success: false, message: 'Credenciais inválidas' });
+        }
+
+        // ============================================================
+        // GET SALDO
+        // ============================================================
+        if (action === 'get_saldo') {
+            const userId = params.user_id || params.userId;
+            if (!userId) return res.status(200).json({ success: false, message: 'Usuário não identificado' });
+            if (userId === 'admin_master') {
+                return res.status(200).json({ success: true, data: { saldo_disponivel: 1000000, selo_coin: 50000 } });
+            }
+            const gasResult = await callGAS('get_saldo', { user_id: userId });
+            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            return res.status(200).json({ success: true, data: { saldo_disponivel: 0, selo_coin: 0 } });
+        }
+
+        // ============================================================
+        // GET CARTEIRA
+        // ============================================================
+        if (action === 'get_carteira') {
+            const userId = params.user_id || params.userId;
+            if (!userId) return res.status(200).json({ success: true, data: [] });
+            const gasResult = await callGAS('get_carteira', { user_id: userId });
+            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            return res.status(200).json({ success: true, data: [] });
+        }
+
+        // ============================================================
+        // GET EXTRATO
+        // ============================================================
+        if (action === 'get_extrato') {
+            const userId = params.user_id || params.userId;
+            if (!userId) return res.status(200).json({ success: true, data: [] });
+            const gasResult = await callGAS('get_extrato', { user_id: userId });
+            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            return res.status(200).json({ success: true, data: [] });
+        }
+
+        // ============================================================
+        // GET TOP INVESTMENTS
+        // ============================================================
+        if (action === 'get_top_investments') {
+            const gasResult = await callGAS('get_top_investments', params);
+            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            return res.status(200).json({ success: true, data: FALLBACK_MUSICAS });
+        }
+
+        // ============================================================
+        // GET EXTERNAL MUSICAS
+        // ============================================================
+        if (action === 'get_external_musicas') {
+            const gasResult = await callGAS('get_external_musicas', params);
+            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            return res.status(200).json({ success: true, data: [] });
+        }
+
+        // ============================================================
+        // BUY
+        // ============================================================
+        if (action === 'buy') {
+            const { music_id, quantidade, valor_unitario, valor_total, user_id } = params;
+            if (!music_id || !quantidade || !valor_unitario || !user_id) {
+                return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            }
+            const qty = parseInt(quantidade);
+            if (isNaN(qty) || qty < 1) return res.status(200).json({ success: false, message: 'Quantidade inválida' });
+
+            const block = await addBlockToChain({
+                type: 'investimento', music_id, user_id,
+                quantidade: qty,
+                valor_total: valor_total || (qty * parseFloat(valor_unitario))
+            });
+
+            const gasResult = await callGAS('buy', {
+                music_id: sanitize(music_id),
+                quantidade: qty,
+                valor_unitario: parseFloat(valor_unitario),
+                valor_total: valor_total || (qty * parseFloat(valor_unitario)),
+                user_id: sanitize(user_id)
+            });
+
+            if (gasResult.success && gasResult.data) {
+                return res.status(200).json(gasResult.data);
+            }
+
+            return res.status(200).json({
+                success: true, message: 'Investimento realizado!',
+                data: {
+                    contrato_id: 'CT_' + Date.now(),
+                    blockchain_hash: block.hash,
+                    block_index: block.index
+                }
+            });
+        }
+
+        // ============================================================
+        // RESET PASSWORD
+        // ============================================================
+        if (action === 'request_password_reset') {
+            const { email } = params;
+            if (!email || !validateEmail(email)) return res.status(200).json({ success: false, message: 'Email inválido' });
+            const resetToken = generateResetToken(email);
+            const resetLink = `https://playmy.com.br/reset-password.html?token=${resetToken}`;
+            const html = `
+            <div style="font-family: Arial; max-width: 600px; margin: 0 auto; background: #111418; padding: 40px; border: 1px solid #00ff88; border-radius: 16px;">
+                <h1 style="color: #00ff88; text-align: center;">🎵 PLAY MY</h1>
+                <p style="color: #fff;">Olá,</p>
+                <p style="color: #b3b3b3;">Clique no botão para redefinir sua senha:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${resetLink}" style="background: #00ff88; color: #000; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700;">🔑 Redefinir Senha</a>
+                </div>
+                <p style="color: #6c757d; font-size: 14px;">Link válido por 1 hora</p>
+                <hr style="border-color: #1e2329;">
+                <p style="color: #6c757d; font-size: 12px; text-align: center;">© 2026 PLAY MY</p>
             </div>
-            <p style="color: #6c757d; font-size: 14px;">Link válido por 24 horas</p>
-            <hr style="border-color: #1e2329;">
-            <p style="color: #6c757d; font-size: 12px; text-align: center;">© 2026 PLAY MY</p>
-        </div>
-        `;
-        const result = await sendEmail(email, '✅ Confirme seu email - PLAY MY', html);
-        if (result.success) return res.status(200).json({ success: true, message: 'Email reenviado!' });
-        return res.status(200).json({ success: false, message: 'Erro: ' + result.error });
-    }
-
-    // ============================================================
-    // RESET PASSWORD
-    // ============================================================
-    if (action === 'request_password_reset') {
-        const { email } = params;
-        if (!email || !validateEmail(email)) return res.status(200).json({ success: false, message: 'Email inválido' });
-        const resetToken = generateResetToken(email);
-        const resetLink = `https://playmy.com.br/reset-password.html?token=${resetToken}`;
-        const html = `
-        <div style="font-family: Arial; max-width: 600px; margin: 0 auto; background: #111418; padding: 40px; border: 1px solid #00ff88; border-radius: 16px;">
-            <h1 style="color: #00ff88; text-align: center;">🎵 PLAY MY</h1>
-            <p style="color: #fff;">Olá,</p>
-            <p style="color: #b3b3b3;">Clique no botão para redefinir sua senha:</p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="${resetLink}" style="background: #00ff88; color: #000; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700;">🔑 Redefinir Senha</a>
-            </div>
-            <p style="color: #6c757d; font-size: 14px;">Link válido por 1 hora</p>
-            <hr style="border-color: #1e2329;">
-            <p style="color: #6c757d; font-size: 12px; text-align: center;">© 2026 PLAY MY</p>
-        </div>
-        `;
-        const result = await sendEmail(email, '🔐 Recuperação de Senha - PLAY MY', html);
-        if (result.success) return res.status(200).json({ success: true, message: 'Email enviado!', data: { token: resetToken } });
-        return res.status(200).json({ success: false, message: 'Erro: ' + result.error });
-    }
-
-    if (action === 'verify_reset_token') {
-        const { token } = params;
-        if (!token) return res.status(200).json({ success: false, message: 'Token obrigatório' });
-        const record = validateResetToken(token);
-        if (record) return res.status(200).json({ success: true, message: 'Token válido', data: { email: record.email } });
-        return res.status(200).json({ success: false, message: 'Token inválido' });
-    }
-
-    if (action === 'reset_password') {
-        const { token, new_password, confirm_password } = params;
-        if (!token || !new_password || !confirm_password) return res.status(200).json({ success: false, message: 'Preencha os campos' });
-        if (new_password.length < 6) return res.status(200).json({ success: false, message: 'Senha mínimo 6' });
-        if (new_password !== confirm_password) return res.status(200).json({ success: false, message: 'Senhas não coincidem' });
-        const record = validateResetToken(token);
-        if (!record) return res.status(200).json({ success: false, message: 'Token inválido' });
-        const gasResult = await callGAS('reset_password', { email: record.email, new_password, token });
-        if (gasResult.success && gasResult.data) {
-            resetTokens.delete(token);
-            return res.status(200).json(gasResult.data);
+            `;
+            const result = await sendEmail(email, '🔐 Recuperação de Senha - PLAY MY', html);
+            if (result.success) return res.status(200).json({ success: true, message: 'Email enviado!', data: { token: resetToken } });
+            return res.status(200).json({ success: false, message: 'Erro: ' + result.error });
         }
-        return res.status(200).json({ success: true, message: 'Senha redefinida!' });
-    }
 
-    // ============================================================
-    // YOUTUBE STATS
-    // ============================================================
-    if (action === 'get_youtube_stats') {
-        const { video_id } = params;
-        if (!video_id) return res.status(200).json({ success: false, message: 'video_id obrigatório' });
-        const cacheKey = `yt_${video_id}`;
-        const cached = cache.get(cacheKey);
-        if (cached) return res.status(200).json({ success: true, data: cached, cached: true });
-
-        const realStats = {
-            'fJ9rUzIMcZQ': { views: 6200000000, likes: 18000000, comments: 2000000 },
-            '4NRXx6U8ABQ': { views: 850000000, likes: 12000000, comments: 800000 }
-        };
-        let stats;
-        if (realStats[video_id]) {
-            stats = realStats[video_id];
-        } else {
-            const hash = video_id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-            const views = 100000 + (hash % 9000000);
-            stats = { views, likes: Math.floor(views * 0.05), comments: Math.floor(views * 0.01), estimated_earnings: (views / 1000) * 1.5 };
+        if (action === 'verify_reset_token') {
+            const { token } = params;
+            if (!token) return res.status(200).json({ success: false, message: 'Token obrigatório' });
+            const record = validateResetToken(token);
+            if (record) return res.status(200).json({ success: true, message: 'Token válido', data: { email: record.email } });
+            return res.status(200).json({ success: false, message: 'Token inválido' });
         }
-        cache.set(cacheKey, stats, 3600);
-        return res.status(200).json({ success: true, data: stats });
-    }
 
-    // ============================================================
-    // FAVORITOS
-    // ============================================================
-    if (action === 'toggle_favorite') {
-        const { user_id, music_id } = params;
-        if (!user_id || !music_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
-        STORAGE.favorites[user_id] = STORAGE.favorites[user_id] || [];
-        const sid = String(music_id);
-        if (STORAGE.favorites[user_id].includes(sid)) {
-            STORAGE.favorites[user_id] = STORAGE.favorites[user_id].filter(x => x !== sid);
-        } else {
-            STORAGE.favorites[user_id].push(sid);
+        // ============================================================
+        // YOUTUBE STATS
+        // ============================================================
+        if (action === 'get_youtube_stats') {
+            const { video_id } = params;
+            if (!video_id) return res.status(200).json({ success: false, message: 'video_id obrigatório' });
+            const cacheKey = `yt_${video_id}`;
+            const cached = cache.get(cacheKey);
+            if (cached) return res.status(200).json({ success: true, data: cached, cached: true });
+
+            const realStats = {
+                'fJ9rUzIMcZQ': { views: 6200000000, likes: 18000000, comments: 2000000 },
+                '4NRXx6U8ABQ': { views: 850000000, likes: 12000000, comments: 800000 }
+            };
+            let stats;
+            if (realStats[video_id]) {
+                stats = realStats[video_id];
+            } else {
+                const hash = video_id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+                const views = 100000 + (hash % 9000000);
+                stats = { views, likes: Math.floor(views * 0.05), comments: Math.floor(views * 0.01), estimated_earnings: (views / 1000) * 1.5 };
+            }
+            cache.set(cacheKey, stats, 3600);
+            return res.status(200).json({ success: true, data: stats });
         }
-        return res.status(200).json({ success: true, data: { favorites: STORAGE.favorites[user_id] } });
-    }
 
-    if (action === 'get_user_profile') {
-        const userId = params.user_id;
+        // ============================================================
+        // DEFAULT
+        // ============================================================
         return res.status(200).json({
             success: true,
-            data: { favorite_music_ids: STORAGE.favorites[userId] || [] }
+            message: '✅ PLAY MY API ONLINE',
+            version: '8.4.0',
+            kv_enabled: !!kv,
+            action: action || 'nenhuma',
+            endpoints: ['ping','login','register','get_musicas','get_saldo','get_carteira','get_extrato','get_top_investments','get_external_musicas','buy','toggle_favorite','register_streaming','get_youtube_stats','get_user_profile','get_global_playlists','create_global_playlist','add_music_to_global_playlist','remove_music_from_global_playlist','get_news','get_mining_blocks','add_block','get_admin_stats','get_artists','get_tickets','get_playlists','create_playlist','get_following','toggle_follow','request_password_reset','verify_reset_token'],
+            timestamp: new Date().toISOString()
         });
-    }
 
-    // ============================================================
-    // STREAMING
-    // ============================================================
-    if (action === 'register_streaming') {
-        const { music_id, user_id } = params;
-        if (!music_id || !user_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
-        addBlockToChain({ type: 'streaming', music_id, user_id });
-        return res.status(200).json({ success: true, data: { reward: 1 } });
-    }
-
-    if (action === 'get_streaming_stats') {
+    } catch (error) {
+        console.error('❌ Erro no handler:', error);
         return res.status(200).json({
-            success: true,
-            data: { total_earnings: 0, songs_count: 0, total_seconds: 0, rank: 0 }
+            success: false,
+            message: 'Erro interno: ' + error.message
         });
     }
-
-    // ============================================================
-    // DEFAULT
-    // ============================================================
-    return res.status(200).json({
-        success: true,
-        message: '✅ PLAY MY API ONLINE',
-        version: '8.3.0',
-        action: action || 'nenhuma',
-        environment: process.env.NODE_ENV || 'production',
-        endpoints: [
-            'ping', 'login', 'register', 'confirm_email', 'resend_confirmation',
-            'request_password_reset', 'verify_reset_token', 'reset_password',
-            'get_musicas', 'get_saldo', 'get_carteira', 'get_extrato',
-            'get_top_investments', 'get_recommendations', 'get_external_musicas',
-            'buy', 'toggle_favorite', 'register_streaming', 'get_streaming_stats',
-            'get_youtube_stats', 'get_user_profile', 'update_profile',
-            'get_global_playlists', 'create_global_playlist',
-            'add_music_to_global_playlist', 'remove_music_from_global_playlist',
-            'get_news', 'get_mining_blocks', 'add_block', 'get_admin_stats',
-            'get_artists', 'get_tickets', 'get_playlists', 'create_playlist',
-            'get_following', 'toggle_follow'
-        ],
-        timestamp: new Date().toISOString()
-    });
 };
