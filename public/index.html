@@ -1918,8 +1918,11 @@ function renderNewsCard(n) {
     '</div>' +
     (n.imagem ? '<img src="' + n.imagem + '" class="news-image" loading="lazy" onclick="openNewsImage(\'' + n.imagem + '\')" onerror="this.style.display=\'none\'">' : '') +
     '<div class="news-body">' +
-      '<div class="news-title">' + (n.titulo || '') + '</div>' +
-      '<div class="news-text">' + (n.texto || '') + '</div>' +
+'<a href="' + (n.link || '#') + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">' +
+  '<div class="news-title">' + (n.titulo || '') + '</div>' +
+'</a>' +
+    
+    '<div class="news-text">' + (n.texto || '') + '</div>' +
     '</div>' +
     '<div class="news-actions">' +
       '<button class="news-action-btn ' + (liked ? 'liked' : '') + '" onclick="toggleNewsLike(\'' + n.id + '\', this)">' +
@@ -1929,8 +1932,10 @@ function renderNewsCard(n) {
       '<button class="news-action-btn" onclick="shareNews(\'' + n.id + '\', event)">' +
         '<i class="bi bi-share"></i> Compartilhar' +
       '</button>' +
-      '<a class="news-action-btn" href="https://www.youtube.com/results?search_query=' + encodeURIComponent(n.titulo) + '" target="_blank" style="text-decoration:none">' +
-        '<i class="bi bi-play-circle"></i> Ouvir' +
+'<a class="news-action-btn" href="' + (n.link || '#') + '" target="_blank" rel="noopener" style="text-decoration:none">' +
+  '<i class="bi bi-box-arrow-up-right"></i> Ler' +
+'</a>' +
+    '<i class="bi bi-play-circle"></i> Ouvir' +
       '</a>' +
     '</div>' +
   '</div>';
