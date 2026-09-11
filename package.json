@@ -1,16 +1,13 @@
-{ 
-  "name": "playmy",
-  "version": "7.0.5",
-  "description": "PLAY MY - Plataforma de Música e Investimentos",
-  "engines": {
-    "node": ">=16.0.0"
-  },
-  "scripts": {
-    "vercel-build": "echo 'Build concluído!'"
-  },
+{
+  "name": "selomivplay",
+  "version": "8.4.0",
+  "description": "PLAY MY — Plataforma de música com blockchain",
+  "private": true,
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "nodemailer": "^6.9.7",
-    "node-fetch": "^3.3.2"
+    "@vercel/kv": "^3.0.0",
+    "nodemailer": "^6.9.7"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
