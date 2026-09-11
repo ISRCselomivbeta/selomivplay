@@ -1,151 +1,160 @@
 // ============================================================
-// YOUTUBE.JS - Integração com YouTube
+// YOUTUBE.JS - Busca e recomendações PLAY MY
 // ============================================================
 
-async function getYouTubeStats(videoId) {
-    if (!videoId) return null;
-    console.log(`🔍 Buscando stats para vídeo: ${videoId}`);
-    const cacheKey = `yt_stats_${videoId}`;
-    const cacheTimeKey = `${cacheKey}_time`;
-    const cachedData = localStorage.getItem(cacheKey);
-    const cachedTime = localStorage.getItem(cacheTimeKey);
-    let ultimoValorReal = null;
-    if (cachedData) {
-        const parsedData = JSON.parse(cachedData);
-        if (!parsedData.is_estimate) {
-            ultimoValorReal = parsedData;
-            console.log(`📦 Último valor REAL conhecido: ${formatNumber(parsedData.views)} views`);
-        }
-    }
-    let tentouApi = false;
-    try {
-        const result = await callAPI('get_youtube_stats', { video_id: videoId });
-        if (result?.success && result.data) {
-            const stats = { views: result.data.views || 0, likes: result.data.likes || 0, comments: result.data.comments || 0, estimated_earnings: result.data.estimated_earnings || 0, is_estimate: false, source: 'backend_api', last_updated: Date.now() };
-            console.log(`✅ Stats via backend para`, videoId, stats);
-            localStorage.setItem(cacheKey, JSON.stringify(stats));
-            localStorage.setItem(cacheTimeKey, Date.now().toString());
-            return stats;
-        }
-        tentouApi = true;
-    } catch (error) { console.warn('⚠️ Erro ao buscar stats via backend:', error); tentouApi = true; }
-    if (tentouApi && ultimoValorReal) {
-        console.log(`📦 API falhou, usando ÚLTIMO VALOR REAL de ${formatNumber(ultimoValorReal.views)} views`);
-        return { ...ultimoValorReal, using_cached_real: true, last_updated: parseInt(cachedTime) };
-    }
-    console.log('📊 Nunca teve dado real, gerando estimativa para', videoId);
-    const popularVideos = { 'dGHP0Nj9S0A': 450000000, '4NRXx6U8ABQ': 850000000, 'JGwWNGJdvx8': 6200000000, 'fJ9rUzIMcZQ': 1500000000, '7wtfhZwyrcc': 2100000000, 'nfWlot6h_JM': 3300000000, 'dvgZkm1xWPE': 800000000, 'TUVcZfQe-Kw': 580000000 };
-    let views;
-    if (popularVideos[videoId]) { views = popularVideos[videoId]; console.log('🎯 Usando valor conhecido para vídeo popular'); }
-    else { const hash = videoId.split('').reduce((a, b) => a + b.charCodeAt(0), 0); views = 10000 + (hash % 490000); console.log('🎲 Gerando valor estimado baseado no hash'); }
-    const earnings = (views / 1000) * 1.5;
-    const result = { views: views, likes: Math.floor(views * 0.03), comments: Math.floor(views * 0.005), estimated_earnings: earnings, is_estimate: true, source: 'fallback_inicial' };
-    localStorage.setItem(cacheKey, JSON.stringify(result));
-    localStorage.setItem(cacheTimeKey, Date.now().toString());
-    console.log(`📊 Estimativa inicial salva para`, videoId, result);
-    return result;
-}
+let searchTimeout = null;
+const YOUTUBE_API_KEY = CONFIG.YOUTUBE_API_KEY;
 
-function calculateEstimatedRevenue(views, platform = 'youtube') {
-    const rates = { youtube: 0.0002, spotify: 0.0004, deezer: 0.0005, apple_music: 0.0007, average: 0.00035 };
-    const rate = rates[platform] || rates.average;
-    const revenueUSD = views * rate;
-    const revenueBRL = revenueUSD * 5.20;
-    return { usd: revenueUSD, brl: revenueBRL, formatted: formatCurrency(revenueBRL) };
-}
+async function performSearch() {
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) { showToast('Digite uma música ou artista', 'warning'); return; }
 
-async function updateCardWithRealData(track, cardElement) {
-    if (!track || !track.link_youtube) return;
-    const videoId = extractYouTubeId(track.link_youtube);
-    if (!videoId) return;
-    const viewsEl = cardElement.querySelector('.youtube-views');
-    const earningsEl = cardElement.querySelector('.estimated-earnings');
-    if (viewsEl) viewsEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-    if (earningsEl) earningsEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    showLoading(`Buscando "${query}"...`);
+    const resultsContainer = document.getElementById('searchResults');
+    resultsContainer.style.display = 'none';
+    resultsContainer.innerHTML = '<div class="p-4 text-center text-muted"><div class="spinner-border text-success mb-2"></div><p>Buscando...</p></div>';
+    resultsContainer.style.display = 'block';
+
     try {
-        const stats = await getYouTubeStats(videoId);
-        if (stats) {
-            const revenue = calculateEstimatedRevenue(stats.views);
-            if (viewsEl) { viewsEl.innerHTML = `<i class="bi bi-eye-fill me-1"></i>${formatNumber(stats.views)} views`; }
-            if (earningsEl) { earningsEl.innerHTML = `<i class="bi bi-cash-stack me-1"></i>${revenue.formatted}`; }
-            const sourceText = stats.source || (stats.is_estimate ? 'Estimativa' : 'YouTube API');
-            cardElement.setAttribute('data-tooltip', `📊 YouTube Stats:\n👁️ Views: ${stats.views.toLocaleString()}\n👍 Likes: ${stats.likes ? stats.likes.toLocaleString() : 'N/A'}\n💬 Comments: ${stats.comments ? stats.comments.toLocaleString() : 'N/A'}\n💰 Estimativa: ${revenue.formatted}\n🔍 Fonte: ${sourceText}`);
-            track.youtube_stats = stats;
-            track.youtube_views = stats.views;
-            console.log(`✅ Card atualizado: ${track.titulo} - ${formatNumber(stats.views)} views`);
-        }
+        if (state.currentUser) await saveSearchToUserProfile(query);
+        const q = query.toLowerCase();
+        const internalResults = (state.playlist || []).filter(item => {
+            const t = (item.titulo || '').toLowerCase();
+            const a = (item.artista || '').toLowerCase();
+            return t.includes(q) || a.includes(q);
+        });
+        const externalResults = (state.externalPlaylist || []).filter(item => {
+            const t = (item.titulo || '').toLowerCase();
+            const a = (item.artista || '').toLowerCase();
+            return t.includes(q) || a.includes(q);
+        });
+        let youtubeResults = [];
+        if (YOUTUBE_API_KEY) youtubeResults = await searchYouTube(query);
+        displaySearchResults(internalResults, externalResults, youtubeResults, query);
     } catch (error) {
-        console.error('❌ Erro ao atualizar card:', error);
-        if (viewsEl) viewsEl.innerHTML = '<i class="bi bi-eye-fill me-1"></i> N/A';
-        if (earningsEl) earningsEl.innerHTML = '<i class="bi bi-cash-stack me-1"></i> N/A';
-    }
+        console.error(error);
+        resultsContainer.innerHTML = `<div class="p-4 text-center text-danger"><i class="bi bi-exclamation-triangle fs-1 d-block mb-3"></i><p>Erro na busca</p></div>`;
+    } finally { hideLoading(); }
 }
 
-async function updateExternalCardWithRealData(track, cardElement) {
-    if (!track || !track.link_youtube) return;
-    const videoId = extractYouTubeId(track.link_youtube);
-    if (!videoId) return;
-    const viewsEl = cardElement.querySelector('.youtube-views');
-    const earningsEl = cardElement.querySelector('.estimated-earnings');
-    if (viewsEl) viewsEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-    if (earningsEl) earningsEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+async function searchYouTube(query) {
+    const cacheKey = `youtube_search_${query.toLowerCase().replace(/\s+/g, '_')}`;
+    const cached = localStorage.getItem(cacheKey);
+    const cachedTime = localStorage.getItem(`${cacheKey}_time`);
+    if (cached && cachedTime && (Date.now() - parseInt(cachedTime)) < 21600000) {
+        return JSON.parse(cached);
+    }
     try {
-        const stats = await getYouTubeStats(videoId);
-        if (stats) {
-            const revenue = calculateEstimatedRevenue(stats.views);
-            if (viewsEl) { viewsEl.innerHTML = `<i class="bi bi-eye-fill me-1"></i>${formatNumber(stats.views)} views`; }
-            if (earningsEl) { earningsEl.innerHTML = `<i class="bi bi-cash-stack me-1"></i>${revenue.formatted}`; }
-            track.youtube_stats = stats;
-            cardElement.setAttribute('data-tooltip', `📊 YouTube Stats:\n👁️ Views: ${stats.views.toLocaleString()}\n👍 Likes: ${stats.likes.toLocaleString()}\n💬 Comments: ${stats.comments.toLocaleString()}\n💰 Estimativa: ${revenue.formatted}`);
+        const API_KEY = YOUTUBE_API_KEY;
+        if (API_KEY && API_KEY !== 'AIzaSyA_xxxxx_SEU_TOKEN_AQUI') {
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=8&q=${encodeURIComponent(query)}&key=${API_KEY}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            if (!data.error && data.items && data.items.length > 0) {
+                const results = data.items.map(item => ({
+                    id: 'yt_' + item.id.videoId,
+                    titulo: item.snippet.title,
+                    artista: item.snippet.channelTitle,
+                    link_capa: item.snippet.thumbnails.high.url,
+                    link_youtube: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+                    is_external: true,
+                    is_youtube: true,
+                    published_at: item.snippet.publishedAt
+                }));
+                localStorage.setItem(cacheKey, JSON.stringify(results));
+                localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
+                return results;
+            }
         }
-    } catch (error) {
-        console.error('Erro ao atualizar card externo:', error);
-        const hash = videoId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-        const views = 100000 + (hash % 900000);
-        const revenue = calculateEstimatedRevenue(views);
-        if (viewsEl) { viewsEl.innerHTML = `<i class="bi bi-eye-fill me-1"></i>${formatNumber(views)} views`; }
-        if (earningsEl) { earningsEl.innerHTML = `<i class="bi bi-cash-stack me-1"></i>${revenue.formatted}`; }
+    } catch (error) { console.warn('API YouTube falhou:', error); }
+    return [];
+}
+
+function displaySearchResults(internal, external, youtube, query) {
+    const container = document.getElementById('searchResults');
+    const allResults = [...(internal || []), ...(external || []), ...(youtube || [])];
+    if (allResults.length === 0) {
+        container.innerHTML = `<div class="p-4 text-center text-muted"><i class="bi bi-music-note-beamed fs-1 d-block mb-3"></i><p>Nenhum resultado para "${query}"</p></div>`;
+        return;
+    }
+    let html = '<div class="p-2"><small class="text-muted d-block p-2">Resultados:</small>';
+    allResults.forEach((item, index) => {
+        if (!item || typeof item !== 'object') return;
+        const isExternal = item.is_external || item.is_youtube || false;
+        const titulo = String(item.titulo || 'Sem título');
+        const artista = String(item.artista || 'Artista');
+        const coverImg = item.link_capa || (isExternal ? PLACEHOLDERS.EXT_56 : PLACEHOLDERS.MIV_56);
+        const safeItem = { id: item.id, titulo, artista, link_capa: coverImg, link_youtube: item.link_youtube || '', is_external: isExternal, is_youtube: item.is_youtube || false };
+        const itemJSON = JSON.stringify(safeItem).replace(/"/g, '&quot;');
+        html += `
+        <div class="search-result-item" onclick='playSearchResult(${index}, ${itemJSON})'>
+            <img src="${coverImg}" class="search-result-cover" onerror="this.src='${isExternal ? PLACEHOLDERS.EXT_56 : PLACEHOLDERS.MIV_56}'">
+            <div class="search-result-info">
+                <div class="search-result-title">${titulo.substring(0, 50)}</div>
+                <div class="search-result-artist">${artista.substring(0, 30)}</div>
+            </div>
+            <div><span class="search-result-badge ${!isExternal ? 'normal' : ''}">${item.is_youtube ? '🎬 YT' : (isExternal ? '🌐 Ext' : '🔷 MIV')}</span></div>
+        </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+    container.style.display = 'block';
+    setTimeout(() => {
+        document.addEventListener('click', function close(e) {
+            if (!container.contains(e.target) && !document.getElementById('searchForm').contains(e.target)) {
+                container.style.display = 'none';
+                document.removeEventListener('click', close);
+            }
+        });
+    }, 100);
+}
+
+async function playSearchResult(index, item) {
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('searchInput').value = '';
+    if (item.is_youtube) {
+        showToast(`Adicionando "${item.titulo}"...`, 'info');
+        await addYouTubeToExternalAndPlay(item);
+    } else {
+        const idx = state.playlist.findIndex(t => t.id === item.id);
+        if (idx !== -1) playTrack(idx);
+        else {
+            const extIdx = state.externalPlaylist.findIndex(t => t.id === item.id);
+            if (extIdx !== -1) playExternalTrack(extIdx);
+            else showToast('Música não encontrada', 'error');
+        }
     }
 }
 
-async function refreshAllCards() {
-    console.log('🔄 Atualizando todos os cards com dados reais...');
-    const container = document.getElementById('marketplaceContent');
-    if (container && state.playlist) {
-        for (let i = 0; i < Math.min(state.playlist.length, 7); i++) {
-            const card = container.children[i];
-            const track = state.playlist[i];
-            if (card && track) { await updateCardWithRealData(track, card); await new Promise(resolve => setTimeout(resolve, 500)); }
-        }
-    }
-    const externalGrid = document.getElementById('externalMarketplaceGrid');
-    if (externalGrid && state.externalPlaylist) {
-        for (let i = 0; i < Math.min(state.externalPlaylist.length, 4); i++) {
-            const card = externalGrid.children[i];
-            const track = state.externalPlaylist[i];
-            if (card && track) { await updateExternalCardWithRealData(track, card); await new Promise(resolve => setTimeout(resolve, 500)); }
-        }
-    }
-    showToast('✅ Cards atualizados com dados do YouTube', 'success');
+async function addYouTubeToExternalAndPlay(youtubeItem) {
+    const newItem = {
+        id: 'yt_temp_' + Date.now(),
+        titulo: youtubeItem.titulo,
+        artista: youtubeItem.artista,
+        link_capa: youtubeItem.link_capa,
+        link_youtube: youtubeItem.link_youtube,
+        valor_acao: 5.00,
+        percentual_disponivel: 10,
+        acoes_vendidas: 0,
+        total_investidores: 0,
+        vendas_atuais: 0,
+        meta_vendas: 1000000,
+        status: 'aprovado',
+        is_temporary: true,
+        data_sugestao: new Date().toISOString()
+    };
+    state.externalPlaylist.unshift(newItem);
+    renderExternalMarketplace();
+    playExternalTrack(0);
+    showToast(`🎵 "${youtubeItem.titulo}" adicionado`, 'success');
 }
 
-function addRefreshButton() {
-    const header = document.querySelector('.section-header-spotify');
-    if (header) {
-        const refreshBtn = document.createElement('button');
-        refreshBtn.className = 'btn btn-sm btn-outline-success ms-2';
-        refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Atualizar Stats';
-        refreshBtn.onclick = refreshAllCards;
-        header.appendChild(refreshBtn);
-    }
-}
-setTimeout(addRefreshButton, 3000);
-
-// ===== EXPORT =====
-if (typeof window !== 'undefined') {
-    window.getYouTubeStats = getYouTubeStats;
-    window.calculateEstimatedRevenue = calculateEstimatedRevenue;
-    window.updateCardWithRealData = updateCardWithRealData;
-    window.updateExternalCardWithRealData = updateExternalCardWithRealData;
-    window.refreshAllCards = refreshAllCards;
+async function saveSearchToUserProfile(query) {
+    if (!state.currentUser || !query) return;
+    try {
+        await callAPI('update_profile', {
+            user_id: state.currentUser.id,
+            last_search: query
+        });
+    } catch (error) { console.error(error); }
 }
