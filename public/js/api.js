@@ -81,4 +81,18 @@ function getFallbackData(action, data) {
         return {
             success: true,
             message: 'Ação realizada com sucesso!',
-            data: { contrato_id
+            data: { contrato_id: contract.id, blockchain_hash: contract.hash, transaction: contract }
+        };
+    }
+
+    if (['buy', 'buy_external', 'register', 'upload_music', 'suggest_external_music',
+         'create_playlist', 'toggle_favorite', 'request_withdrawal'].includes(action)) {
+        return {
+            success: true,
+            message: 'Ação realizada com sucesso!',
+            data: { contrato_id: 'CT_' + Date.now(), blockchain_hash: Blockchain.generateHash(action + Date.now()) }
+        };
+    }
+
+    return { success: true, data: [] };
+}
