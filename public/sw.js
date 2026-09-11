@@ -1,28 +1,30 @@
 // ============================================================
-// SERVICE WORKER - PLAY MY / SELO MIV
+// SERVICE WORKER - PLAY MY / SELO MIV v8.1
 // ============================================================
 
-const CACHE_NAME = 'selo-miv-v6.2';
+const CACHE_NAME = 'playmy-v8.1';
+const CACHE_RUNTIME = 'playmy-runtime-v8.1';
+
+// Arquivos essenciais para cache inicial (app shell)
 const urlsToCache = [
     '/',
     '/index.html',
     '/offline.html',
     '/confirm-email.html',
     '/reset-password.html',
-    '/security-bridge.js',
     '/manifest.json',
     '/images/logo.png',
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
-    'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css',
-    'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap'
+    'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css'
 ];
 
 // ===== INSTALAR =====
 self.addEventListener('install', event => {
+    console.log('[SW] Instalando v8.1...');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('[SW] Cache aberto');
+                console.log('[SW] Cache aberto:', CACHE_NAME);
                 return Promise.allSettled(
                     urlsToCache.map(url => cache.add(url).catch(err => {
                         console.warn('[SW] Falha ao cachear (ignorado):', url, err);
@@ -35,15 +37,21 @@ self.addEventListener('install', event => {
 
 // ===== INTERCEPTAR REQUISIÇÕES =====
 self.addEventListener('fetch', event => {
-    // Nunca interceptar API/backend, YouTube ou Google APIs
+    const url = event.request.url;
+
+    // Nunca interceptar: API/backend, YouTube, Google APIs, Google Apps Script
     if (
         event.request.method !== 'GET' ||
-        event.request.url.includes('/api/') ||
-        event.request.url.includes('youtube.com') ||
-        event.request.url.includes('youtube-nocookie.com') ||
-        event.request.url.includes('googleapis.com') ||
-        event.request.url.includes('googleusercontent.com') ||
-        event.request.url.includes('script.google.com')
+        url.includes('/api/') ||
+        url.includes('youtube.com') ||
+        url.includes('youtube-nocookie.com') ||
+        url.includes('ytimg.com') ||
+        url.includes('googleapis.com') ||
+        url.includes('googleusercontent.com') ||
+        url.includes('script.google.com') ||
+        url.includes('vercel.app/api') ||
+        url.startsWith('chrome-extension://') ||
+        url.startsWith('blob:')
     ) {
         return;
     }
@@ -52,6 +60,18 @@ self.addEventListener('fetch', event => {
         caches.match(event.request)
             .then(response => {
                 if (response) {
+                    // Retorna do cache e atualiza em background (stale-while-revalidate)
+                    const fetchPromise = fetch(event.request)
+                        .then(networkResponse => {
+                            if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+                                const responseToCache = networkResponse.clone();
+                                caches.open(CACHE_RUNTIME).then(cache => {
+                                    cache.put(event.request, responseToCache);
+                                });
+                            }
+                            return networkResponse;
+                        })
+                        .catch(() => {});
                     return response;
                 }
 
@@ -63,7 +83,7 @@ self.addEventListener('fetch', event => {
                     }
 
                     const responseToCache = networkResponse.clone();
-                    caches.open(CACHE_NAME).then(cache => {
+                    caches.open(CACHE_RUNTIME).then(cache => {
                         cache.put(event.request, responseToCache);
                     });
 
@@ -73,6 +93,10 @@ self.addEventListener('fetch', event => {
                     if (event.request.mode === 'navigate') {
                         return caches.match('/offline.html');
                     }
+                    // Se for imagem, retorna placeholder
+                    if (event.request.destination === 'image') {
+                        return caches.match('/images/logo.png');
+                    }
                 });
             })
     );
@@ -80,12 +104,14 @@ self.addEventListener('fetch', event => {
 
 // ===== ATIVAR E LIMPAR CACHES ANTIGAS =====
 self.addEventListener('activate', event => {
-    const cacheWhitelist = [CACHE_NAME];
+    console.log('[SW] Ativando v8.1...');
+    const cacheWhitelist = [CACHE_NAME, CACHE_RUNTIME];
     event.waitUntil(
         caches.keys().then(cacheNames => {
             return Promise.all(
                 cacheNames.map(cacheName => {
                     if (cacheWhitelist.indexOf(cacheName) === -1) {
+                        console.log('[SW] Removendo cache antigo:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
@@ -93,6 +119,16 @@ self.addEventListener('activate', event => {
         })
     );
     self.clients.claim();
+});
+
+// ===== MENSAGENS DO APP (para forçar update) =====
+self.addEventListener('message', event => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+    if (event.data && event.data.type === 'CLEAR_CACHE') {
+        caches.keys().then(names => Promise.all(names.map(n => caches.delete(n))));
+    }
 });
 
 // ===== SINCRONIZAÇÃO EM BACKGROUND =====
@@ -118,7 +154,6 @@ async function syncTrades() {
 }
 
 async function getPendingTrades() {
-    // Implementar lógica para buscar trades pendentes do IndexedDB, se desejar
     return [];
 }
 
@@ -145,6 +180,17 @@ self.addEventListener('notificationclick', event => {
     event.notification.close();
     const url = event.notification.data?.url || '/';
     event.waitUntil(
-        clients.openWindow(url)
+        clients.matchAll({ type: 'window' }).then(windowClients => {
+            // Se já tem uma janela aberta, foca nela
+            for (let client of windowClients) {
+                if (client.url === url && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            // Senão abre uma nova
+            if (clients.openWindow) {
+                return clients.openWindow(url);
+            }
+        })
     );
 });
