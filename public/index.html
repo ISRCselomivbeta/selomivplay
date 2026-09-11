@@ -928,7 +928,7 @@ async function callAPI(action, data) {
       url.searchParams.append('action', action);
       Object.keys(data).forEach(k => { if (data[k] !== undefined && data[k] !== null) url.searchParams.append(k, data[k]); });
       const ctrl = new AbortController();
-      const timeout = setTimeout(() => ctrl.abort(), 10000);
+const timeout = setTimeout(() => ctrl.abort(), 20000);
       const r = await fetch(url.toString(), { signal: ctrl.signal, headers: { 'Accept': 'application/json' } });
       clearTimeout(timeout);
       if (r.ok) {
@@ -948,7 +948,7 @@ async function callAPI(action, data) {
       url.searchParams.append('action', action);
       Object.keys(data).forEach(k => { if (data[k] !== undefined && data[k] !== null) url.searchParams.append(k, data[k]); });
       const ctrl = new AbortController();
-      const timeout = setTimeout(() => ctrl.abort(), 15000);
+const timeout = setTimeout(() => ctrl.abort(), 25000);
       const r = await fetch(url.toString(), { signal: ctrl.signal });
       clearTimeout(timeout);
       if (r.ok) {
@@ -1219,7 +1219,7 @@ function createYouTubePlayer(elId, videoId) {
   if (state.youtubePlayer && state.youtubePlayer.destroy) { try { state.youtubePlayer.destroy(); } catch (e) {} }
   state.youtubePlayer = new YT.Player(div.id, {
     width: '100%', height: '100%', videoId: videoId,
-    playerVars: { autoplay: 1, controls: 1, modestbranding: 1, rel: 0, playsinline: 1, enablejsapi: 1 },
+playerVars: { autoplay: 1, controls: 1, modestbranding: 1, rel: 0, playsinline: 1, enablejsapi: 1, origin: window.location.origin },
     events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange, onError: onPlayerError }
   });
 }
