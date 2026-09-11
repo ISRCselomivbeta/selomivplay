@@ -1121,33 +1121,41 @@ async function loadUserPlaylists() { if (!state.currentUser) { state.userPlaylis
 
 // 🔑 PLAYLISTS GLOBAIS PERSISTENTES (localStorage + backend)
 async function loadGlobalPlaylists() {
-  try {
-    const cached = localStorage.getItem('miv_global_playlists');
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed)) {
-        state.globalPlaylists = parsed;
-        renderGlobalPlaylists();
-        if (state.currentUser && state.currentUser.tipo === 'admin') renderAdminGlobalPlaylists();
-      }
-    }
-  } catch (e) {}
+  // SEMPRE busca do backend primeiro — é a fonte da verdade
   try {
     const r = await callAPI('get_global_playlists');
-    if (r && r.success && Array.isArray(r.data) && r.data.length > 0) {
+    if (r && r.success && Array.isArray(r.data)) {
       state.globalPlaylists = r.data.map(p => ({
         id: p.id || ('gp_' + Date.now() + Math.random()),
         nome: p.nome || '',
         descricao: p.descricao || '',
-        musicas: Array.isArray(p.musicas) ? p.musicas.map(String) : (typeof p.musicas === 'string' ? p.musicas.split(',').filter(Boolean) : []),
-        music_count: p.music_count || 0,
+        musicas: Array.isArray(p.musicas) ? p.musicas.map(String)
+               : (typeof p.musicas === 'string' ? p.musicas.split(',').filter(Boolean) : []),
+        music_count: p.music_count || (Array.isArray(p.musicas) ? p.musicas.length : 0),
         is_global: true
       }));
+      // Salva cache como backup apenas
       localStorage.setItem('miv_global_playlists', JSON.stringify(state.globalPlaylists));
+    } else {
+      // Backend respondeu mas vazio → só usa local como fallback para o admin
+      const isAdmin = state.currentUser && state.currentUser.tipo === 'admin';
+      if (isAdmin) {
+        const cached = localStorage.getItem('miv_global_playlists');
+        if (cached) {
+          try { state.globalPlaylists = JSON.parse(cached); } catch(e) { state.globalPlaylists = []; }
+        }
+      } else {
+        state.globalPlaylists = [];
+      }
     }
-  } catch (e) { console.warn('Playlists globais: usando cache local'); }
+  } catch (e) {
+    console.warn('Erro ao carregar playlists globais:', e);
+    state.globalPlaylists = [];
+  }
   renderGlobalPlaylists();
-  if (state.currentUser && state.currentUser.tipo === 'admin') renderAdminGlobalPlaylists();
+  if (state.currentUser && state.currentUser.tipo === 'admin') {
+    renderAdminGlobalPlaylists();
+  }
 }
 
 async function loadArtists(force) { try { const r = await callAPI('get_artists'); if (r && r.success && r.data) state.artists = r.data; } catch (e) { state.artists = getFallbackData('get_artists').data; } renderArtists(); renderFeaturedArtists(); }
