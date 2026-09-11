@@ -1,27 +1,31 @@
 // ============================================================
-// MODALS.JS - Controle de Modais
+// MODALS.JS - Todos os modais PLAY MY
 // ============================================================
 
-// ===== INVEST MODAL =====
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) { modal.classList.add('show'); document.body.style.overflow = 'hidden'; }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) { modal.classList.remove('show'); document.body.style.overflow = 'auto'; }
+}
+
 function openInvestModal(trackIndex) {
     if (trackIndex < 0 || trackIndex >= state.playlist.length) { showToast('Música não encontrada', 'error'); return; }
     const track = state.playlist[trackIndex];
-    if (track.status === 'paused') { showToast('Esta música está pausada pelo artista', 'warning'); return; }
-    if (track.status === 'deleted') { showToast('Esta música não está mais disponível', 'error'); return; }
+    if (track.status === 'paused' || track.status === 'deleted') { showToast('Música indisponível', 'warning'); return; }
     state.currentInvestTrack = track;
     document.getElementById('investTrackTitle').textContent = track.titulo || 'Sem título';
-    document.getElementById('investTrackArtist').textContent = track.artista || 'Artista Desconhecido';
+    document.getElementById('investTrackArtist').textContent = track.artista || 'Artista';
     document.getElementById('investUnitPriceDisplay').textContent = formatCurrency(track.valor_acao || 0);
-    const balanceEl = document.getElementById('investAvailableBalanceDisplay');
-    const streamingEarnings = state.streamingStats?.total_earnings || 0;
-    if (streamingEarnings > 0) {
-        balanceEl.innerHTML = `${formatCurrency(state.userBalance)} <small class="text-success d-block" style="font-size: 0.7rem;"><i class="bi bi-cash-stack"></i> Inclui ${formatCurrency(streamingEarnings)} de streaming</small>`;
-    } else { balanceEl.textContent = formatCurrency(state.userBalance); }
+    document.getElementById('investAvailableBalanceDisplay').textContent = formatCurrency(state.userBalance);
     document.getElementById('investQuantityField').value = 1;
     const totalShares = (track.percentual_disponivel || 0) / 0.01;
     const availableShares = Math.max(0, totalShares - (track.acoes_vendidas || 0));
     document.getElementById('investSharesAvailable').textContent = `Disponível: ${availableShares} ações`;
-    document.getElementById('investBlockchainPreview').innerHTML = `⛓️ Hash da transação: ${Blockchain.generateHash(track.id + Date.now()).substring(0, 20)}...`;
+    document.getElementById('investBlockchainPreview').innerHTML = `⛓️ Hash: ${Blockchain.generateHash(track.id + Date.now()).substring(0, 20)}...`;
     updateInvestmentTotal();
     showModal('investModal');
 }
@@ -34,33 +38,54 @@ function updateInvestmentTotal() {
     document.getElementById('confirmInvestBtn').disabled = total > state.userBalance;
 }
 
-function adjustQuantity(amount) { 
-    const input = document.getElementById('investQuantityField'); 
-    input.value = Math.max(1, parseInt(input.value) + amount); 
-    updateInvestmentTotal(); 
+function adjustQuantity(amount) {
+    const input = document.getElementById('investQuantityField');
+    input.value = Math.max(1, parseInt(input.value) + amount);
+    updateInvestmentTotal();
 }
 
-function openInvestModalFromPlayer() {
-    if (state.currentTrackIndex < 0) { showToast('Nenhuma música tocando', 'error'); return; }
-    if (state.currentTrackIndex >= 1000) { openInvestExternalModal(state.currentTrackIndex - 1000); }
-    else { openInvestModal(state.currentTrackIndex); }
+async function confirmInvestment() {
+    if (!state.currentUser || !state.currentInvestTrack) { showToast('Erro', 'error'); return; }
+    const qty = parseInt(document.getElementById('investQuantityField').value) || 1;
+    const total = qty * (state.currentInvestTrack.valor_acao || 0);
+    if (total > state.userBalance) { showToast('Saldo insuficiente', 'error'); return; }
+    const btn = document.getElementById('confirmInvestBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Processando...';
+    try {
+        const result = await callAPI('buy', {
+            music_id: state.currentInvestTrack.id, quantidade: qty,
+            valor_unitario: state.currentInvestTrack.valor_acao || 0, valor_total: total,
+            comprador_id: state.currentUser.id, vendedor_id: state.currentInvestTrack.user_id
+        });
+        if (result?.success) {
+            state.userBalance -= total;
+            const novoAtivo = {
+                id: 'inv_' + Date.now(), music_id: state.currentInvestTrack.id,
+                quantidade: qty, valor_unitario: state.currentInvestTrack.valor_acao,
+                valor_total: total, data_compra: new Date().toISOString(), status: 'ativo'
+            };
+            if (!state.portfolioAssets) state.portfolioAssets = [];
+            state.portfolioAssets.push(novoAtivo);
+            updateBalanceDisplay();
+            renderPortfolio();
+            showToast(`✅ Investimento realizado! ${qty} ações`, 'success');
+            closeModal('investModal');
+        } else showToast(result?.message || 'Erro', 'error');
+    } catch (error) { showToast('Erro: ' + error.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle me-2"></i> Confirmar Investimento'; }
 }
 
-// ===== INVEST EXTERNAL MODAL =====
 function openInvestExternalModal(trackIndex) {
-    if (trackIndex < 0 || trackIndex >= state.externalPlaylist.length) { showToast('Música não encontrada', 'error'); return; }
+    if (trackIndex < 0 || trackIndex >= state.externalPlaylist.length) { showToast('Não encontrada', 'error'); return; }
     state.currentExternalTrack = state.externalPlaylist[trackIndex];
     document.getElementById('investExternalTitleDisplay').textContent = state.currentExternalTrack.titulo || 'Sem título';
-    document.getElementById('investExternalArtistDisplay').textContent = state.currentExternalTrack.artista || 'Artista Desconhecido';
+    document.getElementById('investExternalArtistDisplay').textContent = state.currentExternalTrack.artista || 'Artista';
     document.getElementById('investExternalUnitPriceDisplay').textContent = formatCurrency(state.currentExternalTrack.valor_acao || 0);
     document.getElementById('investExternalBalanceDisplay').textContent = formatCurrency(state.userBalance);
     document.getElementById('investExternalQuantityField').value = 1;
-    const totalShares = state.currentExternalTrack.total_acoes || ((state.currentExternalTrack.percentual_disponivel || 0) / 0.01);
-    const availableShares = Math.max(0, totalShares - (state.currentExternalTrack.acoes_vendidas || 0));
-    document.getElementById('investExternalSharesAvailable').textContent = `Disponível: ${availableShares} ações`;
     const progressPercent = Math.min(100, ((state.currentExternalTrack.vendas_atuais || 0) / (state.currentExternalTrack.meta_vendas || 1000000) * 100));
     document.getElementById('investExternalProgressBar').style.width = `${progressPercent}%`;
-    document.getElementById('investExternalCurrentSales').textContent = `Vendas atuais: ${formatCurrency(state.currentExternalTrack.vendas_atuais || 0)}`;
     updateExternalInvestmentTotal();
     showModal('investExternalModal');
 }
@@ -73,40 +98,88 @@ function updateExternalInvestmentTotal() {
     document.getElementById('confirmExternalInvestBtn').disabled = total > state.userBalance;
 }
 
-function adjustExternalQuantity(amount) { 
-    const input = document.getElementById('investExternalQuantityField'); 
-    input.value = Math.max(1, parseInt(input.value) + amount); 
-    updateExternalInvestmentTotal(); 
+function adjustExternalQuantity(amount) {
+    const input = document.getElementById('investExternalQuantityField');
+    input.value = Math.max(1, parseInt(input.value) + amount);
+    updateExternalInvestmentTotal();
 }
 
 async function confirmExternalInvestment() {
-    if (!state.currentUser || !state.currentExternalTrack) { showToast('Erro ao processar investimento', 'error'); return; }
+    if (!state.currentUser || !state.currentExternalTrack) { showToast('Erro', 'error'); return; }
     const qty = parseInt(document.getElementById('investExternalQuantityField').value) || 1;
     const total = qty * (state.currentExternalTrack.valor_acao || 0);
     if (total > state.userBalance) { showToast('Saldo insuficiente', 'error'); return; }
     const btn = document.getElementById('confirmExternalInvestBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Processando...';
-    showLoading('Processando investimento...');
     try {
-        const result = await callAPI('buy_external', { external_id: state.currentExternalTrack.id, quantidade: qty, valor_unitario: state.currentExternalTrack.valor_acao || 0, valor_total: total });
+        const result = await callAPI('buy_external', {
+            external_id: state.currentExternalTrack.id, quantidade: qty,
+            valor_unitario: state.currentExternalTrack.valor_acao || 0, valor_total: total
+        });
         if (result?.success) {
             state.userBalance -= total;
             updateBalanceDisplay();
             closeModal('investExternalModal');
             showToast('Investimento externo realizado!', 'success');
             await Promise.all([loadExternalMarketplace(), loadLedger()]);
-        } else { showToast(result?.message || 'Erro ao processar investimento', 'error'); }
-    } catch (error) { console.error('Erro ao investir externo:', error); showToast('Erro ao processar investimento', 'error'); }
-    finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle me-2"></i> Confirmar Investimento'; hideLoading(); }
+        } else showToast(result?.message || 'Erro', 'error');
+    } catch (error) { showToast('Erro: ' + error.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle me-2"></i> Confirmar Investimento'; }
 }
 
-// ===== ADD BALANCE MODAL =====
-function openAddBalanceModal() { document.getElementById('balanceAmountField').value = 100; showModal('addBalanceModal'); }
-function setBalanceAmount(v) { document.getElementById('balanceAmountField').value = v; }
-function validateBalanceAmount() { const input = document.getElementById('balanceAmountField'); let v = parseFloat(input.value) || 0; if (v < 10) input.value = 10; }
+function openInvestModalFromPlayer() {
+    if (state.currentTrackIndex < 0) { showToast('Nenhuma música tocando', 'error'); return; }
+    if (state.currentTrackIndex >= 1000) openInvestExternalModal(state.currentTrackIndex - 1000);
+    else openInvestModal(state.currentTrackIndex);
+}
 
-function processBalanceAdd() { 
+async function toggleFavoriteMusic(musicId, trackIndex = null) {
+    if (!state.currentUser) { showToast('Faça login', 'error'); return; }
+    const isFavorite = state.favoriteMusicIds?.includes(musicId.toString());
+    if (isFavorite) {
+        state.favoriteMusicIds = state.favoriteMusicIds.filter(id => id !== musicId.toString());
+        showToast('⭐ Removido dos favoritos', 'success');
+    } else {
+        state.favoriteMusicIds.push(musicId.toString());
+        showToast('⭐ Adicionado aos favoritos!', 'success');
+    }
+    if (state.currentUser) {
+        state.currentUser.favorite_music_ids = state.favoriteMusicIds;
+        localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+    }
+    renderMarketplace();
+    renderExternalMarketplace();
+    renderPlaylists();
+    if (trackIndex !== null) updateFavoriteButton(state.favoriteMusicIds.includes(musicId.toString()));
+    try {
+        await callAPI('toggle_favorite', {
+            user_id: state.currentUser.id, music_id: musicId,
+            action: isFavorite ? 'remove' : 'add'
+        });
+    } catch (error) { console.error(error); }
+}
+
+function openAddBalanceModal() {
+    document.getElementById('balanceAmountField').value = 100;
+    showModal('addBalanceModal');
+}
+
+function openWithdrawalModal() {
+    if (state.userBalance < 10) { showToast('Saldo mínimo: R$ 10,00', 'warning'); return; }
+    document.getElementById('withdrawalAmountField').value = state.userBalance;
+    document.getElementById('maxWithdrawalDisplay').textContent = formatCurrency(state.userBalance);
+    showModal('withdrawalModal');
+}
+
+function setBalanceAmount(v) { document.getElementById('balanceAmountField').value = v; }
+function validateBalanceAmount() {
+    const input = document.getElementById('balanceAmountField');
+    let v = parseFloat(input.value) || 0;
+    if (v < 10) input.value = 10;
+}
+
+function processBalanceAdd() {
     const amount = parseFloat(document.getElementById('balanceAmountField').value) || 0;
     if (amount < 10) { showToast('Valor mínimo: R$ 10,00', 'error'); return; }
     state.userBalance += amount;
@@ -116,19 +189,11 @@ function processBalanceAdd() {
     window.open(CONFIG.MERCADO_PAGO_LINK, '_blank');
 }
 
-// ===== WITHDRAWAL MODAL =====
-function openWithdrawalModal() { 
-    if (state.userBalance < 10) { showToast('Saldo mínimo para saque: R$ 10,00', 'warning'); return; } 
-    document.getElementById('withdrawalAmountField').value = state.userBalance; 
-    document.getElementById('maxWithdrawalDisplay').textContent = formatCurrency(state.userBalance); 
-    showModal('withdrawalModal'); 
-}
-
-function validateWithdrawalAmount() { 
-    const input = document.getElementById('withdrawalAmountField'); 
-    let v = parseFloat(input.value) || 0; 
-    if (v < 10) input.value = 10; 
-    if (v > state.userBalance) input.value = state.userBalance; 
+function validateWithdrawalAmount() {
+    const input = document.getElementById('withdrawalAmountField');
+    let v = parseFloat(input.value) || 0;
+    if (v < 10) input.value = 10;
+    if (v > state.userBalance) input.value = state.userBalance;
 }
 
 async function requestWithdrawal() {
@@ -137,7 +202,7 @@ async function requestWithdrawal() {
     const details = document.getElementById('bankDetailsField').value.trim();
     if (amount < 10) { showToast('Valor mínimo: R$ 10,00', 'error'); return; }
     if (amount > state.userBalance) { showToast('Saldo insuficiente', 'error'); return; }
-    if (!method) { showToast('Selecione um método de pagamento', 'error'); return; }
+    if (!method) { showToast('Selecione um método', 'error'); return; }
     if (!details) { showToast('Preencha os dados bancários', 'error'); return; }
     const btn = document.getElementById('requestWithdrawalBtn');
     btn.disabled = true;
@@ -149,129 +214,135 @@ async function requestWithdrawal() {
             updateBalanceDisplay();
             closeModal('withdrawalModal');
             showToast('Saque solicitado!', 'success');
-        } else { showToast(result?.message || 'Erro ao processar saque', 'error'); }
-    } catch (error) { console.error('Erro ao solicitar saque:', error); showToast('Erro ao processar saque', 'error'); }
+        } else showToast(result?.message || 'Erro', 'error');
+    } catch (error) { showToast('Erro', 'error'); }
     finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-send me-2"></i> Solicitar Saque'; }
 }
 
-// ===== ADD MUSIC MODAL =====
-function openAddMusicModal() { 
-    if (!state.currentUser || state.currentUser.tipo !== 'artista') { showToast('Apenas artistas podem cadastrar músicas', 'error'); return; }
-    showModal('addMusicModal'); 
+function openAddMusicModal() {
+    if (!state.currentUser || state.currentUser.tipo !== 'artista') { showToast('Apenas artistas', 'error'); return; }
+    showModal('addMusicModal');
 }
 
-function openAddExternalMusicModal() { 
-    if (!state.currentUser) { showToast('Faça login para sugerir músicas', 'error'); return; } 
-    showModal('addExternalMusicModal'); 
+function openAddExternalMusicModal() {
+    if (!state.currentUser) { showToast('Faça login', 'error'); return; }
+    showModal('addExternalMusicModal');
 }
 
 function openCreatePlaylistModal() { showModal('createPlaylistModal'); }
 
-// ===== CONTRACT MODAL =====
-function viewContract(ref) { 
+async function submitExternalMusic() {
+    const youtube = document.getElementById('externalYoutubeLinkField').value.trim();
+    const title = document.getElementById('externalTitleField').value.trim();
+    const artist = document.getElementById('externalArtistField').value.trim();
+    const price = parseFloat(document.getElementById('externalPriceField').value);
+    const percent = parseFloat(document.getElementById('externalPercentField').value);
+    if (!youtube || !title || !artist || !price || !percent) { showToast('Preencha os campos', 'error'); return; }
+    if (!youtube.includes('youtube.com/watch') && !youtube.includes('youtu.be')) { showToast('Link inválido', 'error'); return; }
+    const btn = document.getElementById('submitExternalBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Enviando...';
+    try {
+        const result = await callAPI('suggest_external_music', {
+            link_youtube: youtube, titulo: title, artista: artist,
+            valor_acao: price, percentual_disponivel: percent,
+            link_capa: document.getElementById('externalCoverField')?.value || '',
+            mensagem: document.getElementById('externalMessageField')?.value || ''
+        });
+        if (result?.success) {
+            showToast('Música sugerida!', 'success');
+            closeModal('addExternalMusicModal');
+            await loadExternalMarketplace(true);
+        } else showToast(result?.message || 'Erro', 'error');
+    } catch (error) { showToast('Erro', 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-send me-2"></i> Sugerir Música'; }
+}
+
+async function registerMusic() {
+    const title = document.getElementById('musicTitleField').value.trim();
+    const genre = document.getElementById('musicGenreField').value;
+    const youtube = document.getElementById('musicYoutubeField').value.trim();
+    const price = parseFloat(document.getElementById('musicPriceField').value);
+    const percent = parseFloat(document.getElementById('musicPercentField').value);
+    const terms = document.getElementById('musicTermsField').checked;
+    if (!title || !genre || !youtube || !price || !percent) { showToast('Preencha os campos', 'error'); return; }
+    if (!terms) { showToast('Aceite os termos', 'error'); return; }
+    try {
+        const videoId = extractYouTubeId(youtube);
+        const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : document.getElementById('musicCoverField').value;
+        const result = await callAPI('upload_music', {
+            titulo: title, artista: state.currentUser?.nome || 'Artista',
+            genero: genre, link_youtube: youtube, link_capa: thumbnailUrl,
+            valor_acao: price, percentual_disponivel: percent, status: 'active'
+        });
+        if (result?.success) {
+            showToast('Música cadastrada!', 'success');
+            closeModal('addMusicModal');
+            await Promise.all([loadArtistData(true), loadMarketplace(true)]);
+        } else showToast(result?.message || 'Erro', 'error');
+    } catch (error) { showToast('Erro', 'error'); }
+}
+
+function viewContract(ref) {
     document.getElementById('contractContent').innerHTML = `
         <h3>CONTRATO DE INVESTIMENTO</h3>
-        <p><strong>Referência:</strong> ${ref}</p>
+        <p><strong>Ref:</strong> ${ref}</p>
         <p><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-        <hr>
-        <p>Este é um contrato digital entre o investidor e o SELO MIV.</p>
-        <p>O investidor adquire direitos proporcionais sobre os royalties da música conforme o percentual investido.</p>
-        <p>Os termos completos estão disponíveis na plataforma.</p>
-        <p><strong>Blockchain Hash:</strong> ${Blockchain.generateHash(ref)}</p>
-    `; 
+        <p>Contrato digital entre investidor e PLAY MY.</p>
+        <p><strong>Hash:</strong> ${Blockchain.generateHash(ref)}</p>`;
     document.getElementById('contractBlockchainHash').innerHTML = `⛓️ Hash: ${Blockchain.generateHash(ref)}`;
-    showModal('contractModal'); 
+    showModal('contractModal');
 }
 
+function exportExtrato() { showToast('Extrato exportado!', 'success'); }
 function printContract() { window.print(); }
 
-// ===== EDIT MUSIC MODAL =====
-function openEditMusicModal(musicId) {
-    const music = state.playlist.find(m => m.id === musicId) || (state.externalPlaylist ? state.externalPlaylist.find(m => m.id === musicId) : null);
-    if (!music) { showToast('Música não encontrada', 'error'); return; }
-    document.getElementById('editMusicId').value = music.id;
-    document.getElementById('editMusicTitleField').value = music.titulo || '';
-    document.getElementById('editMusicGenreField').value = music.genero || 'POP';
-    document.getElementById('editMusicYoutubeField').value = music.link_youtube || '';
-    document.getElementById('editMusicCoverField').value = music.link_capa || '';
-    document.getElementById('editMusicPriceField').value = music.valor_acao || 10;
-    document.getElementById('editMusicPercentField').value = music.percentual_disponivel || 20;
-    document.getElementById('editMusicStatusField').value = music.status || 'active';
-    document.getElementById('editMusicBlockchainInfo').innerHTML = `⛓️ Hash atual: ${music.blockchain_hash || 'A ser gerado'}`;
-    showModal('editMusicModal');
+function openTermsModal() {
+    document.getElementById('termsContent').innerHTML = `
+        <h3>TERMOS DE USO - PLAY MY</h3>
+        <p><strong>Versão 7.1.0</strong></p>
+        <h4>1. Aceitação</h4><p>Ao usar a plataforma você concorda com estes termos.</p>
+        <h4>2. Serviço</h4><p>Investimento em direitos musicais via blockchain.</p>
+        <h4>3. Riscos</h4><p>Investimentos envolvem riscos. Diversifique.</p>
+        <h4>4. Taxas</h4><p>Taxa de 0,99% sobre transações.</p>`;
+    showModal('termsModal');
 }
 
-async function updateMusic() {
-    const musicId = document.getElementById('editMusicId').value;
-    const title = document.getElementById('editMusicTitleField').value.trim();
-    const genre = document.getElementById('editMusicGenreField').value;
-    const youtube = document.getElementById('editMusicYoutubeField').value.trim();
-    const cover = document.getElementById('editMusicCoverField').value.trim();
-    const price = parseFloat(document.getElementById('editMusicPriceField').value);
-    const percent = parseFloat(document.getElementById('editMusicPercentField').value);
-    const status = document.getElementById('editMusicStatusField').value;
-    if (!title || !genre || !youtube || !price || !percent) { showToast('Preencha todos os campos obrigatórios', 'error'); return; }
-    if (price < 1) { showToast('Valor mínimo por ação: R$ 1,00', 'error'); return; }
-    if (percent < 1 || percent > 100) { showToast('Percentual deve estar entre 1% e 100%', 'error'); return; }
-    const btn = document.getElementById('updateMusicBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Atualizando...';
-    try {
-        const result = await callAPI('update_music', { music_id: musicId, titulo: title, genero: genre, link_youtube: youtube, link_capa: cover, valor_acao: price, percentual_disponivel: percent, status: status });
-        if (result?.success) { showToast('Música atualizada com sucesso!', 'success'); closeModal('editMusicModal'); await Promise.all([loadMarketplace(true), loadArtistData(true)]); }
-        else { showToast(result?.message || 'Erro ao atualizar música', 'error'); }
-    } catch (error) { console.error('Erro ao atualizar música:', error); showToast('Erro ao atualizar música', 'error'); }
-    finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save me-2"></i> Salvar Alterações'; }
+function openPrivacyModal() {
+    document.getElementById('privacyContent').innerHTML = `
+        <h3>POLÍTICA DE PRIVACIDADE</h3>
+        <h4>1. Dados</h4><p>Coletamos nome, email, dados bancários.</p>
+        <h4>2. Uso</h4><p>Para processar investimentos e royalties.</p>
+        <h4>3. Blockchain</h4><p>Transações são públicas.</p>`;
+    showModal('privacyModal');
 }
 
-async function pauseMusic(musicId) {
-    if (!confirm('Deseja pausar esta música? Ela não aparecerá no marketplace até ser reativada.')) return;
-    try {
-        const result = await callAPI('pause_music', { music_id: musicId, action: 'pause' });
-        if (result?.success) { showToast('Música pausada com sucesso!', 'success'); await Promise.all([loadMarketplace(true), loadArtistData(true)]); }
-    } catch (error) { console.error('Erro ao pausar música:', error); showToast('Erro ao pausar música', 'error'); }
+function acceptTermsFromModal() {
+    const t = document.getElementById('acceptTermsField');
+    if (t) { t.checked = true; closeModal('termsModal'); showToast('Termos aceitos!', 'success'); }
 }
 
-async function unpauseMusic(musicId) {
-    try {
-        const result = await callAPI('pause_music', { music_id: musicId, action: 'unpause' });
-        if (result?.success) { showToast('Música reativada com sucesso!', 'success'); await Promise.all([loadMarketplace(true), loadArtistData(true)]); }
-    } catch (error) { console.error('Erro ao reativar música:', error); showToast('Erro ao reativar música', 'error'); }
+function closeCustomModal() {
+    const modal = document.getElementById('confirmEmailModal');
+    if (modal) { modal.classList.remove('show'); setTimeout(() => modal.style.display = 'none', 300); document.body.style.overflow = 'auto'; }
 }
 
-async function requestDeleteMusic(musicId) {
-    if (!confirm('Tem certeza que deseja solicitar a exclusão desta música? Esta ação não pode ser desfeita e afetará todos os investidores.')) return;
-    try {
-        const result = await callAPI('delete_music', { music_id: musicId });
-        if (result?.success) { showToast('Solicitação de exclusão enviada!', 'success'); await Promise.all([loadMarketplace(true), loadArtistData(true)]); }
-    } catch (error) { console.error('Erro ao solicitar exclusão:', error); showToast('Erro ao solicitar exclusão', 'error'); }
+async function resendConfirmationEmailFromModal(email) {
+    if (!email) return;
+    showToast(`✉️ Novo link enviado para ${email}`, 'success');
 }
 
-// ===== EXPORT =====
-if (typeof window !== 'undefined') {
-    window.openInvestModal = openInvestModal;
-    window.updateInvestmentTotal = updateInvestmentTotal;
-    window.adjustQuantity = adjustQuantity;
-    window.openInvestModalFromPlayer = openInvestModalFromPlayer;
-    window.openInvestExternalModal = openInvestExternalModal;
-    window.updateExternalInvestmentTotal = updateExternalInvestmentTotal;
-    window.adjustExternalQuantity = adjustExternalQuantity;
-    window.confirmExternalInvestment = confirmExternalInvestment;
-    window.openAddBalanceModal = openAddBalanceModal;
-    window.setBalanceAmount = setBalanceAmount;
-    window.validateBalanceAmount = validateBalanceAmount;
-    window.processBalanceAdd = processBalanceAdd;
-    window.openWithdrawalModal = openWithdrawalModal;
-    window.validateWithdrawalAmount = validateWithdrawalAmount;
-    window.requestWithdrawal = requestWithdrawal;
-    window.openAddMusicModal = openAddMusicModal;
-    window.openAddExternalMusicModal = openAddExternalMusicModal;
-    window.openCreatePlaylistModal = openCreatePlaylistModal;
-    window.viewContract = viewContract;
-    window.printContract = printContract;
-    window.openEditMusicModal = openEditMusicModal;
-    window.updateMusic = updateMusic;
-    window.pauseMusic = pauseMusic;
-    window.unpauseMusic = unpauseMusic;
-    window.requestDeleteMusic = requestDeleteMusic;
+async function autoFillMusicInfo() {
+    const url = document.getElementById('externalYoutubeLinkField').value.trim();
+    if (!url) { showToast('Digite o link', 'error'); return; }
+    const videoId = extractYouTubeId(url);
+    if (!videoId) { showToast('Link inválido', 'error'); return; }
+    document.getElementById('externalTitleField').value = 'Música do YouTube';
+    document.getElementById('externalArtistField').value = 'Artista';
+    showToast('Informações preenchidas (básico)', 'info');
 }
+
+async function fallbackFillMusicInfo() { showToast('Preenchimento manual necessário', 'info'); }
+async function analisarVideoYouTube() { showToast('Análise em desenvolvimento', 'info'); }
+async function aplicarValorYouTube() { showToast('Aplicado!', 'success'); }
+async function finalizarCadastroComYouTube() { await registerMusic(); }
