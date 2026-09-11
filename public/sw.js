@@ -56,11 +56,44 @@ self.addEventListener('fetch', event => {
         return;
     }
 
+    // 🔥 CORREÇÃO: Network-first para HTML (App Shell)
+    if (event.request.mode === 'navigate' || 
+        event.request.destination === 'document' ||
+        url.endsWith('.html') || 
+        url === '/' || 
+        url.endsWith('/')) {
+        
+        event.respondWith(
+            fetch(event.request)
+                .then(networkResponse => {
+                    // Atualiza o cache com a versão mais recente
+                    if (networkResponse && networkResponse.status === 200) {
+                        const responseToCache = networkResponse.clone();
+                        caches.open(CACHE_RUNTIME).then(cache => {
+                            cache.put(event.request, responseToCache);
+                        });
+                    }
+                    return networkResponse;
+                })
+                .catch(() => {
+                    // Se a rede falhar, tenta o cache
+                    return caches.match(event.request)
+                        .then(cachedResponse => {
+                            if (cachedResponse) return cachedResponse;
+                            // Fallback final: offline.html
+                            return caches.match('/offline.html');
+                        });
+                })
+        );
+        return;
+    }
+
+    // Para outros assets: Cache-first com atualização em background
     event.respondWith(
         caches.match(event.request)
             .then(response => {
                 if (response) {
-                    // Retorna do cache e atualiza em background (stale-while-revalidate)
+                    // Retorna do cache e atualiza em background
                     const fetchPromise = fetch(event.request)
                         .then(networkResponse => {
                             if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
@@ -89,10 +122,6 @@ self.addEventListener('fetch', event => {
 
                     return networkResponse;
                 }).catch(() => {
-                    // Sem rede: se for navegação de página, mostra offline.html
-                    if (event.request.mode === 'navigate') {
-                        return caches.match('/offline.html');
-                    }
                     // Se for imagem, retorna placeholder
                     if (event.request.destination === 'image') {
                         return caches.match('/images/logo.png');
@@ -181,13 +210,11 @@ self.addEventListener('notificationclick', event => {
     const url = event.notification.data?.url || '/';
     event.waitUntil(
         clients.matchAll({ type: 'window' }).then(windowClients => {
-            // Se já tem uma janela aberta, foca nela
             for (let client of windowClients) {
                 if (client.url === url && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // Senão abre uma nova
             if (clients.openWindow) {
                 return clients.openWindow(url);
             }
