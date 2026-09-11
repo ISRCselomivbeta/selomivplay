@@ -2186,6 +2186,22 @@ window.openNewsImage = openNewsImage;
 window.installApp = installApp;
 
 function installApp() { showToast('Use o menu do navegador para instalar', 'info'); }
+// ============ CORREÇÕES DE FUNÇÕES FALTANTES ============
+function adjustTradeQuantity(delta) {
+  const input = document.getElementById('tradeQuantity');
+  if (!input) return;
+  const max = currentTradeAsset ? (currentTradeAsset.quantidade || 0) : 999;
+  const next = Math.max(1, Math.min(max, (parseInt(input.value) || 1) + delta));
+  input.value = next;
+  updateTradeCalculation();
+}
+function updateTradeCalculation() {
+  const q = parseInt((document.getElementById('tradeQuantity') || {}).value) || 1;
+  const p = parseFloat((document.getElementById('tradePrice') || {}).value) || 0;
+  const el = document.getElementById('tradeTotalDisplay');
+  if (el) el.textContent = formatCurrency(q * p);
+}
+  
 </script>
 
 <div class="connection-footer" style="justify-content:space-between;margin-top:40px;padding:20px">
