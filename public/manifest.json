@@ -1,24 +1,92 @@
-{   "name": "PLAY MY - Música sem limites",
+{
+  "name": "PLAY MY — Música sem limites",
   "short_name": "PLAY MY",
-  "description": "Música com Blockchain - Powered by Selo MIV",
+  "description": "Música com Blockchain — Powered by SELO MIV",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#07090c",
-  "theme_color": "#00ff88",
-  "orientation": "portrait",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait-primary",
+  "background_color": "#000000",
+  "theme_color": "#34c759",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["music", "entertainment", "finance"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Marketplace",
+      "short_name": "Músicas",
+      "description": "Explorar músicas do marketplace",
+      "url": "/?section=marketplace",
+      "icons": [
+        {
+          "src": "https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Meu Portfólio",
+      "short_name": "Portfólio",
+      "description": "Ver seus investimentos",
+      "url": "/?section=portfolio",
+      "icons": [
+        {
+          "src": "https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Ingressos",
+      "short_name": "Ingressos",
+      "description": "Trocar SELO COIN por ingressos",
+      "url": "/?section=tickets",
+      "icons": [
+        {
+          "src": "https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "PLAY MY — Marketplace"
     }
   ]
 }
