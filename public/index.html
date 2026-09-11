@@ -14,7 +14,7 @@
 <meta name="msapplication-TileImage" content="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
 <link rel="apple-touch-icon" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
 <link rel="manifest" href="/manifest.json">
-<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://script.google.com https://script.googleusercontent.com https://www.googleapis.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self' https://selomivplay.vercel.app https://www.googleapis.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: https:;">
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://script.google.com https://script.googleusercontent.com https://www.googleapis.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self' https://selomivplay.vercel.app https://www.googleapis.com https://script.google.com https://script.googleusercontent.com https://news.google.com https://api.allorigins.win; img-src 'self' data: https:;">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 <link rel="icon" type="image/png" href="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png">
@@ -314,9 +314,10 @@ body {
 .news-image { width: 100%; max-height: 500px; object-fit: cover; background: var(--apple-gray-5); cursor: pointer; display: block; }
 .news-body { padding: 16px; }
 .news-title { color: var(--apple-label); font-weight: 700; font-size: 17px; margin-bottom: 8px; letter-spacing: -0.02em; line-height: 1.3; }
+.news-title:hover { color: var(--apple-green); }
 .news-text { color: var(--apple-label-2); font-size: 14px; line-height: 1.5; margin-bottom: 12px; }
 .news-actions { display: flex; gap: 20px; padding: 12px 16px; border-top: 0.5px solid var(--apple-separator); }
-.news-action-btn { background: none; border: none; color: var(--apple-label-2); font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-md); transition: all 0.2s; font-family: inherit; }
+.news-action-btn { background: none; border: none; color: var(--apple-label-2); font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-md); transition: all 0.2s; font-family: inherit; text-decoration: none; }
 .news-action-btn:hover { background: rgba(255,255,255,0.06); color: var(--apple-label); }
 .news-action-btn.liked { color: var(--apple-red); }
 .news-action-btn.liked i { animation: heartBeat 0.4s ease; }
@@ -462,7 +463,7 @@ body {
     <button class="btn btn-sm btn-outline-warning" onclick="loadNewsFeed(true)"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
   </div>
   <div class="alert mb-3" style="background:rgba(255,204,0,0.1);border:0.5px solid rgba(255,204,0,0.35);color:var(--apple-label)">
-    <i class="bi bi-newspaper me-2" style="color:var(--apple-yellow)"></i>As principais notícias do universo da música, shows, negócios e entretenimento.
+    <i class="bi bi-newspaper me-2" style="color:var(--apple-yellow)"></i>As principais notícias do universo da música, shows, negócios e entretenimento — direto dos maiores portais do Brasil.
   </div>
   <div class="d-flex gap-2 mb-4 flex-wrap" id="newsFilters">
     <button class="btn btn-sm btn-warning" onclick="filterNews('all', this)">Tudo</button>
@@ -854,12 +855,12 @@ body {
 
 <script>
   // ============================================================
-// CONFIG - PLAY MY v8.2 (APPLE DESIGN + CORREÇÕES + NEWS FEED)
+// CONFIG - PLAY MY v8.3 (APPLE DESIGN + NEWS REAIS + PLAYLISTS PERSISTENTES)
 // ============================================================
 const CONFIG = {
   API_URL: 'https://selomivplay.vercel.app/api/backend',
   DEV_MODE: false,
-  VERSION: '8.2.0',
+  VERSION: '8.3.0',
   MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
   BLOCKCHAIN_ENABLED: true,
   YOUTUBE_API_KEY: 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM',
@@ -979,6 +980,8 @@ function getFallbackData(action, data) {
   if (action === 'get_artists') return { success: true, data: [{ id: 'artist1', nome: 'Elzo Henschell', avatar: '', followers: 1543, is_following: false }, { id: 'artist2', nome: 'The Weeknd', avatar: '', followers: 8450, is_following: false }] };
   if (action === 'get_global_playlists') return { success: true, data: [] };
   if (action === 'get_tickets') return { success: true, data: [] };
+  if (action === 'get_news') return { success: true, data: [] };
+  if (action === 'get_mining_blocks') return { success: true, data: [] };
   if (action === 'buy' || action === 'buy_external') return { success: true, message: 'OK', data: { contrato_id: 'CT_' + Date.now(), blockchain_hash: '0x' + Date.now().toString(16) } };
   return { success: true, data: [] };
 }
@@ -1033,7 +1036,7 @@ async function handleRegister() {
   btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
   showLoading('Criando conta...');
   try {
-    const r = await callAPI('register', { nome: name, email: email, senha: password, tipo: type, workLink: link, confirm_url: CONFIG.CONFIRM_EMAIL_URL, accepted_terms: true, terms_version: '8.2.0', accepted_marketing: acceptMkt });
+    const r = await callAPI('register', { nome: name, email: email, senha: password, tipo: type, workLink: link, confirm_url: CONFIG.CONFIRM_EMAIL_URL, accepted_terms: true, terms_version: '8.3.0', accepted_marketing: acceptMkt });
     if (r && r.success) {
       showToast('Cadastro realizado! Verifique seu email.', 'success');
       hideLoading();
@@ -1075,7 +1078,6 @@ async function initializeApp() {
   loadYouTubeAPI();
   setupMediaSession();
   setInterval(() => { if (state.currentUser) updateBalanceDisplay(); }, 30000);
-  setInterval(() => { if (state.currentUser) loadStreamingStats(); }, 60000);
 }
 async function loadAllData() {
   showLoading('Carregando dados...');
@@ -1086,7 +1088,6 @@ async function loadAllData() {
       loadGlobalPlaylists(), loadArtists(), loadTickets()
     ]);
     await updateBalanceDisplay();
-    if (state.currentUser && state.currentUser.tipo === 'artista') await loadArtistData();
     if (state.currentUser && state.currentUser.tipo === 'admin') await loadAdminData();
     showToast('Sistema carregado!', 'success');
   } catch (e) { console.error(e); showToast('Alguns dados não carregaram', 'warning'); }
@@ -1113,15 +1114,14 @@ function updateUserInterface() {
 
 // ============ LOADERS ============
 async function loadMarketplace() { if (!state.playlist || state.playlist.length === 0) { state.playlist = getFallbackData('get_musicas').data; renderMarketplace(); } try { const r = await callAPI('get_musicas'); if (r && r.success && r.data && r.data.length > 0) state.playlist = r.data; } catch (e) {} renderMarketplace(); }
-async function loadExternalMarketplace(force) { if (!force) { const c = localStorage.getItem('miv_external_playlist'); const t = localStorage.getItem('miv_external_timestamp'); if (c && t && (Date.now() - parseInt(t)) < 600000) { try { state.externalPlaylist = JSON.parse(c); renderExternalMarketplace(); return; } catch (e) {} } } try { const r = await callAPI('get_external_musicas'); if (r && r.success && r.data) { state.externalPlaylist = r.data; localStorage.setItem('miv_external_playlist', JSON.stringify(r.data)); localStorage.setItem('miv_external_timestamp', Date.now().toString()); } } catch (e) {} renderExternalMarketplace(); }
+async function loadExternalMarketplace(force) { try { const r = await callAPI('get_external_musicas'); if (r && r.success && r.data) state.externalPlaylist = r.data; } catch (e) {} renderExternalMarketplace(); }
 async function loadTopInvestments() { try { const r = await callAPI('get_top_investments'); if (r && r.success && r.data) state.topInvestments = r.data; } catch (e) {} renderTopInvestments(); }
 async function loadPortfolio() { if (!state.currentUser) return; try { const r = await callAPI('get_carteira', { user_id: state.currentUser.id }); if (r && r.success && r.data) state.portfolioAssets = Array.isArray(r.data) ? r.data : (r.data.investimentos || []); } catch (e) {} renderPortfolio(); updatePortfolioValue(); }
 async function loadLedger() { if (!state.currentUser) return; try { const r = await callAPI('get_extrato', { user_id: state.currentUser.id }); if (r && r.success && r.data) state.ledgerData = r.data; } catch (e) {} renderLedger(); }
 async function loadUserPlaylists() { if (!state.currentUser) { state.userPlaylists = []; renderPlaylists(); return; } try { const r = await callAPI('get_playlists', { user_id: state.currentUser.id }); if (r && r.success && r.data) state.userPlaylists = r.data; } catch (e) {} renderPlaylists(); }
 
-// 🔑 PLAYLISTS GLOBAIS PERSISTENTES (localStorage + backend)
+// 🔑 PLAYLISTS GLOBAIS — SEMPRE busca do backend primeiro (fonte da verdade)
 async function loadGlobalPlaylists() {
-  // SEMPRE busca do backend primeiro — é a fonte da verdade
   try {
     const r = await callAPI('get_global_playlists');
     if (r && r.success && Array.isArray(r.data)) {
@@ -1134,16 +1134,13 @@ async function loadGlobalPlaylists() {
         music_count: p.music_count || (Array.isArray(p.musicas) ? p.musicas.length : 0),
         is_global: true
       }));
-      // Salva cache como backup apenas
       localStorage.setItem('miv_global_playlists', JSON.stringify(state.globalPlaylists));
     } else {
-      // Backend respondeu mas vazio → só usa local como fallback para o admin
+      // Backend vazio — fallback local apenas para admin
       const isAdmin = state.currentUser && state.currentUser.tipo === 'admin';
       if (isAdmin) {
         const cached = localStorage.getItem('miv_global_playlists');
-        if (cached) {
-          try { state.globalPlaylists = JSON.parse(cached); } catch(e) { state.globalPlaylists = []; }
-        }
+        if (cached) { try { state.globalPlaylists = JSON.parse(cached); } catch(e) { state.globalPlaylists = []; } }
       } else {
         state.globalPlaylists = [];
       }
@@ -1153,28 +1150,12 @@ async function loadGlobalPlaylists() {
     state.globalPlaylists = [];
   }
   renderGlobalPlaylists();
-  if (state.currentUser && state.currentUser.tipo === 'admin') {
-    renderAdminGlobalPlaylists();
-  }
+  if (state.currentUser && state.currentUser.tipo === 'admin') renderAdminGlobalPlaylists();
 }
 
 async function loadArtists(force) { try { const r = await callAPI('get_artists'); if (r && r.success && r.data) state.artists = r.data; } catch (e) { state.artists = getFallbackData('get_artists').data; } renderArtists(); renderFeaturedArtists(); }
 async function loadFollowingArtists() { if (!state.currentUser) { state.followingArtists = []; return; } try { const r = await callAPI('get_following', { user_id: state.currentUser.id }); if (r && r.success && r.data) state.followingArtists = Array.isArray(r.data) ? r.data.map(x => String(x)) : []; } catch (e) { state.followingArtists = state.followingArtists || []; } }
 async function loadTickets(force) { try { const r = await callAPI('get_tickets'); if (r && r.success && r.data) state.tickets = r.data; } catch (e) { state.tickets = state.tickets || []; } renderTickets(); }
-async function loadArtistData(force) {
-  if (!state.currentUser || state.currentUser.tipo !== 'artista') return;
-  try {
-    const r = await callAPI('get_artist_data', { user_id: state.currentUser.id });
-    if (r && r.success && r.data) {
-      document.getElementById('artistMusicCount').textContent = r.data.total_musicas || 0;
-      document.getElementById('artistSeloBalance').textContent = new Intl.NumberFormat('pt-BR').format(r.data.selo_coin || 0);
-      document.getElementById('artistFollowersCount').textContent = r.data.followers || 0;
-      document.getElementById('artistTicketsCount').textContent = (r.data.tickets || []).length;
-      state.artistTickets = r.data.tickets || [];
-      renderArtistMusic(r.data.musics || []);
-    }
-  } catch (e) {}
-}
 async function loadAdminData() {
   if (!state.currentUser || state.currentUser.tipo !== 'admin') return;
   try {
@@ -1265,21 +1246,17 @@ function renderGlobalPlaylists() {
   if (c2) c2.innerHTML = html;
 }
 
-// 🔑 TOCAR PLAYLIST GLOBAL COMO FILA
 function playGlobalPlaylist(playlistId) {
   const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(playlistId));
   if (!pl) { showToast('Playlist não encontrada', 'error'); return; }
   const ids = (pl.musicas || []).map(String);
   if (!ids.length) { showToast('Playlist vazia', 'warning'); return; }
-
   const queueItems = [];
   ids.forEach(id => {
     const idx = (state.playlist || []).findIndex(m => String(m.id) === String(id));
     if (idx !== -1) queueItems.push({ type: 'internal', index: idx, track: state.playlist[idx], trackId: id });
   });
-
   if (!queueItems.length) { showToast('Nenhuma música disponível nesta playlist', 'warning'); return; }
-
   playQueue.items = queueItems;
   playQueue.currentIndex = 0;
   playQueue.playCurrent();
@@ -1311,11 +1288,6 @@ function renderTickets() {
   const items = state.tickets || [];
   if (!items.length) { c.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-ticket-perforated empty-icon"></i><h5 class="text-muted">Nenhum ingresso disponível</h5></div>'; return; }
   c.innerHTML = items.map(t => '<div class="ticket-card"><div class="d-flex justify-content-between"><div class="ticket-title">' + (t.titulo || 'Ingresso') + '</div><span class="badge badge-selo">' + (t.quantidade_disponivel || 0) + ' restantes</span></div><p class="text-muted small mt-2">' + (t.descricao || '') + '</p><div class="d-flex justify-content-between align-items-center"><div class="ticket-price">' + (t.preco_selo || 0) + ' SELO</div><button class="btn-redeem" onclick="redeemTicket(\'' + t.id + '\')" ' + ((state.seloCoinBalance || 0) < (t.preco_selo || 0) ? 'disabled' : '') + '>Resgatar</button></div></div>').join('');
-}
-function renderArtistMusic(musics) {
-  const c = document.getElementById('artistMusicContent'); if (!c) return;
-  if (!musics.length) { c.innerHTML = '<div class="empty-state-actionable" style="grid-column:1/-1"><i class="bi bi-music-note-beamed empty-icon"></i><h5 class="text-muted">Nenhuma música</h5></div>'; return; }
-  c.innerHTML = musics.map(t => '<div class="spotify-card"><div class="spotify-cover"><img src="' + getCoverUrl(t, false) + '"></div><h3 class="spotify-title">' + (t.titulo || '') + '</h3><p class="spotify-artist">' + formatCurrency(t.valor_acao || 0) + '</p></div>').join('');
 }
 function renderAdminGlobalPlaylists() {
   const c = document.getElementById('adminGlobalPlaylistsContent'); if (!c) return;
@@ -1385,11 +1357,7 @@ function initializeYouTubePlayer(videoId) {
   const div = document.createElement('div');
   div.id = 'yt-' + Date.now();
   el.appendChild(div);
-  if (typeof YT === 'undefined' || !YT.Player) {
-    loadYouTubeAPI(() => createYouTubePlayer(div.id, videoId));
-  } else {
-    createYouTubePlayer(div.id, videoId);
-  }
+  if (typeof YT === 'undefined' || !YT.Player) { loadYouTubeAPI(() => createYouTubePlayer(div.id, videoId)); } else { createYouTubePlayer(div.id, videoId); }
 }
 function createYouTubePlayer(elId, videoId) {
   const el = document.getElementById(elId);
@@ -1537,7 +1505,7 @@ function openAddExternalMusicModal() { if (!state.currentUser) { showToast('Faç
 function openCreatePlaylistModal() { showModal('createPlaylistModal'); }
 function openCreateGlobalPlaylistModal() { if (!state.currentUser || state.currentUser.tipo !== 'admin') { showToast('Apenas admin', 'error'); return; } showModal('createGlobalPlaylistModal'); }
 
-// 🔑 CRIAR PLAYLIST GLOBAL COM PERSISTÊNCIA
+// 🔑 CRIAR PLAYLIST GLOBAL — SEMPRE sincroniza com backend
 async function createGlobalPlaylist() {
   const nome = document.getElementById('globalPlaylistNameField').value.trim();
   const desc = document.getElementById('globalPlaylistDescField').value.trim();
@@ -1546,26 +1514,22 @@ async function createGlobalPlaylist() {
   btn.disabled = true; btn.innerHTML = 'Criando...';
   try {
     const r = await callAPI('create_global_playlist', { nome, descricao: desc, user_id: state.currentUser.id, is_global: true });
-    const newPl = {
-      id: (r && r.data && r.data.id) || ('gp_' + Date.now() + Math.random().toString(36).substring(2, 6)),
-      nome: nome,
-      descricao: desc,
-      musicas: [],
-      music_count: 0,
-      is_global: true,
-      created_at: new Date().toISOString()
-    };
-    state.globalPlaylists = state.globalPlaylists || [];
-    state.globalPlaylists.push(newPl);
-    localStorage.setItem('miv_global_playlists', JSON.stringify(state.globalPlaylists));
-    renderGlobalPlaylists();
-    renderAdminGlobalPlaylists();
-    showToast('✅ Playlist global criada!', 'success');
-    closeModal('createGlobalPlaylistModal');
-    document.getElementById('globalPlaylistNameField').value = '';
-    document.getElementById('globalPlaylistDescField').value = '';
-    document.getElementById('adminGlobalPlaylistsCount').textContent = state.globalPlaylists.length;
-  } catch (e) { showToast('Erro', 'error'); }
+    if (r && r.success) {
+      await loadGlobalPlaylists(); // 🔑 SEMPRE recarrega do backend
+      showToast('✅ Playlist global criada! Visível para todos.', 'success');
+      closeModal('createGlobalPlaylistModal');
+      document.getElementById('globalPlaylistNameField').value = '';
+      document.getElementById('globalPlaylistDescField').value = '';
+      if (document.getElementById('adminGlobalPlaylistsCount')) {
+        document.getElementById('adminGlobalPlaylistsCount').textContent = state.globalPlaylists.length;
+      }
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
+    }
+  } catch (e) { 
+    console.error(e);
+    showToast('Erro ao criar playlist', 'error'); 
+  }
   finally { btn.disabled = false; btn.innerHTML = 'Criar'; }
 }
 
@@ -1594,34 +1558,48 @@ function renderManageGlobalMusicList() {
     return '<div class="d-flex align-items-center justify-content-between p-2 mb-1" style="background:var(--apple-gray-5);border-radius:var(--radius-sm)"><div class="d-flex align-items-center gap-2"><img src="' + getCoverUrl(m, false) + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover"><div><div class="text-white" style="font-size:13px;font-weight:600">' + (m.titulo || '') + '</div><div class="text-muted" style="font-size:11px">' + (m.artista || '') + '</div></div></div><button class="btn btn-sm btn-outline-danger" onclick="removeMusicFromGlobalPlaylist(\'' + id + '\')"><i class="bi bi-trash"></i></button></div>';
   }).join('');
 }
+
+// 🔑 ADICIONAR MÚSICA — SEMPRE sincroniza com backend
 async function addMusicToGlobalPlaylist() {
   const musicId = document.getElementById('manageGlobalMusicSelect').value;
   if (!musicId) { showToast('Selecione uma música', 'warning'); return; }
-  const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(currentManagingPlaylistId));
-  if (!pl) { showToast('Playlist não encontrada', 'error'); return; }
-  pl.musicas = pl.musicas || [];
-  if (pl.musicas.map(String).includes(String(musicId))) { showToast('Música já está na playlist', 'info'); return; }
-  pl.musicas.push(musicId);
-  pl.music_count = pl.musicas.length;
-  localStorage.setItem('miv_global_playlists', JSON.stringify(state.globalPlaylists));
-  renderManageGlobalMusicList();
-  renderGlobalPlaylists();
-  renderAdminGlobalPlaylists();
-  try { await callAPI('add_music_to_global_playlist', { playlist_id: currentManagingPlaylistId, music_id: musicId, user_id: state.currentUser.id }); showToast('✅ Música adicionada!', 'success'); }
-  catch (e) { showToast('Salvo localmente', 'warning'); }
+  try {
+    const r = await callAPI('add_music_to_global_playlist', { 
+      playlist_id: currentManagingPlaylistId, 
+      music_id: musicId, 
+      user_id: state.currentUser.id 
+    });
+    if (r && r.success) {
+      await loadGlobalPlaylists(); // 🔑 recarrega do backend
+      renderManageGlobalMusicList();
+      showToast('✅ Música adicionada!', 'success');
+    } else {
+      showToast('Erro ao adicionar', 'error');
+    }
+  } catch (e) { 
+    console.error(e);
+    showToast('Erro ao adicionar', 'error'); 
+  }
 }
+
+// 🔑 REMOVER MÚSICA — SEMPRE sincroniza com backend
 async function removeMusicFromGlobalPlaylist(musicId) {
-  const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(currentManagingPlaylistId));
-  if (!pl) return;
-  pl.musicas = (pl.musicas || []).filter(id => String(id) !== String(musicId));
-  pl.music_count = pl.musicas.length;
-  localStorage.setItem('miv_global_playlists', JSON.stringify(state.globalPlaylists));
-  renderManageGlobalMusicList();
-  renderGlobalPlaylists();
-  renderAdminGlobalPlaylists();
-  try { await callAPI('remove_music_from_global_playlist', { playlist_id: currentManagingPlaylistId, music_id: musicId }); showToast('🗑️ Removida', 'success'); }
-  catch (e) { showToast('Salvo localmente', 'warning'); }
+  try {
+    const r = await callAPI('remove_music_from_global_playlist', { 
+      playlist_id: currentManagingPlaylistId, 
+      music_id: musicId 
+    });
+    if (r && r.success) {
+      await loadGlobalPlaylists(); // 🔑 recarrega do backend
+      renderManageGlobalMusicList();
+      showToast('🗑️ Música removida', 'success');
+    }
+  } catch (e) { 
+    console.error(e);
+    showToast('Erro ao remover', 'error'); 
+  }
 }
+
 function openCreateTicketModal() { if (!state.currentUser || state.currentUser.tipo !== 'artista') { showToast('Apenas artistas', 'error'); return; } showModal('createTicketModal'); }
 async function createTicket() {
   const titulo = document.getElementById('ticketTitleField').value.trim();
@@ -1664,23 +1642,40 @@ function printContract() { window.print(); }
 function viewContract(ref) { showToast('Contrato ' + ref, 'info'); }
 
 // ============ BLOCKCHAIN ============
-const Blockchain = { generateHash: function(data) { return '0x' + Date.now().toString(16) + Math.random().toString(36).substring(2, 10) + (data || '').substring(0, 8); } };
 async function loadBlockchainData() {
   const c = document.getElementById('blockchainVisualization'); if (!c) return;
+  c.innerHTML = '<div class="text-muted text-center py-4"><div class="spinner-border text-purple"></div></div>';
   try {
-    const r = await callAPI('get_mining_blocks', { limit: 20 });
+    const r = await callAPI('get_mining_blocks', { limit: 50 });
     if (r && r.success && r.data && r.data.length) {
       document.getElementById('blockchainContractsCount').textContent = r.data.length;
       document.getElementById('blockchainLastBlock').textContent = r.data.length;
-      c.innerHTML = r.data.slice(-5).map((b, i) => '<div class="card" style="width:200px;border-color:rgba(175,82,222,0.5)"><div class="card-header py-2" style="background:rgba(175,82,222,0.15);color:#fff"><small>Bloco #' + (b.block_index || i + 1) + '</small></div><div class="card-body p-2"><small class="blockchain-hash" style="font-size:10px">' + (b.block_hash || '0x').substring(0, 15) + '...</small></div></div>').join('');
-    } else c.innerHTML = '<div class="text-muted text-center py-4">Nenhum bloco</div>';
-  } catch (e) {}
+      c.innerHTML = r.data.slice(-8).reverse().map((b, i) => {
+        const isGenesis = b.block_index === 1;
+        const color = isGenesis ? '52,199,89' : '175,82,222';
+        return '<div class="card" style="width:240px;border-color:rgba(' + color + ',0.5)">' +
+          '<div class="card-header py-2" style="background:rgba(' + color + ',0.15);color:#fff;display:flex;justify-content:space-between;align-items:center">' +
+            '<small><strong>Bloco #' + b.block_index + '</strong></small>' +
+          '</div>' +
+          '<div class="card-body p-2">' +
+            '<div class="text-white" style="font-size:11px;font-weight:600;margin-bottom:4px">' + (b.music_title || 'Bloco') + '</div>' +
+            '<div class="blockchain-hash" style="font-size:9px">' + (b.block_hash || '0x').substring(0, 20) + '...</div>' +
+            '<div class="text-muted mt-2" style="font-size:9px">' + new Date(b.timestamp).toLocaleTimeString('pt-BR') + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    } else {
+      c.innerHTML = '<div class="text-muted text-center py-4"><i class="bi bi-link-45deg" style="font-size:48px;opacity:.3"></i><p>Nenhum bloco ainda. A blockchain será populada conforme as transações acontecerem.</p></div>';
+    }
+  } catch (e) {
+    console.error(e);
+    c.innerHTML = '<div class="text-muted text-center py-4">Erro ao carregar blockchain</div>';
+  }
 }
 function openBlockchainExplorer() { changeSection('blockchain'); setTimeout(loadBlockchainData, 100); }
 
 // ============ TRADES ============
 let currentTradeAsset = null;
-let tradeOffers = { received: [], sent: [], history: [] };
 function openTradeModal(asset) { if (!state.currentUser) return; currentTradeAsset = asset; document.getElementById('tradeMusicTitle').textContent = asset.music_title || 'Música'; showModal('tradeModal'); }
 async function searchUserByEmail() {}
 async function createTradeOffer() { showToast('Enviado!', 'success'); closeModal('tradeModal'); }
@@ -1699,21 +1694,17 @@ async function performSearch() {
   const c = document.getElementById('searchResults');
   c.style.display = 'block';
   c.innerHTML = '<div class="p-4 text-center text-muted"><div class="spinner-border spinner-border-sm text-success me-2"></div>Buscando...</div>';
-
   const toStr = (v) => (v === null || v === undefined) ? '' : String(v).toLowerCase();
-
   try {
     const ql = q.toLowerCase();
     const internal = (state.playlist || []).filter(i => i && (toStr(i.titulo).includes(ql) || toStr(i.artista).includes(ql)));
     const external = (state.externalPlaylist || []).filter(i => i && (toStr(i.titulo).includes(ql) || toStr(i.artista).includes(ql)));
     const artists = (state.artists || []).filter(a => a && toStr(a.nome).includes(ql));
-
     let apiRes = [];
     try {
       const r = await Promise.race([callAPI('search', { q: q }), new Promise(res => setTimeout(() => res(null), 3000))]);
       if (r && r.success && Array.isArray(r.data)) apiRes = r.data.filter(x => x && (toStr(x.titulo).includes(ql) || toStr(x.artista).includes(ql)));
     } catch (e) {}
-
     let ytResults = [];
     if (internal.length + external.length + artists.length + apiRes.length === 0) {
       ytResults = await searchYouTubeDirect(q);
@@ -1814,21 +1805,15 @@ async function finalizarCadastroComYouTube() {
 }
 async function autoFillMusicInfo() {}
 
-// ============ NEWS FEED ============
-const NEWS_LIKES_KEY = 'miv_news_likes_v1';
+// ============ NEWS FEED — NOTÍCIAS REAIS CLICÁVEIS ============
+const NEWS_LIKES_KEY = 'miv_news_likes_v2';
+
 const NEWS_MOCK = [
-  { id: 'n1', categoria: 'shows', autor: 'PLAY MY News', titulo: 'Turnê mundial de Elzo Henschell bate recorde de vendas em 24h', texto: 'A nova turnê esgotou ingressos em menos de um dia. Com produção internacional, o artista promete surpresas em cada cidade.', imagem: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800', timestamp: new Date(Date.now() - 3600000).toISOString(), likes: 1243 },
-  { id: 'n2', categoria: 'negocios', autor: 'PLAY MY Business', titulo: 'SELO COIN valoriza 15% após anúncio de parceria internacional', texto: 'A moeda oficial do PLAY MY teve alta expressiva após o anúncio de integração com grandes players.', imagem: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800', timestamp: new Date(Date.now() - 7200000).toISOString(), likes: 892 },
-  { id: 'n3', categoria: 'musica', autor: 'PLAY MY Music', titulo: 'Novo álbum de The Weeknd chega em todas as plataformas', texto: 'O aguardado sucessor de "After Hours" contará com 14 faixas inéditas.', imagem: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800', timestamp: new Date(Date.now() - 10800000).toISOString(), likes: 2156 },
-  { id: 'n4', categoria: 'artistas', autor: 'PLAY MY Artistas', titulo: 'Artistas independentes agora podem tokenizar suas músicas', texto: 'Nova funcionalidade permite criar tokens e receber royalties proporcionais.', imagem: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800', timestamp: new Date(Date.now() - 14400000).toISOString(), likes: 1678 },
-  { id: 'n5', categoria: 'shows', autor: 'PLAY MY News', titulo: 'Festival PLAY MY acontece em São Paulo em dezembro', texto: 'Três dias de música, arte e tecnologia com mais de 40 artistas.', imagem: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800', timestamp: new Date(Date.now() - 18000000).toISOString(), likes: 3402 },
-  { id: 'n6', categoria: 'negocios', autor: 'PLAY MY Business', titulo: 'Mercado de NFTs musicais movimenta R$ 2 bilhões', texto: 'O setor de ativos digitais musicais continua em expansão.', imagem: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800', timestamp: new Date(Date.now() - 21600000).toISOString(), likes: 756 },
-  { id: 'n7', categoria: 'musica', autor: 'PLAY MY Music', titulo: 'Billboard Brasil: os 10 artistas mais ouvidos do mês', texto: 'A lista traz surpresas e consagra novos nomes da cena independente.', imagem: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800', timestamp: new Date(Date.now() - 25200000).toISOString(), likes: 1123 },
-  { id: 'n8', categoria: 'artistas', autor: 'PLAY MY Artistas', titulo: 'Entrevista: a nova geração do funk brasileiro', texto: 'Conversamos com cinco artistas que estão redefinindo o gênero.', imagem: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800', timestamp: new Date(Date.now() - 28800000).toISOString(), likes: 987 },
-  { id: 'n9', categoria: 'shows', autor: 'PLAY MY News', titulo: 'Rock in Rio anuncia line-up com 20 atrações internacionais', texto: 'O festival mais icônico do Brasil confirma edição histórica.', imagem: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800', timestamp: new Date(Date.now() - 36000000).toISOString(), likes: 4521 },
-  { id: 'n10', categoria: 'musica', autor: 'PLAY MY Music', titulo: 'Streaming bate recorde de 5 bilhões de plays semanais', texto: 'A indústria musical digital atinge novo marco histórico.', imagem: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800', timestamp: new Date(Date.now() - 43200000).toISOString(), likes: 2311 },
-  { id: 'n11', categoria: 'negocios', autor: 'PLAY MY Business', titulo: 'Grandes gravadoras investem em blockchain musical', texto: 'As principais gravadoras do mundo anunciam parcerias com plataformas Web3.', imagem: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800', timestamp: new Date(Date.now() - 50400000).toISOString(), likes: 567 },
-  { id: 'n12', categoria: 'artistas', autor: 'PLAY MY Artistas', titulo: 'Artista brasileiro bate recorde de ouvintes mensais', texto: 'Nova geração da MPB conquista público global.', imagem: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800', timestamp: new Date(Date.now() - 57600000).toISOString(), likes: 1892 }
+  { id: 'g1_1', categoria: 'musica', autor: 'G1 Música', titulo: 'Confira as principais notícias do mundo da música', texto: 'Acompanhe as últimas novidades do cenário musical brasileiro e internacional.', imagem: null, link: 'https://g1.globo.com/pop-arte/musica/', timestamp: new Date(Date.now() - 3600000).toISOString(), likes: 1243 },
+  { id: 'uol_1', categoria: 'shows', autor: 'UOL Música', titulo: 'Agenda de shows e festivais pelo Brasil', texto: 'Confira os principais shows e festivais que acontecem esta semana.', imagem: null, link: 'https://musica.uol.com.br/', timestamp: new Date(Date.now() - 7200000).toISOString(), likes: 892 },
+  { id: 'rs_1', categoria: 'artistas', autor: 'Rolling Stone Brasil', titulo: 'Entrevistas e novidades dos artistas', texto: 'As últimas entrevistas e lançamentos dos seus artistas favoritos.', imagem: null, link: 'https://rollingstone.uol.com.br/', timestamp: new Date(Date.now() - 10800000).toISOString(), likes: 2156 },
+  { id: 'bb_1', categoria: 'negocios', autor: 'Billboard Brasil', titulo: 'Mercado musical e negócios', texto: 'Análises do mercado musical, streaming e indústria fonográfica.', imagem: null, link: 'https://billboard.com.br/', timestamp: new Date(Date.now() - 14400000).toISOString(), likes: 1678 },
+  { id: 'ten_1', categoria: 'musica', autor: 'Tenho Mais Discos Que Amigos', titulo: 'Novidades do rock e música alternativa', texto: 'Lançamentos, resenhas e novidades do rock nacional e internacional.', imagem: null, link: 'https://www.tenhomaisdiscosqueamigos.com/', timestamp: new Date(Date.now() - 18000000).toISOString(), likes: 987 }
 ];
 
 function getNewsLikes() { try { return JSON.parse(localStorage.getItem(NEWS_LIKES_KEY) || '{}'); } catch (e) { return {}; } }
@@ -1840,18 +1825,19 @@ async function loadNewsFeed(force) {
   if (!c) return;
   if (force) { state.news.items = []; state.news.page = 0; state.news.hasMore = true; c.innerHTML = ''; }
 
-  // Se já temos itens, carrega próxima página
   if (state.news.items.length > 0 && state.news.hasMore && !force) {
     appendNewsPage();
     return;
   }
 
-  // Primeiro carregamento: tenta backend, senão usa mock
   state.news.loading = true;
+  c.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-warning"></div><p class="text-muted mt-2">Buscando notícias dos portais...</p></div>';
+
   try {
-    const r = await callAPI('get_news', { limit: 50, filter: state.news.filter });
+    const r = await callAPI('get_news', { limit: 100 });
     if (r && r.success && Array.isArray(r.data) && r.data.length > 0) {
       state.news.items = r.data;
+      console.log('📰 ' + r.data.length + ' notícias reais carregadas');
     } else {
       state.news.items = NEWS_MOCK;
     }
@@ -1902,11 +1888,13 @@ function appendNewsPage() {
   }
 }
 
+// 🔑 CARD DE NOTÍCIA — título e "Ler" abrem o link real
 function renderNewsCard(n) {
   const liked = isNewsLiked(n.id);
   const catClass = 'news-cat-' + (n.categoria || 'musica');
   const catLabel = { musica: '🎵 Música', shows: '🎤 Shows', negocios: '💰 Negócios', artistas: '⭐ Artistas' }[n.categoria] || '📰';
   const avatar = 'https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png';
+  const link = n.link || '#';
   return '<div class="news-card" data-news-id="' + n.id + '">' +
     '<div class="news-header">' +
       '<img src="' + avatar + '" class="news-avatar" onerror="this.style.display=\'none\'">' +
@@ -1916,13 +1904,12 @@ function renderNewsCard(n) {
       '</div>' +
       '<span class="news-category ' + catClass + '">' + catLabel + '</span>' +
     '</div>' +
-    (n.imagem ? '<img src="' + n.imagem + '" class="news-image" loading="lazy" onclick="openNewsImage(\'' + n.imagem + '\')" onerror="this.style.display=\'none\'">' : '') +
+    (n.imagem ? '<img src="' + n.imagem + '" class="news-image" loading="lazy" onclick="window.open(\'' + link + '\', \'_blank\')" onerror="this.style.display=\'none\'">' : '') +
     '<div class="news-body">' +
-'<a href="' + (n.link || '#') + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">' +
-  '<div class="news-title">' + (n.titulo || '') + '</div>' +
-'</a>' +
-    
-    '<div class="news-text">' + (n.texto || '') + '</div>' +
+      '<a href="' + link + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">' +
+        '<div class="news-title">' + (n.titulo || '') + '</div>' +
+      '</a>' +
+      '<div class="news-text">' + (n.texto || '') + '</div>' +
     '</div>' +
     '<div class="news-actions">' +
       '<button class="news-action-btn ' + (liked ? 'liked' : '') + '" onclick="toggleNewsLike(\'' + n.id + '\', this)">' +
@@ -1932,10 +1919,8 @@ function renderNewsCard(n) {
       '<button class="news-action-btn" onclick="shareNews(\'' + n.id + '\', event)">' +
         '<i class="bi bi-share"></i> Compartilhar' +
       '</button>' +
-'<a class="news-action-btn" href="' + (n.link || '#') + '" target="_blank" rel="noopener" style="text-decoration:none">' +
-  '<i class="bi bi-box-arrow-up-right"></i> Ler' +
-'</a>' +
-    '<i class="bi bi-play-circle"></i> Ouvir' +
+      '<a class="news-action-btn" href="' + link + '" target="_blank" rel="noopener">' +
+        '<i class="bi bi-box-arrow-up-right"></i> Ler' +
       '</a>' +
     '</div>' +
   '</div>';
@@ -1961,14 +1946,13 @@ function toggleNewsLike(id, btn) {
 function shareNews(id, ev) {
   ev.stopPropagation();
   const card = document.querySelector('[data-news-id="' + id + '"]');
-  const title = card ? card.querySelector('.news-title').textContent : 'PLAY MY Notícia';
-  const url = window.location.origin + '?news=' + id;
+  const item = (state.news.items || []).find(n => String(n.id) === String(id)) || {};
+  const title = card ? card.querySelector('.news-title').textContent : (item.titulo || 'PLAY MY Notícia');
+  const url = item.link || (window.location.origin + '?news=' + id);
   const text = title + ' — PLAY MY';
 
-  // Remove menu aberto anterior
   document.querySelectorAll('.news-share-menu').forEach(m => m.remove());
 
-  // Menu de compartilhamento
   const menu = document.createElement('div');
   menu.className = 'news-share-menu';
   menu.innerHTML =
@@ -2047,14 +2031,12 @@ function setupInfiniteScroll() {
 
 // ============ INIT ============
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('🚀 PLAY MY v' + CONFIG.VERSION + ' — Apple Design + Correções + News Feed');
+  console.log('🚀 PLAY MY v' + CONFIG.VERSION + ' — Apple Design + Notícias Reais + Playlists Persistentes');
   HealthCheck.runAll().catch(() => {});
   setInterval(() => HealthCheck.runAll(), 300000);
   window.addEventListener('online', () => { const b = document.getElementById('offlineBadge'); if (b) b.style.display = 'none'; showToast('📶 Online', 'success'); });
   window.addEventListener('offline', () => { const b = document.getElementById('offlineBadge'); if (b) b.style.display = 'block'; showToast('📴 Offline', 'warning'); });
   setTimeout(() => loadYouTubeAPI(), 2000);
-
-  // Pré-carrega notícias mesmo deslogado (para ficar instantâneo)
   setTimeout(() => loadNewsFeed(), 1500);
 
   const stored = localStorage.getItem('miv_user');
@@ -2106,7 +2088,7 @@ async function checkStreamingProgress() {
 }
 async function loadStreamingStats() {}
 
-// Expose
+// Expose para uso global
 window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
 window.resendConfirmationEmail = resendConfirmationEmail;
@@ -2199,7 +2181,7 @@ window.openNewsImage = openNewsImage;
 window.installApp = installApp;
 
 function installApp() { showToast('Use o menu do navegador para instalar', 'info'); }
-// ============ CORREÇÕES DE FUNÇÕES FALTANTES ============
+
 function adjustTradeQuantity(delta) {
   const input = document.getElementById('tradeQuantity');
   if (!input) return;
@@ -2214,13 +2196,12 @@ function updateTradeCalculation() {
   const el = document.getElementById('tradeTotalDisplay');
   if (el) el.textContent = formatCurrency(q * p);
 }
-  
 </script>
 
 <div class="connection-footer" style="justify-content:space-between;margin-top:40px;padding:20px">
 <div class="d-flex align-items-center gap-2">
 <img src="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png" alt="PLAY MY" height="24" onerror="this.style.display='none'">
-<span class="text-muted small">© 2026 PLAY MY v8.2 — Todos os direitos reservados</span>
+<span class="text-muted small">© 2026 PLAY MY v8.3 — Todos os direitos reservados</span>
 </div>
 <div><i class="bi bi-bluetooth me-2"></i><span class="text-muted small">Blockchain Ativa • SELO COIN 🪙</span></div>
 </div>
