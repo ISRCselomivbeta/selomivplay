@@ -63,7 +63,6 @@ async function getYouTubeStats(videoId) {
 function calculateEstimatedRevenue(views) { const brl = (views / 1000) * 1.5; return { brl: brl, formatted: formatCurrency(brl) }; }
 async function updateCardWithRealData(track, card) { if (!track || !track.link_youtube) return; const vid = extractYouTubeId(track.link_youtube); if (!vid) return; const vEl = card.querySelector('.youtube-views'); const eEl = card.querySelector('.estimated-earnings'); try { const stats = await getYouTubeStats(vid); const rev = calculateEstimatedRevenue(stats.views || 0); if (vEl) vEl.innerHTML = '<i class="bi bi-eye-fill me-1"></i>' + formatNumber(stats.views || 0); if (eEl) eEl.innerHTML = '<i class="bi bi-cash-stack me-1"></i>' + rev.formatted; track.youtube_stats = stats; } catch (e) {} }
 
-// Expose globalmente
 window.CONFIG = CONFIG;
 window.GAS_URL = GAS_URL;
 window.API_URL = API_URL;
