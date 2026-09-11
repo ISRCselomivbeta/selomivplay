@@ -1,620 +1,538 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#00ff88">
-    <title>SELO MIV - Offline</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>PLAY MY — Offline</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+:root {
+  --apple-green: #34c759;
+  --apple-green-light: #30d158;
+  --apple-blue: #007aff;
+  --apple-yellow: #ffcc00;
+  --apple-red: #ff3b30;
+  --apple-purple: #af52de;
+  --apple-bg: #000000;
+  --apple-bg-elevated: #1c1c1e;
+  --apple-bg-card: rgba(28, 28, 30, 0.72);
+  --apple-separator: rgba(84, 84, 88, 0.65);
+  --apple-label: #ffffff;
+  --apple-label-2: rgba(235, 235, 245, 0.6);
+  --apple-label-3: rgba(235, 235, 245, 0.3);
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-pill: 980px;
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.45);
+  --shadow-xl: 0 20px 50px rgba(0,0,0,0.5);
+  --blur: saturate(180%) blur(20px);
+}
 
-        :root {
-            --neon-green: #00ff88;
-            --bg-dark: #07090c;
-            --bg-card: #111418;
-            --border: #1e2329;
-            --text-light: #f8f9fa;
-            --text-muted: #6c757d;
-        }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-        body {
-            font-family: 'Outfit', sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-light);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            overflow: hidden;
-        }
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 
-        /* Fundo com gradiente animado */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: radial-gradient(ellipse at 50% 50%, rgba(0, 255, 136, 0.05) 0%, transparent 70%);
-            z-index: -1;
-        }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Inter', sans-serif;
+  background: var(--apple-bg);
+  color: var(--apple-label);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  letter-spacing: -0.01em;
+  font-size: 15px;
+  line-height: 1.4;
+  overflow-x: hidden;
+}
 
-        .offline-container {
-            max-width: 480px;
-            width: 100%;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 2.5rem 2rem;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-            animation: floatIn 0.6s ease-out;
-            position: relative;
-            overflow: hidden;
-        }
+/* Fundo com glow sutil verde Apple */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 30%, rgba(52, 199, 89, 0.08) 0%, transparent 60%);
+  z-index: -1;
+  pointer-events: none;
+}
 
-        /* Linha decorativa superior */
-        .offline-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, transparent, var(--neon-green), transparent);
-            animation: shimmer 3s infinite;
-        }
+.offline-container {
+  max-width: 440px;
+  width: 100%;
+  background: var(--apple-bg-card);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 0.5px solid var(--apple-separator);
+  border-radius: var(--radius-xl);
+  padding: 40px 28px 32px;
+  text-align: center;
+  box-shadow: var(--shadow-xl);
+  animation: springIn 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  position: relative;
+  overflow: hidden;
+}
 
-        @keyframes shimmer {
-            0% { opacity: 0.3; }
-            50% { opacity: 1; }
-            100% { opacity: 0.3; }
-        }
+.offline-container::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--apple-green), transparent);
+  animation: shimmer 3s ease-in-out infinite;
+}
 
-        @keyframes floatIn {
-            0% {
-                opacity: 0;
-                transform: translateY(30px) scale(0.95);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
+@keyframes shimmer {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
 
-        /* Logo */
-        .offline-logo {
-            margin-bottom: 1.5rem;
-        }
+@keyframes springIn {
+  0% { opacity: 0; transform: scale(0.92); }
+  60% { opacity: 1; transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
 
-        .offline-logo img {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: 3px solid var(--neon-green);
-            object-fit: cover;
-            animation: pulse 2s infinite;
-        }
+/* Logo */
+.offline-logo { margin-bottom: 20px; }
 
-        @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.3); }
-            50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(0, 255, 136, 0.2); }
-            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
-        }
+.offline-logo img {
+  width: 88px;
+  height: 88px;
+  border-radius: 22.5%;
+  border: 0.5px solid var(--apple-separator);
+  object-fit: cover;
+  box-shadow: var(--shadow-lg);
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
 
-        /* Ícone de status */
-        .status-icon {
-            font-size: 4rem;
-            color: #ffc107;
-            margin-bottom: 0.5rem;
-            display: block;
-        }
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
+  50% { transform: scale(1.04); box-shadow: 0 10px 30px rgba(52, 199, 89, 0.3); }
+}
 
-        /* Títulos */
-        h1 {
-            color: var(--text-light);
-            font-weight: 700;
-            font-size: 1.75rem;
-            margin-bottom: 0.5rem;
-        }
+/* Ícone de status */
+.status-icon {
+  font-size: 56px;
+  color: var(--apple-yellow);
+  margin-bottom: 8px;
+  display: block;
+  animation: pulse 2s ease-in-out infinite;
+}
 
-        .subtitle {
-            color: var(--neon-green);
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 1.5rem;
-        }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
 
-        /* Descrição */
-        .offline-description {
-            color: var(--text-muted);
-            font-size: 1rem;
-            line-height: 1.7;
-            margin-bottom: 2rem;
-        }
+h1 {
+  color: var(--apple-label);
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: -0.03em;
+  margin-bottom: 6px;
+}
 
-        .offline-description strong {
-            color: var(--text-light);
-        }
+.subtitle {
+  color: var(--apple-green);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 20px;
+}
 
-        /* Cards de funcionalidades offline */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin: 1.5rem 0 2rem;
-        }
+.offline-description {
+  color: var(--apple-label-2);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
 
-        .feature-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1rem 0.75rem;
-            transition: all 0.3s ease;
-        }
+.offline-description strong { color: var(--apple-label); font-weight: 600; }
 
-        .feature-item:hover {
-            background: rgba(0, 255, 136, 0.05);
-            border-color: var(--neon-green);
-            transform: translateY(-2px);
-        }
+/* Cards de funcionalidades */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 20px 0 24px;
+}
 
-        .feature-item i {
-            font-size: 1.5rem;
-            color: var(--neon-green);
-            display: block;
-            margin-bottom: 0.5rem;
-        }
+.feature-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid var(--apple-separator);
+  border-radius: var(--radius-md);
+  padding: 14px 10px;
+  transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
 
-        .feature-item span {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            display: block;
-        }
+.feature-item:hover {
+  background: rgba(52, 199, 89, 0.08);
+  border-color: rgba(52, 199, 89, 0.4);
+  transform: translateY(-2px);
+}
 
-        /* Botões */
-        .btn-retry {
-            background: linear-gradient(135deg, var(--neon-green) 0%, #00cc6a 100%);
-            border: none;
-            border-radius: 30px;
-            color: #000;
-            font-weight: 700;
-            font-size: 1rem;
-            padding: 1rem 2.5rem;
-            width: 100%;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
+.feature-item i {
+  font-size: 22px;
+  color: var(--apple-green);
+  display: block;
+  margin-bottom: 8px;
+}
 
-        .btn-retry:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
-        }
+.feature-item span {
+  font-size: 11px;
+  color: var(--apple-label-2);
+  font-weight: 600;
+  display: block;
+  letter-spacing: -0.01em;
+}
 
-        .btn-retry:active {
-            transform: scale(0.97);
-        }
+/* Botões */
+.btn-retry {
+  background: var(--apple-green);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 14px 24px;
+  width: 100%;
+  transition: all 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+}
 
-        .btn-retry i {
-            font-size: 1.2rem;
-        }
+.btn-retry:hover {
+  background: var(--apple-green-light);
+  transform: scale(1.01);
+}
 
-        .btn-secondary {
-            background: transparent;
-            border: 1px solid var(--border);
-            border-radius: 30px;
-            color: var(--text-muted);
-            font-weight: 600;
-            font-size: 0.9rem;
-            padding: 0.75rem 1.5rem;
-            width: 100%;
-            margin-top: 10px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
+.btn-retry:active { transform: scale(0.98); }
 
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: var(--text-muted);
-            color: var(--text-light);
-        }
+.btn-retry:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
 
-        /* Status de conexão */
-        .connection-status {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-top: 1.5rem;
-            padding: 0.75rem;
-            background: rgba(255, 193, 7, 0.1);
-            border: 1px solid rgba(255, 193, 7, 0.2);
-            border-radius: 12px;
-        }
+.btn-retry i { font-size: 16px; }
 
-        .connection-status .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #ffc107;
-            animation: blink 1.5s infinite;
-        }
+.btn-secondary {
+  background: var(--apple-bg-elevated);
+  border: 0.5px solid var(--apple-separator);
+  border-radius: var(--radius-md);
+  color: var(--apple-label);
+  font-weight: 500;
+  font-size: 14px;
+  padding: 12px 20px;
+  width: 100%;
+  margin-top: 10px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+}
 
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
+.btn-secondary:hover {
+  background: var(--apple-gray-5, #2c2c2e);
+  border-color: rgba(235, 235, 245, 0.2);
+}
 
-        .connection-status span {
-            color: #ffc107;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
+/* Status de conexão */
+.connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 10px 14px;
+  background: rgba(255, 204, 0, 0.08);
+  border: 0.5px solid rgba(255, 204, 0, 0.25);
+  border-radius: var(--radius-md);
+}
 
-        /* Footer */
-        .offline-footer {
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--border);
-        }
+.connection-status .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--apple-yellow);
+  animation: blink 1.5s infinite;
+  flex-shrink: 0;
+}
 
-        .offline-footer small {
-            color: var(--text-muted);
-            font-size: 0.75rem;
-        }
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
 
-        .offline-footer small i {
-            color: var(--neon-green);
-        }
+.connection-status span:last-child {
+  color: var(--apple-yellow);
+  font-size: 12px;
+  font-weight: 600;
+}
 
-        /* Música de fundo (estilo) */
-        .music-note-animated {
-            display: inline-block;
-            animation: floatNote 3s ease-in-out infinite;
-        }
+/* Footer */
+.offline-footer {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 0.5px solid var(--apple-separator);
+}
 
-        @keyframes floatNote {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-10px) rotate(5deg); }
-        }
+.offline-footer small {
+  color: var(--apple-label-3);
+  font-size: 11px;
+  display: block;
+  line-height: 1.6;
+}
 
-        /* Responsividade */
-        @media (max-width: 480px) {
-            .offline-container {
-                padding: 1.5rem 1rem;
-                border-radius: 16px;
-            }
+.offline-footer small i {
+  color: var(--apple-green);
+}
 
-            h1 {
-                font-size: 1.4rem;
-            }
+/* Notas musicais animadas */
+.music-note-animated {
+  display: inline-block;
+  animation: floatNote 3s ease-in-out infinite;
+}
 
-            .features-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-            }
+@keyframes floatNote {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(5deg); }
+}
 
-            .feature-item {
-                padding: 0.75rem 0.5rem;
-            }
+/* Spin (loading) */
+.spin { animation: spin 1s linear infinite; }
 
-            .feature-item i {
-                font-size: 1.2rem;
-            }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
-            .feature-item span {
-                font-size: 0.65rem;
-            }
+/* Responsividade */
+@media (max-width: 480px) {
+  .offline-container {
+    padding: 32px 20px 24px;
+    border-radius: 18px;
+  }
+  h1 { font-size: 24px; }
+  .features-grid { gap: 8px; }
+  .feature-item { padding: 12px 8px; }
+  .feature-item i { font-size: 20px; }
+  .feature-item span { font-size: 10px; }
+  .offline-logo img { width: 72px; height: 72px; }
+}
 
-            .offline-logo img {
-                width: 64px;
-                height: 64px;
-            }
-        }
-
-        @media (max-width: 360px) {
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Scroll suave */
-        ::-webkit-scrollbar {
-            width: 4px;
-        }
-        ::-webkit-scrollbar-track {
-            background: var(--bg-dark);
-        }
-        ::-webkit-scrollbar-thumb {
-            background: var(--neon-green);
-            border-radius: 10px;
-        }
-    </style>
+@media (max-width: 360px) {
+  .features-grid { grid-template-columns: 1fr; }
+}
+</style>
 </head>
 <body>
 
-    <div class="offline-container">
-        <!-- Logo -->
-        <div class="offline-logo">
-            <img src="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png" 
-                 alt="SELO MIV"
-                 onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'80\' height=\'80\' viewBox=\'0 0 80 80\'%3E%3Crect width=\'80\' height=\'80\' fill=\'%23111418\'/%3E%3Ccircle cx=\'40\' cy=\'40\' r=\'35\' fill=\'%2300ff88\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'Arial\' font-size=\'24\' font-weight=\'bold\' fill=\'%23000000\'%3ESM%3C/text%3E%3C/svg%3E'">
-        </div>
+<div class="offline-container">
+  <!-- Logo -->
+  <div class="offline-logo">
+    <img src="https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png"
+         alt="PLAY MY"
+         onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2288%22 height=%2288%22><rect width=%2288%22 height=%2288%22 rx=%2220%22 fill=%22%231c1c1e%22/><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-family=%22Arial%22 font-size=%2226%22 font-weight=%22bold%22 fill=%22%2334c759%22>PM</text></svg>'">
+  </div>
 
-        <!-- Ícone de status -->
-        <i class="bi bi-wifi-off status-icon"></i>
+  <!-- Ícone status -->
+  <i class="bi bi-wifi-off status-icon"></i>
 
-        <!-- Títulos -->
-        <h1>Você está offline</h1>
-        <p class="subtitle">🔌 Conexão perdida</p>
+  <!-- Títulos -->
+  <h1>Você está offline</h1>
+  <p class="subtitle">🔌 Conexão perdida</p>
 
-        <!-- Descrição -->
-        <p class="offline-description">
-            Parece que você perdeu a conexão com a internet.<br>
-            Não se preocupe, suas <strong>músicas favoritas</strong> e 
-            <strong>playlists</strong> estão salvas localmente.
-        </p>
+  <!-- Descrição -->
+  <p class="offline-description">
+    Parece que você perdeu a conexão com a internet.<br>
+    Suas <strong>músicas favoritas</strong> e <strong>playlists</strong> estão salvas localmente.
+  </p>
 
-        <!-- Funcionalidades offline -->
-        <div class="features-grid">
-            <div class="feature-item">
-                <i class="bi bi-star-fill"></i>
-                <span>Favoritos salvos</span>
-            </div>
-            <div class="feature-item">
-                <i class="bi bi-music-note-beamed"></i>
-                <span>Playlists offline</span>
-            </div>
-            <div class="feature-item">
-                <i class="bi bi-clock-history"></i>
-                <span>Histórico local</span>
-            </div>
-            <div class="feature-item">
-                <i class="bi bi-shield-check"></i>
-                <span>Dados seguros</span>
-            </div>
-        </div>
-
-        <!-- Botões -->
-        <button class="btn-retry" onclick="tentarReconectar()">
-            <i class="bi bi-arrow-clockwise"></i>
-            Tentar reconectar
-        </button>
-
-        <button class="btn-secondary" onclick="irParaHome()">
-            <i class="bi bi-house"></i>
-            Ir para página inicial
-        </button>
-
-        <!-- Status de conexão -->
-        <div class="connection-status">
-            <span class="dot"></span>
-            <span>Aguardando conexão...</span>
-        </div>
-
-        <!-- Footer -->
-        <div class="offline-footer">
-            <small>
-                <i class="bi bi-music-note music-note-animated"></i>
-                SELO MIV - Sua música continua mesmo offline
-                <i class="bi bi-music-note music-note-animated" style="animation-delay: 1s;"></i>
-            </small>
-            <br>
-            <small style="font-size: 0.65rem; opacity: 0.6;">
-                Dados sincronizados automaticamente quando online
-            </small>
-        </div>
+  <!-- Funcionalidades -->
+  <div class="features-grid">
+    <div class="feature-item">
+      <i class="bi bi-star-fill"></i>
+      <span>Favoritos salvos</span>
     </div>
+    <div class="feature-item">
+      <i class="bi bi-music-note-beamed"></i>
+      <span>Playlists offline</span>
+    </div>
+    <div class="feature-item">
+      <i class="bi bi-clock-history"></i>
+      <span>Histórico local</span>
+    </div>
+    <div class="feature-item">
+      <i class="bi bi-shield-check"></i>
+      <span>Dados seguros</span>
+    </div>
+  </div>
 
-    <script>
-        // ========== FUNÇÕES ==========
+  <!-- Botões -->
+  <button class="btn-retry" onclick="tentarReconectar()">
+    <i class="bi bi-arrow-clockwise"></i>
+    Tentar reconectar
+  </button>
 
-        /**
-         * Tenta reconectar verificando a conexão
-         */
-        function tentarReconectar() {
-            const btn = document.querySelector('.btn-retry');
-            const statusText = document.querySelector('.connection-status span');
-            const dot = document.querySelector('.connection-status .dot');
+  <button class="btn-secondary" onclick="irParaHome()">
+    <i class="bi bi-house"></i>
+    Ir para página inicial
+  </button>
 
-            // Feedback visual
-            btn.disabled = true;
-            btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Verificando...';
-            btn.style.opacity = '0.7';
+  <!-- Status -->
+  <div class="connection-status">
+    <span class="dot"></span>
+    <span>Aguardando conexão...</span>
+  </div>
 
-            if (statusText) statusText.textContent = 'Verificando conexão...';
+  <!-- Footer -->
+  <div class="offline-footer">
+    <small>
+      <i class="bi bi-music-note music-note-animated"></i>
+      PLAY MY — Sua música continua mesmo offline
+      <i class="bi bi-music-note music-note-animated" style="animation-delay: 1s;"></i>
+    </small>
+    <small style="font-size: 10px; opacity: 0.6; margin-top: 6px;">
+      Dados sincronizados automaticamente quando online
+    </small>
+  </div>
+</div>
 
-            // Verificar conexão
-            if (navigator.onLine) {
-                // Está online
-                if (statusText) {
-                    statusText.textContent = '✅ Conectado! Redirecionando...';
-                    statusText.style.color = '#00ff88';
-                }
-                if (dot) {
-                    dot.style.background = '#00ff88';
-                    dot.style.animation = 'none';
-                }
+<script>
+// ========== FUNÇÕES ==========
 
-                // Redirecionar após breve delay
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 800);
+function tentarReconectar() {
+  const btn = document.querySelector('.btn-retry');
+  const statusText = document.querySelector('.connection-status span:last-child');
+  const dot = document.querySelector('.connection-status .dot');
 
-            } else {
-                // Continua offline
-                if (statusText) {
-                    statusText.textContent = '❌ Ainda sem conexão. Tente novamente.';
-                    statusText.style.color = '#ff6b6b';
-                }
-                if (dot) {
-                    dot.style.background = '#ff6b6b';
-                }
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Verificando...';
+  btn.style.opacity = '0.7';
+  if (statusText) statusText.textContent = 'Verificando conexão...';
 
-                // Restaurar botão
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Tentar reconectar';
-                    btn.style.opacity = '1';
-                    
-                    if (statusText) {
-                        statusText.textContent = 'Aguardando conexão...';
-                        statusText.style.color = '#ffc107';
-                    }
-                    if (dot) {
-                        dot.style.background = '#ffc107';
-                    }
-                }, 2000);
+  if (navigator.onLine) {
+    if (statusText) {
+      statusText.textContent = '✅ Conectado! Redirecionando...';
+      statusText.style.color = '#34c759';
+    }
+    if (dot) {
+      dot.style.background = '#34c759';
+      dot.style.animation = 'none';
+    }
+    setTimeout(() => { window.location.href = '/'; }, 800);
+  } else {
+    if (statusText) {
+      statusText.textContent = '❌ Ainda sem conexão. Tente novamente.';
+      statusText.style.color = '#ff3b30';
+    }
+    if (dot) dot.style.background = '#ff3b30';
 
-                // Adicionar listener para quando voltar online
-                window.addEventListener('online', function onOnline() {
-                    window.removeEventListener('online', onOnline);
-                    if (statusText) {
-                        statusText.textContent = '✅ Conectado! Redirecionando...';
-                        statusText.style.color = '#00ff88';
-                    }
-                    if (dot) {
-                        dot.style.background = '#00ff88';
-                    }
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 500);
-                });
-            }
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Tentar reconectar';
+      btn.style.opacity = '1';
+      if (statusText) {
+        statusText.textContent = 'Aguardando conexão...';
+        statusText.style.color = '#ffcc00';
+      }
+      if (dot) dot.style.background = '#ffcc00';
+    }, 2000);
+
+    window.addEventListener('online', function onOnline() {
+      window.removeEventListener('online', onOnline);
+      if (statusText) {
+        statusText.textContent = '✅ Conectado! Redirecionando...';
+        statusText.style.color = '#34c759';
+      }
+      if (dot) dot.style.background = '#34c759';
+      setTimeout(() => { window.location.href = '/'; }, 500);
+    });
+  }
+}
+
+function irParaHome() {
+  if (navigator.onLine) {
+    window.location.href = '/';
+  } else {
+    const statusText = document.querySelector('.connection-status span:last-child');
+    if (statusText) {
+      statusText.textContent = '📴 Offline — tente reconectar';
+      statusText.style.color = '#ffcc00';
+    }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        if (registration.active) {
+          registration.active.postMessage({ type: 'NAVIGATE_HOME', url: '/' });
         }
+      });
+    }
+  }
+}
 
-        /**
-         * Volta para a página inicial (tenta forçar recarregar)
-         */
-        function irParaHome() {
-            // Tenta carregar a página principal
-            if (navigator.onLine) {
-                window.location.href = '/';
-            } else {
-                // Se estiver offline, mostra a página offline com um toast
-                const statusText = document.querySelector('.connection-status span');
-                if (statusText) {
-                    statusText.textContent = '📴 Offline - tente reconectar';
-                    statusText.style.color = '#ffc107';
-                }
-                
-                // Tenta carregar do cache do Service Worker
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.ready.then(registration => {
-                        registration.active.postMessage({
-                            type: 'NAVIGATE_HOME',
-                            url: '/'
-                        });
-                    });
-                }
-            }
-        }
+function monitorarConexao() {
+  const statusText = document.querySelector('.connection-status span:last-child');
+  const dot = document.querySelector('.connection-status .dot');
 
-        /**
-         * Monitorar mudanças de conexão
-         */
-        function monitorarConexao() {
-            const statusText = document.querySelector('.connection-status span');
-            const dot = document.querySelector('.connection-status .dot');
+  window.addEventListener('online', () => {
+    if (statusText) {
+      statusText.textContent = '✅ Conectado!';
+      statusText.style.color = '#34c759';
+    }
+    if (dot) { dot.style.background = '#34c759'; dot.style.animation = 'none'; }
+    setTimeout(() => { window.location.href = '/'; }, 1000);
+  });
 
-            window.addEventListener('online', () => {
-                if (statusText) {
-                    statusText.textContent = '✅ Conectado!';
-                    statusText.style.color = '#00ff88';
-                }
-                if (dot) {
-                    dot.style.background = '#00ff88';
-                    dot.style.animation = 'none';
-                }
+  window.addEventListener('offline', () => {
+    if (statusText) {
+      statusText.textContent = '📴 Offline';
+      statusText.style.color = '#ff3b30';
+    }
+    if (dot) { dot.style.background = '#ff3b30'; dot.style.animation = 'blink 1.5s infinite'; }
+  });
+}
 
-                // Redirecionar após 1 segundo
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1000);
-            });
+function verificarServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready
+      .then(() => console.log('✅ Service Worker pronto para offline'))
+      .catch(() => console.warn('⚠️ Service Worker não disponível'));
+  }
+}
 
-            window.addEventListener('offline', () => {
-                if (statusText) {
-                    statusText.textContent = '📴 Offline';
-                    statusText.style.color = '#ff6b6b';
-                }
-                if (dot) {
-                    dot.style.background = '#ff6b6b';
-                    dot.style.animation = 'blink 1.5s infinite';
-                }
-            });
-        }
+// ========== INICIALIZAÇÃO ==========
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('📴 PLAY MY — Página Offline carregada');
 
-        /**
-         * Verificar o Service Worker
-         */
-        function verificarServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.ready.then(registration => {
-                    console.log('✅ Service Worker pronto para offline');
-                }).catch(() => {
-                    console.warn('⚠️ Service Worker não disponível');
-                });
-            }
-        }
+  if (navigator.onLine) {
+    setTimeout(() => { window.location.href = '/'; }, 1500);
+  }
 
-        // ========== INICIALIZAÇÃO ==========
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('📴 Página Offline do SELO MIV carregada');
-            
-            // Verificar se está realmente offline
-            if (navigator.onLine) {
-                // Se estiver online, redirecionar
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1500);
-            }
+  monitorarConexao();
+  verificarServiceWorker();
 
-            // Iniciar monitoramento
-            monitorarConexao();
-            verificarServiceWorker();
-
-            // Adicionar listener para tecla Enter no botão
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    const btn = document.querySelector('.btn-retry');
-                    if (btn && !btn.disabled) {
-                        btn.click();
-                    }
-                }
-            });
-        });
-
-        // ========== ESTILOS ADICIONAIS PARA ANIMAÇÃO ==========
-        const style = document.createElement('style');
-        style.textContent = `
-            .spin {
-                animation: spin 1s linear infinite;
-            }
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        `;
-        document.head.appendChild(style);
-    </script>
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const btn = document.querySelector('.btn-retry');
+      if (btn && !btn.disabled) btn.click();
+    }
+  });
+});
+</script>
 
 </body>
 </html>
