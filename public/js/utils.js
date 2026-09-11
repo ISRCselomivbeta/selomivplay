@@ -1,13 +1,11 @@
 // ============================================================
-// UTILS - PLAY MY v8.3 (GAS PRIMÁRIO + VERCEL STANDBY)
+// UTILS - PLAY MY v8.4 (Vercel KV primário + GAS fallback)
 // ============================================================
 const CONFIG = {
-  // ⚠️ GAS é o backend REAL (planilha + cálculos)
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
-  // Vercel fica como STANDBY (só se GAS cair)
   VERCEL_URL: 'https://selomivplay.vercel.app/api/backend',
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
   DEV_MODE: false,
-  VERSION: '8.3.0',
+  VERSION: '8.4.0',
   MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
   BLOCKCHAIN_ENABLED: true,
   SELO_COIN_RATE: 1,
@@ -16,7 +14,7 @@ const CONFIG = {
   TERMS_PDF_URL: 'https://playmy.com.br/termos-de-uso.pdf'
 };
 
-// Alias para compatibilidade com código antigo
+// Aliases para compatibilidade com código antigo
 const GAS_URL = CONFIG.GAS_URL;
 const API_URL = CONFIG.VERCEL_URL;
 
@@ -57,7 +55,7 @@ async function getYouTubeStats(videoId) {
   const cached = localStorage.getItem(key);
   if (cached) { try { return JSON.parse(cached); } catch (e) {} }
   try {
-    const r = await callAPI('get_youtube_earnings', { video_id: videoId });
+    const r = await callAPI('get_youtube_stats', { video_id: videoId });
     if (r && r.success && r.data) { localStorage.setItem(key, JSON.stringify(r.data)); return r.data; }
   } catch (e) {}
   return { views: 100000, likes: 3000, comments: 500, is_estimate: true };
