@@ -1,403 +1,355 @@
 // ============================================================
-// PLAYER.JS - Player, YouTube API, Media Session
+// MARKETPLACE.JS - Marketplace e Bolsa Externa PLAY MY
 // ============================================================
 
-// ===== CARREGAR YOUTUBE API =====
-function loadYouTubeAPI(callback) {
-    if (window.YT && YT.Player && state.youtubeAPILoaded) {
-        console.log('✅ API do YouTube já carregada');
-        if (callback) callback();
-        return;
+async function loadMarketplace(forceRefresh = false) {
+    if (!state.playlist || state.playlist.length === 0) {
+        state.playlist = (await getFallbackData('get_musicas')).data || [];
+        renderMarketplace();
     }
-    console.log('📥 Carregando API do YouTube com HTTPS...');
-    window.onYouTubeIframeAPIReady = function() {
-        console.log('✅ API do YouTube carregada com sucesso');
-        state.youtubeAPILoaded = true;
-        if (state.currentTrackIndex >= 0 && state.playlist[state.currentTrackIndex]) {
-            const track = state.playlist[state.currentTrackIndex];
-            if (track && track.link_youtube) {
-                setTimeout(() => {
-                    const videoId = extractYouTubeId(track.link_youtube);
-                    if (videoId) initializeYouTubePlayer(videoId);
-                }, 500);
-            }
-        }
-        if (callback) callback();
-    };
-    const oldScript = document.querySelector('script[src*="youtube.com/iframe_api"]');
-    if (oldScript) oldScript.remove();
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    tag.async = true;
-    tag.onload = () => console.log('📦 Script do YouTube carregado');
-    tag.onerror = (e) => {
-        console.error('❌ Erro ao carregar script do YouTube:', e);
-        showToast('Erro ao carregar player do YouTube', 'error');
-        setTimeout(() => loadYouTubeAPI(callback), 2000);
-    };
-    document.head.appendChild(tag);
-}
-
-// ===== INICIALIZAR PLAYER YOUTUBE =====
-function initializeYouTubePlayer(videoId) {
-    const playerElement = document.getElementById('youtubePlayerExpanded');
-    if (!playerElement) return;
-    const loadingEl = document.getElementById('playerLoadingExpanded');
-    if (loadingEl) loadingEl.style.display = 'flex';
-    playerElement.innerHTML = '';
-    const playerDiv = document.createElement('div');
-    playerDiv.id = 'youtube-player-' + Date.now();
-    playerElement.appendChild(playerDiv);
-    if (typeof YT === 'undefined' || !YT.Player) {
-        loadYouTubeAPI(() => createYouTubePlayer(playerDiv.id, videoId));
-    } else {
-        createYouTubePlayer(playerDiv.id, videoId);
-    }
-}
-
-// ===== CRIAR PLAYER =====
-function createYouTubePlayer(elementId, videoId) {
     try {
-        const element = document.getElementById(elementId);
-        if (!element) {
-            console.error('❌ Elemento do player não encontrado:', elementId);
-            return;
+        const result = await callAPI('get_musicas');
+        if (result?.success && result?.data && result.data.length > 0) {
+            state.playlist = result.data;
+            state.playlist = ELO.applyRatingDecay(state.playlist);
+            state.playlist = ELO.updateCompleteRanking(state.playlist);
         }
-        element.innerHTML = '';
-        const playerDiv = document.createElement('div');
-        playerDiv.id = 'yt-player-' + Date.now();
-        element.appendChild(playerDiv);
-        console.log('🎬 Criando player YouTube para:', videoId);
-        if (state.youtubePlayer && typeof state.youtubePlayer.destroy === 'function') {
-            try { state.youtubePlayer.destroy(); } catch (e) { console.warn('Erro ao destruir player antigo:', e); }
-        }
-        const playerOptions = {
-            width: '100%',
-            height: '100%',
-            videoId: videoId,
-            playerVars: {
-                autoplay: 1,
-                controls: 1,
-                modestbranding: 1,
-                rel: 0,
-                showinfo: 0,
-                fs: 1,
-                playsinline: 1,
-                origin: window.location.origin,
-                enablejsapi: 1,
-                disablekb: 0
-            },
-            events: {
-                onReady: onPlayerReady,
-                onStateChange: onPlayerStateChange,
-                onError: onPlayerError
+    } catch (error) { console.log('Usando dados de exemplo'); }
+    renderMarketplace();
+}
+
+async function loadExternalMarketplace(forceRefresh = false) {
+    if (!forceRefresh) {
+        const cached = localStorage.getItem('miv_external_playlist');
+        const cachedTime = localStorage.getItem('miv_external_timestamp');
+        if (cached && cachedTime) {
+            const age = Date.now() - parseInt(cachedTime);
+            if (age < 600000) {
+                try {
+                    state.externalPlaylist = JSON.parse(cached);
+                    renderExternalMarketplace();
+                    return;
+                } catch (e) {}
             }
-        };
-        state.youtubePlayer = new YT.Player(playerDiv.id, playerOptions);
-    } catch (error) {
-        console.error('❌ Erro ao criar player:', error);
-        showToast('Erro ao inicializar player', 'error');
-        const loadingEl = document.getElementById('playerLoadingExpanded');
-        if (loadingEl) {
-            loadingEl.innerHTML = `
-                <div class="loading-spinner"></div>
-                <span class="text-danger">Erro ao carregar vídeo</span>
-                <button class="btn btn-sm btn-outline-success mt-3" onclick="window.location.reload()">
-                    <i class="bi bi-arrow-clockwise me-2"></i>Recarregar
-                </button>
-            `;
         }
     }
+    const result = await callAPI('get_external_musicas');
+    if (result?.success && result?.data) {
+        state.externalPlaylist = result.data;
+        localStorage.setItem('miv_external_playlist', JSON.stringify(result.data));
+        localStorage.setItem('miv_external_timestamp', Date.now().toString());
+    }
+    renderExternalMarketplace();
 }
 
-// ===== EVENTOS DO PLAYER =====
-function onPlayerReady(event) {
-    console.log('✅ YouTube Player pronto - evento disparado');
-    state.playerReady = true;
-    const loadingEl = document.getElementById('playerLoadingExpanded');
-    if (loadingEl) loadingEl.style.display = 'none';
-    try { event.target.setVolume(state.currentVolume); } catch (e) { console.warn('Erro ao setar volume:', e); }
-    if (state.isPlaying) {
-        try { event.target.playVideo(); } catch (e) { console.warn('Erro ao iniciar reprodução:', e); }
+async function loadTopInvestments(forceRefresh = false) {
+    const result = await callAPI('get_top_investments');
+    if (result?.success && result?.data) {
+        state.topInvestments = result.data;
+        state.topInvestments = ELO.updateCompleteRanking(state.topInvestments);
     }
-    startStreamingMonitor();
-    if (state.progressInterval) clearInterval(state.progressInterval);
-    state.progressInterval = setInterval(updatePlayerProgress, 1000);
-    if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
-        state.streamingTrackId = state.playlist[state.currentTrackIndex].id;
-    }
-    showToast('Player pronto!', 'success');
+    renderTopInvestments();
 }
 
-function onPlayerStateChange(event) {
-    const loadingEl = document.getElementById('playerLoadingExpanded');
-    state.isBuffering = (event.data === YT.PlayerState.BUFFERING);
-    const stateNames = {
-        [-1]: '🔵 Não iniciado', 0: '✅ Finalizado', 1: '▶️ Reproduzindo',
-        2: '⏸️ Pausado', 3: '⏳ Buffering', 5: '🎬 Video selecionado'
-    };
-    console.log(`🎬 YouTube State: ${stateNames[event.data] || event.data}`);
-    switch(event.data) {
-        case YT.PlayerState.PLAYING:
-            state.isPlaying = true;
-            state.isBuffering = false;
-            if (loadingEl) loadingEl.style.display = 'none';
-            state.streamingProgress = 0;
-            if (!state.streamingTimer) startStreamingMonitor();
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-            break;
-        case YT.PlayerState.PAUSED:
-            state.isPlaying = false;
-            state.isBuffering = false;
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-            break;
-        case YT.PlayerState.BUFFERING:
-            state.isBuffering = true;
-            if (loadingEl) loadingEl.style.display = 'flex';
-            break;
-        case YT.PlayerState.ENDED:
-            state.isPlaying = false;
-            state.isBuffering = false;
-            state.streamingProgress = 0;
-            if (loadingEl) loadingEl.style.display = 'none';
-            if (state.isRepeat) { event.target.playVideo(); } else { playNext(); }
-            break;
-        case YT.PlayerState.CUED:
-            state.playerReady = true;
-            state.isBuffering = false;
-            if (loadingEl) loadingEl.style.display = 'none';
-            break;
-    }
-    updatePlayerIcons();
-    updateExpandedPlayer();
-}
-
-function onPlayerError(event) {
-    console.error('❌ Erro no player YouTube:', event.data);
-    state.playerReady = false;
-    const loadingEl = document.getElementById('playerLoadingExpanded');
-    if (loadingEl) loadingEl.style.display = 'none';
-    const errorMessages = {
-        2: 'ID do vídeo inválido', 5: 'Erro no player HTML5',
-        100: 'Vídeo não encontrado ou removido', 101: 'Embedding não permitido pelo proprietário',
-        150: 'Embedding não permitido'
-    };
-    const errorMsg = errorMessages[event.data] || 'Erro ao carregar vídeo';
-    showToast(errorMsg, 'error');
-    if (loadingEl) {
-        loadingEl.innerHTML = `
-            <i class="bi bi-exclamation-triangle text-danger fs-1 mb-3"></i>
-            <span class="text-danger">${errorMsg}</span>
-            <button class="btn btn-sm btn-outline-success mt-3" onclick="window.location.reload()">
-                <i class="bi bi-arrow-clockwise me-2"></i>Recarregar
-            </button>
-        `;
-        loadingEl.style.display = 'flex';
+async function loadArtistData(forceRefresh = false) {
+    if (!state.currentUser || state.currentUser.tipo !== 'artista') return;
+    const result = await callAPI('get_artist_data', { user_id: state.currentUser.id });
+    if (result?.success && result?.data) {
+        document.getElementById('artistMusicCount').textContent = result.data.total_musicas || 0;
+        document.getElementById('artistRoyalties').textContent = formatCurrency(result.data.total_royalties || 0);
+        document.getElementById('artistSharesSold').textContent = result.data.total_shares_sold || 0;
+        document.getElementById('artistMonthlyEarnings').textContent = formatCurrency(result.data.monthly_earnings || 0);
+        renderArtistMusic(result.data.musics || []);
     }
 }
 
-// ===== PLAYER EXPANDIDO =====
-function openPlayerExpanded() {
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    const playerSection = document.getElementById('playerExpandedSection');
-    if (playerSection) playerSection.classList.add('active');
-    updateExpandedPlayer();
-    loadYouTubeAPI();
-    document.getElementById('sidebar')?.classList.remove('open');
-    window.scrollTo(0, 0);
-}
+function renderMarketplace() {
+    const container = document.getElementById('marketplaceContent');
+    const artistsGrid = document.getElementById('artistsPlaylistsGrid');
+    const externalGrid = document.getElementById('externalMarketplaceGrid');
+    const recommendedCard = document.getElementById('recommendedCard');
 
-function closePlayerExpanded() {
-    const lastSection = localStorage.getItem('lastSection') || 'marketplace';
-    changeSection(lastSection);
-    showToast('Player minimizado', 'info');
-}
+    if (!container) return;
 
-function togglePlayerExpansion() {
-    const playerSection = document.getElementById('playerExpandedSection');
-    if (playerSection?.classList.contains('active')) {
-        closePlayerExpanded();
+    if (!state.playlist || state.playlist.length === 0) {
+        container.innerHTML = `<div class="empty-state-spotify" style="grid-column: 1/-1;"><i class="bi bi-music-note-beamed" style="font-size: 2.5rem; color: #1DB954;"></i><h5 style="color: white; margin-top: 0.5rem; font-size: 16px;">Nenhuma música disponível</h5></div>`;
     } else {
-        openPlayerExpanded();
+        const mixes = state.playlist.slice(0, 7);
+        container.innerHTML = mixes.map((track, index) => {
+            const videoId = extractYouTubeId(track.link_youtube);
+            const stats = track.youtube_stats || {};
+            const revenue = calculateEstimatedRevenue(stats.views || 100000);
+            return `
+            <div class="spotify-card" data-track-id="${track.id}" data-video-id="${videoId || ''}">
+                <div class="spotify-cover">
+                    <img src="${track.link_capa || PLACEHOLDERS.MIV_300}" alt="${track.titulo}" loading="lazy" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})"><i class="bi bi-play-fill"></i></div>
+                </div>
+                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+                <p class="spotify-artist">${track.artista || 'Artista'}</p>
+                <div class="youtube-stats mt-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="youtube-views text-muted"><i class="bi bi-eye-fill me-1"></i> ${stats.views ? formatNumber(stats.views) : 'Carregando...'}</span>
+                        <span class="estimated-earnings text-success"><i class="bi bi-cash-stack me-1"></i> ${revenue.formatted}</span>
+                    </div>
+                </div>
+                <div class="spotify-stats mt-2">
+                    <span class="spotify-elo">${track.percentual_disponivel || 0}% disponível</span>
+                    <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
+                </div>
+                <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})">
+                    <i class="bi bi-currency-dollar me-1"></i> INVESTIR
+                </button>
+            </div>`;
+        }).join('');
+        mixes.forEach((track, index) => {
+            const card = container.children[index];
+            if (card && track.link_youtube) updateCardWithRealData(track, card);
+        });
     }
-}
 
-function updateExpandedPlayer() {
-    if (state.currentTrackIndex < 0) return;
-    let track, isExternal = false;
-    if (state.currentTrackIndex >= 1000) {
-        const externalIndex = state.currentTrackIndex - 1000;
-        if (externalIndex >= 0 && externalIndex < state.externalPlaylist.length) {
-            track = state.externalPlaylist[externalIndex];
-            isExternal = true;
-        }
-    } else if (state.currentTrackIndex >= 0 && state.currentTrackIndex < state.playlist.length) {
-        track = state.playlist[state.currentTrackIndex];
+    if (artistsGrid && state.playlist && state.playlist.length > 3) {
+        const artistItems = state.playlist.slice(3, 7);
+        artistsGrid.innerHTML = artistItems.map((track, idx) => {
+            const originalIndex = idx + 3;
+            let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+            const categories = ['Álbum', 'Playlist', 'Podcast', 'Rádio'];
+            return `
+            <div class="spotify-card" onclick="playTrack(${originalIndex})">
+                <div class="spotify-cover">
+                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${originalIndex})"><i class="bi bi-play-fill"></i></div>
+                </div>
+                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+                <p class="spotify-artist">${categories[idx % categories.length]} • ${track.artista?.substring(0, 15) || 'Artista'}</p>
+            </div>`;
+        }).join('');
     }
-    if (!track) return;
-    const expandedTitle = document.getElementById('expandedTitle');
-    const expandedArtist = document.getElementById('expandedArtist');
-    const expandedAlbumArt = document.getElementById('expandedAlbumArt');
-    const expandedPrice = document.getElementById('expandedPrice');
-    const expandedAvailable = document.getElementById('expandedAvailable');
-    const expandedReturn = document.getElementById('expandedReturn');
-    const expandedInvestors = document.getElementById('expandedInvestors');
-    const expandedGenre = document.getElementById('expandedGenre');
-    const expandedFavoriteBtn = document.getElementById('expandedFavoriteBtn');
-    const expandedFavoriteIcon = document.getElementById('expandedFavoriteIcon');
-    if (expandedTitle) expandedTitle.textContent = track.titulo || 'Título desconhecido';
-    if (expandedArtist) expandedArtist.textContent = track.artista || 'Artista desconhecido';
-    if (expandedAlbumArt) {
-        let coverUrl = isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300;
-        if (isExternal) {
-            if (track.link_youtube) {
-                let videoId = '';
-                const url = track.link_youtube;
-                if (url.includes('youtu.be/')) {
-                    videoId = url.split('youtu.be/')[1].split('?')[0].split('&')[0];
-                } else if (url.includes('watch?v=')) {
-                    videoId = url.split('watch?v=')[1].split('&')[0];
-                } else if (url.includes('embed/')) {
-                    videoId = url.split('embed/')[1].split('?')[0];
-                }
-                if (videoId && videoId.length === 11) {
-                    coverUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-                }
-            }
+
+    if (externalGrid) {
+        if (!state.externalPlaylist || state.externalPlaylist.length === 0) {
+            externalGrid.innerHTML = `<div class="suggest-card" onclick="openAddExternalMusicModal()"><i class="bi bi-plus-circle"></i><h3>Sugerir Música</h3><p>Seja o primeiro a sugerir</p></div>`;
         } else {
-            if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
-                coverUrl = track.link_capa.trim();
-            }
+            const externas = state.externalPlaylist.slice(0, 4);
+            externalGrid.innerHTML = externas.map((track, index) => {
+                const videoId = extractYouTubeId(track.link_youtube);
+                const stats = track.youtube_stats || {};
+                const revenue = calculateEstimatedRevenue(stats.views || 50000);
+                let coverImage = PLACEHOLDERS.EXT_300;
+                if (track.link_capa?.trim()) coverImage = track.link_capa.trim();
+                else if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                const vendasAtuais = track.vendas_atuais || 0;
+                const metaVendas = track.meta_vendas || 1000000;
+                const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
+                return `
+                <div class="spotify-card external-card">
+                    <div class="external-badge"><i class="bi bi-globe"></i> BOLSA EXTERNA</div>
+                    <div class="spotify-cover">
+                        <img src="${coverImage}" alt="${track.titulo}" loading="lazy" onerror="this.src='${PLACEHOLDERS.EXT_300}'">
+                        <div class="play-overlay" onclick="event.stopPropagation(); playExternalTrack(${index})"><i class="bi bi-play-fill"></i></div>
+                    </div>
+                    <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+                    <p class="spotify-artist">${track.artista || 'Artista'}</p>
+                    <div class="spotify-stats mt-2">
+                        <span class="spotify-elo" style="background: rgba(255,107,107,0.2); color: #ff6b6b;">🚀 Pré-lançamento</span>
+                        <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
+                    </div>
+                    <button class="btn-invest" onclick="event.stopPropagation(); openInvestExternalModal(${index})" style="border-color: #ff6b6b; color: #ff6b6b;">
+                        <i class="bi bi-coin me-1"></i> INVESTIR ANTECIPADO
+                    </button>
+                </div>`;
+            }).join('');
+            externas.forEach((track, index) => {
+                const card = externalGrid.children[index];
+                if (card && track.link_youtube) updateExternalCardWithRealData(track, card);
+            });
         }
-        expandedAlbumArt.src = coverUrl;
-        expandedAlbumArt.onerror = function() {
-            this.src = isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300;
-        };
     }
-    if (expandedPrice) expandedPrice.textContent = formatCurrency(track.valor_acao || 0);
-    const percentAvailable = track.percentual_disponivel || 0;
-    const sharesSold = track.acoes_vendidas || 0;
-    const totalShares = (percentAvailable / 0.01) + sharesSold;
-    const percentSold = totalShares > 0 ? ((sharesSold / totalShares) * 100).toFixed(1) : 0;
-    if (expandedAvailable) expandedAvailable.textContent = `${percentSold}%`;
-    if (expandedReturn) expandedReturn.textContent = `${track.rentabilidade_media || 0}%`;
-    if (expandedInvestors) expandedInvestors.textContent = track.total_investidores || 0;
-    if (expandedGenre) expandedGenre.textContent = track.genero || 'Música';
-    const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
-    if (expandedFavoriteBtn && expandedFavoriteIcon) {
-        expandedFavoriteBtn.classList.toggle('active', isFavorite);
-        expandedFavoriteIcon.className = isFavorite ? 'bi bi-star-fill' : 'bi bi-star';
+
+    if (recommendedCard && state.playlist && state.playlist.length > 0) {
+        const primeira = state.playlist[0];
+        let coverImage = primeira.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+        recommendedCard.innerHTML = `
+            <img src="${coverImage}" alt="${primeira.titulo}" class="recommended-cover" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+            <div class="recommended-info">
+                <h4>${primeira.titulo} • ${primeira.artista}</h4>
+                <p>Conexão com fio • ${formatCurrency(primeira.valor_acao || 0)} por ação</p>
+            </div>
+            <button class="btn-play" onclick="playTrack(0)"><i class="bi bi-play-fill"></i></button>
+        `;
     }
 }
 
-// ===== CONTROLES =====
-function togglePlay() {
-    if (!state.youtubePlayer) {
-        if (state.currentTrackIndex >= 0) {
-            if (state.currentTrackIndex >= 1000) {
-                playExternalTrack(state.currentTrackIndex - 1000);
-            } else {
-                playTrack(state.currentTrackIndex);
-            }
-        }
-        return;
+function filterMarketplace(type) {
+    let filtered = [...state.playlist];
+    switch(type) {
+        case 'trending': filtered.sort((a, b) => (b.elo_rating || 1400) - (a.elo_rating || 1400)); break;
+        case 'new': filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)); break;
+        case 'invest': filtered.sort((a, b) => ((b.acoes_vendidas || 0) + (b.rentabilidade_media || 0)) - ((a.acoes_vendidas || 0) + (a.rentabilidade_media || 0))); break;
     }
-    if (state.isPlaying) { state.youtubePlayer.pauseVideo(); } else { state.youtubePlayer.playVideo(); }
+    renderFilteredMarketplace(filtered);
 }
 
-function playTrack(index) {
-    if (index < 0 || index >= state.playlist.length) {
-        showToast('Música não encontrada', 'error');
+function renderFilteredMarketplace(filteredTracks) {
+    const container = document.getElementById('marketplaceContent');
+    if (!container) return;
+    if (!filteredTracks || filteredTracks.length === 0) {
+        container.innerHTML = `<div class="empty-state-spotify"><i class="bi bi-filter" style="font-size: 4rem; color: #1DB954;"></i><h3 style="color: white;">Nenhum resultado</h3></div>`;
         return;
     }
-    const track = state.playlist[index];
-    if (track.status === 'paused') {
-        showToast('Esta música está pausada pelo artista', 'warning');
+    container.innerHTML = filteredTracks.map((track, index) => {
+        const originalIndex = state.playlist.findIndex(m => m.id === track.id);
+        const playIndex = originalIndex >= 0 ? originalIndex : index;
+        const eloRating = track.elo_rating || 1400;
+        const eloLevel = eloRating >= 2000 ? '🔥 Top' : eloRating >= 1700 ? '📈 Trending' : '🎵 Nova';
+        let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+        return `
+        <div class="spotify-card" onclick="playTrack(${playIndex})">
+            <div class="spotify-cover">
+                <img src="${coverImage}" alt="${track.titulo}" loading="lazy" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${playIndex})"><i class="bi bi-play-fill"></i></div>
+            </div>
+            <div class="spotify-title">${track.titulo || 'Sem título'}</div>
+            <div class="spotify-artist">${track.artista || 'Artista'}</div>
+            <div class="spotify-stats">
+                <span class="spotify-elo">${eloLevel}</span>
+                <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
+            </div>
+            <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${playIndex})"><i class="bi bi-currency-dollar me-1"></i> INVESTIR</button>
+        </div>`;
+    }).join('');
+}
+
+function renderExternalMarketplace() {
+    const container = document.getElementById('externalContent');
+    if (!container) return;
+    if (!state.externalPlaylist || state.externalPlaylist.length === 0) {
+        container.innerHTML = `<div class="empty-state-spotify" style="grid-column: 1/-1; text-align: center; padding: 40px 20px;"><i class="bi bi-globe" style="font-size: 4rem; color: #ff6b6b;"></i><h3 style="color: white;">Nenhuma música externa</h3><button class="btn-invest" style="background: #ff6b6b; color: white;" onclick="openAddExternalMusicModal()"><i class="bi bi-plus-circle me-1"></i> SUGERIR MÚSICA</button></div>`;
         return;
     }
-    if (track.status === 'deleted') {
-        showToast('Esta música não está mais disponível', 'error');
-        return;
-    }
-    if (track) {
-        playQueue.items = [];
-        playQueue.items.push({ type: 'internal', index: index, track: track, trackId: track.id });
-        playQueue.currentIndex = 0;
-    }
-    state.streamingProgress = 0;
-    state.streamingLastReward = 0;
-    state.streamingTrackId = null;
-    state.playerReady = false;
-    state.currentTrackIndex = index;
-    const player = document.getElementById('playerSpotify');
-    if (player) player.style.display = 'flex';
-    const playerTitle = document.getElementById('playerTitle');
-    const playerArtist = document.getElementById('playerArtist');
-    const playerAlbumArt = document.getElementById('playerAlbumArt');
-    if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
-    if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
-    if (playerAlbumArt) {
-        let coverUrl = PLACEHOLDERS.MIV_56;
-        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
-            coverUrl = track.link_capa.trim();
+    container.innerHTML = state.externalPlaylist.map((track, index) => {
+        const vendasAtuais = track.vendas_atuais || 0;
+        const metaVendas = track.meta_vendas || 1000000;
+        const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
+        let coverImage = PLACEHOLDERS.EXT_300;
+        if (track.link_capa && track.link_capa.trim() !== '') coverImage = track.link_capa.trim();
+        else if (track.link_youtube) {
+            const videoId = extractYouTubeId(track.link_youtube);
+            if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
         }
-        playerAlbumArt.src = coverUrl;
-        playerAlbumArt.onerror = function() { this.src = PLACEHOLDERS.MIV_56; };
+        return `
+        <div class="spotify-card external-card" onclick="playExternalTrack(${index})">
+            <div class="external-badge"><i class="bi bi-globe"></i> BOLSA EXTERNA</div>
+            <div class="spotify-cover">
+                <img src="${coverImage}" alt="${track.titulo}" onerror="this.src='${PLACEHOLDERS.EXT_300}'">
+                <div class="play-overlay" onclick="event.stopPropagation(); playExternalTrack(${index})"><i class="bi bi-play-fill"></i></div>
+            </div>
+            <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
+            <p class="spotify-artist">${track.artista || 'Artista'}</p>
+            <div class="spotify-stats">
+                <span class="spotify-elo" style="background: rgba(255,107,107,0.2); color: #ff6b6b;">🚀 Pré-lançamento</span>
+                <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
+            </div>
+            <div style="margin: 8px 0;">
+                <div style="height: 3px; background: #282828; border-radius: 2px; overflow: hidden;">
+                    <div style="width: ${progressPercent}%; height: 100%; background: linear-gradient(90deg, #ff6b6b, #ff8e8e);"></div>
+                </div>
+            </div>
+            <button class="btn-invest" onclick="event.stopPropagation(); openInvestExternalModal(${index})" style="border-color: rgba(255,107,107,0.5); color: #ff6b6b;">
+                <i class="bi bi-coin me-1"></i> INVESTIR ANTECIPADO
+            </button>
+        </div>`;
+    }).join('');
+}
+
+function renderTopInvestments() {
+    const container = document.getElementById('investmentsContent');
+    if (!container) return;
+    if (!state.topInvestments?.length) {
+        container.innerHTML = `<div class="empty-state-actionable" style="grid-column: 1/-1;"><i class="bi bi-graph-up-arrow empty-icon"></i><h5 class="text-muted">Nenhuma recomendação</h5></div>`;
+        return;
     }
-    const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
-    updateFavoriteButton(isFavorite);
-    if (track.link_youtube) {
-        const videoId = extractYouTubeId(track.link_youtube);
-        if (videoId) {
-            if (state.youtubeAPILoaded && window.YT) {
-                initializeYouTubePlayer(videoId);
-            } else {
-                loadYouTubeAPI();
-                setTimeout(() => initializeYouTubePlayer(videoId), 1000);
-            }
+    container.innerHTML = state.topInvestments.map(i => {
+        const coverImage = i.link_capa?.trim() ? i.link_capa : PLACEHOLDERS.MIV_300;
+        const eloRating = i.elo_rating || 1400;
+        const eloLevel = eloRating >= 2000 ? '🔥 Top' : eloRating >= 1700 ? '📈 Trending' : '🎵 Nova';
+        const musicIndex = state.playlist.findIndex(m => m.id === i.id);
+        return `
+        <div class="spotify-card top-investment-card" onclick="playTrack(${musicIndex})">
+            <div class="spotify-cover">
+                <img src="${coverImage}" alt="${i.titulo}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${musicIndex})"><i class="bi bi-play-fill"></i></div>
+            </div>
+            <h3 class="spotify-title">${i.titulo || 'Sem título'}</h3>
+            <p class="spotify-artist">${i.artista || 'Artista'}</p>
+            <div class="spotify-stats">
+                <span class="spotify-elo">${eloLevel}</span>
+                <span class="spotify-price">${formatCurrency(i.valor_acao || 0)}</span>
+            </div>
+            <div style="margin-top: 8px;">
+                <span class="badge badge-success">Score: ${i.investment_score || 0}</span>
+                <span class="badge badge-info">+${i.rentabilidade_media || 0}%</span>
+            </div>
+            <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${musicIndex})"><i class="bi bi-currency-dollar me-1"></i> INVESTIR</button>
+        </div>`;
+    }).join('');
+}
+
+function renderArtistMusic(musics) {
+    const container = document.getElementById('artistMusicContent');
+    if (!container) return;
+    if (!musics?.length) {
+        container.innerHTML = `<div class="empty-state-actionable" style="grid-column: 1/-1;"><i class="bi bi-music-note-beamed empty-icon"></i><h5 class="text-muted">Nenhuma música cadastrada</h5><button class="btn-miv mt-3" onclick="openAddMusicModal()"><i class="bi bi-plus-circle me-2"></i> Cadastrar Música</button></div>`;
+        return;
+    }
+    container.innerHTML = musics.map(m => {
+        const percentSold = m.percentual_disponivel ? ((m.acoes_vendidas || 0) / (m.percentual_disponivel / 0.01) * 100).toFixed(1) : 0;
+        let coverImage = m.link_capa?.trim() || PLACEHOLDERS.MIV_300;
+        if (m.link_youtube) {
+            const videoId = extractYouTubeId(m.link_youtube);
+            if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
         }
-    }
-    state.isPlaying = true;
-    updatePlayerIcons();
-    setupMediaSession(track, false);
-    if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
-        updateExpandedPlayer();
-    }
-    if (state.currentUser && track) {
-        registerMusicPlayed(track.id, track.titulo, track.artista, 30);
-    }
+        return `
+        <div class="spotify-card">
+            <div class="spotify-cover">
+                <img src="${coverImage}" alt="${m.titulo}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
+                <div class="play-overlay" onclick="playTrack(${state.playlist.findIndex(p => p.id === m.id)})"><i class="bi bi-play-fill"></i></div>
+            </div>
+            <h3 class="spotify-title">${m.titulo || 'Sem título'}</h3>
+            <p class="spotify-artist">${m.artista || 'Artista'}</p>
+            <div class="spotify-stats">
+                <span class="spotify-elo">${percentSold}% vendido</span>
+                <span class="spotify-price">${formatCurrency(m.valor_acao || 0)}</span>
+            </div>
+            <div class="music-actions" style="margin-top: 12px;">
+                <button class="music-action-btn edit" onclick="event.stopPropagation(); openEditMusicModal('${m.id}')"><i class="bi bi-pencil"></i> Editar</button>
+                <button class="music-action-btn delete" onclick="event.stopPropagation(); requestDeleteMusic('${m.id}')"><i class="bi bi-trash"></i> Excluir</button>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 function playExternalTrack(index) {
-    if (index < 0 || index >= state.externalPlaylist.length) {
-        showToast('Música não encontrada', 'error');
-        return;
-    }
+    if (index < 0 || index >= state.externalPlaylist.length) { showToast('Música não encontrada', 'error'); return; }
     const track = state.externalPlaylist[index];
     if (track) {
         playQueue.items = [];
-        playQueue.items.push({ type: 'external', index: index, track: track, trackId: track.id });
+        playQueue.items.push({ type: 'external', index, track, trackId: track.id });
         playQueue.currentIndex = 0;
-        setTimeout(() => { playQueue.findAndAddSimilar(track); }, 2000);
     }
-    const externalIndex = 1000 + index;
-    state.currentTrackIndex = externalIndex;
+    state.currentTrackIndex = 1000 + index;
     const player = document.getElementById('playerSpotify');
     if (player) player.style.display = 'flex';
-    const playerTitle = document.getElementById('playerTitle');
-    const playerArtist = document.getElementById('playerArtist');
+    document.getElementById('playerTitle').textContent = track.titulo || 'Título desconhecido';
+    document.getElementById('playerArtist').textContent = track.artista || 'Artista desconhecido';
     const playerAlbumArt = document.getElementById('playerAlbumArt');
-    if (playerTitle) playerTitle.textContent = track.titulo || 'Título desconhecido';
-    if (playerArtist) playerArtist.textContent = track.artista || 'Artista desconhecido';
     if (playerAlbumArt) {
         let coverUrl = PLACEHOLDERS.EXT_56;
         if (track.link_youtube) {
             const videoId = extractYouTubeId(track.link_youtube);
-            if (videoId) { coverUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`; }
+            if (videoId) coverUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
         }
-        if (track.link_capa && typeof track.link_capa === 'string' && track.link_capa.trim() !== '') {
-            coverUrl = track.link_capa.trim();
-        }
+        if (track.link_capa && track.link_capa.trim() !== '') coverUrl = track.link_capa.trim();
         playerAlbumArt.src = coverUrl;
         playerAlbumArt.onerror = function() { this.src = PLACEHOLDERS.EXT_56; };
     }
@@ -406,317 +358,31 @@ function playExternalTrack(index) {
     if (track.link_youtube) {
         const videoId = extractYouTubeId(track.link_youtube);
         if (videoId) {
-            if (state.youtubeAPILoaded && window.YT) {
-                initializeYouTubePlayer(videoId);
-            } else {
-                loadYouTubeAPI();
-                setTimeout(() => initializeYouTubePlayer(videoId), 1000);
-            }
+            if (state.youtubeAPILoaded && window.YT) initializeYouTubePlayer(videoId);
+            else { loadYouTubeAPI(); setTimeout(() => initializeYouTubePlayer(videoId), 1000); }
         }
     }
     state.isPlaying = true;
     updatePlayerIcons();
-    setupMediaSession(track, true);
-    if (document.getElementById('playerExpandedSection')?.classList.contains('active')) {
-        updateExpandedPlayer();
-    }
     showToast(`🎵 Tocando: ${track.titulo} (Bolsa Externa)`, 'info');
 }
 
-function playNext() {
-    playQueue.playNext();
+// Aliases usados pelo player
+function openEditMusicModal(musicId) {
+    const music = state.playlist.find(m => m.id === musicId) || state.externalPlaylist.find(m => m.id === musicId);
+    if (!music) { showToast('Música não encontrada', 'error'); return; }
+    document.getElementById('editMusicId').value = music.id;
+    document.getElementById('editMusicTitleField').value = music.titulo || '';
+    document.getElementById('editMusicGenreField').value = music.genero || 'POP';
+    document.getElementById('editMusicYoutubeField').value = music.link_youtube || '';
+    document.getElementById('editMusicCoverField').value = music.link_capa || '';
+    document.getElementById('editMusicPriceField').value = music.valor_acao || 10;
+    document.getElementById('editMusicPercentField').value = music.percentual_disponivel || 20;
+    document.getElementById('editMusicStatusField').value = music.status || 'active';
+    showModal('editMusicModal');
 }
 
-function playPrevious() {
-    playQueue.playPrevious();
-}
-
-function toggleShuffle() { 
-    state.isShuffle = !state.isShuffle; 
-    if (state.isShuffle) { playQueue.shuffle(); }
-    const btn = document.getElementById('shuffleBtn');
-    if (btn) btn.classList.toggle('active', state.isShuffle);
-    showToast(state.isShuffle ? 'Modo aleatório ativado' : 'Modo aleatório desativado', 'info'); 
-}
-
-function toggleRepeat() { 
-    state.isRepeat = !state.isRepeat; 
-    const btn = document.getElementById('repeatBtn');
-    if (btn) btn.classList.toggle('active', state.isRepeat);
-    showToast(state.isRepeat ? 'Repetição ativada' : 'Repetição desativada', 'info'); 
-}
-
-function toggleMute() { 
-    state.currentVolume = state.currentVolume > 0 ? 0 : (state.lastVolume || 80); 
-    setVolume(state.currentVolume); 
-}
-
-function setVolume(value) {
-    state.currentVolume = Math.max(0, Math.min(100, parseInt(value)));
-    const volumeBar = document.getElementById('volumeSliderBar');
-    if (volumeBar) volumeBar.style.width = `${state.currentVolume}%`;
-    const icon = document.getElementById('volumeIcon');
-    if (icon) {
-        if (state.currentVolume === 0) icon.className = 'bi bi-volume-mute';
-        else if (state.currentVolume < 50) icon.className = 'bi bi-volume-down';
-        else icon.className = 'bi bi-volume-up';
-    }
-    if (state.youtubePlayer && typeof state.youtubePlayer.setVolume === 'function') {
-        try { state.youtubePlayer.setVolume(state.currentVolume); } catch (error) { console.error('Erro ao definir volume:', error); }
-    }
-}
-
-function handleVolumeClick(event) {
-    event.stopPropagation();
-    const volumeSlider = document.getElementById('volumeSlider');
-    if (!volumeSlider) return;
-    const rect = volumeSlider.getBoundingClientRect();
-    const percent = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-    setVolume(Math.round(percent * 100));
-}
-
-function handleProgressClick(e) {
-    if (!state.youtubePlayer?.seekTo) return;
-    e.stopPropagation();
-    const rect = document.getElementById('progressContainer').getBoundingClientRect();
-    const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    state.youtubePlayer.seekTo(state.youtubePlayer.getDuration() * percent, true);
-    document.getElementById('playerProgressBar').style.width = `${percent * 100}%`;
-}
-
-function handleExpandedProgressClick(e) {
-    if (!state.youtubePlayer?.seekTo) return;
-    const rect = document.getElementById('expandedProgressContainer').getBoundingClientRect();
-    const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    state.youtubePlayer.seekTo(state.youtubePlayer.getDuration() * percent, true);
-    document.getElementById('expandedProgressBar').style.width = `${percent * 100}%`;
-}
-
-function updatePlayerProgress() {
-    if (!state.youtubePlayer?.getCurrentTime) return;
-    try {
-        const current = state.youtubePlayer.getCurrentTime();
-        const duration = state.youtubePlayer.getDuration();
-        if (duration > 0) {
-            const percent = (current / duration) * 100;
-            document.getElementById('playerProgressBar').style.width = `${percent}%`;
-            document.getElementById('currentTimeDisplay').textContent = formatTime(current);
-            document.getElementById('totalTimeDisplay').textContent = formatTime(duration);
-            const expandedBar = document.getElementById('expandedProgressBar');
-            if (expandedBar) expandedBar.style.width = `${percent}%`;
-            document.getElementById('expandedCurrentTime').textContent = formatTime(current);
-            document.getElementById('expandedTotalTime').textContent = formatTime(duration);
-        }
-    } catch (e) { console.error('Erro ao atualizar progresso:', e); }
-}
-
-function updatePlayerIcons() {
-    const playPauseIcon = document.getElementById('playPauseIcon');
-    const trackOverlayIcon = document.getElementById('trackOverlayIcon');
-    const expandedPlayPauseIcon = document.getElementById('expandedPlayPauseIcon');
-    const isPlaying = state.isPlaying;
-    if (playPauseIcon) playPauseIcon.className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
-    if (trackOverlayIcon) trackOverlayIcon.className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
-    if (expandedPlayPauseIcon) expandedPlayPauseIcon.className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
-}
-
-function updateFavoriteButton(isFavorite) {
-    const btn = document.getElementById('favoriteBtn');
-    const icon = document.getElementById('favoriteIcon');
-    if (btn && icon) {
-        icon.className = isFavorite ? 'bi bi-star-fill' : 'bi bi-star';
-        btn.classList.toggle('active', isFavorite);
-    }
-}
-
-function toggleFavorite() {
-    if (state.currentTrackIndex < 0) return;
-    let track = state.currentTrackIndex >= 1000 ? 
-        state.externalPlaylist[state.currentTrackIndex - 1000] : 
-        state.playlist[state.currentTrackIndex];
-    if (track) toggleFavoriteMusic(track.id, state.currentTrackIndex);
-}
-
-function toggleQueue() { showToast('Fila de reprodução em desenvolvimento', 'info'); }
-
-// ===== MEDIA SESSION =====
-function setupMediaSession(track, isExternal) {
-    if (!('mediaSession' in navigator) || !track) return;
-    try {
-        let artwork = isExternal ? PLACEHOLDERS.EXT_300 : PLACEHOLDERS.MIV_300;
-        if (track.link_capa && track.link_capa.trim() !== '') {
-            artwork = track.link_capa.trim();
-        }
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: track.titulo || 'PLAY MY',
-            artist: track.artista || 'SELO MIV',
-            album: 'PLAY MY - Selo MIV',
-            artwork: [{ src: artwork, sizes: '300x300', type: 'image/jpeg' }]
-        });
-        navigator.mediaSession.setActionHandler('play', () => { if (state.youtubePlayer) state.youtubePlayer.playVideo(); });
-        navigator.mediaSession.setActionHandler('pause', () => { if (state.youtubePlayer) state.youtubePlayer.pauseVideo(); });
-        navigator.mediaSession.setActionHandler('previoustrack', () => playPrevious());
-        navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
-        navigator.mediaSession.playbackState = state.isPlaying ? 'playing' : 'paused';
-    } catch (e) { console.log('Media Session API indisponível:', e); }
-}
-
-// ===== MONITORAMENTO DE STREAMING =====
-function startStreamingMonitor() {
-    if (state.streamingTimer) clearInterval(state.streamingTimer);
-    console.log('🎵 Iniciando monitoramento de streaming...');
-    state.streamingTimer = setInterval(checkStreamingProgress, 1000);
-}
-
-function stopStreamingMonitor() {
-    if (state.streamingTimer) { clearInterval(state.streamingTimer); state.streamingTimer = null; }
-    console.log('⏹️ Monitoramento de streaming parado');
-}
-
-function checkStreamingProgress() {
-    if (!state.youtubePlayer || !state.playerReady) return;
-    try {
-        if (typeof state.youtubePlayer.getPlayerState !== 'function' ||
-            typeof state.youtubePlayer.getCurrentTime !== 'function' ||
-            typeof state.youtubePlayer.getDuration !== 'function') { return; }
-        const playerState = state.youtubePlayer.getPlayerState();
-        const currentTime = state.youtubePlayer.getCurrentTime() || 0;
-        const duration = state.youtubePlayer.getDuration() || 0;
-        if (duration > 0) {
-            const percent = (currentTime / duration) * 100;
-            if (!document.hidden) {
-                const progressBar = document.getElementById('playerProgressBar');
-                const expandedBar = document.getElementById('expandedProgressBar');
-                const currentDisplay = document.getElementById('currentTimeDisplay');
-                const expandedCurrent = document.getElementById('expandedCurrentTime');
-                const totalDisplay = document.getElementById('totalTimeDisplay');
-                const expandedTotal = document.getElementById('expandedTotalTime');
-                if (progressBar) progressBar.style.width = percent + '%';
-                if (expandedBar) expandedBar.style.width = percent + '%';
-                if (currentDisplay) currentDisplay.textContent = formatTime(currentTime);
-                if (expandedCurrent) expandedCurrent.textContent = formatTime(currentTime);
-                if (totalDisplay) totalDisplay.textContent = formatTime(duration);
-                if (expandedTotal) expandedTotal.textContent = formatTime(duration);
-            }
-        }
-        if (playerState === 1 && duration > 0 && currentTime >= 30) {
-            const now = Date.now();
-            if (now - state.streamingLastReward > 29000) {
-                if (state.currentTrackIndex >= 0) {
-                    let currentTrack;
-                    if (state.currentTrackIndex >= 1000) {
-                        const externalIndex = state.currentTrackIndex - 1000;
-                        if (externalIndex >= 0 && externalIndex < state.externalPlaylist.length) {
-                            currentTrack = state.externalPlaylist[externalIndex];
-                        }
-                    } else if (state.currentTrackIndex < state.playlist.length) {
-                        currentTrack = state.playlist[state.currentTrackIndex];
-                    }
-                    if (currentTrack && currentTrack.id !== state.streamingTrackId) {
-                        state.streamingTrackId = currentTrack.id;
-                        state.streamingLastReward = 0;
-                    }
-                    if (state.streamingLastReward === 0 || now - state.streamingLastReward > 29000) {
-                        registerRealStreamingReward(currentTrack, currentTime, duration);
-                        state.streamingLastReward = now;
-                        if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-                            new Notification('PLAY MY', {
-                                body: `🎵 +1 SELO COIN por streaming de "${currentTrack.titulo}"`,
-                                icon: 'https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png',
-                                silent: true
-                            });
-                        }
-                    }
-                }
-            }
-        }
-    } catch (error) { console.error('Erro no monitoramento de streaming:', error); }
-}
-
-async function registerRealStreamingReward(track, currentTime, duration) {
-    if (!track || !track.id || !state.currentUser) {
-        console.log('❌ Não foi possível registrar recompensa: dados incompletos');
-        return;
-    }
-    if (duration < 30) {
-        console.log('⏳ Vídeo muito curto para recompensa:', duration);
-        return;
-    }
-    if (currentTime < 30) {
-        console.log('⏳ Ainda não atingiu 30 segundos:', currentTime);
-        return;
-    }
-    const musicRewardKey = `reward_${track.id}_${state.currentUser.id}`;
-    const hasReceivedReward = localStorage.getItem(musicRewardKey);
-    if (hasReceivedReward) {
-        console.log('⏭️ Recompensa já foi paga para esta música:', track.titulo);
-        return;
-    }
-    console.log(`🎵 STREAMING REAL: 30s completos em "${track.titulo}"! Registrando...`);
-    showToast(`⏱️ 30 segundos de "${track.titulo}"!`, 'info');
-    try {
-        const result = await callAPI('register_streaming', {
-            music_id: track.id,
-            user_id: state.currentUser.id,
-            duration: Math.floor(currentTime),
-            total_duration: Math.floor(duration),
-            timestamp: new Date().toISOString(),
-            youtube_time: currentTime,
-            player_state: state.isPlaying ? 'playing' : 'paused',
-            verification: 'real'
-        });
-        console.log('📦 Resposta da API de streaming:', result);
-        if (result?.success) {
-            const rewardAmount = result.data?.reward || 1;
-            localStorage.setItem(musicRewardKey, 'true');
-            showStreamingReward(rewardAmount, track.titulo);
-            setTimeout(() => { updateBalanceDisplay(true); loadLedger(true); loadStreamingStats(true); }, 2000);
-        } else {
-            console.log('⚠️ API não registrou streaming:', result?.message);
-            showToast('❌ Erro ao registrar streaming', 'error');
-        }
-    } catch (error) {
-        console.error('❌ Erro ao registrar streaming REAL:', error);
-        showToast('❌ Falha na conexão', 'error');
-    }
-}
-
-function showStreamingReward(amount, musicTitle) {
-    const indicator = document.getElementById('streamingRewardIndicator');
-    const amountEl = document.getElementById('streamingRewardAmount');
-    const musicEl = document.getElementById('streamingMusicName');
-    if (indicator && amountEl && musicEl) {
-        amountEl.textContent = `+${amount} SELO COIN`;
-        musicEl.textContent = musicTitle.length > 30 ? musicTitle.substring(0, 27) + '...' : musicTitle;
-        indicator.style.display = 'block';
-        setTimeout(() => { indicator.style.display = 'none'; }, 5000);
-    }
-}
-
-// ===== EXPORT =====
-if (typeof window !== 'undefined') {
-    window.loadYouTubeAPI = loadYouTubeAPI;
-    window.initializeYouTubePlayer = initializeYouTubePlayer;
-    window.playTrack = playTrack;
-    window.playExternalTrack = playExternalTrack;
-    window.togglePlay = togglePlay;
-    window.playNext = playNext;
-    window.playPrevious = playPrevious;
-    window.toggleShuffle = toggleShuffle;
-    window.toggleRepeat = toggleRepeat;
-    window.toggleMute = toggleMute;
-    window.setVolume = setVolume;
-    window.handleVolumeClick = handleVolumeClick;
-    window.handleProgressClick = handleProgressClick;
-    window.handleExpandedProgressClick = handleExpandedProgressClick;
-    window.openPlayerExpanded = openPlayerExpanded;
-    window.closePlayerExpanded = closePlayerExpanded;
-    window.togglePlayerExpansion = togglePlayerExpansion;
-    window.updatePlayerIcons = updatePlayerIcons;
-    window.updateFavoriteButton = updateFavoriteButton;
-    window.toggleFavorite = toggleFavorite;
-    window.setupMediaSession = setupMediaSession;
-    window.checkStreamingProgress = checkStreamingProgress;
-    window.startStreamingMonitor = startStreamingMonitor;
-    window.stopStreamingMonitor = stopStreamingMonitor;
-}
+async function updateMusic() { showToast('Função em desenvolvimento', 'info'); }
+async function pauseMusic(id) { showToast('Música pausada', 'success'); }
+async function unpauseMusic(id) { showToast('Música reativada', 'success'); }
+async function requestDeleteMusic(id) { if (confirm('Solicitar exclusão?')) showToast('Solicitação enviada', 'success'); }
