@@ -2,28 +2,21 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/backend"
-    },
-    {
-      "source": "/((?!manifest\\.json|sw\\.js|images/|api/|favicon\\.ico|robots\\.txt).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/(.*)", "destination": "/api/backend" },
+    { "source": "/((?!api/|manifest\\.json|sw\\.js|images/|favicon\\.ico).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/sw.js",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" }
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
     },
     {
       "source": "/manifest.json",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-        { "key": "Content-Type", "value": "application/manifest+json; charset=utf-8" }
+        { "key": "Content-Type", "value": "application/manifest+json" }
       ]
     }
   ]
