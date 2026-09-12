@@ -1,6 +1,6 @@
 {
   "name": "playmy",
-  "version": "8.5.0",
+  "version": "8.5.4",
   "private": true,
   "description": "PLAY MY — Plataforma de investimento em música com streaming, blockchain e royalties",
   "author": "SELO MIV",
@@ -9,12 +9,32 @@
   "engines": {
     "node": "20.x"
   },
+  "keywords": [
+    "music",
+    "streaming",
+    "blockchain",
+    "investment",
+    "royalties",
+    "playmy",
+    "selo-miv"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ISRCselomivbeta/selomivplay.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ISRCselomivbeta/selomivplay/issues"
+  },
+  "homepage": "https://playmy.com.br",
   "dependencies": {
     "@vercel/kv": "^2.0.0",
     "nodemailer": "^6.9.7"
   },
   "scripts": {
     "dev": "vercel dev",
-    "deploy": "vercel --prod"
+    "start": "vercel dev",
+    "deploy": "vercel --prod",
+    "build": "echo 'No build step needed — static + serverless'",
+    "lint": "echo 'No linter configured yet'"
   }
 }
