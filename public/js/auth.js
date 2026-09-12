@@ -1,200 +1,229 @@
 // ============================================================
-// AUTH.JS - Autenticação PLAY MY
+// js/auth.js — PLAY MY v8.5.0
+// Login, registro, logout, reset de senha, sessão.
+// Depende de: config.js, utils.js, state.js, api.js
+// DEVE carregar DEPOIS de api.js e ANTES de app.js.
 // ============================================================
 
-async function handleLogin() {
-    const email = document.getElementById('loginEmailField')?.value?.trim();
-    const password = document.getElementById('loginPasswordField')?.value?.trim();
-    const loginBtn = document.getElementById('loginBtn');
+// ============ LOGIN ============
+window.handleLogin = async function () {
+  const email = document.getElementById('loginEmailField').value.trim();
+  const password = document.getElementById('loginPasswordField').value.trim();
+  const btn = document.getElementById('loginBtn');
 
-    if (!email || !password) { showToast('Preencha todos os campos', 'error'); return; }
+  if (!email || !password) {
+    showToast('Preencha todos os campos', 'error');
+    return;
+  }
 
-    loginBtn.disabled = true;
-    loginBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Autenticando...';
-    showLoading('Autenticando...');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Autenticando...';
+  showLoading('Autenticando...');
 
-    try {
-        if (email === 'admin@selomiv.com' && password === 'admin123') {
-            state.currentUser = {
-                id: 'admin_master', nome: 'Administrador Master', email,
-                tipo: 'admin', saldo: 1000000, favorite_music_ids: []
-            };
-            state.userBalance = 1000000;
-            state.favoriteMusicIds = [];
-            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-            showToast('Login ADMIN realizado!', 'success');
-            document.getElementById('loginEmailField').value = '';
-            document.getElementById('loginPasswordField').value = '';
-            hideLoading();
-            initializeApp();
-            return;
-        }
+  try {
+    const r = await callAPI('login', { email, password });
+    console.log('🔍 Login resposta:', r);
 
-        const result = await callAPI('login', { email, password });
-        if (result?.success && result?.data) {
-            const userData = result.data;
-            state.currentUser = userData;
-            state.userBalance = userData.saldo || 0;
-            if (userData.favorite_music_ids) {
-                state.favoriteMusicIds = Array.isArray(userData.favorite_music_ids)
-                    ? userData.favorite_music_ids
-                    : String(userData.favorite_music_ids).split(',').filter(id => id.trim() !== '');
-            } else {
-                state.favoriteMusicIds = [];
-            }
-            localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
-            showToast('Login realizado!', 'success');
-            document.getElementById('loginEmailField').value = '';
-            document.getElementById('loginPasswordField').value = '';
-            initializeApp();
-        } else {
-            showToast(result?.message || 'Credenciais inválidas', 'error');
-        }
-    } catch (error) {
-        console.error('Erro no login:', error);
-        showToast('Erro ao conectar com o servidor', 'error');
-    } finally {
-        loginBtn.disabled = false;
-        loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
-        hideLoading();
+    if (r && r.success && r.data && r.data.id) {
+      state.currentUser = r.data;
+      state.userBalance = r.data.saldo || 0;
+      state.seloCoinBalance = r.data.selo_coin || 0;
+      state.favoriteMusicIds = Array.isArray(r.data.favorite_music_ids)
+        ? r.data.favorite_music_ids
+        : [];
+
+      localStorage.setItem('miv_user', JSON.stringify(state.currentUser));
+      showToast('Login realizado!', 'success');
+      hideLoading();
+
+      // initializeApp está em app.js — chamada via window para evitar dependência circular
+      if (typeof window.initializeApp === 'function') {
+        window.initializeApp();
+      } else {
+        console.warn('⚠️ initializeApp ainda não carregado');
+      }
+    } else {
+      showToast((r && r.message) || 'Credenciais inválidas', 'error');
     }
-}
+  } catch (e) {
+    console.error('Erro no login:', e);
+    showToast('Erro ao conectar', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Entrar';
+    hideLoading();
+  }
+};
 
-async function handleRegister() {
-    const name = document.getElementById('registerNameField')?.value?.trim();
-    const email = document.getElementById('registerEmailField')?.value?.trim();
-    const password = document.getElementById('registerPasswordField')?.value?.trim();
-    const type = document.getElementById('registerTypeField')?.value;
-    const link = document.getElementById('registerLinkField')?.value?.trim() || '';
-    const acceptTerms = document.getElementById('acceptTermsField')?.checked;
-    const acceptMarketing = document.getElementById('acceptMarketingField')?.checked || false;
-    const registerBtn = document.getElementById('registerBtn');
+// ============ REGISTRO ============
+window.handleRegister = async function () {
+  const name = document.getElementById('registerNameField').value.trim();
+  const email = document.getElementById('registerEmailField').value.trim();
+  const password = document.getElementById('registerPasswordField').value.trim();
+  const type = document.getElementById('registerTypeField').value;
+  const link = document.getElementById('registerLinkField').value.trim() || '';
+  const accept = document.getElementById('acceptTermsField').checked;
+  const btn = document.getElementById('registerBtn');
 
-    if (!name || !email || !password || !type) { showToast('Preencha todos os campos', 'error'); return; }
-    if (password.length < 6) { showToast('Senha mínimo 6 caracteres', 'error'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('E-mail inválido', 'error'); return; }
-    if (!acceptTerms) { showToast('Aceite os Termos de Uso', 'error'); return; }
+  // Validações
+  if (!name || !email || !password || !type) {
+    showToast('Preencha os campos', 'error');
+    return;
+  }
+  if (password.length < 6) {
+    showToast('Senha mínimo 6 caracteres', 'error');
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast('Email inválido', 'error');
+    return;
+  }
+  if (!accept) {
+    showToast('Aceite os Termos', 'error');
+    return;
+  }
 
-    registerBtn.disabled = true;
-    registerBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Criando...';
-    showLoading('Criando conta...');
+  btn.disabled = true;
+  btn.innerHTML = 'Criando...';
 
-    try {
-        const result = await callAPI('register', {
-            nome: name, email, senha: password, tipo: type, workLink: link,
-            confirm_url: window.location.origin + '/public/confirm-email.html',
-            accepted_terms: true, terms_version: '7.1.0',
-            terms_accepted_at: new Date().toISOString(),
-            accepted_marketing: acceptMarketing
-        });
+  try {
+    const r = await callAPI('register', {
+      nome: name,
+      email,
+      senha: password,
+      tipo: type,
+      workLink: link,
+      confirm_url: CONFIG.CONFIRM_EMAIL_URL
+    });
 
-        if (result?.success) {
-            showToast('Cadastro realizado! Verifique seu email.', 'success');
-            hideLoading();
-            setTimeout(() => showToast(`✉️ Enviamos um email para ${email}`, 'info', 5000), 1000);
-            document.getElementById('registerNameField').value = '';
-            document.getElementById('registerEmailField').value = '';
-            document.getElementById('registerPasswordField').value = '';
-            document.getElementById('registerTypeField').value = '';
-            document.getElementById('registerLinkField').value = '';
-            document.getElementById('acceptTermsField').checked = false;
-            document.getElementById('acceptMarketingField').checked = false;
-            showLoginForm();
-        } else {
-            showToast(result?.message || 'Erro ao cadastrar', 'error');
-        }
-    } catch (error) {
-        console.error('Erro no registro:', error);
-        showToast('Erro ao criar conta', 'error');
-    } finally {
-        registerBtn.disabled = false;
-        registerBtn.innerHTML = '<i class="bi bi-person-plus"></i> Solicitar Cadastro';
-        hideLoading();
+    if (r && r.success) {
+      showToast('Cadastro realizado! Verifique seu email.', 'success');
+      showLoginForm();
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
     }
-}
+  } catch (e) {
+    console.error('Erro no registro:', e);
+    showToast('Erro', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-person-plus"></i> Solicitar Cadastro';
+  }
+};
 
-async function resendConfirmationEmail() {
-    const email = document.getElementById('loginEmailField')?.value?.trim();
-    if (!email) { showToast('Digite seu email primeiro', 'error'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Email inválido', 'error'); return; }
-    showLoading('Enviando email...');
-    try {
-        const result = await callAPI('resend_confirmation', {
-            email,
-            confirm_url: window.location.origin + '/public/confirm-email.html'
-        });
-        if (result?.success) showToast(`✉️ Novo link enviado para ${email}!`, 'success', 5000);
-        else showToast(result?.message || 'Erro ao enviar email', 'error');
-    } catch (error) {
-        showToast('Erro ao enviar email', 'error');
-    } finally { hideLoading(); }
-}
+// ============ LOGOUT ============
+window.logout = function () {
+  if (!confirm('Deseja sair?')) return;
 
-async function initializeApp() {
-    document.getElementById('authScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    updateUserInterface();
-    await loadAllData();
-    await loadUserFavorites();
-    loadYouTubeAPI();
+  // Limpa estado
+  state.currentUser = null;
+  state.userBalance = 0;
+  state.seloCoinBalance = 0;
+  state.playlist = [];
+  state.externalPlaylist = [];
+  state.portfolioAssets = [];
+  state.ledgerData = [];
+  state.favoriteMusicIds = [];
+  state.followingArtists = [];
+  state.currentTrackIndex = -1;
 
-    setInterval(() => { if (state.currentUser) updateBalanceDisplay(); }, 30000);
-    setInterval(() => { if (state.currentUser) loadStreamingStats(); }, 60000);
-}
+  // Limpa storage
+  localStorage.removeItem('miv_user');
 
-async function loadAllData() {
-    showLoading('Carregando dados...');
-    try {
-        await Promise.all([
-            loadMarketplace(),
-            loadExternalMarketplace(),
-            loadPortfolio(),
-            loadLedger(),
-            loadTopInvestments(),
-            loadUserPlaylists()
-        ]);
-        await updateBalanceDisplay();
-        if (state.currentUser?.tipo === 'artista') await loadArtistData();
-        showToast('Sistema carregado!', 'success');
-    } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        showToast('Alguns dados não foram carregados', 'warning');
-    } finally { hideLoading(); }
-}
+  // Esconde app, mostra auth
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('playerSpotify').style.display = 'none';
 
-function showRegisterForm() {
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('registerForm').style.display = 'block';
-}
+  // Para o player se estiver tocando
+  if (state.youtubePlayer && state.youtubePlayer.stopVideo) {
+    try { state.youtubePlayer.stopVideo(); } catch (e) {}
+  }
+  if (state.progressInterval) {
+    clearInterval(state.progressInterval);
+    state.progressInterval = null;
+  }
 
-function showLoginForm() {
-    document.getElementById('registerForm').style.display = 'none';
-    document.getElementById('loginForm').style.display = 'block';
-}
+  showToast('Logout realizado', 'success');
+};
 
-function toggleArtistField() {
-    const field = document.getElementById('artistLinkField');
-    if (field) field.style.display = document.getElementById('registerTypeField').value === 'artista' ? 'block' : 'none';
-}
+// ============ RESET DE SENHA ============
+window.openResetPasswordModal = function () {
+  const emailField = document.getElementById('loginEmailField');
+  document.getElementById('resetEmailField').value = emailField ? emailField.value || '' : '';
+  showModal('resetPasswordModal');
+};
 
-function logout() {
-    if (confirm('Deseja realmente sair?')) {
-        state.currentUser = null;
-        state.userBalance = 0;
-        state.playlist = [];
-        state.externalPlaylist = [];
-        state.portfolioAssets = [];
-        state.ledgerData = [];
-        state.favoriteMusicIds = [];
-        state.currentTrackIndex = -1;
-        state.isPlaying = false;
-        localStorage.removeItem('miv_user');
-        localStorage.removeItem('miv_session');
-        document.getElementById('mainApp').style.display = 'none';
-        document.getElementById('authScreen').style.display = 'flex';
-        document.getElementById('loginForm').style.display = 'block';
-        document.getElementById('registerForm').style.display = 'none';
-        document.getElementById('playerSpotify').style.display = 'none';
-        showToast('Logout realizado', 'success');
+window.sendResetEmail = async function () {
+  const email = document.getElementById('resetEmailField').value.trim();
+  if (!email) {
+    showToast('Digite seu email', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('sendResetBtn');
+  btn.disabled = true;
+
+  try {
+    const r = await callAPI('request_password_reset', {
+      email,
+      reset_url: CONFIG.RESET_PASSWORD_URL
+    });
+
+    if (r && r.success) {
+      showToast('Link enviado!', 'success');
+      closeModal('resetPasswordModal');
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
     }
-}
+  } catch (e) {
+    console.error('Erro no reset:', e);
+    showToast('Erro', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+// ============ ALTERNAR FORMULÁRIOS ============
+window.showRegisterForm = function () {
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('registerForm').style.display = 'block';
+};
+
+window.showLoginForm = function () {
+  document.getElementById('registerForm').style.display = 'none';
+  document.getElementById('loginForm').style.display = 'block';
+};
+
+window.toggleArtistField = function () {
+  const f = document.getElementById('artistLinkField');
+  const typeField = document.getElementById('registerTypeField');
+  if (f && typeField) {
+    f.style.display = typeField.value === 'artista' ? 'block' : 'none';
+  }
+};
+
+// ============ RESTAURAR SESSÃO (chamado por app.js) ============
+window.restoreSession = function () {
+  const stored = localStorage.getItem('miv_user');
+  if (!stored) return false;
+
+  try {
+    const user = JSON.parse(stored);
+    state.currentUser = user;
+    state.userBalance = user.saldo || 0;
+    state.seloCoinBalance = user.selo_coin || 0;
+    state.favoriteMusicIds = Array.isArray(user.favorite_music_ids)
+      ? user.favorite_music_ids
+      : [];
+    console.log('✅ Sessão restaurada para:', user.email || user.nome);
+    return true;
+  } catch (e) {
+    console.warn('⚠️ Sessão inválida, removendo:', e.message);
+    localStorage.removeItem('miv_user');
+    return false;
+  }
+};
+
+// ============ LOG DE CARREGAMENTO ============
+console.log('✅ [auth.js] carregado — login, registro, logout prontos');
