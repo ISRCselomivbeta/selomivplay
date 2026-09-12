@@ -1,388 +1,1135 @@
 // ============================================================
-// MARKETPLACE.JS - Marketplace e Bolsa Externa PLAY MY
+// js/marketplace.js — PLAY MY v8.5.0
+// Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
+// Depende de: config, utils, state, api, auth, youtube, player
+// DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
 // ============================================================
 
-async function loadMarketplace(forceRefresh = false) {
-    if (!state.playlist || state.playlist.length === 0) {
-        state.playlist = (await getFallbackData('get_musicas')).data || [];
-        renderMarketplace();
+// ============================================================
+// NAVEGAÇÃO ENTRE SEÇÕES
+// ============================================================
+window.changeSection = function (section) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(section + 'Section');
+  if (el) el.classList.add('active');
+
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.classList.remove('open');
+
+  window.scrollTo(0, 0);
+
+  // Hooks para seções que precisam recarregar
+  if (section === 'news' && typeof loadNewsFeed === 'function') loadNewsFeed();
+  if (section === 'trades' && typeof loadTradeOffers === 'function') loadTradeOffers();
+  if (section === 'blockchain' && typeof loadBlockchainData === 'function') loadBlockchainData();
+};
+
+window.toggleSidebar = function () {
+  const s = document.getElementById('sidebar');
+  if (s) s.classList.toggle('open');
+};
+
+// ============================================================
+// LOADERS DE DADOS
+// ============================================================
+window.loadMarketplace = async function () {
+  try {
+    const r = await callAPI('get_musicas');
+    if (r && r.success && r.data && r.data.length) {
+      state.playlist = r.data;
     }
-    try {
-        const result = await callAPI('get_musicas');
-        if (result?.success && result?.data && result.data.length > 0) {
-            state.playlist = result.data;
-            state.playlist = ELO.applyRatingDecay(state.playlist);
-            state.playlist = ELO.updateCompleteRanking(state.playlist);
-        }
-    } catch (error) { console.log('Usando dados de exemplo'); }
-    renderMarketplace();
-}
+  } catch (e) {
+    console.warn('⚠️ loadMarketplace:', e.message);
+  }
+  renderMarketplace();
+  renderRecommended();
+};
 
-async function loadExternalMarketplace(forceRefresh = false) {
-    if (!forceRefresh) {
-        const cached = localStorage.getItem('miv_external_playlist');
-        const cachedTime = localStorage.getItem('miv_external_timestamp');
-        if (cached && cachedTime) {
-            const age = Date.now() - parseInt(cachedTime);
-            if (age < 600000) {
-                try {
-                    state.externalPlaylist = JSON.parse(cached);
-                    renderExternalMarketplace();
-                    return;
-                } catch (e) {}
-            }
-        }
+window.loadExternalMarketplace = async function () {
+  try {
+    const r = await callAPI('get_external_musicas');
+    if (r && r.success && r.data) {
+      state.externalPlaylist = r.data;
     }
-    const result = await callAPI('get_external_musicas');
-    if (result?.success && result?.data) {
-        state.externalPlaylist = result.data;
-        localStorage.setItem('miv_external_playlist', JSON.stringify(result.data));
-        localStorage.setItem('miv_external_timestamp', Date.now().toString());
+  } catch (e) {
+    console.warn('⚠️ loadExternalMarketplace:', e.message);
+  }
+  renderExternalMarketplace();
+};
+
+window.loadTopInvestments = async function () {
+  try {
+    const r = await callAPI('get_top_investments');
+    if (r && r.success && r.data) {
+      state.topInvestments = r.data;
     }
-    renderExternalMarketplace();
-}
+  } catch (e) {}
+  renderTopInvestments();
+};
 
-async function loadTopInvestments(forceRefresh = false) {
-    const result = await callAPI('get_top_investments');
-    if (result?.success && result?.data) {
-        state.topInvestments = result.data;
-        state.topInvestments = ELO.updateCompleteRanking(state.topInvestments);
+window.loadUserPlaylists = async function () {
+  if (!state.currentUser) return;
+  try {
+    const r = await callAPI('get_playlists');
+    if (r && r.success && r.data) {
+      state.userPlaylists = r.data;
     }
-    renderTopInvestments();
-}
+  } catch (e) {}
+  renderPlaylists();
+  renderFavorites();
+};
 
-async function loadArtistData(forceRefresh = false) {
-    if (!state.currentUser || state.currentUser.tipo !== 'artista') return;
-    const result = await callAPI('get_artist_data', { user_id: state.currentUser.id });
-    if (result?.success && result?.data) {
-        document.getElementById('artistMusicCount').textContent = result.data.total_musicas || 0;
-        document.getElementById('artistRoyalties').textContent = formatCurrency(result.data.total_royalties || 0);
-        document.getElementById('artistSharesSold').textContent = result.data.total_shares_sold || 0;
-        document.getElementById('artistMonthlyEarnings').textContent = formatCurrency(result.data.monthly_earnings || 0);
-        renderArtistMusic(result.data.musics || []);
+window.loadGlobalPlaylists = async function () {
+  try {
+    const r = await callAPI('get_global_playlists');
+    if (r && r.success && r.data) {
+      state.globalPlaylists = r.data;
     }
-}
+  } catch (e) {}
+  renderGlobalPlaylists();
+  if (state.currentUser && state.currentUser.tipo === 'admin') {
+    renderAdminGlobalPlaylists();
+  }
+};
 
-function renderMarketplace() {
-    const container = document.getElementById('marketplaceContent');
-    const artistsGrid = document.getElementById('artistsPlaylistsGrid');
-    const externalGrid = document.getElementById('externalMarketplaceGrid');
-    const recommendedCard = document.getElementById('recommendedCard');
+window.loadArtists = async function () {
+  try {
+    const r = await callAPI('get_artists');
+    if (r && r.success && r.data) {
+      state.artists = r.data;
+    }
+  } catch (e) {}
+  renderArtists();
+  renderFeaturedArtists();
+};
 
-    if (!container) return;
+window.loadFollowing = async function () {
+  if (!state.currentUser) return;
+  try {
+    const r = await callAPI('get_following');
+    if (r && r.success && r.data) {
+      state.followingArtists = Array.isArray(r.data)
+        ? r.data.map(String)
+        : [];
+    }
+  } catch (e) {}
+};
 
-    if (!state.playlist || state.playlist.length === 0) {
-        container.innerHTML = `<div class="empty-state-spotify" style="grid-column: 1/-1;"><i class="bi bi-music-note-beamed" style="font-size: 2.5rem; color: #1DB954;"></i><h5 style="color: white; margin-top: 0.5rem; font-size: 16px;">Nenhuma música disponível</h5></div>`;
+window.loadTickets = async function () {
+  try {
+    const r = await callAPI('get_tickets');
+    if (r && r.success && r.data) {
+      state.tickets = r.data;
+    }
+  } catch (e) {}
+  renderTickets();
+};
+
+// ============================================================
+// RENDERIZAÇÃO — MERCADO
+// ============================================================
+window.renderMarketplace = function () {
+  const c = document.getElementById('marketplaceContent');
+  if (!c) return;
+
+  if (!state.playlist.length) {
+    c.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--apple-label-2);padding:40px">Nenhuma música disponível</div>';
+    return;
+  }
+
+  c.innerHTML = state.playlist.slice(0, 14).map((t, i) => {
+    const cover = getCoverUrl(t, false);
+    return '<div class="spotify-card">' +
+      '<div class="spotify-cover">' +
+        '<img src="' + cover + '" loading="lazy" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+        '<div class="play-overlay" onclick="playTrack(' + i + ')"><i class="bi bi-play-fill"></i></div>' +
+      '</div>' +
+      '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
+      '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
+      '<div class="spotify-stats">' +
+        '<span class="spotify-elo">' + (t.percentual_disponivel || 0) + '%</span>' +
+        '<span class="spotify-price">' + formatCurrency(t.valor_acao || 0) + '</span>' +
+      '</div>' +
+      '<button class="btn-invest" onclick="openInvestModal(' + i + ')">' +
+        '<i class="bi bi-currency-dollar"></i> INVESTIR' +
+      '</button>' +
+    '</div>';
+  }).join('');
+};
+
+window.renderRecommended = function () {
+  const rec = document.getElementById('recommendedCard');
+  if (!rec) return;
+
+  if (!state.playlist[0]) {
+    rec.innerHTML = '';
+    return;
+  }
+
+  const p = state.playlist[0];
+  rec.innerHTML =
+    '<img src="' + getCoverUrl(p, false) + '" class="recommended-cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+    '<div class="recommended-info">' +
+      '<h4>' + (p.titulo || '') + ' • ' + (p.artista || '') + '</h4>' +
+      '<p>' + formatCurrency(p.valor_acao || 0) + ' por ação</p>' +
+    '</div>' +
+    '<button class="btn-play" onclick="playTrack(0)"><i class="bi bi-play-fill"></i></button>';
+};
+
+window.renderExternalMarketplace = function () {
+  const c = document.getElementById('externalContent');
+  if (!c) return;
+
+  if (!state.externalPlaylist.length) {
+    c.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--apple-label-2)">' +
+      '<i class="bi bi-globe" style="font-size:48px;color:var(--apple-orange)"></i>' +
+      '<h3>Nenhuma música externa</h3>' +
+      '<p class="text-muted">Sugira uma música para investimento externo</p>' +
+    '</div>';
+    return;
+  }
+
+  c.innerHTML = state.externalPlaylist.map((t, i) =>
+    '<div class="spotify-card external-card">' +
+      '<div class="external-badge">EXT</div>' +
+      '<div class="spotify-cover">' +
+        '<img src="' + getCoverUrl(t, true) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.EXT_300 + '\'">' +
+        '<div class="play-overlay" onclick="playExternalTrack(' + i + ')"><i class="bi bi-play-fill"></i></div>' +
+      '</div>' +
+      '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
+      '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
+      '<div class="spotify-stats">' +
+        '<span class="spotify-elo">' + (t.percentual_disponivel || 0) + '%</span>' +
+        '<span class="spotify-price">' + formatCurrency(t.valor_acao || 0) + '</span>' +
+      '</div>' +
+      '<button class="btn-invest" onclick="openInvestExternalModal(' + i + ')">INVESTIR EXT</button>' +
+    '</div>'
+  ).join('');
+};
+
+window.renderTopInvestments = function () {
+  const c = document.getElementById('investmentsContent');
+  if (!c) return;
+
+  if (!state.topInvestments.length) {
+    c.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--apple-label-2);padding:40px">Nenhuma recomendação</div>';
+    return;
+  }
+
+  c.innerHTML = state.topInvestments.map(t =>
+    '<div class="spotify-card">' +
+      '<div class="spotify-cover">' +
+        '<img src="' + getCoverUrl(t, false) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+      '</div>' +
+      '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
+      '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
+      '<div class="spotify-stats">' +
+        '<span class="spotify-elo">' + (t.investment_score || 0) + '</span>' +
+        '<span class="spotify-price">' + formatCurrency(t.valor_acao || 0) + '</span>' +
+      '</div>' +
+    '</div>'
+  ).join('');
+};
+
+// ============================================================
+// RENDERIZAÇÃO — ARTISTAS
+// ============================================================
+window.renderArtists = function () {
+  const c = document.getElementById('artistsContent');
+  if (!c) return;
+
+  if (!state.artists.length) {
+    c.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--apple-label-2)">Nenhum artista</div>';
+    return;
+  }
+
+  c.innerHTML = state.artists.map(a => {
+    const isFollowing = (state.followingArtists || []).map(String).includes(String(a.id));
+    const avatar = a.avatar && a.avatar.startsWith('http') ? a.avatar : PLACEHOLDERS.ARTIST;
+    return '<div class="artist-card">' +
+      '<img src="' + avatar + '" class="artist-avatar" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.ARTIST + '\'">' +
+      '<h4 class="artist-name">' + (a.nome || '') + '</h4>' +
+      '<p class="artist-followers">' + formatNumber(a.followers || 0) + ' seguidores</p>' +
+      '<button class="btn-follow ' + (isFollowing ? 'following' : '') + '" onclick="toggleFollow(\'' + a.id + '\')">' +
+        (isFollowing ? 'Seguindo' : 'Seguir') +
+      '</button>' +
+    '</div>';
+  }).join('');
+};
+
+window.renderFeaturedArtists = function () {
+  const c = document.getElementById('featuredArtistsGrid');
+  if (!c) return;
+
+  const items = (state.artists || []).slice(0, 6);
+  if (!items.length) { c.innerHTML = ''; return; }
+
+  c.innerHTML = items.map(a => {
+    const isFollowing = (state.followingArtists || []).map(String).includes(String(a.id));
+    const avatar = a.avatar && a.avatar.startsWith('http') ? a.avatar : PLACEHOLDERS.ARTIST;
+    return '<div class="artist-card">' +
+      '<img src="' + avatar + '" class="artist-avatar" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.ARTIST + '\'">' +
+      '<h4 class="artist-name">' + (a.nome || '') + '</h4>' +
+      '<button class="btn-follow ' + (isFollowing ? 'following' : '') + '" onclick="toggleFollow(\'' + a.id + '\')">' +
+        (isFollowing ? 'Seguindo' : 'Seguir') +
+      '</button>' +
+    '</div>';
+  }).join('');
+};
+
+// ============================================================
+// RENDERIZAÇÃO — PLAYLISTS (USUÁRIO)
+// ============================================================
+window.renderPlaylists = function () {
+  const pc = document.getElementById('playlistsContent');
+  if (!pc) return;
+
+  if (state.userPlaylists.length) {
+    pc.innerHTML = state.userPlaylists.map(p =>
+      '<div class="playlist-item" onclick="playUserPlaylist(\'' + p.id + '\')">' +
+        '<div class="playlist-cover"><i class="bi bi-music-note-list"></i></div>' +
+        '<div class="flex-grow-1">' +
+          '<h6 class="mb-0">' + (p.nome || '') + '</h6>' +
+          '<small class="text-muted">' + ((p.musicas || []).length) + ' músicas</small>' +
+        '</div>' +
+        '<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); playUserPlaylist(\'' + p.id + '\')">' +
+          '<i class="bi bi-play-fill"></i>' +
+        '</button>' +
+      '</div>'
+    ).join('');
+  } else {
+    pc.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-music-note-list empty-icon"></i><h5 class="text-muted">Nenhuma playlist</h5></div>';
+  }
+};
+
+window.renderFavorites = function () {
+  const fc = document.getElementById('favoritesContent');
+  if (!fc) return;
+
+  const favs = [
+    ...(state.playlist || []).filter(t => state.favoriteMusicIds && state.favoriteMusicIds.map(String).includes(String(t.id))),
+    ...(state.externalPlaylist || []).filter(t => state.favoriteMusicIds && state.favoriteMusicIds.map(String).includes(String(t.id)))
+  ];
+
+  if (favs.length) {
+    fc.innerHTML = favs.map(t =>
+      '<div class="spotify-card">' +
+        '<div class="spotify-cover">' +
+          '<img src="' + getCoverUrl(t, false) + '">' +
+        '</div>' +
+        '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
+        '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
+      '</div>'
+    ).join('');
+  } else {
+    fc.innerHTML = '<div class="empty-state-actionable" style="grid-column:1/-1"><i class="bi bi-star empty-icon"></i><h5 class="text-muted">Sem favoritas</h5></div>';
+  }
+};
+
+// ============================================================
+// RENDERIZAÇÃO — PLAYLISTS GLOBAIS
+// ============================================================
+window.renderGlobalPlaylists = function () {
+  const c1 = document.getElementById('globalPlaylistsGrid');
+  const c2 = document.getElementById('globalPlaylistsContent');
+  const items = state.globalPlaylists || [];
+  const isAdmin = state.currentUser && state.currentUser.tipo === 'admin';
+
+  // Versão lista (seção de playlists)
+  const html = items.length ? items.map(p =>
+    '<div class="playlist-item">' +
+      '<div class="playlist-cover" style="background:linear-gradient(135deg,var(--apple-blue),var(--apple-purple))">' +
+        '<i class="bi bi-globe"></i>' +
+      '</div>' +
+      '<div class="flex-grow-1">' +
+        '<h6 class="mb-0">' + (p.nome || '') + '</h6>' +
+        '<small class="text-muted">' + (p.descricao || 'Playlist global') + ' • ' + ((p.musicas || []).length) + ' músicas</small>' +
+      '</div>' +
+      '<button class="btn btn-sm btn-success me-2" onclick="event.stopPropagation(); playGlobalPlaylist(\'' + p.id + '\')">' +
+        '<i class="bi bi-play-fill"></i> Tocar' +
+      '</button>' +
+      (isAdmin ? '<button class="btn btn-sm btn-info" onclick="event.stopPropagation(); openManageGlobalPlaylist(\'' + p.id + '\')"><i class="bi bi-pencil-square me-1"></i>Gerenciar</button>' : '') +
+    '</div>'
+  ).join('') : '<div class="empty-state-actionable"><i class="bi bi-globe empty-icon"></i><h5 class="text-muted">Nenhuma playlist global ainda</h5></div>';
+
+  // Versão grid (mercado)
+  const gridHtml = items.length ? items.map(p =>
+    '<div class="spotify-card" onclick="playGlobalPlaylist(\'' + p.id + '\')">' +
+      '<div class="spotify-cover" style="background:linear-gradient(135deg,var(--apple-blue),var(--apple-purple));display:flex;align-items:center;justify-content:center;position:relative">' +
+        '<i class="bi bi-globe" style="font-size:64px;color:#fff"></i>' +
+        '<div class="global-badge" style="position:absolute"><i class="bi bi-globe"></i> Global</div>' +
+      '</div>' +
+      '<h3 class="spotify-title">' + (p.nome || '') + '</h3>' +
+      '<p class="spotify-artist">' + ((p.musicas || []).length) + ' músicas</p>' +
+    '</div>'
+  ).join('') : '';
+
+  if (c1) c1.innerHTML = gridHtml;
+  if (c2) c2.innerHTML = html;
+};
+
+window.renderAdminGlobalPlaylists = function () {
+  const c = document.getElementById('adminGlobalPlaylistsContent');
+  if (!c) return;
+
+  const items = state.globalPlaylists || [];
+  if (!items.length) {
+    c.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-globe empty-icon"></i><h5 class="text-muted">Nenhuma playlist global</h5></div>';
+    return;
+  }
+
+  c.innerHTML = items.map(p =>
+    '<div class="playlist-item">' +
+      '<div class="playlist-cover" style="background:linear-gradient(135deg,var(--apple-blue),var(--apple-purple))">' +
+        '<i class="bi bi-globe"></i>' +
+      '</div>' +
+      '<div class="flex-grow-1">' +
+        '<h6 class="mb-0">' + (p.nome || '') + '</h6>' +
+        '<small class="text-muted">' + ((p.musicas || []).length) + ' músicas</small>' +
+      '</div>' +
+      '<button class="btn btn-sm btn-info me-2" onclick="openManageGlobalPlaylist(\'' + p.id + '\')">' +
+        '<i class="bi bi-list-music me-1"></i>Músicas' +
+      '</button>' +
+    '</div>'
+  ).join('');
+};
+
+// ============================================================
+// RENDERIZAÇÃO — TICKETS
+// ============================================================
+window.renderTickets = function () {
+  const c = document.getElementById('ticketsContent');
+  if (!c) return;
+
+  if (!state.tickets.length) {
+    c.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-ticket-perforated empty-icon"></i><h5 class="text-muted">Nenhum ingresso disponível</h5></div>';
+    return;
+  }
+
+  c.innerHTML = state.tickets.map(t =>
+    '<div class="ticket-card">' +
+      '<div class="d-flex justify-content-between">' +
+        '<div class="ticket-title">' + (t.titulo || 'Ingresso') + '</div>' +
+        '<span class="badge" style="background:linear-gradient(135deg,var(--selo-coin),var(--selo-coin-dark));color:#000">' + (t.quantidade_disponivel || 0) + ' restantes</span>' +
+      '</div>' +
+      '<p class="text-muted small mt-2">' + (t.descricao || '') + '</p>' +
+      '<div class="d-flex justify-content-between align-items-center">' +
+        '<div class="ticket-price">' + (t.preco_selo || 0) + ' SELO</div>' +
+        '<button class="btn-redeem" onclick="redeemTicket(\'' + t.id + '\')" ' + ((state.seloCoinBalance || 0) < (t.preco_selo || 0) ? 'disabled' : '') + '>Resgatar</button>' +
+      '</div>' +
+    '</div>'
+  ).join('');
+};
+
+// ============================================================
+// BUSCA (UNIFICADA)
+// ============================================================
+window.performSearch = async function () {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) {
+    showToast('Digite uma busca', 'warning');
+    return;
+  }
+
+  const c = document.getElementById('searchResults');
+  c.style.display = 'block';
+  c.innerHTML = '<div class="p-4 text-center text-muted"><div class="spinner-border spinner-border-sm text-success me-2"></div>Buscando...</div>';
+
+  try {
+    const ql = q.toLowerCase();
+
+    const internal = (state.playlist || []).filter(i =>
+      i && ((i.titulo || '').toLowerCase().includes(ql) || (i.artista || '').toLowerCase().includes(ql))
+    );
+
+    const external = (state.externalPlaylist || []).filter(i =>
+      i && ((i.titulo || '').toLowerCase().includes(ql) || (i.artista || '').toLowerCase().includes(ql))
+    );
+
+    const ytResults = await searchYouTubeDirect(q);
+
+    const all = [
+      ...internal.map(x => ({ ...x, _type: 'internal' })),
+      ...external.map(x => ({ ...x, _type: 'external' })),
+      ...ytResults.map(x => ({ ...x, _type: 'youtube' }))
+    ];
+
+    displaySearchResults(all);
+  } catch (e) {
+    console.error('Erro na busca:', e);
+    c.innerHTML = '<div class="p-4 text-center text-danger">Erro ao buscar</div>';
+  }
+};
+
+window.displaySearchResults = function (all) {
+  const c = document.getElementById('searchResults');
+  if (!all || !all.length) {
+    c.innerHTML = '<div class="p-4 text-center text-muted">Nenhum resultado</div>';
+    return;
+  }
+
+  c.innerHTML = '<div class="p-2">' + all.slice(0, 40).map(item => {
+    if (!item) return '';
+    const isYT = item._type === 'youtube';
+    const isExt = item._type === 'external';
+    const cover = getCoverUrlSmall(item, isExt);
+
+    const badge = isYT
+      ? '<span class="search-result-badge" style="background:rgba(255,59,48,.18);color:var(--apple-red)">▶ YT</span>'
+      : (isExt
+        ? '<span class="search-result-badge">🌐</span>'
+        : '<span class="search-result-badge normal">🔷</span>');
+
+    const title = item.titulo || '';
+    const sub = item.artista || '';
+
+    let clickAction;
+    if (isYT) {
+      const vid = String(item.id).replace('yt_', '');
+      clickAction = 'playSearchResult(\'youtube\', \'' + vid + '\')';
     } else {
-        const mixes = state.playlist.slice(0, 7);
-        container.innerHTML = mixes.map((track, index) => {
-            const videoId = extractYouTubeId(track.link_youtube);
-            const stats = track.youtube_stats || {};
-            const revenue = calculateEstimatedRevenue(stats.views || 100000);
-            return `
-            <div class="spotify-card" data-track-id="${track.id}" data-video-id="${videoId || ''}">
-                <div class="spotify-cover">
-                    <img src="${track.link_capa || PLACEHOLDERS.MIV_300}" alt="${track.titulo}" loading="lazy" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${index})"><i class="bi bi-play-fill"></i></div>
-                </div>
-                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
-                <p class="spotify-artist">${track.artista || 'Artista'}</p>
-                <div class="youtube-stats mt-2">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="youtube-views text-muted"><i class="bi bi-eye-fill me-1"></i> ${stats.views ? formatNumber(stats.views) : 'Carregando...'}</span>
-                        <span class="estimated-earnings text-success"><i class="bi bi-cash-stack me-1"></i> ${revenue.formatted}</span>
-                    </div>
-                </div>
-                <div class="spotify-stats mt-2">
-                    <span class="spotify-elo">${track.percentual_disponivel || 0}% disponível</span>
-                    <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
-                </div>
-                <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${index})">
-                    <i class="bi bi-currency-dollar me-1"></i> INVESTIR
-                </button>
-            </div>`;
-        }).join('');
-        mixes.forEach((track, index) => {
-            const card = container.children[index];
-            if (card && track.link_youtube) updateCardWithRealData(track, card);
-        });
+      clickAction = 'playSearchResult(\'' + item._type + '\', \'' + item.id + '\')';
     }
 
-    if (artistsGrid && state.playlist && state.playlist.length > 3) {
-        const artistItems = state.playlist.slice(3, 7);
-        artistsGrid.innerHTML = artistItems.map((track, idx) => {
-            const originalIndex = idx + 3;
-            let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
-            const categories = ['Álbum', 'Playlist', 'Podcast', 'Rádio'];
-            return `
-            <div class="spotify-card" onclick="playTrack(${originalIndex})">
-                <div class="spotify-cover">
-                    <img src="${coverImage}" alt="${track.titulo}" loading="lazy" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                    <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${originalIndex})"><i class="bi bi-play-fill"></i></div>
-                </div>
-                <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
-                <p class="spotify-artist">${categories[idx % categories.length]} • ${track.artista?.substring(0, 15) || 'Artista'}</p>
-            </div>`;
-        }).join('');
-    }
+    return '<div class="search-result-item" onclick="' + clickAction + '">' +
+      '<img src="' + cover + '" class="search-result-cover" onerror="this.src=\'' + PLACEHOLDERS.MIV_56 + '\'">' +
+      '<div class="search-result-info">' +
+        '<div class="search-result-title">' + title + '</div>' +
+        '<div class="search-result-artist">' + sub + '</div>' +
+      '</div>' +
+      badge +
+    '</div>';
+  }).join('') + '</div>';
+};
 
-    if (externalGrid) {
-        if (!state.externalPlaylist || state.externalPlaylist.length === 0) {
-            externalGrid.innerHTML = `<div class="suggest-card" onclick="openAddExternalMusicModal()"><i class="bi bi-plus-circle"></i><h3>Sugerir Música</h3><p>Seja o primeiro a sugerir</p></div>`;
-        } else {
-            const externas = state.externalPlaylist.slice(0, 4);
-            externalGrid.innerHTML = externas.map((track, index) => {
-                const videoId = extractYouTubeId(track.link_youtube);
-                const stats = track.youtube_stats || {};
-                const revenue = calculateEstimatedRevenue(stats.views || 50000);
-                let coverImage = PLACEHOLDERS.EXT_300;
-                if (track.link_capa?.trim()) coverImage = track.link_capa.trim();
-                else if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                const vendasAtuais = track.vendas_atuais || 0;
-                const metaVendas = track.meta_vendas || 1000000;
-                const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
-                return `
-                <div class="spotify-card external-card">
-                    <div class="external-badge"><i class="bi bi-globe"></i> BOLSA EXTERNA</div>
-                    <div class="spotify-cover">
-                        <img src="${coverImage}" alt="${track.titulo}" loading="lazy" onerror="this.src='${PLACEHOLDERS.EXT_300}'">
-                        <div class="play-overlay" onclick="event.stopPropagation(); playExternalTrack(${index})"><i class="bi bi-play-fill"></i></div>
-                    </div>
-                    <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
-                    <p class="spotify-artist">${track.artista || 'Artista'}</p>
-                    <div class="spotify-stats mt-2">
-                        <span class="spotify-elo" style="background: rgba(255,107,107,0.2); color: #ff6b6b;">🚀 Pré-lançamento</span>
-                        <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
-                    </div>
-                    <button class="btn-invest" onclick="event.stopPropagation(); openInvestExternalModal(${index})" style="border-color: #ff6b6b; color: #ff6b6b;">
-                        <i class="bi bi-coin me-1"></i> INVESTIR ANTECIPADO
-                    </button>
-                </div>`;
-            }).join('');
-            externas.forEach((track, index) => {
-                const card = externalGrid.children[index];
-                if (card && track.link_youtube) updateExternalCardWithRealData(track, card);
-            });
-        }
-    }
+// ============================================================
+// INVESTIMENTO INTERNO
+// ============================================================
+window.openInvestModal = function (i) {
+  if (i < 0 || i >= state.playlist.length) return;
+  const t = state.playlist[i];
+  state.currentInvestTrack = t;
 
-    if (recommendedCard && state.playlist && state.playlist.length > 0) {
-        const primeira = state.playlist[0];
-        let coverImage = primeira.link_capa?.trim() || PLACEHOLDERS.MIV_300;
-        recommendedCard.innerHTML = `
-            <img src="${coverImage}" alt="${primeira.titulo}" class="recommended-cover" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-            <div class="recommended-info">
-                <h4>${primeira.titulo} • ${primeira.artista}</h4>
-                <p>Conexão com fio • ${formatCurrency(primeira.valor_acao || 0)} por ação</p>
-            </div>
-            <button class="btn-play" onclick="playTrack(0)"><i class="bi bi-play-fill"></i></button>
-        `;
-    }
-}
+  document.getElementById('investTrackTitle').textContent = t.titulo || '';
+  document.getElementById('investTrackArtist').textContent = t.artista || '';
+  document.getElementById('investUnitPriceDisplay').textContent = formatCurrency(t.valor_acao || 0);
+  document.getElementById('investAvailableBalanceDisplay').textContent = formatCurrency(state.userBalance);
+  document.getElementById('investQuantityField').value = 1;
 
-function filterMarketplace(type) {
-    let filtered = [...state.playlist];
-    switch(type) {
-        case 'trending': filtered.sort((a, b) => (b.elo_rating || 1400) - (a.elo_rating || 1400)); break;
-        case 'new': filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)); break;
-        case 'invest': filtered.sort((a, b) => ((b.acoes_vendidas || 0) + (b.rentabilidade_media || 0)) - ((a.acoes_vendidas || 0) + (a.rentabilidade_media || 0))); break;
-    }
-    renderFilteredMarketplace(filtered);
-}
+  updateInvestmentTotal();
+  showModal('investModal');
+};
 
-function renderFilteredMarketplace(filteredTracks) {
-    const container = document.getElementById('marketplaceContent');
-    if (!container) return;
-    if (!filteredTracks || filteredTracks.length === 0) {
-        container.innerHTML = `<div class="empty-state-spotify"><i class="bi bi-filter" style="font-size: 4rem; color: #1DB954;"></i><h3 style="color: white;">Nenhum resultado</h3></div>`;
-        return;
-    }
-    container.innerHTML = filteredTracks.map((track, index) => {
-        const originalIndex = state.playlist.findIndex(m => m.id === track.id);
-        const playIndex = originalIndex >= 0 ? originalIndex : index;
-        const eloRating = track.elo_rating || 1400;
-        const eloLevel = eloRating >= 2000 ? '🔥 Top' : eloRating >= 1700 ? '📈 Trending' : '🎵 Nova';
-        let coverImage = track.link_capa?.trim() || PLACEHOLDERS.MIV_300;
-        return `
-        <div class="spotify-card" onclick="playTrack(${playIndex})">
-            <div class="spotify-cover">
-                <img src="${coverImage}" alt="${track.titulo}" loading="lazy" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${playIndex})"><i class="bi bi-play-fill"></i></div>
-            </div>
-            <div class="spotify-title">${track.titulo || 'Sem título'}</div>
-            <div class="spotify-artist">${track.artista || 'Artista'}</div>
-            <div class="spotify-stats">
-                <span class="spotify-elo">${eloLevel}</span>
-                <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
-            </div>
-            <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${playIndex})"><i class="bi bi-currency-dollar me-1"></i> INVESTIR</button>
-        </div>`;
-    }).join('');
-}
+window.updateInvestmentTotal = function () {
+  if (!state.currentInvestTrack) return;
+  const q = parseInt(document.getElementById('investQuantityField').value) || 1;
+  const t = q * (state.currentInvestTrack.valor_acao || 0);
 
-function renderExternalMarketplace() {
-    const container = document.getElementById('externalContent');
-    if (!container) return;
-    if (!state.externalPlaylist || state.externalPlaylist.length === 0) {
-        container.innerHTML = `<div class="empty-state-spotify" style="grid-column: 1/-1; text-align: center; padding: 40px 20px;"><i class="bi bi-globe" style="font-size: 4rem; color: #ff6b6b;"></i><h3 style="color: white;">Nenhuma música externa</h3><button class="btn-invest" style="background: #ff6b6b; color: white;" onclick="openAddExternalMusicModal()"><i class="bi bi-plus-circle me-1"></i> SUGERIR MÚSICA</button></div>`;
-        return;
-    }
-    container.innerHTML = state.externalPlaylist.map((track, index) => {
-        const vendasAtuais = track.vendas_atuais || 0;
-        const metaVendas = track.meta_vendas || 1000000;
-        const progressPercent = Math.min(100, (vendasAtuais / metaVendas * 100)).toFixed(1);
-        let coverImage = PLACEHOLDERS.EXT_300;
-        if (track.link_capa && track.link_capa.trim() !== '') coverImage = track.link_capa.trim();
-        else if (track.link_youtube) {
-            const videoId = extractYouTubeId(track.link_youtube);
-            if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-        }
-        return `
-        <div class="spotify-card external-card" onclick="playExternalTrack(${index})">
-            <div class="external-badge"><i class="bi bi-globe"></i> BOLSA EXTERNA</div>
-            <div class="spotify-cover">
-                <img src="${coverImage}" alt="${track.titulo}" onerror="this.src='${PLACEHOLDERS.EXT_300}'">
-                <div class="play-overlay" onclick="event.stopPropagation(); playExternalTrack(${index})"><i class="bi bi-play-fill"></i></div>
-            </div>
-            <h3 class="spotify-title">${track.titulo || 'Sem título'}</h3>
-            <p class="spotify-artist">${track.artista || 'Artista'}</p>
-            <div class="spotify-stats">
-                <span class="spotify-elo" style="background: rgba(255,107,107,0.2); color: #ff6b6b;">🚀 Pré-lançamento</span>
-                <span class="spotify-price">${formatCurrency(track.valor_acao || 0)}</span>
-            </div>
-            <div style="margin: 8px 0;">
-                <div style="height: 3px; background: #282828; border-radius: 2px; overflow: hidden;">
-                    <div style="width: ${progressPercent}%; height: 100%; background: linear-gradient(90deg, #ff6b6b, #ff8e8e);"></div>
-                </div>
-            </div>
-            <button class="btn-invest" onclick="event.stopPropagation(); openInvestExternalModal(${index})" style="border-color: rgba(255,107,107,0.5); color: #ff6b6b;">
-                <i class="bi bi-coin me-1"></i> INVESTIR ANTECIPADO
-            </button>
-        </div>`;
-    }).join('');
-}
+  document.getElementById('investTotalPriceDisplay').textContent = formatCurrency(t);
+  document.getElementById('confirmInvestBtn').disabled = t > state.userBalance;
+};
 
-function renderTopInvestments() {
-    const container = document.getElementById('investmentsContent');
-    if (!container) return;
-    if (!state.topInvestments?.length) {
-        container.innerHTML = `<div class="empty-state-actionable" style="grid-column: 1/-1;"><i class="bi bi-graph-up-arrow empty-icon"></i><h5 class="text-muted">Nenhuma recomendação</h5></div>`;
-        return;
-    }
-    container.innerHTML = state.topInvestments.map(i => {
-        const coverImage = i.link_capa?.trim() ? i.link_capa : PLACEHOLDERS.MIV_300;
-        const eloRating = i.elo_rating || 1400;
-        const eloLevel = eloRating >= 2000 ? '🔥 Top' : eloRating >= 1700 ? '📈 Trending' : '🎵 Nova';
-        const musicIndex = state.playlist.findIndex(m => m.id === i.id);
-        return `
-        <div class="spotify-card top-investment-card" onclick="playTrack(${musicIndex})">
-            <div class="spotify-cover">
-                <img src="${coverImage}" alt="${i.titulo}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                <div class="play-overlay" onclick="event.stopPropagation(); playTrack(${musicIndex})"><i class="bi bi-play-fill"></i></div>
-            </div>
-            <h3 class="spotify-title">${i.titulo || 'Sem título'}</h3>
-            <p class="spotify-artist">${i.artista || 'Artista'}</p>
-            <div class="spotify-stats">
-                <span class="spotify-elo">${eloLevel}</span>
-                <span class="spotify-price">${formatCurrency(i.valor_acao || 0)}</span>
-            </div>
-            <div style="margin-top: 8px;">
-                <span class="badge badge-success">Score: ${i.investment_score || 0}</span>
-                <span class="badge badge-info">+${i.rentabilidade_media || 0}%</span>
-            </div>
-            <button class="btn-invest" onclick="event.stopPropagation(); openInvestModal(${musicIndex})"><i class="bi bi-currency-dollar me-1"></i> INVESTIR</button>
-        </div>`;
-    }).join('');
-}
+window.adjustQuantity = function (a) {
+  const i = document.getElementById('investQuantityField');
+  i.value = Math.max(1, parseInt(i.value) + a);
+  updateInvestmentTotal();
+};
 
-function renderArtistMusic(musics) {
-    const container = document.getElementById('artistMusicContent');
-    if (!container) return;
-    if (!musics?.length) {
-        container.innerHTML = `<div class="empty-state-actionable" style="grid-column: 1/-1;"><i class="bi bi-music-note-beamed empty-icon"></i><h5 class="text-muted">Nenhuma música cadastrada</h5><button class="btn-miv mt-3" onclick="openAddMusicModal()"><i class="bi bi-plus-circle me-2"></i> Cadastrar Música</button></div>`;
-        return;
-    }
-    container.innerHTML = musics.map(m => {
-        const percentSold = m.percentual_disponivel ? ((m.acoes_vendidas || 0) / (m.percentual_disponivel / 0.01) * 100).toFixed(1) : 0;
-        let coverImage = m.link_capa?.trim() || PLACEHOLDERS.MIV_300;
-        if (m.link_youtube) {
-            const videoId = extractYouTubeId(m.link_youtube);
-            if (videoId) coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-        }
-        return `
-        <div class="spotify-card">
-            <div class="spotify-cover">
-                <img src="${coverImage}" alt="${m.titulo}" onerror="this.src='${PLACEHOLDERS.MIV_300}'">
-                <div class="play-overlay" onclick="playTrack(${state.playlist.findIndex(p => p.id === m.id)})"><i class="bi bi-play-fill"></i></div>
-            </div>
-            <h3 class="spotify-title">${m.titulo || 'Sem título'}</h3>
-            <p class="spotify-artist">${m.artista || 'Artista'}</p>
-            <div class="spotify-stats">
-                <span class="spotify-elo">${percentSold}% vendido</span>
-                <span class="spotify-price">${formatCurrency(m.valor_acao || 0)}</span>
-            </div>
-            <div class="music-actions" style="margin-top: 12px;">
-                <button class="music-action-btn edit" onclick="event.stopPropagation(); openEditMusicModal('${m.id}')"><i class="bi bi-pencil"></i> Editar</button>
-                <button class="music-action-btn delete" onclick="event.stopPropagation(); requestDeleteMusic('${m.id}')"><i class="bi bi-trash"></i> Excluir</button>
-            </div>
-        </div>`;
-    }).join('');
-}
+window.confirmInvestment = async function () {
+  if (!state.currentUser || !state.currentInvestTrack) return;
 
-function playExternalTrack(index) {
-    if (index < 0 || index >= state.externalPlaylist.length) { showToast('Música não encontrada', 'error'); return; }
-    const track = state.externalPlaylist[index];
-    if (track) {
-        playQueue.items = [];
-        playQueue.items.push({ type: 'external', index, track, trackId: track.id });
-        playQueue.currentIndex = 0;
-    }
-    state.currentTrackIndex = 1000 + index;
-    const player = document.getElementById('playerSpotify');
-    if (player) player.style.display = 'flex';
-    document.getElementById('playerTitle').textContent = track.titulo || 'Título desconhecido';
-    document.getElementById('playerArtist').textContent = track.artista || 'Artista desconhecido';
-    const playerAlbumArt = document.getElementById('playerAlbumArt');
-    if (playerAlbumArt) {
-        let coverUrl = PLACEHOLDERS.EXT_56;
-        if (track.link_youtube) {
-            const videoId = extractYouTubeId(track.link_youtube);
-            if (videoId) coverUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-        }
-        if (track.link_capa && track.link_capa.trim() !== '') coverUrl = track.link_capa.trim();
-        playerAlbumArt.src = coverUrl;
-        playerAlbumArt.onerror = function() { this.src = PLACEHOLDERS.EXT_56; };
-    }
-    const isFavorite = state.favoriteMusicIds?.includes(track.id?.toString()) || false;
-    updateFavoriteButton(isFavorite);
-    if (track.link_youtube) {
-        const videoId = extractYouTubeId(track.link_youtube);
-        if (videoId) {
-            if (state.youtubeAPILoaded && window.YT) initializeYouTubePlayer(videoId);
-            else { loadYouTubeAPI(); setTimeout(() => initializeYouTubePlayer(videoId), 1000); }
-        }
-    }
-    state.isPlaying = true;
-    updatePlayerIcons();
-    showToast(`🎵 Tocando: ${track.titulo} (Bolsa Externa)`, 'info');
-}
+  const q = parseInt(document.getElementById('investQuantityField').value) || 1;
+  const t = q * (state.currentInvestTrack.valor_acao || 0);
 
-// Aliases usados pelo player
-function openEditMusicModal(musicId) {
-    const music = state.playlist.find(m => m.id === musicId) || state.externalPlaylist.find(m => m.id === musicId);
-    if (!music) { showToast('Música não encontrada', 'error'); return; }
-    document.getElementById('editMusicId').value = music.id;
-    document.getElementById('editMusicTitleField').value = music.titulo || '';
-    document.getElementById('editMusicGenreField').value = music.genero || 'POP';
-    document.getElementById('editMusicYoutubeField').value = music.link_youtube || '';
-    document.getElementById('editMusicCoverField').value = music.link_capa || '';
-    document.getElementById('editMusicPriceField').value = music.valor_acao || 10;
-    document.getElementById('editMusicPercentField').value = music.percentual_disponivel || 20;
-    document.getElementById('editMusicStatusField').value = music.status || 'active';
-    showModal('editMusicModal');
-}
+  if (t > state.userBalance) {
+    showToast('Saldo insuficiente', 'error');
+    return;
+  }
 
-async function updateMusic() { showToast('Função em desenvolvimento', 'info'); }
-async function pauseMusic(id) { showToast('Música pausada', 'success'); }
-async function unpauseMusic(id) { showToast('Música reativada', 'success'); }
-async function requestDeleteMusic(id) { if (confirm('Solicitar exclusão?')) showToast('Solicitação enviada', 'success'); }
+  const btn = document.getElementById('confirmInvestBtn');
+  btn.disabled = true;
+  btn.innerHTML = 'Processando...';
+
+  try {
+    const r = await callAPI('buy', {
+      music_id: state.currentInvestTrack.id,
+      quantidade: q,
+      valor_total: t,
+      valor_unitario: state.currentInvestTrack.valor_acao
+    });
+
+    if (r && r.success) {
+      if (r.data && r.data.novo_saldo !== undefined) {
+        state.userBalance = r.data.novo_saldo;
+      } else {
+        state.userBalance -= t;
+      }
+      updateBalanceDisplay();
+      if (typeof loadPortfolio === 'function') await loadPortfolio();
+      if (typeof loadLedger === 'function') await loadLedger();
+
+      showToast('✅ Investimento realizado!', 'success');
+      closeModal('investModal');
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
+    }
+  } catch (e) {
+    console.error(e);
+    showToast('Erro', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Confirmar';
+  }
+};
+
+// ============================================================
+// INVESTIMENTO EXTERNO
+// ============================================================
+window.openInvestExternalModal = function (i) {
+  if (i < 0 || i >= state.externalPlaylist.length) return;
+  const t = state.externalPlaylist[i];
+  state.currentExternalTrack = t;
+
+  document.getElementById('investExternalTitleDisplay').textContent = t.titulo || '';
+  document.getElementById('investExternalArtistDisplay').textContent = t.artista || '';
+  document.getElementById('investExternalUnitPriceDisplay').textContent = formatCurrency(t.valor_acao || 0);
+  document.getElementById('investExternalQuantityField').value = 1;
+
+  updateExternalInvestmentTotal();
+  showModal('investExternalModal');
+};
+
+window.updateExternalInvestmentTotal = function () {
+  if (!state.currentExternalTrack) return;
+  const q = parseInt(document.getElementById('investExternalQuantityField').value) || 1;
+  document.getElementById('investExternalTotalPriceDisplay').textContent =
+    formatCurrency(q * (state.currentExternalTrack.valor_acao || 0));
+};
+
+window.adjustExternalQuantity = function (a) {
+  const i = document.getElementById('investExternalQuantityField');
+  i.value = Math.max(1, parseInt(i.value) + a);
+  updateExternalInvestmentTotal();
+};
+
+window.confirmExternalInvestment = async function () {
+  if (!state.currentUser || !state.currentExternalTrack) return;
+
+  const q = parseInt(document.getElementById('investExternalQuantityField').value) || 1;
+  const t = q * (state.currentExternalTrack.valor_acao || 0);
+
+  if (t > state.userBalance) {
+    showToast('Saldo insuficiente', 'error');
+    return;
+  }
+
+  try {
+    const r = await callAPI('buy_external', {
+      external_id: state.currentExternalTrack.id,
+      quantidade: q,
+      valor_total: t,
+      valor_unitario: state.currentExternalTrack.valor_acao
+    });
+
+    if (r && r.success) {
+      state.userBalance -= t;
+      updateBalanceDisplay();
+      closeModal('investExternalModal');
+      showToast('Investimento externo realizado!', 'success');
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
+    }
+  } catch (e) {
+    showToast('Erro', 'error');
+  }
+};
+
+// ============================================================
+// SUGERIR MÚSICA EXTERNA
+// ============================================================
+window.openAddExternalMusicModal = function () {
+  if (!state.currentUser) { showToast('Faça login', 'error'); return; }
+  showModal('addExternalMusicModal');
+};
+
+window.submitExternalMusic = async function () {
+  const y = document.getElementById('externalYoutubeLinkField').value.trim();
+  const t = document.getElementById('externalTitleField').value.trim();
+  const a = document.getElementById('externalArtistField').value.trim();
+  const p = parseFloat(document.getElementById('externalPriceField').value);
+  const pct = parseFloat(document.getElementById('externalPercentField').value);
+  const msg = document.getElementById('externalMessageField').value.trim();
+
+  if (!y || !t || !a || !p) {
+    showToast('Preencha os campos', 'error');
+    return;
+  }
+
+  try {
+    const r = await callAPI('suggest_external_music', {
+      link_youtube: y,
+      titulo: t,
+      artista: a,
+      valor_acao: p,
+      percentual_disponivel: pct,
+      mensagem: msg
+    });
+
+    if (r && r.success) {
+      showToast('✅ Música sugerida!', 'success');
+      closeModal('addExternalMusicModal');
+      await loadExternalMarketplace();
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
+    }
+  } catch (e) {
+    showToast('Erro', 'error');
+  }
+};
+
+// ============================================================
+// UPLOAD DE MÚSICA (ARTISTA)
+// ============================================================
+window.openAddMusicModal = function () {
+  if (!state.currentUser || (state.currentUser.tipo !== 'artista' && state.currentUser.tipo !== 'admin')) {
+    showToast('Apenas artistas', 'error');
+    return;
+  }
+  showModal('addMusicModal');
+};
+
+// Estado local para análise de vídeo
+let dadosVideoAnalisado = null;
+let videoIdAtual = null;
+
+window.analisarVideoYouTube = async function () {
+  const link = document.getElementById('musicYoutubeField').value.trim();
+  videoIdAtual = extractYouTubeId(link);
+
+  if (!videoIdAtual) {
+    showToast('Link inválido', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnAnalisarVideo');
+  btn.disabled = true;
+  btn.innerHTML = 'Analisando...';
+
+  try {
+    const r = await callAPI('search_isrc', { youtube_url: link });
+
+    if (r && r.success && r.data) {
+      dadosVideoAnalisado = { views: 0, titulo: r.data.title || 'Música' };
+      document.getElementById('musicTitleField').value = r.data.title || '';
+      document.getElementById('musicCoverField').value = 'https://img.youtube.com/vi/' + videoIdAtual + '/maxresdefault.jpg';
+
+      const res = document.getElementById('musicAnalysisResult');
+      if (res) {
+        res.style.display = 'block';
+        res.innerHTML = '<strong>✅ Vídeo analisado</strong><br>' +
+          '<small>Artista: ' + (r.data.artist || 'N/A') + '</small><br>' +
+          '<small>Vídeo ID: ' + videoIdAtual + '</small>';
+      }
+      showToast('✅ Dados carregados!', 'success');
+    } else {
+      showToast('Erro ao analisar', 'error');
+    }
+  } catch (e) {
+    showToast('Erro ao analisar', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-search"></i> Analisar';
+  }
+};
+
+window.finalizarCadastroComYouTube = async function () {
+  if (!dadosVideoAnalisado || !videoIdAtual) {
+    showToast('Analise um vídeo primeiro', 'error');
+    return;
+  }
+
+  const genero = document.getElementById('musicGenreField').value;
+  const preco = parseFloat(document.getElementById('musicPriceField').value);
+  const percentual = parseFloat(document.getElementById('musicPercentField').value);
+
+  if (!genero || !preco || !percentual) {
+    showToast('Preencha os campos', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnFinalizarCadastro');
+  btn.disabled = true;
+
+  try {
+    const r = await callAPI('upload_music', {
+      titulo: dadosVideoAnalisado.titulo,
+      artista: state.currentUser.nome,
+      genero,
+      link_youtube: 'https://youtube.com/watch?v=' + videoIdAtual,
+      link_capa: document.getElementById('musicCoverField').value,
+      valor_acao: preco,
+      percentual_disponivel: percentual
+    });
+
+    if (r && r.success) {
+      showToast('✅ Música cadastrada!', 'success');
+      closeModal('addMusicModal');
+      await loadMarketplace();
+      if (typeof loadArtistData === 'function') await loadArtistData();
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
+    }
+  } catch (e) {
+    showToast('Erro', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+// ============================================================
+// PLAYLISTS DO USUÁRIO
+// ============================================================
+window.openCreatePlaylistModal = function () { showModal('createPlaylistModal'); };
+
+window.createPlaylist = async function () {
+  const name = document.getElementById('playlistNameField').value.trim();
+  if (!name || !state.currentUser) return;
+
+  try {
+    const r = await callAPI('create_playlist', {
+      nome: name,
+      publica: document.getElementById('playlistPublicField').checked
+    });
+
+    if (r && r.success) {
+      showToast('✅ Playlist criada!', 'success');
+      closeModal('createPlaylistModal');
+      await loadUserPlaylists();
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
+    }
+  } catch (e) {
+    showToast('Erro', 'error');
+  }
+};
+
+window.playUserPlaylist = function (id) {
+  const pl = (state.userPlaylists || []).find(p => String(p.id) === String(id));
+  if (!pl || !pl.musicas || !pl.musicas.length) {
+    showToast('Playlist vazia', 'warning');
+    return;
+  }
+
+  const queueItems = [];
+  (pl.musicas || []).forEach(mid => {
+    const idx = state.playlist.findIndex(m => String(m.id) === String(mid));
+    if (idx !== -1) queueItems.push({ type: 'internal', index: idx });
+  });
+
+  if (!queueItems.length) {
+    showToast('Nenhuma música disponível', 'warning');
+    return;
+  }
+
+  playQueue.setQueue(queueItems);
+  showToast('▶️ Tocando: ' + (pl.nome || ''), 'success');
+};
+
+// ============================================================
+// PLAYLISTS GLOBAIS (ADMIN)
+// ============================================================
+window.openCreateGlobalPlaylistModal = function () {
+  if (!state.currentUser || state.currentUser.tipo !== 'admin') {
+    showToast('Apenas admin', 'error');
+    return;
+  }
+  showModal('createGlobalPlaylistModal');
+};
+
+window.createGlobalPlaylist = async function () {
+  const nome = document.getElementById('globalPlaylistNameField').value.trim();
+  const desc = document.getElementById('globalPlaylistDescField').value.trim();
+
+  if (!nome) { showToast('Digite um nome', 'error'); return; }
+
+  const btn = document.getElementById('createGlobalPlaylistBtn');
+  btn.disabled = true;
+
+  try {
+    const r = await callAPI('create_global_playlist', { nome, descricao: desc });
+
+    if (r && r.success) {
+      showToast('✅ Playlist global criada!', 'success');
+      closeModal('createGlobalPlaylistModal');
+      document.getElementById('globalPlaylistNameField').value = '';
+      document.getElementById('globalPlaylistDescField').value = '';
+      await loadGlobalPlaylists();
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
+    }
+  } catch (e) {
+    showToast('Erro', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+window.openManageGlobalPlaylist = function (playlistId) {
+  if (!state.currentUser || state.currentUser.tipo !== 'admin') {
+    showToast('Apenas admin', 'error');
+    return;
+  }
+
+  const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(playlistId));
+  if (!pl) { showToast('Playlist não encontrada', 'error'); return; }
+
+  state.currentManagingPlaylistId = playlistId;
+  document.getElementById('manageGlobalPlaylistName').value = pl.nome || '';
+
+  const sel = document.getElementById('manageGlobalMusicSelect');
+  sel.innerHTML = '<option value="">Selecione uma música...</option>' +
+    (state.playlist || []).map(m =>
+      '<option value="' + m.id + '">' + (m.titulo || '') + ' — ' + (m.artista || '') + '</option>'
+    ).join('');
+
+  renderManageGlobalMusicList();
+  showModal('manageGlobalPlaylistModal');
+};
+
+window.renderManageGlobalMusicList = function () {
+  const list = document.getElementById('manageGlobalMusicList');
+  if (!list) return;
+
+  const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(state.currentManagingPlaylistId));
+  if (!pl) { list.innerHTML = ''; return; }
+
+  const musicIds = pl.musicas || [];
+  document.getElementById('manageGlobalMusicCount').textContent = musicIds.length;
+
+  if (!musicIds.length) {
+    list.innerHTML = '<div class="text-muted text-center p-3">Nenhuma música ainda</div>';
+    return;
+  }
+
+  list.innerHTML = musicIds.map(id => {
+    const m = (state.playlist || []).find(x => String(x.id) === String(id));
+    if (!m) return '';
+    return '<div class="d-flex align-items-center justify-content-between p-2 mb-1" style="background:var(--apple-gray-5);border-radius:var(--radius-sm)">' +
+      '<div class="d-flex align-items-center gap-2">' +
+        '<img src="' + getCoverUrl(m, false) + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover">' +
+        '<div>' +
+          '<div class="text-white" style="font-size:13px;font-weight:600">' + (m.titulo || '') + '</div>' +
+          '<div class="text-muted" style="font-size:11px">' + (m.artista || '') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<button class="btn btn-sm btn-outline-danger" onclick="removeMusicFromGlobalPlaylist(\'' + id + '\')">' +
+        '<i class="bi bi-trash"></i>' +
+      '</button>' +
+    '</div>';
+  }).join('');
+};
+
+window.addMusicToGlobalPlaylist = async function () {
+  const musicId = document.getElementById('manageGlobalMusicSelect').value;
+  if (!musicId) { showToast('Selecione uma música', 'warning'); return; }
+
+  try {
+    const r = await callAPI('add_music_to_global_playlist', {
+      playlist_id: state.currentManagingPlaylistId,
+      music_id: musicId
+    });
+
+    if (r && r.success) {
+      const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(state.currentManagingPlaylistId));
+      if (pl) pl.musicas = r.data.musicas || pl.musicas || [];
+      renderManageGlobalMusicList();
+      renderGlobalPlaylists();
+      renderAdminGlobalPlaylists();
+      showToast('✅ Música adicionada!', 'success');
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
+    }
+  } catch (e) {
+    showToast('Erro', 'error');
+  }
+};
+
+window.removeMusicFromGlobalPlaylist = async function (musicId) {
+  try {
+    const r = await callAPI('remove_music_from_global_playlist', {
+      playlist_id: state.currentManagingPlaylistId,
+      music_id: musicId
+    });
+
+    if (r && r.success) {
+      const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(state.currentManagingPlaylistId));
+      if (pl) pl.musicas = r.data.musicas || (pl.musicas || []).filter(id => String(id) !== String(musicId));
+      renderManageGlobalMusicList();
+      renderGlobalPlaylists();
+      renderAdminGlobalPlaylists();
+      showToast('🗑️ Removida', 'success');
+    }
+  } catch (e) {
+    showToast('Erro', 'error');
+  }
+};
+
+window.playGlobalPlaylist = function (playlistId) {
+  const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(playlistId));
+  if (!pl) { showToast('Playlist não encontrada', 'error'); return; }
+
+  const ids = (pl.musicas || []).map(String);
+  if (!ids.length) { showToast('Playlist vazia', 'warning'); return; }
+
+  const queueItems = [];
+  ids.forEach(id => {
+    const idx = state.playlist.findIndex(m => String(m.id) === String(id));
+    if (idx !== -1) queueItems.push({ type: 'internal', index: idx });
+  });
+
+  if (!queueItems.length) {
+    showToast('Nenhuma música disponível', 'warning');
+    return;
+  }
+
+  playQueue.setQueue(queueItems);
+  showToast('▶️ Tocando: ' + (pl.nome || ''), 'success');
+};
+
+// ============================================================
+// TICKETS
+// ============================================================
+window.openCreateTicketModal = function () {
+  if (!state.currentUser || (state.currentUser.tipo !== 'artista' && state.currentUser.tipo !== 'admin')) {
+    showToast('Apenas artistas', 'error');
+    return;
+  }
+  showModal('createTicketModal');
+};
+
+window.createTicket = async function () {
+  const titulo = document.getElementById('ticketTitleField').value.trim();
+  const desc = document.getElementById('ticketDescField').value.trim();
+  const preco = parseFloat(document.getElementById('ticketPriceField').value) || 0;
+  const qtd = parseInt(document.getElementById('ticketQuantityField').value) || 0;
+  const data = document.getElementById('ticketDateField').value;
+
+  if (!titulo || preco <= 0 || qtd <= 0) {
+    showToast('Preencha os campos', 'error');
+    return;
+  }
+
+  try {
+    const r = await callAPI('create_ticket', {
+      titulo, descricao: desc,
+      preco_selo: preco,
+      quantidade_total: qtd,
+      data_evento: data,
+      artista_nome: state.currentUser.nome
+    });
+
+    if (r && r.success) {
+      showToast('✅ Ingresso criado!', 'success');
+      closeModal('createTicketModal');
+      await loadTickets();
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
+    }
+  } catch (e) {
+    showToast('Erro', 'error');
+  }
+};
+
+window.redeemTicket = async function (id) {
+  if (!state.currentUser) return;
+
+  const ticket = state.tickets.find(t => String(t.id) === String(id));
+  if (!ticket) return;
+
+  if (state.seloCoinBalance < ticket.preco_selo) {
+    showToast('SELO insuficiente', 'error');
+    return;
+  }
+
+  if (!confirm('Resgatar por ' + ticket.preco_selo + ' SELO?')) return;
+
+  try {
+    const r = await callAPI('redeem_ticket', { ticket_id: id });
+
+    if (r && r.success) {
+      state.seloCoinBalance -= ticket.preco_selo;
+      ticket.quantidade_disponivel = Math.max(0, ticket.quantidade_disponivel - 1);
+      updateBalanceDisplay();
+      renderTickets();
+      showToast('🎟️ Ingresso resgatado!', 'success');
+    } else {
+      showToast((r && r.message) || 'Erro', 'error');
+    }
+  } catch (e) {
+    showToast('Erro', 'error');
+  }
+};
+
+// ============================================================
+// FOLLOW DE ARTISTAS
+// ============================================================
+window.toggleFollow = async function (artistId) {
+  if (!state.currentUser) {
+    showToast('Faça login', 'error');
+    return;
+  }
+
+  const sid = String(artistId);
+  const isFollowing = (state.followingArtists || []).map(String).includes(sid);
+
+  if (isFollowing) {
+    state.followingArtists = state.followingArtists.filter(x => String(x) !== sid);
+    showToast('Deixou de seguir', 'info');
+  } else {
+    state.followingArtists.push(sid);
+    showToast('❤️ Seguindo!', 'success');
+  }
+
+  renderArtists();
+  renderFeaturedArtists();
+
+  try {
+    await callAPI('toggle_follow', {
+      artist_id: artistId,
+      action: isFollowing ? 'unfollow' : 'follow'
+    });
+  } catch (e) {}
+};
+
+// ============================================================
+// FAVORITOS (toggle)
+// ============================================================
+window.toggleFavoriteMusic = async function (musicId) {
+  if (!state.currentUser) {
+    showToast('Faça login', 'error');
+    return;
+  }
+
+  const sid = String(musicId);
+  const wasFav = (state.favoriteMusicIds || []).map(String).includes(sid);
+
+  if (wasFav) {
+    state.favoriteMusicIds = state.favoriteMusicIds.filter(x => String(x) !== sid);
+  } else {
+    state.favoriteMusicIds.push(sid);
+  }
+
+  renderFavorites();
+
+  try {
+    await callAPI('toggle_favorite', {
+      music_id: musicId,
+      action: wasFav ? 'remove' : 'add'
+    });
+  } catch (e) {}
+};
+
+// ============================================================
+// LOG DE CARREGAMENTO
+// ============================================================
+console.log('✅ [marketplace.js] carregado — catálogo, busca, investimentos, playlists prontos');
