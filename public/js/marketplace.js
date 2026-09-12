@@ -1,12 +1,13 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v8.5.1
+// js/marketplace.js — PLAY MY v8.6.0
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
 //
-// MUDANÇAS v8.5.1:
-//   - Corrigido TypeError em performSearch quando titulo/artista não é string
-//   - Corrigido displaySearchResults com sanitização de valores
+// MUDANÇAS v8.6.0:
+//   - Adicionar músicas do YouTube em playlists (usuário + globais)
+//   - Modal de seleção de playlist
+//   - Botão "Adicionar à playlist" no player
 // ============================================================
 
 // ============================================================
@@ -22,7 +23,6 @@ window.changeSection = function (section) {
 
   window.scrollTo(0, 0);
 
-  // Hooks para seções que precisam recarregar
   if (section === 'news' && typeof loadNewsFeed === 'function') loadNewsFeed();
   if (section === 'trades' && typeof loadTradeOffers === 'function') loadTradeOffers();
   if (section === 'blockchain' && typeof loadBlockchainData === 'function') loadBlockchainData();
@@ -112,9 +112,7 @@ window.loadFollowing = async function () {
   try {
     const r = await callAPI('get_following');
     if (r && r.success && r.data) {
-      state.followingArtists = Array.isArray(r.data)
-        ? r.data.map(String)
-        : [];
+      state.followingArtists = Array.isArray(r.data) ? r.data.map(String) : [];
     }
   } catch (e) {}
 };
@@ -339,7 +337,6 @@ window.renderGlobalPlaylists = function () {
   const items = state.globalPlaylists || [];
   const isAdmin = state.currentUser && state.currentUser.tipo === 'admin';
 
-  // Versão lista (seção de playlists)
   const html = items.length ? items.map(p =>
     '<div class="playlist-item">' +
       '<div class="playlist-cover" style="background:linear-gradient(135deg,var(--apple-blue),var(--apple-purple))">' +
@@ -356,7 +353,6 @@ window.renderGlobalPlaylists = function () {
     '</div>'
   ).join('') : '<div class="empty-state-actionable"><i class="bi bi-globe empty-icon"></i><h5 class="text-muted">Nenhuma playlist global ainda</h5></div>';
 
-  // Versão grid (mercado)
   const gridHtml = items.length ? items.map(p =>
     '<div class="spotify-card" onclick="playGlobalPlaylist(\'' + p.id + '\')">' +
       '<div class="spotify-cover" style="background:linear-gradient(135deg,var(--apple-blue),var(--apple-purple));display:flex;align-items:center;justify-content:center;position:relative">' +
@@ -426,7 +422,7 @@ window.renderTickets = function () {
 };
 
 // ============================================================
-// BUSCA (UNIFICADA) — CORRIGIDA v8.5.1
+// BUSCA (UNIFICADA)
 // ============================================================
 window.performSearch = async function () {
   const q = document.getElementById('searchInput').value.trim();
@@ -441,8 +437,6 @@ window.performSearch = async function () {
 
   try {
     const ql = String(q).toLowerCase();
-
-    // ✅ Helper: converte qualquer valor para string segura
     const safeStr = (v) => String(v == null ? '' : v).toLowerCase();
 
     const internal = (state.playlist || []).filter(i => {
@@ -477,7 +471,6 @@ window.displaySearchResults = function (all) {
     return;
   }
 
-  // ✅ Helper: converte qualquer valor para string segura (sem toLowerCase)
   const safeStr = (v) => String(v == null ? '' : v);
 
   c.innerHTML = '<div class="p-2">' + all.slice(0, 40).map(item => {
@@ -498,10 +491,23 @@ window.displaySearchResults = function (all) {
     let clickAction;
     if (isYT) {
       const vid = String(item.id || '').replace('yt_', '');
+      // ✅ Salva dados da música para adicionar à playlist depois
+      state._lastYouTubeTrack = {
+        id: 'yt_' + vid,
+        titulo: title,
+        artista: sub,
+        link_youtube: 'https://www.youtube.com/watch?v=' + vid,
+        is_youtube: true
+      };
       clickAction = 'playSearchResult(\'youtube\', \'' + vid + '\')';
     } else {
       clickAction = 'playSearchResult(\'' + item._type + '\', \'' + item.id + '\')';
     }
+
+    // ✅ Botão "adicionar à playlist" para resultados do YouTube
+    const addBtn = isYT
+      ? '<button class="search-result-add" title="Adicionar à playlist" onclick="event.stopPropagation(); addYouTubeToPlaylistUI(\'' + String(item.id || '').replace('yt_', '') + '\', \'' + title.replace(/'/g, "\\'") + '\', \'' + sub.replace(/'/g, "\\'") + '\')"><i class="bi bi-plus-square"></i></button>'
+      : '';
 
     return '<div class="search-result-item" onclick="' + clickAction + '">' +
       '<img src="' + cover + '" class="search-result-cover" onerror="this.src=\'' + PLACEHOLDERS.MIV_56 + '\'">' +
@@ -509,9 +515,179 @@ window.displaySearchResults = function (all) {
         '<div class="search-result-title">' + title + '</div>' +
         '<div class="search-result-artist">' + sub + '</div>' +
       '</div>' +
+      addBtn +
       badge +
     '</div>';
   }).join('') + '</div>';
+};
+
+// ============================================================
+// ADICIONAR YOUTUBE À PLAYLIST
+// ============================================================
+window.addYouTubeToPlaylistUI = function (videoId, titulo, artista) {
+  const track = {
+    id: 'yt_' + videoId,
+    titulo: titulo,
+    artista: artista,
+    link_youtube: 'https://www.youtube.com/watch?v=' + videoId,
+    is_youtube: true,
+    from_youtube: true
+  };
+
+  openPlaylistSelector(track);
+};
+
+window.openPlaylistSelector = function (track) {
+  if (!state.currentUser) {
+    showToast('Faça login para adicionar músicas', 'error');
+    return;
+  }
+
+  state._pendingYouTubeTrack = track;
+
+  // Cria modal se não existir
+  if (!document.getElementById('playlistSelectorModal')) {
+    createPlaylistSelectorModal();
+  }
+
+  const list = document.getElementById('playlistSelectorList');
+  if (!list) return;
+
+  const playlists = state.userPlaylists || [];
+  const globalPlaylists = state.currentUser.tipo === 'admin' ? (state.globalPlaylists || []) : [];
+
+  let html = '';
+
+  if (playlists.length) {
+    html += '<div style="margin-bottom:12px;font-weight:600">Minhas Playlists</div>';
+    html += playlists.map(p =>
+      '<div class="playlist-selector-item" onclick="selectPlaylistForYouTube(\'' + p.id + '\', false)">' +
+        '<div style="display:flex;align-items:center;gap:12px">' +
+          '<div class="playlist-cover"><i class="bi bi-music-note-list"></i></div>' +
+          '<div>' +
+            '<div style="font-weight:600">' + (p.nome || '') + '</div>' +
+            '<div style="font-size:12px;color:var(--apple-label-2)">' + ((p.musicas || []).length) + ' músicas</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+  }
+
+  if (globalPlaylists.length) {
+    html += '<div style="margin:16px 0 12px;font-weight:600">Playlists Globais (admin)</div>';
+    html += globalPlaylists.map(p =>
+      '<div class="playlist-selector-item" onclick="selectPlaylistForYouTube(\'' + p.id + '\', true)">' +
+        '<div style="display:flex;align-items:center;gap:12px">' +
+          '<div class="playlist-cover" style="background:linear-gradient(135deg,var(--apple-blue),var(--apple-purple))"><i class="bi bi-globe"></i></div>' +
+          '<div>' +
+            '<div style="font-weight:600">' + (p.nome || '') + '</div>' +
+            '<div style="font-size:12px;color:var(--apple-label-2)">' + ((p.musicas || []).length) + ' músicas</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+  }
+
+  if (!html) {
+    html = '<div style="text-align:center;padding:20px;color:var(--apple-label-2)">' +
+      '<p>Você não tem playlists ainda.</p>' +
+      '<button class="btn-miv mt-3" style="width:auto" onclick="closeModal(\'playlistSelectorModal\'); openCreatePlaylistModal();">Criar Playlist</button>' +
+      '</div>';
+  }
+
+  list.innerHTML = html;
+
+  const info = document.getElementById('playlistSelectorTrackInfo');
+  if (info) {
+    info.innerHTML = '🎵 <strong>' + (track.titulo || 'Sem título') + '</strong><br><small style="color:var(--apple-label-2)">' + (track.artista || '') + '</small>';
+  }
+
+  showModal('playlistSelectorModal');
+};
+
+window.createPlaylistSelectorModal = function () {
+  const modal = document.createElement('div');
+  modal.id = 'playlistSelectorModal';
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Adicionar à Playlist</h5>
+        <button class="modal-close" onclick="closeModal('playlistSelectorModal')">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="playlistSelectorTrackInfo" style="margin-bottom:16px;padding:12px;background:var(--apple-gray-6);border-radius:var(--radius-md)"></div>
+        <div id="playlistSelectorList" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('playlistSelectorModal')">Fechar</button>
+      </div>
+    </div>
+  `;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .playlist-selector-item {
+      padding: 12px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      margin-bottom: 8px;
+      background: var(--apple-gray-6);
+      transition: background 0.2s;
+    }
+    .playlist-selector-item:hover { background: var(--apple-gray-5); }
+    .search-result-add {
+      background: transparent;
+      border: none;
+      color: var(--apple-green);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 8px;
+    }
+    .search-result-add:hover { background: rgba(52,199,89,0.15); }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(modal);
+};
+
+window.selectPlaylistForYouTube = async function (playlistId, isGlobal) {
+  const track = state._pendingYouTubeTrack;
+  if (!track) {
+    showToast('Erro: música não encontrada', 'error');
+    return;
+  }
+
+  showToast('Adicionando...', 'info');
+
+  try {
+    const action = isGlobal ? 'add_music_to_global_playlist' : 'add_music_to_playlist';
+    const params = {
+      playlist_id: playlistId,
+      music_id: track.id,
+      music_data: JSON.stringify(track)
+    };
+
+    const r = await callAPI(action, params);
+
+    if (r && r.success) {
+      showToast('✅ Música adicionada!', 'success');
+      closeModal('playlistSelectorModal');
+      if (isGlobal) {
+        await loadGlobalPlaylists();
+      } else {
+        await loadUserPlaylists();
+      }
+      state._pendingYouTubeTrack = null;
+    } else {
+      showToast(r.message || 'Erro ao adicionar', 'error');
+    }
+  } catch (e) {
+    console.error('Erro:', e);
+    showToast('Erro ao adicionar', 'error');
+  }
 };
 
 // ============================================================
@@ -710,7 +886,6 @@ window.openAddMusicModal = function () {
   showModal('addMusicModal');
 };
 
-// Estado local para análise de vídeo
 let dadosVideoAnalisado = null;
 let videoIdAtual = null;
 
@@ -834,8 +1009,20 @@ window.playUserPlaylist = function (id) {
 
   const queueItems = [];
   (pl.musicas || []).forEach(mid => {
-    const idx = state.playlist.findIndex(m => String(m.id) === String(mid));
-    if (idx !== -1) queueItems.push({ type: 'internal', index: idx });
+    const sid = String(mid);
+    const idx = state.playlist.findIndex(m => String(m.id) === sid);
+    if (idx !== -1) {
+      queueItems.push({ type: 'internal', index: idx });
+    } else if (sid.startsWith('yt_')) {
+      // Música do YouTube
+      const vid = sid.replace('yt_', '');
+      queueItems.push({
+        type: 'youtube',
+        videoId: vid,
+        titulo: 'YouTube',
+        artista: ''
+      });
+    }
   });
 
   if (!queueItems.length) {
@@ -843,7 +1030,14 @@ window.playUserPlaylist = function (id) {
     return;
   }
 
-  playQueue.setQueue(queueItems);
+  playQueue.items = queueItems.map(item => {
+    if (item.type === 'youtube') {
+      return { type: 'internal', index: -1, youtubeData: item };
+    }
+    return item;
+  });
+  playQueue.currentIndex = 0;
+  playQueue.playCurrent();
   showToast('▶️ Tocando: ' + (pl.nome || ''), 'success');
 };
 
@@ -925,7 +1119,17 @@ window.renderManageGlobalMusicList = function () {
 
   list.innerHTML = musicIds.map(id => {
     const m = (state.playlist || []).find(x => String(x.id) === String(id));
-    if (!m) return '';
+    if (!m) {
+      if (String(id).startsWith('yt_')) {
+        return '<div class="d-flex align-items-center justify-content-between p-2 mb-1" style="background:var(--apple-gray-5);border-radius:var(--radius-sm)">' +
+          '<div style="font-size:13px;color:var(--apple-label-2)">🎥 Vídeo do YouTube (' + String(id).substring(0, 15) + ')</div>' +
+          '<button class="btn btn-sm btn-outline-danger" onclick="removeMusicFromGlobalPlaylist(\'' + id + '\')">' +
+            '<i class="bi bi-trash"></i>' +
+          '</button>' +
+        '</div>';
+      }
+      return '';
+    }
     return '<div class="d-flex align-items-center justify-content-between p-2 mb-1" style="background:var(--apple-gray-5);border-radius:var(--radius-sm)">' +
       '<div class="d-flex align-items-center gap-2">' +
         '<img src="' + getCoverUrl(m, false) + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover">' +
@@ -1144,4 +1348,4 @@ window.toggleFavoriteMusic = async function (musicId) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] carregado — v8.5.1 (busca corrigida)');
+console.log('✅ [marketplace.js] carregado — v8.6.0 (YouTube em playlists)');
