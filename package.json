@@ -1,13 +1,20 @@
 {
-  "name": "selomivplay",
-  "version": "8.4.0",
-  "description": "PLAY MY — Plataforma de música com blockchain",
+  "name": "playmy",
+  "version": "8.5.0",
   "private": true,
+  "description": "PLAY MY — Plataforma de investimento em música com streaming, blockchain e royalties",
+  "author": "SELO MIV",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
-    "@vercel/kv": "^3.0.0",
+    "@vercel/kv": "^2.0.0",
     "nodemailer": "^6.9.7"
   },
-  "engines": {
-    "node": "24.x"
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
   }
 }
