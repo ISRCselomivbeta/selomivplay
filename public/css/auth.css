@@ -1,30 +1,10 @@
-/* ===== AUTH.CSS - PLAY MY ===== */
-.auth-screen {
-    position: fixed; inset: 0;
-    background: linear-gradient(135deg, var(--bg-dark) 0%, #0c0e12 100%);
-    display: flex; align-items: center; justify-content: center;
-    padding: 1rem; z-index: 9998; overflow-y: auto;
-}
-.auth-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 1.5rem; padding: 2.5rem;
-    width: 100%; max-width: 420px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    transition: transform 0.3s ease;
-}
-.auth-card:hover { transform: translateY(-5px); }
-.logo-header { text-align: center; margin-bottom: 2.5rem; }
-.logo-header img { border-radius: 50%; object-fit: cover; margin-bottom: 1.5rem; border: 2px solid var(--neon-green); }
-.logo-header h2 { color: #ffffff; margin-bottom: 0.5rem; }
-.logo-header p { color: var(--text-muted); }
-.terms-checkbox { margin-bottom: 1.5rem; }
-.terms-label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 0.9rem; color: #b3b3b3; }
-.terms-label input { margin-top: 4px; }
-.terms-label a { color: var(--neon-green); text-decoration: none; }
-.terms-label a:hover { text-decoration: underline; }
+/* ============================================================
+   auth.css — PLAY MY v8.5.0
+   Tela de autenticação: login, registro, termos.
+   ============================================================ */
 
-@media (max-width: 480px) {
-    .auth-card { padding: 1.5rem; }
-    .logo-header img { width: 90px; height: 90px; }
-}
+.auth-screen { position: fixed; inset: 0; background: var(--apple-bg); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 9998; overflow-y: auto; }
+.auth-card { background: var(--apple-bg-card); backdrop-filter: var(--blur); border: 0.5px solid var(--apple-separator); border-radius: var(--radius-xl); padding: 40px 32px; width: 100%; max-width: 400px; box-shadow: var(--shadow-xl); animation: springIn 0.5s; }
+.logo-header { text-align: center; margin-bottom: 32px; }
+.terms-checkbox { margin-bottom: 20px; }
+.terms-label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 14px; color: var(--apple-label-2); line-height: 1.4; }
