@@ -2,7 +2,6 @@
    marketplace.css — PLAY MY v8.5.0
    Grid de cards, playlists, artistas, tickets, recomendações.
    ============================================================ */
-
 /* ============ GRID ============ */
 .spotify-grid { display: grid; gap: 20px; margin-bottom: 32px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
