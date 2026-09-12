@@ -1,183 +1,258 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v8.1
+// SERVICE WORKER — PLAY MY v8.5
+// Cache inteligente por tipo de recurso
 // ============================================================
 
-const CACHE_NAME = 'playmy-v8.1';
-const CACHE_RUNTIME = 'playmy-runtime-v8.1';
+const SW_VERSION = '8.5.0';
+const CACHE_STATIC = 'playmy-static-' + SW_VERSION;
+const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
+const CACHE_IMAGES = 'playmy-images-' + SW_VERSION;
 
-// Arquivos essenciais para cache inicial (app shell)
-const urlsToCache = [
+// Recursos essenciais (instalação imediata)
+const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/images/logo.png'
 ];
 
-// ===== INSTALAR =====
-self.addEventListener('install', event => {
-  console.log('[SW] Instalando v8.1...');
+// Domínios que NUNCA devem ser cacheados (dados em tempo real)
+const NO_CACHE_HOSTS = [
+  'script.google.com',
+  'script.googleusercontent.com',
+  'selomivplay-seyv.vercel.app',
+  'selomivplay.vercel.app',
+  'www.googleapis.com'
+];
+
+// ============================================================
+// INSTALL — pré-cache dos assets essenciais
+// ============================================================
+self.addEventListener('install', (event) => {
+  console.log('[SW] Instalando v' + SW_VERSION);
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('[SW] Cache aberto:', CACHE_NAME);
-        return Promise.allSettled(
-          urlsToCache.map(url => cache.add(url).catch(err => {
-            console.warn('[SW] Falha ao cachear (ignorado):', url, err);
-          }))
-        );
-      })
+    caches.open(CACHE_STATIC)
+      .then((cache) => cache.addAll(STATIC_ASSETS).catch(err => {
+        console.warn('[SW] Erro ao pré-cachear:', err);
+      }))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
-// ===== INTERCEPTAR REQUISIÇÕES =====
-self.addEventListener('fetch', event => {
-  const url = event.request.url;
+// ============================================================
+// ACTIVATE — limpa caches antigos
+// ============================================================
+self.addEventListener('activate', (event) => {
+  console.log('[SW] Ativando v' + SW_VERSION);
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys.filter((key) => key.startsWith('playmy-') && !key.endsWith(SW_VERSION))
+          .map((key) => {
+            console.log('[SW] Removendo cache antigo:', key);
+            return caches.delete(key);
+          })
+      ))
+      .then(() => self.clients.claim())
+  );
+});
 
-  // Nunca interceptar: API, YouTube, Google APIs, GAS, GitHub
-  if (
-    event.request.method !== 'GET' ||
-    url.includes('/api/') ||
-    url.includes('youtube.com') ||
-    url.includes('youtube-nocookie.com') ||
-    url.includes('ytimg.com') ||
-    url.includes('googleapis.com') ||
-    url.includes('googleusercontent.com') ||
-    url.includes('script.google.com') ||
-    url.includes('vercel.app/api') ||
-    url.includes('github.com') ||
-    url.includes('githubusercontent.com') ||
-    url.startsWith('chrome-extension://') ||
-    url.startsWith('blob:')
-  ) {
+// ============================================================
+// FETCH — estratégia por tipo de recurso
+// ============================================================
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Ignorar requisições que não são GET
+  if (request.method !== 'GET') return;
+
+  // Ignorar extensões de navegador e devtools
+  if (url.protocol === 'chrome-extension:' || url.protocol === 'moz-extension:') return;
+
+  // ============================================================
+  // 1. APIs e dados em tempo real → SEMPRE da rede (network-only)
+  // ============================================================
+  if (NO_CACHE_HOSTS.some(host => url.hostname.includes(host))) {
+    return; // deixa o navegador fazer o fetch normal
+  }
+
+  // ============================================================
+  // 2. Google News RSS (proxy) → network-only
+  // ============================================================
+  if (url.hostname.includes('news.google.com') || url.hostname.includes('allorigins.win')) {
     return;
   }
 
-  // Network-first para HTML (App Shell)
-  if (
-    event.request.mode === 'navigate' ||
-    event.request.destination === 'document' ||
-    url.endsWith('.html') ||
-    url === '/' ||
-    url.endsWith('/')
-  ) {
+  // ============================================================
+  // 3. YouTube → network-only (não cachear iframes/vídeos)
+  // ============================================================
+  if (url.hostname.includes('youtube.com') || url.hostname.includes('ytimg.com') || url.hostname.includes('googlevideo.com')) {
+    return;
+  }
+
+  // ============================================================
+  // 4. CDN (Bootstrap, Bootstrap Icons) → cache-first (immutable)
+  // ============================================================
+  if (url.hostname.includes('cdn.jsdelivr.net') || url.hostname.includes('cdnjs.cloudflare.com')) {
     event.respondWith(
-      fetch(event.request)
-        .then(networkResponse => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_RUNTIME).then(cache => {
-              cache.put(event.request, responseToCache);
-            });
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
           }
-          return networkResponse;
+          return response;
+        }).catch(() => cached);
+      })
+    );
+    return;
+  }
+
+  // ============================================================
+  // 5. Imagens → cache-first com fallback
+  // ============================================================
+  if (request.destination === 'image' || /\.(png|jpg|jpeg|gif|webp|svg|ico)$/i.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) {
+          // Atualiza em background (stale-while-revalidate)
+          fetch(request).then((response) => {
+            if (response && response.status === 200) {
+              caches.open(CACHE_IMAGES).then((cache) => cache.put(request, response));
+            }
+          }).catch(() => {});
+          return cached;
+        }
+        return fetch(request).then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_IMAGES).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        }).catch(() => {
+          // Fallback para a logo se a imagem falhar
+          return caches.match('/images/logo.png');
+        });
+      })
+    );
+    return;
+  }
+
+  // ============================================================
+  // 6. HTML/navegação → network-first com fallback para index
+  // ============================================================
+  if (request.mode === 'navigate' || (request.headers.get('accept') || '').includes('text/html')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
+          }
+          return response;
         })
         .catch(() => {
-          return caches.match(event.request)
-            .then(cachedResponse => {
-              if (cachedResponse) return cachedResponse;
-              return caches.match('/index.html');
-            });
+          // Se offline, tenta o cache
+          return caches.match(request).then((cached) => {
+            if (cached) return cached;
+            // Fallback final: index.html
+            return caches.match('/index.html');
+          });
         })
     );
     return;
   }
 
-  // Para outros assets: Cache-first com atualização em background
+  // ============================================================
+  // 7. Outros recursos → cache-first com atualização em background
+  // ============================================================
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          fetch(event.request)
-            .then(networkResponse => {
-              if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-                const responseToCache = networkResponse.clone();
-                caches.open(CACHE_RUNTIME).then(cache => {
-                  cache.put(event.request, responseToCache);
-                });
-              }
-            })
-            .catch(() => {});
-          return response;
+    caches.match(request).then((cached) => {
+      const fetchPromise = fetch(request).then((response) => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const clone = response.clone();
+          caches.open(CACHE_RUNTIME).then((cache) => cache.put(request, clone));
         }
-
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest)
-          .then(networkResponse => {
-            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-              return networkResponse;
-            }
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_RUNTIME).then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-            return networkResponse;
-          })
-          .catch(() => {
-            if (event.request.destination === 'image') {
-              return caches.match('/images/logo.png');
-            }
-          });
-      })
+        return response;
+      }).catch(() => cached);
+      return cached || fetchPromise;
+    })
   );
 });
 
-// ===== ATIVAR E LIMPAR CACHES ANTIGAS =====
-self.addEventListener('activate', event => {
-  console.log('[SW] Ativando v8.1...');
-  const cacheWhitelist = [CACHE_NAME, CACHE_RUNTIME];
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('[SW] Removendo cache antigo:', cacheName);
-            return caches.delete(cacheName);
+// ============================================================
+// MESSAGE — permite comunicação com o app (skip waiting, clear cache)
+// ============================================================
+self.addEventListener('message', (event) => {
+  const { data } = event;
+  if (!data || !data.type) return;
+
+  switch (data.type) {
+    case 'SKIP_WAITING':
+      self.skipWaiting();
+      break;
+
+    case 'CLEAR_CACHE':
+      event.waitUntil(
+        caches.keys().then((keys) =>
+          Promise.all(keys.filter((k) => k.startsWith('playmy-')).map((k) => caches.delete(k)))
+        ).then(() => {
+          if (event.source && event.source.postMessage) {
+            event.source.postMessage({ type: 'CACHE_CLEARED' });
           }
         })
       );
-    })
-  );
-  self.clients.claim();
-});
+      break;
 
-// ===== MENSAGENS DO APP =====
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-  if (event.data && event.data.type === 'CLEAR_CACHE') {
-    caches.keys().then(names => Promise.all(names.map(n => caches.delete(n))));
+    case 'GET_VERSION':
+      if (event.source && event.source.postMessage) {
+        event.source.postMessage({ type: 'VERSION', version: SW_VERSION });
+      }
+      break;
+
+    default:
+      break;
   }
 });
 
-// ===== NOTIFICAÇÕES PUSH =====
-self.addEventListener('push', event => {
-  const data = event.data ? event.data.json() : {};
-  const title = data.title || 'PLAY MY';
-  const options = {
-    body: data.body || 'Novas atualizações disponíveis!',
-    icon: 'https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png',
-    badge: 'https://github.com/ISRCselomivbeta/selomivplay/raw/main/images/logo.png',
-    vibrate: [200, 100, 200],
-    data: { url: data.url || '/' }
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
+// ============================================================
+// PUSH NOTIFICATIONS (opcional, futuro)
+// ============================================================
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  try {
+    const payload = event.data.json();
+    event.waitUntil(
+      self.registration.showNotification(payload.title || 'PLAY MY', {
+        body: payload.body || '',
+        icon: '/images/logo.png',
+        badge: '/images/logo.png',
+        data: payload.data || {},
+        vibrate: [100, 50, 100],
+        tag: payload.tag || 'playmy-notification'
+      })
+    );
+  } catch (e) {
+    console.warn('[SW] Push inválido:', e);
+  }
 });
 
-self.addEventListener('notificationclick', event => {
+self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(windowClients => {
-      for (let client of windowClients) {
-        if (client.url === url && 'focus' in client) {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      const url = event.notification.data?.url || '/';
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url);
           return client.focus();
         }
       }
-      if (clients.openWindow) {
-        return clients.openWindow(url);
-      }
+      if (clients.openWindow) return clients.openWindow(url);
     })
   );
 });
+
+console.log('[SW] PLAY MY Service Worker carregado v' + SW_VERSION);
