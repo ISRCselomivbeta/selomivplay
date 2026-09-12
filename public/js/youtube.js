@@ -1,7 +1,12 @@
 // ============================================================
-// js/youtube.js — PLAY MY v8.6.0
+// js/youtube.js — PLAY MY v8.6.1
 // Integração YouTube: API IFrame, busca, player.
 // Depende de: config.js, utils.js, state.js, api.js
+//
+// MUDANÇAS v8.6.1:
+//   - loadYouTubeAPI detecta quando YT já está carregado (força flag)
+//   - Polling automático quando script está no DOM mas YT não está pronto
+//   - Cobre 5 cenários de carregamento
 // ============================================================
 
 // ✅ Array global para callbacks
@@ -25,29 +30,66 @@ window.onYouTubeIframeAPIReady = function () {
   });
 };
 
-// ✅ Carrega a API (com proteção contra duplicação)
+// ✅ Carrega a API (com detecção de estado — CORRIGIDO v8.6.1)
 window.loadYouTubeAPI = function (cb) {
   console.log('🎵 [loadYouTubeAPI] YT:', typeof window.YT, '| loaded:', state.youtubeAPILoaded);
 
-  // Se já está pronta
+  // ✅ CASO 1: YT já está completamente pronto
   if (window.YT && window.YT.Player && state.youtubeAPILoaded) {
-    console.log('🎵 [loadYouTubeAPI] Já carregada, chamando callback');
+    console.log('🎵 [loadYouTubeAPI] Já pronta, chamando callback');
     if (cb) {
       try { cb(); } catch (e) { console.error('❌ Erro no callback:', e); }
     }
     return;
   }
 
-  // Registra callback
-  if (cb) window._ytReadyCallbacks.push(cb);
-
-  // Se o script já está no DOM, apenas aguarda
-  if (document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-    console.log('🎵 [loadYouTubeAPI] Script já está no DOM, aguardando...');
+  // ✅ CASO 2: YT existe mas a flag está false (API já carregou antes)
+  // → FORÇA a flag e chama o callback imediatamente
+  if (window.YT && window.YT.Player && !state.youtubeAPILoaded) {
+    console.log('🎵 [loadYouTubeAPI] ⚡ YT já existe! Forçando flag e chamando callback');
+    state.youtubeAPILoaded = true;
+    if (cb) {
+      try { cb(); } catch (e) { console.error('❌ Erro no callback:', e); }
+    }
     return;
   }
 
-  // Injeta o script
+  // ✅ CASO 3: Ainda não carregou — registra callback
+  if (cb) window._ytReadyCallbacks.push(cb);
+
+  // ✅ CASO 4: Script já está no DOM mas YT ainda não está pronto
+  // → Polling até detectar YT (máx 20s)
+  if (document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+    console.log('🎵 [loadYouTubeAPI] Script no DOM, fazendo polling...');
+
+    let attempts = 0;
+    const maxAttempts = 40; // 40 × 500ms = 20 segundos
+
+    const checkInterval = setInterval(() => {
+      attempts++;
+
+      if (window.YT && window.YT.Player) {
+        clearInterval(checkInterval);
+        console.log('🎵 [loadYouTubeAPI] ✅ YT detectado após', attempts * 500, 'ms');
+        state.youtubeAPILoaded = true;
+
+        const callbacks = window._ytReadyCallbacks.slice();
+        window._ytReadyCallbacks = [];
+        callbacks.forEach(fn => {
+          try { fn(); } catch (e) { console.error('❌ Erro no callback:', e); }
+        });
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(checkInterval);
+        console.error('❌ [loadYouTubeAPI] Timeout aguardando YT (20s)');
+      }
+    }, 500);
+
+    return;
+  }
+
+  // ✅ CASO 5: Injeta o script pela primeira vez
   console.log('🎵 [loadYouTubeAPI] Injetando script do YouTube...');
   const tag = document.createElement('script');
   tag.src = 'https://www.youtube.com/iframe_api';
@@ -231,4 +273,7 @@ window.updatePlayerProgress = function () {
   } catch (e) {}
 };
 
-console.log('✅ [youtube.js] carregado — v8.6.0 (player robusto)');
+// ============================================================
+// LOG DE CARREGAMENTO
+// ============================================================
+console.log('✅ [youtube.js] carregado — v8.6.1 (YT já carregado detectado)');
