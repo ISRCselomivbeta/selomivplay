@@ -4,14 +4,8 @@
 // Depende de: config.js, utils.js, state.js, api.js
 // ============================================================
 
-// ============================================================
-// VARIÁVEL GLOBAL PARA CALLBACKS
-// ============================================================
 window._ytReadyCallbacks = [];
 
-// ============================================================
-// CALLBACK GLOBAL — chamado pelo YouTube quando a API carrega
-// ============================================================
 window.onYouTubeIframeAPIReady = function () {
   console.log('🎵 [YouTube] API PRONTA! Executando callbacks...');
   state.youtubeAPILoaded = true;
@@ -29,32 +23,25 @@ window.onYouTubeIframeAPIReady = function () {
   });
 };
 
-// ============================================================
-// CARREGAMENTO DA API IFrame
-// ============================================================
 window.loadYouTubeAPI = function (cb) {
-  console.log('🎵 [loadYouTubeAPI] chamada. YT:', typeof window.YT, '| loaded:', state.youtubeAPILoaded);
+  console.log('🎵 [loadYouTubeAPI] YT:', typeof window.YT, '| loaded:', state.youtubeAPILoaded);
 
-  // ✅ Já está pronta? Chama direto
   if (window.YT && window.YT.Player && state.youtubeAPILoaded) {
-    console.log('🎵 [loadYouTubeAPI] Já carregada, chamando callback imediatamente');
+    console.log('🎵 [loadYouTubeAPI] Já carregada');
     if (cb) {
       try { cb(); } catch (e) { console.error('❌ Erro no callback:', e); }
     }
     return;
   }
 
-  // ✅ Registra callback
   if (cb) window._ytReadyCallbacks.push(cb);
 
-  // ✅ Se o script já está no DOM, aguarda (não injeta de novo)
   if (document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-    console.log('🎵 [loadYouTubeAPI] Script já está no DOM, aguardando onYouTubeIframeAPIReady...');
+    console.log('🎵 [loadYouTubeAPI] Script já no DOM');
     return;
   }
 
-  // ✅ Injeta o script
-  console.log('🎵 [loadYouTubeAPI] Injetando script do YouTube...');
+  console.log('🎵 [loadYouTubeAPI] Injetando script...');
   const tag = document.createElement('script');
   tag.src = 'https://www.youtube.com/iframe_api';
   tag.async = true;
@@ -64,9 +51,6 @@ window.loadYouTubeAPI = function (cb) {
   document.head.appendChild(tag);
 };
 
-// ============================================================
-// BUSCA DIRETA (via backend proxy)
-// ============================================================
 window.searchYouTubeDirect = async function (query) {
   console.log('🎥 Buscando YouTube:', query);
 
@@ -91,46 +75,36 @@ window.searchYouTubeDirect = async function (query) {
   return [];
 };
 
-// ============================================================
-// INICIALIZAÇÃO DO PLAYER
-// ============================================================
 window.initializeYouTubePlayer = function (videoId) {
   console.log('🎵 [initializeYouTubePlayer] videoId:', videoId);
 
   const el = document.getElementById('youtubePlayerExpanded');
   if (!el) {
-    console.error('❌ [initializeYouTubePlayer] #youtubePlayerExpanded NÃO existe');
+    console.error('❌ #youtubePlayerExpanded NÃO existe');
     return;
   }
 
-  // Limpa
   el.innerHTML = '';
   const loading = document.getElementById('playerLoadingExpanded');
   if (loading) loading.style.display = 'flex';
 
-  // Destroi player antigo
   if (state.youtubePlayer && state.youtubePlayer.destroy) {
-    try {
-      state.youtubePlayer.destroy();
-      console.log('🎵 [initializeYouTubePlayer] Player antigo destruído');
-    } catch (e) {}
+    try { state.youtubePlayer.destroy(); } catch (e) {}
   }
   state.youtubePlayer = null;
 
-  // Cria div para o player
   const divId = 'ytp-' + Date.now();
   const div = document.createElement('div');
   div.id = divId;
   el.appendChild(div);
 
-  // Verifica se YT está disponível
   if (typeof YT === 'undefined' || !YT.Player) {
-    console.warn('⚠️ [initializeYouTubePlayer] YT não disponível, aguardando...');
+    console.warn('⚠️ YT não disponível, aguardando...');
     loadYouTubeAPI(() => initializeYouTubePlayer(videoId));
     return;
   }
 
-  console.log('🎵 [initializeYouTubePlayer] Criando novo YT.Player...');
+  console.log('🎵 [initializeYouTubePlayer] Criando YT.Player...');
 
   try {
     state.youtubePlayer = new YT.Player(divId, {
@@ -143,44 +117,28 @@ window.initializeYouTubePlayer = function (videoId) {
         modestbranding: 1,
         rel: 0,
         playsinline: 1,
-        enablejsapi: 1,
-        origin: window.location.origin
+        enablejsapi: 1
       },
       events: {
         onReady: function (e) {
           console.log('✅ [YT.Player] onReady!');
           state.playerReady = true;
           try { e.target.setVolume(state.currentVolume); } catch (x) {}
-
           if (loading) loading.style.display = 'none';
-
           if (state.isPlaying) {
-            console.log('🎵 [YT.Player] Tentando playVideo()...');
-            try {
-              e.target.playVideo();
-            } catch (x) {
-              console.warn('⚠️ playVideo falhou:', x);
-            }
+            try { e.target.playVideo(); } catch (x) {}
           }
-
-          // Inicia loop de progresso
           if (state.progressInterval) clearInterval(state.progressInterval);
           state.progressInterval = setInterval(updatePlayerProgress, 1000);
         },
-
         onStateChange: function (e) {
-          console.log('🎵 [YT.Player] Estado:', e.data,
-            e.data === 1 ? '(PLAYING)' :
-            e.data === 2 ? '(PAUSED)' :
-            e.data === 3 ? '(BUFFERING)' :
-            e.data === 0 ? '(ENDED)' : '');
-
-          if (e.data === YT.PlayerState.PLAYING) {
+          console.log('🎵 [YT.Player] Estado:', e.data);
+          if (e.data === 1) {
             state.isPlaying = true;
             if (loading) loading.style.display = 'none';
-          } else if (e.data === YT.PlayerState.PAUSED) {
+          } else if (e.data === 2) {
             state.isPlaying = false;
-          } else if (e.data === YT.PlayerState.ENDED) {
+          } else if (e.data === 0) {
             state.isPlaying = false;
             if (typeof playQueue !== 'undefined' && playQueue.playNext) {
               playQueue.playNext();
@@ -188,70 +146,52 @@ window.initializeYouTubePlayer = function (videoId) {
           }
           if (typeof updatePlayerIcons === 'function') updatePlayerIcons();
         },
-
         onError: function (e) {
           console.error('❌ [YT.Player] Erro:', e.data);
-          const errorMessages = {
-            2: 'ID de vídeo inválido',
-            5: 'Erro de player HTML5',
-            100: 'Vídeo não encontrado (removido ou privado)',
-            101: 'Incorporação não permitida pelo proprietário',
-            150: 'Incorporação não permitida pelo proprietário'
+          const msgs = {
+            2: 'ID inválido',
+            5: 'Erro HTML5',
+            100: 'Vídeo não encontrado',
+            101: 'Incorporação não permitida',
+            150: 'Incorporação não permitida'
           };
-          const msg = errorMessages[e.data] || 'Erro desconhecido';
           if (typeof showToast === 'function') {
-            showToast('Erro no YouTube: ' + msg, 'error');
+            showToast('Erro YouTube: ' + (msgs[e.data] || 'Desconhecido'), 'error');
           }
           if (loading) loading.style.display = 'none';
         }
       }
     });
   } catch (error) {
-    console.error('❌ [initializeYouTubePlayer] Erro ao criar player:', error);
+    console.error('❌ Erro ao criar player:', error);
     if (loading) loading.style.display = 'none';
     if (typeof showToast === 'function') {
-      showToast('Erro ao carregar player do YouTube', 'error');
+      showToast('Erro ao carregar player', 'error');
     }
   }
 };
 
-// ============================================================
-// PROGRESSO DO PLAYER
-// ============================================================
 window.updatePlayerProgress = function () {
   if (!state.youtubePlayer || !state.youtubePlayer.getCurrentTime) return;
-
   try {
     const c = state.youtubePlayer.getCurrentTime();
     const d = state.youtubePlayer.getDuration();
-
     if (d > 0) {
       const p = (c / d) * 100;
-
       const b = document.getElementById('playerProgressBar');
       if (b) b.style.width = p + '%';
-
       const cc = document.getElementById('currentTimeDisplay');
       if (cc) cc.textContent = formatTime(c);
-
       const t = document.getElementById('totalTimeDisplay');
       if (t) t.textContent = formatTime(d);
-
       const eb = document.getElementById('expandedProgressBar');
       if (eb) eb.style.width = p + '%';
-
       const ec = document.getElementById('expandedCurrentTime');
       if (ec) ec.textContent = formatTime(c);
-
       const et = document.getElementById('expandedTotalTime');
       if (et) et.textContent = formatTime(d);
     }
-  } catch (e) {
-    // silencioso
-  }
+  } catch (e) {}
 };
 
-// ============================================================
-// LOG DE CARREGAMENTO
-// ============================================================
-console.log('✅ [youtube.js] carregado — v8.6.0 (player robusto + callbacks)');
+console.log('✅ [youtube.js] carregado — v8.6.0');
