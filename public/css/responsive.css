@@ -2,7 +2,6 @@
    responsive.css — PLAY MY v8.5.0
    Media queries. Deve ser o ÚLTIMO CSS a carregar.
    ============================================================ */
-
 /* ============ TABLET / DESKTOP ============ */
 @media(min-width:768px){ .spotify-grid{grid-template-columns:repeat(4,minmax(0,1fr))} }
 @media(min-width:992px){ .spotify-grid{grid-template-columns:repeat(5,minmax(0,1fr))} }
