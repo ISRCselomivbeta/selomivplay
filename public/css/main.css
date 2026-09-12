@@ -3,7 +3,6 @@
    Variáveis, reset, layout base, header, sidebar, seções.
    Deve ser o PRIMEIRO CSS a carregar.
    ============================================================ */
-
 /* ============ VARIÁVEIS GLOBAIS ============ */
 :root {
   --apple-green: #34c759; --apple-green-light: #30d158;
