@@ -1,8 +1,12 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v8.5.0
+// js/marketplace.js — PLAY MY v8.5.1
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
+//
+// MUDANÇAS v8.5.1:
+//   - Corrigido TypeError em performSearch quando titulo/artista não é string
+//   - Corrigido displaySearchResults com sanitização de valores
 // ============================================================
 
 // ============================================================
@@ -422,7 +426,7 @@ window.renderTickets = function () {
 };
 
 // ============================================================
-// BUSCA (UNIFICADA)
+// BUSCA (UNIFICADA) — CORRIGIDA v8.5.1
 // ============================================================
 window.performSearch = async function () {
   const q = document.getElementById('searchInput').value.trim();
@@ -436,22 +440,27 @@ window.performSearch = async function () {
   c.innerHTML = '<div class="p-4 text-center text-muted"><div class="spinner-border spinner-border-sm text-success me-2"></div>Buscando...</div>';
 
   try {
-    const ql = q.toLowerCase();
+    const ql = String(q).toLowerCase();
 
-    const internal = (state.playlist || []).filter(i =>
-      i && ((i.titulo || '').toLowerCase().includes(ql) || (i.artista || '').toLowerCase().includes(ql))
-    );
+    // ✅ Helper: converte qualquer valor para string segura
+    const safeStr = (v) => String(v == null ? '' : v).toLowerCase();
 
-    const external = (state.externalPlaylist || []).filter(i =>
-      i && ((i.titulo || '').toLowerCase().includes(ql) || (i.artista || '').toLowerCase().includes(ql))
-    );
+    const internal = (state.playlist || []).filter(i => {
+      if (!i) return false;
+      return safeStr(i.titulo).includes(ql) || safeStr(i.artista).includes(ql);
+    });
+
+    const external = (state.externalPlaylist || []).filter(i => {
+      if (!i) return false;
+      return safeStr(i.titulo).includes(ql) || safeStr(i.artista).includes(ql);
+    });
 
     const ytResults = await searchYouTubeDirect(q);
 
     const all = [
       ...internal.map(x => ({ ...x, _type: 'internal' })),
       ...external.map(x => ({ ...x, _type: 'external' })),
-      ...ytResults.map(x => ({ ...x, _type: 'youtube' }))
+      ...(ytResults || []).map(x => ({ ...x, _type: 'youtube' }))
     ];
 
     displaySearchResults(all);
@@ -468,6 +477,9 @@ window.displaySearchResults = function (all) {
     return;
   }
 
+  // ✅ Helper: converte qualquer valor para string segura (sem toLowerCase)
+  const safeStr = (v) => String(v == null ? '' : v);
+
   c.innerHTML = '<div class="p-2">' + all.slice(0, 40).map(item => {
     if (!item) return '';
     const isYT = item._type === 'youtube';
@@ -480,12 +492,12 @@ window.displaySearchResults = function (all) {
         ? '<span class="search-result-badge">🌐</span>'
         : '<span class="search-result-badge normal">🔷</span>');
 
-    const title = item.titulo || '';
-    const sub = item.artista || '';
+    const title = safeStr(item.titulo);
+    const sub = safeStr(item.artista);
 
     let clickAction;
     if (isYT) {
-      const vid = String(item.id).replace('yt_', '');
+      const vid = String(item.id || '').replace('yt_', '');
       clickAction = 'playSearchResult(\'youtube\', \'' + vid + '\')';
     } else {
       clickAction = 'playSearchResult(\'' + item._type + '\', \'' + item.id + '\')';
@@ -1132,4 +1144,4 @@ window.toggleFavoriteMusic = async function (musicId) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] carregado — catálogo, busca, investimentos, playlists prontos');
+console.log('✅ [marketplace.js] carregado — v8.5.1 (busca corrigida)');
