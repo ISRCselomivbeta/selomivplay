@@ -1,8 +1,8 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v8.5.8
+// SERVICE WORKER — PLAY MY v8.6.3
 // Cache inteligente por tipo de recurso
 // ============================================================
-const SW_VERSION = '8.5.8';
+const SW_VERSION = '8.6.3';
 const CACHE_STATIC = 'playmy-static-' + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES = 'playmy-images-' + SW_VERSION;
