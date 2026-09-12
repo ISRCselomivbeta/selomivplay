@@ -1,38 +1,7 @@
-/* ===== BLOCKCHAIN.CSS - PLAY MY ===== */
-.blockchain-card {
-    background: var(--bg-card);
-    border: 1px solid rgba(155, 89, 182, 0.3);
-    border-radius: 8px;
-    padding: 16px;
-    transition: all 0.3s ease;
-}
-.blockchain-card:hover {
-    border-color: #9b59b6;
-    box-shadow: 0 8px 20px rgba(155, 89, 182, 0.25);
-}
-.blockchain-visualization {
-    display: flex; flex-wrap: wrap;
-    gap: 12px; justify-content: center;
-}
-.blockchain-block {
-    background: var(--bg-card);
-    border: 2px solid #9b59b6;
-    border-radius: 8px;
-    padding: 12px;
-    min-width: 180px;
-    text-align: center;
-}
-.blockchain-block.active { border-color: var(--neon-green); }
-.blockchain-block .block-hash {
-    font-family: monospace;
-    font-size: 10px;
-    color: #9ca3af;
-    word-break: break-all;
-}
-.blockchain-arrow {
-    display: flex; align-items: center;
-    color: #9b59b6; font-size: 1.5rem;
-}
+/* ============================================================
+   blockchain.css — PLAY MY v8.5.0
+   Blockchain explorer.
+   ============================================================ */
 
-.btn-outline-purple { color: #9b59b6; border-color: #9b59b6; }
-.btn-outline-purple:hover { background-color: #9b59b6; color: white; }
+.blockchain-verified { color: var(--apple-green); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.blockchain-hash { font-family: 'SF Mono', 'Menlo', monospace; font-size: 11px; color: var(--apple-label-2); word-break: break-all; }
