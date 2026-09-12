@@ -2,6 +2,5 @@
    blockchain.css — PLAY MY v8.5.0
    Blockchain explorer.
    ============================================================ */
-
 .blockchain-verified { color: var(--apple-green); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 .blockchain-hash { font-family: 'SF Mono', 'Menlo', monospace; font-size: 11px; color: var(--apple-label-2); word-break: break-all; }
