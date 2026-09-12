@@ -1,30 +1,81 @@
 // ============================================================
-// BLOCKCHAIN - PLAY MY v8.2
+// js/blockchain.js — PLAY MY v8.5.0
+// Blockchain Explorer: visualização de blocos, hashes, cadeia.
+// Depende de: config.js, utils.js, state.js, api.js
+// DEVE carregar DEPOIS de trades.js e ANTES de news.js.
 // ============================================================
 
-const Blockchain = {
-  generateHash: function(data) {
-    return '0x' + Date.now().toString(16) + Math.random().toString(36).substring(2, 10) + (data || '').substring(0, 8);
+// ============================================================
+// ABRIR EXPLORER (navega para seção e carrega dados)
+// ============================================================
+window.openBlockchainExplorer = function () {
+  // Navega para a seção
+  if (typeof changeSection === 'function') {
+    changeSection('blockchain');
+  }
+  // Carrega dados
+  loadBlockchainData();
+};
+
+// ============================================================
+// CARREGAR DADOS DA BLOCKCHAIN
+// ============================================================
+window.loadBlockchainData = async function () {
+  const viz = document.getElementById('blockchainVisualization');
+  if (!viz) return;
+
+  // Estado de loading
+  viz.innerHTML =
+    '<div class="text-center p-4">' +
+      '<div class="spinner-border text-success"></div>' +
+    '</div>';
+
+  try {
+    const r = await callAPI('get_mining_blocks', { limit: 30 });
+
+    if (r && r.success && r.data && r.data.length) {
+      // Atualiza contadores
+      const blocksCountEl = document.getElementById('blockchainBlocksCount');
+      if (blocksCountEl) blocksCountEl.textContent = r.data.length;
+
+      const lastBlockEl = document.getElementById('blockchainLastBlock');
+      if (lastBlockEl) {
+        lastBlockEl.textContent = r.data[0] ? (r.data[0].block_index || 0) : 0;
+      }
+
+      // Renderiza blocos
+      viz.innerHTML = r.data.map(b => {
+        const hash = (b.block_hash || '0x').substring(0, 30) + '...';
+        const timestamp = b.timestamp
+          ? new Date(b.timestamp).toLocaleString('pt-BR')
+          : '';
+
+        return '<div class="card" style="width:220px;border-color:rgba(175,82,222,0.5);background:var(--apple-bg-card);padding:12px;border-radius:12px">' +
+          '<div style="color:var(--apple-purple);font-weight:700;font-size:13px">' +
+            '<i class="bi bi-link-45deg"></i> Bloco #' + (b.block_index || 0) +
+          '</div>' +
+          '<div class="blockchain-hash mt-2" style="font-size:10px">' + hash + '</div>' +
+          '<div class="text-muted mt-1" style="font-size:11px">' + (b.music_title || 'Bloco') + '</div>' +
+          '<div class="text-muted" style="font-size:10px">' + timestamp + '</div>' +
+        '</div>';
+      }).join('');
+    } else {
+      // Estado vazio
+      viz.innerHTML =
+        '<div class="empty-state-actionable">' +
+          '<i class="bi bi-link-45deg empty-icon"></i>' +
+          '<h5 class="text-muted">Nenhum bloco ainda</h5>' +
+          '<p class="text-muted">Os blocos aparecem após investimentos</p>' +
+        '</div>';
+    }
+  } catch (e) {
+    console.error('Erro ao carregar blockchain:', e);
+    viz.innerHTML =
+      '<div class="text-center text-muted p-4">Erro ao carregar</div>';
   }
 };
 
-async function loadBlockchainData() {
-  const c = document.getElementById('blockchainVisualization'); if (!c) return;
-  try {
-    const r = await callAPI('get_mining_blocks', { limit: 20 });
-    if (r && r.success && r.data && r.data.length) {
-      document.getElementById('blockchainContractsCount').textContent = r.data.length;
-      document.getElementById('blockchainLastBlock').textContent = r.data.length;
-      c.innerHTML = r.data.slice(-5).map((b, i) => '<div class="card" style="width:200px;border-color:rgba(175,82,222,0.5)"><div class="card-header py-2" style="background:rgba(175,82,222,0.15);color:#fff"><small>Bloco #' + (b.block_index || i + 1) + '</small></div><div class="card-body p-2"><small class="blockchain-hash" style="font-size:10px">' + (b.block_hash || '0x').substring(0, 15) + '...</small></div></div>').join('');
-    } else c.innerHTML = '<div class="text-muted text-center py-4">Nenhum bloco</div>';
-  } catch (e) {}
-}
-
-function openBlockchainExplorer() {
-  changeSection('blockchain');
-  setTimeout(loadBlockchainData, 100);
-}
-
-window.loadBlockchainData = loadBlockchainData;
-window.openBlockchainExplorer = openBlockchainExplorer;
-window.Blockchain = Blockchain;
+// ============================================================
+// LOG DE CARREGAMENTO
+// ============================================================
+console.log('✅ [blockchain.js] carregado — explorer pronto');
