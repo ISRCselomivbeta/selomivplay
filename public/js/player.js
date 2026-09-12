@@ -1,32 +1,93 @@
 // ============================================================
-// js/player.js — PLAY MY v8.5.0
+// js/player.js — PLAY MY v8.5.2
 // Player completo: reprodução, controles, progresso, volume.
 // Depende de: config.js, utils.js, state.js, api.js, youtube.js
 // DEVE carregar DEPOIS de youtube.js e ANTES de marketplace.js.
+//
+// MUDANÇAS v8.5.2:
+//   - playTrack/playExternalTrack agora atualizam o PLAYER EXPANDIDO
+//   - Logs de debug para identificar problemas
+//   - Tratamento robusto de link_youtube inválido
 // ============================================================
 
 // ============ TOCAR MÚSICA INTERNA ============
 window.playTrack = function (index) {
+  console.log('🎵 playTrack chamada com index:', index);
+
   const t = state.playlist[index];
   if (!t) {
     console.warn('⚠️ playTrack: índice inválido', index);
     return;
   }
 
+  console.log('🎵 Música:', t.titulo, '-', t.artista);
+  console.log('🎵 link_youtube:', t.link_youtube);
+
   state.currentTrackIndex = index;
 
-  // Atualiza UI
-  document.getElementById('playerSpotify').style.display = 'flex';
-  document.getElementById('playerTitle').textContent = t.titulo || '';
-  document.getElementById('playerArtist').textContent = t.artista || '';
-  document.getElementById('playerAlbumArt').src = getCoverUrl(t, false);
+  // ✅ Atualiza mini-player (rodapé)
+  const playerSpotify = document.getElementById('playerSpotify');
+  if (playerSpotify) playerSpotify.style.display = 'flex';
 
-  // Se tem YouTube, inicializa
+  const playerTitle = document.getElementById('playerTitle');
+  if (playerTitle) playerTitle.textContent = t.titulo || '';
+
+  const playerArtist = document.getElementById('playerArtist');
+  if (playerArtist) playerArtist.textContent = t.artista || '';
+
+  const playerAlbumArt = document.getElementById('playerAlbumArt');
+  if (playerAlbumArt) playerAlbumArt.src = getCoverUrl(t, false);
+
+  // ✅ Atualiza PLAYER EXPANDIDO (isso estava faltando!)
+  const expandedTitle = document.getElementById('expandedTitle');
+  if (expandedTitle) expandedTitle.textContent = t.titulo || 'Sem título';
+
+  const expandedArtist = document.getElementById('expandedArtist');
+  if (expandedArtist) expandedArtist.textContent = t.artista || 'Artista desconhecido';
+
+  const expandedAlbumArt = document.getElementById('expandedAlbumArt');
+  if (expandedAlbumArt) expandedAlbumArt.src = getCoverUrl(t, false);
+
+  const expandedPrice = document.getElementById('expandedPrice');
+  if (expandedPrice) expandedPrice.textContent = formatCurrency(t.valor_acao || 0);
+
+  const expandedAvailable = document.getElementById('expandedAvailable');
+  if (expandedAvailable) expandedAvailable.textContent = (t.percentual_disponivel || 0) + '%';
+
+  const expandedReturn = document.getElementById('expandedReturn');
+  if (expandedReturn) expandedReturn.textContent = (t.rentabilidade_media || 0) + '%';
+
+  const expandedInvestors = document.getElementById('expandedInvestors');
+  if (expandedInvestors) expandedInvestors.textContent = t.total_investidores || 0;
+
+  // ✅ Atualiza o overlay do track
+  const trackOverlayIcon = document.getElementById('trackOverlayIcon');
+  if (trackOverlayIcon) trackOverlayIcon.className = 'bi bi-play-fill';
+
+  // ✅ Carrega o player do YouTube
   if (t.link_youtube) {
     const v = extractYouTubeId(t.link_youtube);
+    console.log('🎵 YouTube video ID:', v);
+
     if (v) {
-      loadYouTubeAPI(() => initializeYouTubePlayer(v));
+      const loading = document.getElementById('playerLoadingExpanded');
+      if (loading) loading.style.display = 'flex';
+
+      loadYouTubeAPI(() => {
+        console.log('🎵 YouTube API pronta, inicializando player...');
+        initializeYouTubePlayer(v);
+      });
+    } else {
+      console.warn('⚠️ YouTube ID inválido em:', t.link_youtube);
+      showToast('Link do YouTube inválido', 'warning');
+      const loading = document.getElementById('playerLoadingExpanded');
+      if (loading) loading.style.display = 'none';
     }
+  } else {
+    console.warn('⚠️ Música sem link_youtube');
+    showToast('Música sem link do YouTube', 'warning');
+    const loading = document.getElementById('playerLoadingExpanded');
+    if (loading) loading.style.display = 'none';
   }
 
   state.isPlaying = true;
@@ -35,24 +96,65 @@ window.playTrack = function (index) {
 
 // ============ TOCAR MÚSICA EXTERNA ============
 window.playExternalTrack = function (index) {
+  console.log('🎵 playExternalTrack chamada com index:', index);
+
   const t = state.externalPlaylist[index];
   if (!t) {
     console.warn('⚠️ playExternalTrack: índice inválido', index);
     return;
   }
 
+  console.log('🎵 Música externa:', t.titulo, '-', t.artista);
+  console.log('🎵 link_youtube:', t.link_youtube);
+
   state.currentTrackIndex = 1000 + index;
 
-  document.getElementById('playerSpotify').style.display = 'flex';
-  document.getElementById('playerTitle').textContent = t.titulo || '';
-  document.getElementById('playerArtist').textContent = t.artista || '';
-  document.getElementById('playerAlbumArt').src = getCoverUrl(t, true);
+  // ✅ Atualiza mini-player
+  const playerSpotify = document.getElementById('playerSpotify');
+  if (playerSpotify) playerSpotify.style.display = 'flex';
 
+  const playerTitle = document.getElementById('playerTitle');
+  if (playerTitle) playerTitle.textContent = t.titulo || '';
+
+  const playerArtist = document.getElementById('playerArtist');
+  if (playerArtist) playerArtist.textContent = t.artista || '';
+
+  const playerAlbumArt = document.getElementById('playerAlbumArt');
+  if (playerAlbumArt) playerAlbumArt.src = getCoverUrl(t, true);
+
+  // ✅ Atualiza PLAYER EXPANDIDO
+  const expandedTitle = document.getElementById('expandedTitle');
+  if (expandedTitle) expandedTitle.textContent = t.titulo || 'Sem título';
+
+  const expandedArtist = document.getElementById('expandedArtist');
+  if (expandedArtist) expandedArtist.textContent = t.artista || 'Artista desconhecido';
+
+  const expandedAlbumArt = document.getElementById('expandedAlbumArt');
+  if (expandedAlbumArt) expandedAlbumArt.src = getCoverUrl(t, true);
+
+  const expandedPrice = document.getElementById('expandedPrice');
+  if (expandedPrice) expandedPrice.textContent = formatCurrency(t.valor_acao || 0);
+
+  const expandedAvailable = document.getElementById('expandedAvailable');
+  if (expandedAvailable) expandedAvailable.textContent = (t.percentual_disponivel || 0) + '%';
+
+  // ✅ Carrega o player do YouTube
   if (t.link_youtube) {
     const v = extractYouTubeId(t.link_youtube);
+    console.log('🎵 YouTube video ID:', v);
+
     if (v) {
-      loadYouTubeAPI(() => initializeYouTubePlayer(v));
+      const loading = document.getElementById('playerLoadingExpanded');
+      if (loading) loading.style.display = 'flex';
+
+      loadYouTubeAPI(() => {
+        console.log('🎵 YouTube API pronta, inicializando player...');
+        initializeYouTubePlayer(v);
+      });
     }
+  } else {
+    console.warn('⚠️ Música externa sem link_youtube');
+    showToast('Música sem link do YouTube', 'warning');
   }
 
   state.isPlaying = true;
@@ -76,12 +178,32 @@ window.playSearchResult = function (type, id) {
     const vid = String(id).replace('yt_', '');
     state.currentTrackIndex = 2000;
 
-    document.getElementById('playerSpotify').style.display = 'flex';
-    document.getElementById('playerTitle').textContent = 'YouTube';
-    document.getElementById('playerArtist').textContent = 'Vídeo do YouTube';
-    document.getElementById('playerAlbumArt').src = 'https://img.youtube.com/vi/' + vid + '/hqdefault.jpg';
+    const playerSpotify = document.getElementById('playerSpotify');
+    if (playerSpotify) playerSpotify.style.display = 'flex';
 
-    loadYouTubeAPI(() => initializeYouTubePlayer(vid));
+    const playerTitle = document.getElementById('playerTitle');
+    if (playerTitle) playerTitle.textContent = 'YouTube';
+
+    const playerArtist = document.getElementById('playerArtist');
+    if (playerArtist) playerArtist.textContent = 'Vídeo do YouTube';
+
+    const playerAlbumArt = document.getElementById('playerAlbumArt');
+    if (playerAlbumArt) playerAlbumArt.src = 'https://img.youtube.com/vi/' + vid + '/hqdefault.jpg';
+
+    // Atualiza também o player expandido
+    const expandedTitle = document.getElementById('expandedTitle');
+    if (expandedTitle) expandedTitle.textContent = 'Vídeo do YouTube';
+
+    const expandedArtist = document.getElementById('expandedArtist');
+    if (expandedArtist) expandedArtist.textContent = 'Resultado da busca';
+
+    const loading = document.getElementById('playerLoadingExpanded');
+    if (loading) loading.style.display = 'flex';
+
+    loadYouTubeAPI(() => {
+      console.log('🎵 YouTube API pronta, inicializando player de busca...');
+      initializeYouTubePlayer(vid);
+    });
     state.isPlaying = true;
     updatePlayerIcons();
     showToast('▶️ Tocando do YouTube', 'success');
@@ -90,7 +212,10 @@ window.playSearchResult = function (type, id) {
 
 // ============ CONTROLES BÁSICOS ============
 window.togglePlay = function () {
-  if (!state.youtubePlayer) return;
+  if (!state.youtubePlayer) {
+    console.warn('⚠️ togglePlay: youtubePlayer não está inicializado');
+    return;
+  }
 
   if (state.isPlaying) {
     state.youtubePlayer.pauseVideo();
@@ -209,7 +334,6 @@ window.closePlayerExpanded = function () {
   if (typeof changeSection === 'function') {
     changeSection('marketplace');
   } else {
-    // fallback se changeSection ainda não existir
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     const el = document.getElementById('marketplaceSection');
     if (el) el.classList.add('active');
@@ -217,4 +341,4 @@ window.closePlayerExpanded = function () {
 };
 
 // ============ LOG DE CARREGAMENTO ============
-console.log('✅ [player.js] carregado — player completo pronto');
+console.log('✅ [player.js] carregado — v8.5.2 (player expandido corrigido)');
