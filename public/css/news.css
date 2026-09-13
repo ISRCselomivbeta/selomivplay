@@ -1,0 +1,166 @@
+/* ============================================================
+   css/news.css — PLAY MY v9.0.0
+   Feed infinito de notícias (estilo Instagram)
+   ============================================================ */
+
+.news-card {
+  background: var(--apple-bg-card, #1c1c1e);
+  border: 0.5px solid var(--apple-separator, #38383a);
+  border-radius: var(--radius-lg, 16px);
+  margin-bottom: 16px;
+  overflow: hidden;
+  animation: newsFadeInUp 0.4s ease;
+}
+
+.news-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.news-fonte-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.news-fonte-icon {
+  font-size: 20px;
+  color: var(--apple-yellow, #ffcc00);
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.news-author-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.news-author {
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.news-time {
+  color: var(--apple-label-2, #8e8e93);
+  font-size: 12px;
+}
+
+.news-category {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(255, 204, 0, 0.15);
+  color: var(--apple-yellow, #ffcc00);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.news-image {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+  background: #000;
+}
+
+.news-body {
+  padding: 12px 14px;
+}
+
+.news-title {
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.news-text {
+  color: var(--apple-label-2, #8e8e93);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.news-prazo {
+  display: inline-block;
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  margin-top: 10px;
+  margin-right: 6px;
+}
+
+.news-social {
+  display: inline-block;
+  color: var(--apple-orange, #ff9500);
+  font-size: 12px;
+  margin-top: 10px;
+  margin-right: 6px;
+}
+
+.news-em-alta {
+  display: inline-block;
+  background: rgba(255, 149, 0, 0.15);
+  color: var(--apple-orange, #ff9500);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.news-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  border-top: 0.5px solid var(--apple-separator, #38383a);
+}
+
+.news-action-btn {
+  flex: 1;
+  background: var(--apple-gray-6, #2c2c2e);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.news-action-btn:hover {
+  background: var(--apple-gray-5, #3a3a3c);
+  color: #fff;
+}
+
+.news-action-btn:active {
+  transform: scale(0.97);
+}
+
+.news-action-invest {
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--apple-green, #34c759);
+}
+
+.news-action-invest:hover {
+  background: rgba(52, 199, 89, 0.25);
+  color: var(--apple-green, #34c759);
+}
+
+@keyframes newsFadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
