@@ -1,8 +1,8 @@
 // ============================================================
-// js/app.js — PLAY MY v8.5.0
-// Bootstrap final: inicialização, sessão, listeners, aliases.
+// js/app.js — PLAY MY v9.0.0
+// Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
 // Depende de TODOS os módulos anteriores.
-// DEVE ser o ÚLTIMO script a carregar.
+// DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
 // ============================================================
 
 // ============================================================
@@ -15,11 +15,9 @@ window.initializeApp = async function () {
   updateUserInterface();
   await loadAllData();
 
-   loadNewsFeed();
-  initNewsInfiniteScroll();
   loadYouTubeAPI();
-  
-  // Registra Service Worker
+
+  // Registra Service Worker (PWA)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
@@ -76,13 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 2. Health check periódico (a cada 3 minutos)
   setInterval(() => HealthCheck.runAll(), 180000);
 
-  // 3. Carrega notícias após 2s (não bloqueia inicialização)
-  setTimeout(() => {
-    loadNewsFeed();
-    initNewsInfiniteScroll();
-  }, 2000);
-  
-  // 4. Restaura sessão salva
+  // 3. Restaura sessão salva
   const restored = restoreSession();
 
   if (restored) {
@@ -95,11 +87,80 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ============================================================
+// PWA — INSTALAÇÃO (celular + PC)
+// ============================================================
+// Captura o evento beforeinstallprompt (Chrome/Edge/Android)
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  state.deferredInstallPrompt = e;
+  // Mostra o botão "Instalar" no header
+  const btn = document.getElementById('installAppBtn');
+  if (btn) {
+    btn.style.display = 'inline-block';
+    btn.classList.remove('hidden');
+  }
+  console.log('📲 PWA: prompt de instalação disponível');
+});
+
+// Detecta quando o app foi instalado
+window.addEventListener('appinstalled', () => {
+  console.log('✅ PWA: app instalado');
+  state.deferredInstallPrompt = null;
+  const btn = document.getElementById('installAppBtn');
+  if (btn) btn.style.display = 'none';
+  if (typeof showToast === 'function') {
+    showToast('✅ App instalado! Procure o ícone PLAY MY na tela inicial.', 'success', 5000);
+  }
+});
+
+// Função de instalação (chamada pelo botão "Instalar" ou "Baixar App")
+window.installApp = async function () {
+  // 1. Se o prompt nativo estiver disponível, usa ele
+  if (state.deferredInstallPrompt) {
+    try {
+      state.deferredInstallPrompt.prompt();
+      const choice = await state.deferredInstallPrompt.userChoice;
+      console.log('📲 PWA: escolha do usuário =', choice.outcome);
+      if (choice.outcome === 'accepted') {
+        if (typeof showToast === 'function') {
+          showToast('✅ Instalando PLAY MY...', 'success', 3000);
+        }
+      } else {
+        if (typeof showToast === 'function') {
+          showToast('Instalação cancelada', 'info', 3000);
+        }
+      }
+      state.deferredInstallPrompt = null;
+      const btn = document.getElementById('installAppBtn');
+      if (btn) btn.style.display = 'none';
+      return;
+    } catch (e) {
+      console.warn('Erro no prompt nativo:', e);
+    }
+  }
+
+  // 2. Fallback: instruções manuais por SO
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isAndroid = /Android/.test(ua);
+  const isDesktop = !isIOS && !isAndroid;
+
+  let msg = '';
+  if (isIOS) {
+    msg = '📱 No iPhone/iPad:\n\n1. Toque no botão Compartilhar (□↑)\n2. Escolha "Adicionar à Tela de Início"\n3. Confirme com "Adicionar"';
+  } else if (isAndroid) {
+    msg = '📱 No Android:\n\n1. Toque no menu (⋮) do navegador\n2. Escolha "Instalar app" ou "Adicionar à tela inicial"\n3. Confirme';
+  } else {
+    msg = '💻 No computador:\n\n1. Clique no ícone de instalação na barra de endereço\n2. Ou vá em Menu → "Instalar PLAY MY"\n3. Confirme';
+  }
+
+  // Mostra alerta simples (não depende de modal externo)
+  alert(msg);
+};
+
+// ============================================================
 // ALIASES GLOBAIS (compatibilidade total com HTML inline)
 // ============================================================
-// Todos os módulos já expõem suas funções em `window.X`.
-// Este bloco apenas garante que continuam acessíveis mesmo
-// se algum bundle futuro encapsular módulos.
 
 // Auth (auth.js)
 window.handleLogin = window.handleLogin || handleLogin;
@@ -121,7 +182,6 @@ window.setBalanceAmount = window.setBalanceAmount || setBalanceAmount;
 window.processBalanceAdd = window.processBalanceAdd || processBalanceAdd;
 window.openWithdrawalModal = window.openWithdrawalModal || openWithdrawalModal;
 window.requestWithdrawal = window.requestWithdrawal || requestWithdrawal;
-window.installApp = window.installApp || installApp;
 
 // Marketplace (marketplace.js)
 window.changeSection = window.changeSection || changeSection;
@@ -199,15 +259,9 @@ window.cancelTradeOffer = window.cancelTradeOffer || cancelTradeOffer;
 window.openBlockchainExplorer = window.openBlockchainExplorer || openBlockchainExplorer;
 window.loadBlockchainData = window.loadBlockchainData || loadBlockchainData;
 
-// News (news.js)
-window.loadNewsFeed = window.loadNewsFeed || loadNewsFeed;
-window.filterNews = window.filterNews || filterNews;
-window.loadMoreNews = window.loadMoreNews || loadMoreNews;
-window.renderNewsCard = window.renderNewsCard || renderNewsCard;
-window.trackNewsInteraction = window.trackNewsInteraction || trackNewsInteraction;
-window.initNewsInfiniteScroll = window.initNewsInfiniteScroll || initNewsInfiniteScroll;
-window.newsResetDailySeen = window.newsResetDailySeen || newsResetDailySeen;
-window.newsLoadPreferences = window.newsLoadPreferences || newsLoadPreferences;
+// News (news-unified.js) — apenas compatibilidade com botões existentes
+window.pmNewsReload = window.pmNewsReload || function () {};
+window.pmNewsLoadMore = window.pmNewsLoadMore || function () {};
 
 // Player (player.js)
 window.playTrack = window.playTrack || playTrack;
@@ -240,5 +294,5 @@ window.getFallbackData = window.getFallbackData || getFallbackData;
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] carregado — aplicação inicializada');
-console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, news, modals, app');
+console.log('✅ [app.js] v9.0.0 carregado — aplicação inicializada');
+console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
