@@ -13,6 +13,7 @@
 // ============================================================
 // NAVEGAÇÃO ENTRE SEÇÕES
 // ============================================================
+
 window.changeSection = function (section) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   const el = document.getElementById(section + 'Section');
