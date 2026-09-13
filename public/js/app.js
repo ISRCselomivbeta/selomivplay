@@ -15,9 +15,10 @@ window.initializeApp = async function () {
   updateUserInterface();
   await loadAllData();
 
-  loadNewsFeed();
+   loadNewsFeed();
+  initNewsInfiniteScroll();
   loadYouTubeAPI();
-
+  
   // Registra Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -76,8 +77,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   setInterval(() => HealthCheck.runAll(), 180000);
 
   // 3. Carrega notícias após 2s (não bloqueia inicialização)
-  setTimeout(() => loadNewsFeed(), 2000);
-
+  setTimeout(() => {
+    loadNewsFeed();
+    initNewsInfiniteScroll();
+  }, 2000);
+  
   // 4. Restaura sessão salva
   const restored = restoreSession();
 
@@ -198,6 +202,12 @@ window.loadBlockchainData = window.loadBlockchainData || loadBlockchainData;
 // News (news.js)
 window.loadNewsFeed = window.loadNewsFeed || loadNewsFeed;
 window.filterNews = window.filterNews || filterNews;
+window.loadMoreNews = window.loadMoreNews || loadMoreNews;
+window.renderNewsCard = window.renderNewsCard || renderNewsCard;
+window.trackNewsInteraction = window.trackNewsInteraction || trackNewsInteraction;
+window.initNewsInfiniteScroll = window.initNewsInfiniteScroll || initNewsInfiniteScroll;
+window.newsResetDailySeen = window.newsResetDailySeen || newsResetDailySeen;
+window.newsLoadPreferences = window.newsLoadPreferences || newsLoadPreferences;
 
 // Player (player.js)
 window.playTrack = window.playTrack || playTrack;
