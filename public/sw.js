@@ -70,10 +70,15 @@ self.addEventListener('fetch', (event) => {
   // Ignorar extensões de navegador e devtools
   if (url.protocol === 'chrome-extension:' || url.protocol === 'moz-extension:') return;
 
-  // ============================================================
+   // ============================================================
   // 1. APIs e dados em tempo real → SEMPRE da rede (network-only)
   // ============================================================
   if (NO_CACHE_HOSTS.some(host => url.hostname.includes(host))) {
+    return;
+  }
+
+  // 1.1. API do próprio domínio (/api/...) → network-only
+  if (url.pathname.startsWith('/api/')) {
     return;
   }
 
