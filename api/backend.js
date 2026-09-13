@@ -1,4 +1,4 @@
-// BACKEND.JS - VERSÃO 9.0.0 (PERSISTÊNCIA VERCEL KV + FEED INFINITO)
+// BACKEND.JS - VERSÃO 9.1.0 (PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO)
 // ============================================================
 // Todas as ações: proxy GAS + KV + notícias reais + YouTube
 // ============================================================
@@ -328,22 +328,40 @@ async function addBlockToChain(data) {
 }
 
 // ============================================================
-// NOTÍCIAS REAIS — Google News RSS
+// NOTÍCIAS REAIS — Google News RSS (busca DIRETA, sem proxy)
 // ============================================================
 async function fetchNewsFromGoogleRSS(query, categoria) {
     try {
         const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
+
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-        const response = await fetch(proxyUrl, { signal: controller.signal });
+        const timeout = setTimeout(() => controller.abort(), 12000);
+
+        const response = await fetch(rssUrl, {
+            signal: controller.signal,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.1)',
+                'Accept': 'application/xml, text/xml, */*'
+            }
+        });
         clearTimeout(timeout);
-        if (!response.ok) throw new Error('RSS fetch failed');
+
+        if (!response.ok) {
+            console.log(`⚠️ Google News HTTP ${response.status} para "${query}"`);
+            return [];
+        }
+
         const xml = await response.text();
+        if (!xml.includes('<item>')) {
+            console.log(`⚠️ Google News sem <item> para "${query}"`);
+            return [];
+        }
+
         const items = [];
         const itemRegex = /<item>([\s\S]*?)<\/item>/g;
         let match;
         let count = 0;
+
         while ((match = itemRegex.exec(xml)) !== null && count < 15) {
             const itemXml = match[1];
             const titleMatch = itemXml.match(/<title>(.*?)<\/title>/);
@@ -351,9 +369,6 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
             const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/);
             const sourceMatch = itemXml.match(/<source[^>]*>(.*?)<\/source>/);
             const descMatch = itemXml.match(/<description>(.*?)<\/description>/);
-            const imgMatch = itemXml.match(/<media:content[^>]*url="([^"]+)"/) ||
-                             itemXml.match(/<enclosure[^>]*url="([^"]+)"/) ||
-                             itemXml.match(/<img[^>]*src="([^"]+)"/);
 
             if (titleMatch) {
                 let title = titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
@@ -366,11 +381,6 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
                     if (texto) texto += '...';
                 }
 
-                const imagem = imgMatch ? imgMatch[1] : null;
-                const link = linkMatch ? linkMatch[1].trim() : '#';
-                const timestamp = pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString();
-
-                // ID estável baseado no título (não muda entre requests)
                 const id = 'news_' + crypto.createHash('md5').update(title).digest('hex').substring(0, 12);
 
                 items.push({
@@ -381,9 +391,9 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
                     fonte_logo: getFonteLogo(source),
                     titulo: title,
                     texto: texto || 'Clique para ler a notícia completa.',
-                    imagem,
-                    link,
-                    timestamp,
+                    imagem: null,
+                    link: linkMatch ? linkMatch[1].trim() : '#',
+                    timestamp: pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString(),
                     tema: categoria,
                     likes: 0,
                     prazo: null,
@@ -393,6 +403,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
                 count++;
             }
         }
+        console.log(`📰 [${categoria}] ${items.length} notícias de "${query}"`);
         return items;
     } catch (e) {
         console.error(`Erro RSS "${query}":`, e.message);
@@ -404,11 +415,10 @@ async function aggregateNews() {
     const cached = await Storage.get('news_cache');
     const cachedTime = await Storage.get('news_cache_time');
     if (cached && cachedTime && Date.now() - cachedTime < 15 * 60 * 1000) {
-        console.log('📰 Notícias do cache KV');
+        console.log(`📰 Cache KV: ${cached.length} notícias`);
         return cached;
     }
 
-    // Queries reais — música, lançamentos, shows, editais, negócios
     const queries = [
         { q: 'lançamento musical álbum 2025', cat: 'lancamentos' },
         { q: 'nova música single artista', cat: 'lancamentos' },
@@ -424,19 +434,18 @@ async function aggregateNews() {
         { q: 'edital fomento cultural', cat: 'editais' }
     ];
 
+    console.log('📰 Buscando notícias reais (direto)...');
     const batches = await Promise.all(queries.map(nq => fetchNewsFromGoogleRSS(nq.q, nq.cat)));
     let all = batches.flat();
+    console.log(`📰 Total bruto: ${all.length} notícias`);
 
-    // SEM FALLBACK FAKE — se não tiver notícia real, retorna vazio
     if (all.length === 0) {
         console.log('📰 Nenhuma notícia real encontrada — retornando vazio');
         return [];
     }
 
-    // Ordena por mais recente
     all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    // Deduplicação por título (evita mesma notícia de fontes diferentes)
     const seen = new Set();
     const unique = all.filter(n => {
         const k = n.titulo.toLowerCase().substring(0, 60);
@@ -478,7 +487,7 @@ module.exports = async (req, res) => {
                 blocks_count = chain.blocks.length;
             } catch (e) {}
             return res.status(200).json({
-                success: true, message: 'pong', version: '9.0.0',
+                success: true, message: 'pong', version: '9.1.0',
                 kv_enabled: !!kv, playlists_count, blocks_count,
                 youtube_enabled: !!YOUTUBE_API_KEY,
                 timestamp: new Date().toISOString()
@@ -621,7 +630,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 📰 NOTÍCIAS — v9.0.0 (paginado + personalizado + interação)
+        // 📰 NOTÍCIAS — v9.1.0 (paginado + personalizado + interação)
         // ============================================================
         if (action === 'get_news') {
             const page = parseInt(params.page) || 1;
@@ -632,7 +641,6 @@ module.exports = async (req, res) => {
 
             let news = await aggregateNews();
 
-            // Sem notícia real → retorna vazio
             if (!news.length) {
                 return res.status(200).json({
                     success: true,
@@ -645,12 +653,10 @@ module.exports = async (req, res) => {
                 });
             }
 
-            // 1. Remove já vistas hoje (pelo usuário)
             if (seenIds.length) {
                 news = news.filter(n => !seenIds.includes(n.id));
             }
 
-            // 2. Remove notícias vistas ontem por este usuário
             if (userId && userId !== 'anon') {
                 const seenYesterday = await Storage.get('news_seen_' + userId) || [];
                 const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -662,7 +668,6 @@ module.exports = async (req, res) => {
                 }
             }
 
-            // 3. Ordena por preferência do usuário (sem inventar nada)
             if (preferences.length) {
                 news.sort((a, b) => {
                     const aScore = (preferences.includes(a.categoria) ? 10 : 0) +
@@ -677,7 +682,6 @@ module.exports = async (req, res) => {
                 });
             }
 
-            // 4. Paginação
             const start = (page - 1) * limit;
             const end = start + limit;
             const pageItems = news.slice(start, end);
@@ -690,7 +694,7 @@ module.exports = async (req, res) => {
                 next_page: has_more ? page + 1 : null,
                 total: news.length,
                 page: page,
-                source: 'google_news_rss',
+                source: 'google_news_rss_direct',
                 cached: true
             });
         }
@@ -724,7 +728,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 📰 TRACK INTERAÇÃO (personalização)
+        // 📰 TRACK INTERAÇÃO
         // ============================================================
         if (action === 'track_news_interaction') {
             const userId = params.user_id;
@@ -1125,7 +1129,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.0.0',
+            version: '9.1.0',
             kv_enabled: !!kv,
             youtube_enabled: !!YOUTUBE_API_KEY,
             action: action || 'nenhuma',
