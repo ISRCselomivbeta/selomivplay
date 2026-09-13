@@ -30,6 +30,37 @@
 <link rel="stylesheet" href="/css/blockchain.css">
 <link rel="stylesheet" href="/css/responsive.css">
 
+<!-- ============================================================ -->
+<!-- ESTILO DO OLHO (MOSTRAR/OCULTAR SENHA) — v1.0.0              -->
+<!-- ============================================================ -->
+<style id="playmy-password-toggle-style">
+.playmy-password-wrap {
+  position: relative;
+  display: block;
+}
+.playmy-password-wrap > input {
+  padding-right: 50px !important;
+}
+.playmy-password-toggle {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--apple-label-2, #8e8e93);
+  font-size: 18px;
+  cursor: pointer;
+  user-select: none;
+  z-index: 5;
+  padding: 6px;
+  border-radius: 50%;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.playmy-password-toggle:hover {
+  color: var(--apple-green, #34c759);
+  background: rgba(255, 255, 255, 0.06);
+}
+</style>
+
 </head>
 <body>
 
@@ -53,7 +84,17 @@
 </div>
 <div id="loginForm">
 <div class="form-group"><label class="text-muted mb-2">E-mail</label><input type="email" id="loginEmailField" class="form-control-custom" placeholder="Digite seu e-mail" autocomplete="email"></div>
-<div class="form-group"><label class="text-muted mb-2">Senha</label><input type="password" id="loginPasswordField" class="form-control-custom" placeholder="Digite sua senha" autocomplete="current-password"></div>
+
+<!-- ⬇️ CAMPO DE SENHA COM OLHO ⬇️ -->
+<div class="form-group">
+  <label class="text-muted mb-2">Senha</label>
+  <div class="playmy-password-wrap">
+    <input type="password" id="loginPasswordField" class="form-control-custom" placeholder="Digite sua senha" autocomplete="current-password">
+    <i class="bi bi-eye playmy-password-toggle" onclick="togglePassword('loginPasswordField', this)" title="Mostrar/ocultar senha"></i>
+  </div>
+</div>
+<!-- ⬆️ FIM DO CAMPO COM OLHO ⬆️ -->
+
 <button class="btn-miv mb-3" onclick="handleLogin()" id="loginBtn"><i class="bi bi-box-arrow-in-right"></i> Entrar</button>
 <p class="text-center mb-3"><a href="#" class="auth-link small" onclick="event.preventDefault(); openResetPasswordModal();"><i class="bi bi-question-circle"></i> Esqueceu sua senha?</a></p>
 <p class="text-center text-muted">Novo por aqui? <a href="#" class="auth-link" onclick="showRegisterForm()">Criar conta</a></p>
@@ -61,7 +102,17 @@
 <div id="registerForm" style="display:none">
 <div class="form-group"><label class="text-muted mb-2">Nome completo</label><input type="text" id="registerNameField" class="form-control-custom" placeholder="Digite seu nome completo"></div>
 <div class="form-group"><label class="text-muted mb-2">E-mail</label><input type="email" id="registerEmailField" class="form-control-custom" placeholder="Digite seu e-mail"></div>
-<div class="form-group"><label class="text-muted mb-2">Senha (mínimo 6 caracteres)</label><input type="password" id="registerPasswordField" class="form-control-custom" placeholder="Digite sua senha" minlength="6"></div>
+
+<!-- ⬇️ CAMPO DE SENHA COM OLHO (REGISTRO) ⬇️ -->
+<div class="form-group">
+  <label class="text-muted mb-2">Senha (mínimo 6 caracteres)</label>
+  <div class="playmy-password-wrap">
+    <input type="password" id="registerPasswordField" class="form-control-custom" placeholder="Digite sua senha" minlength="6">
+    <i class="bi bi-eye playmy-password-toggle" onclick="togglePassword('registerPasswordField', this)" title="Mostrar/ocultar senha"></i>
+  </div>
+</div>
+<!-- ⬆️ FIM DO CAMPO COM OLHO ⬆️ -->
+
 <div class="form-group"><label class="text-muted mb-2">Selecione seu perfil</label><select id="registerTypeField" class="form-control-custom" onchange="toggleArtistField()"><option value="">Selecione...</option><option value="ouvinte">🎧 Ouvinte/Investidor</option><option value="artista">🎤 Artista</option></select></div>
 <div class="form-group" id="artistLinkField" style="display:none"><label class="text-muted mb-2">Link do trabalho</label><input type="url" id="registerLinkField" class="form-control-custom" placeholder="YouTube, Spotify..."></div>
 <div class="terms-checkbox">
@@ -532,6 +583,24 @@
 </div>
 </div>
 </div>
+
+<!-- ============================================================ -->
+<!-- FUNÇÃO DO OLHO (MOSTRAR/OCULTAR SENHA) — v1.0.0              -->
+<!-- ============================================================ -->
+<script>
+window.togglePassword = function(fieldId, icon) {
+  var field = document.getElementById(fieldId);
+  if (!field) return;
+
+  if (field.type === 'password') {
+    field.type = 'text';
+    icon.className = 'bi bi-eye-slash playmy-password-toggle';
+  } else {
+    field.type = 'password';
+    icon.className = 'bi bi-eye playmy-password-toggle';
+  }
+};
+</script>
 
 <!-- ============================================================ -->
 <!-- MÓDULOS JS — ORDEM OBRIGATÓRIA                               -->
