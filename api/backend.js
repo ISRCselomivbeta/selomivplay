@@ -1,6 +1,6 @@
-// BACKEND.JS - VERSÃO 8.5.0 (PERSISTÊNCIA VERCEL KV)
+// BACKEND.JS - VERSÃO 9.0.0 (PERSISTÊNCIA VERCEL KV + FEED INFINITO)
 // ============================================================
-// Todas as ações: proxy GAS + KV + notícias + YouTube
+// Todas as ações: proxy GAS + KV + notícias reais + YouTube
 // ============================================================
 
 const nodemailer = require('nodemailer');
@@ -20,6 +20,35 @@ const EMAIL_FROM = 'selomivplay@gmail.com';
 const EMAIL_NAME = 'PLAY MY';
 
 // ============================================================
+// MAPA DE LOGOS DE FONTES REAIS
+// ============================================================
+const FONTE_LOGOS = {
+    'g1': 'https://s2.glbimg.com/9vC0e5YhKt8tXQ8yQ8yQ8yQ8yQ8=/0x0:0x0/100x100/i.s3.glbimg.com/v1/AUTH_59edd422c0c84a879bd37670ae4f538a/internal_photos/bs/2020/2/0/8Q8yQ8yQ8yQ8yQ8yQ8yQ8Q/g1.png',
+    'globo': 'https://s2.glbimg.com/9vC0e5YhKt8tXQ8yQ8yQ8yQ8yQ8=/0x0:0x0/100x100/i.s3.glbimg.com/v1/AUTH_59edd422c0c84a879bd37670ae4f538a/internal_photos/bs/2020/2/0/8Q8yQ8yQ8yQ8yQ8yQ8yQ8Q/g1.png',
+    'folha': 'https://www1.folha.uol.com.br/favicon.ico',
+    'uol': 'https://www.uol.com.br/favicon.ico',
+    'cnn': 'https://www.cnnbrasil.com.br/favicon.ico',
+    'estadao': 'https://www.estadao.com.br/favicon.ico',
+    'veja': 'https://veja.abril.com.br/favicon.ico',
+    'exame': 'https://exame.com/favicon.ico',
+    'billboard': 'https://www.billboard.com/favicon.ico',
+    'rollingstone': 'https://rollingstone.uol.com.br/favicon.ico',
+    'tenho mais discos': 'https://tenhomaisdiscosqueamigos.com/favicon.ico',
+    'minc': 'https://www.gov.br/cultura/favicon.ico',
+    'gov.br': 'https://www.gov.br/favicon.ico',
+    'secult': 'https://www.saude.go.gov.br/favicon.ico'
+};
+
+function getFonteLogo(fonte) {
+    if (!fonte) return null;
+    const f = fonte.toLowerCase();
+    for (const key in FONTE_LOGOS) {
+        if (f.includes(key)) return FONTE_LOGOS[key];
+    }
+    return null;
+}
+
+// ============================================================
 // STORAGE EM MEMÓRIA (FALLBACK)
 // ============================================================
 const MEMORY_STORAGE = {
@@ -34,7 +63,9 @@ const MEMORY_STORAGE = {
     tickets: [],
     artists: [],
     ledger: {},
-    portfolio: {}
+    portfolio: {},
+    news_seen: {},
+    news_prefs: {}
 };
 
 // ============================================================
@@ -239,7 +270,7 @@ async function getYouTubeVideoInfo(videoId) {
 }
 
 // ============================================================
-// FALLBACK DE MÚSICAS
+// FALLBACK DE MÚSICAS (playlist interna)
 // ============================================================
 const FALLBACK_MUSICAS = [
     { id: '1', titulo: 'RIO DE JANEIRO', artista: 'Elzo Henschell',
@@ -297,7 +328,7 @@ async function addBlockToChain(data) {
 }
 
 // ============================================================
-// NOTÍCIAS (Google News RSS)
+// NOTÍCIAS REAIS — Google News RSS
 // ============================================================
 async function fetchNewsFromGoogleRSS(query, categoria) {
     try {
@@ -313,33 +344,51 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const itemRegex = /<item>([\s\S]*?)<\/item>/g;
         let match;
         let count = 0;
-        while ((match = itemRegex.exec(xml)) !== null && count < 10) {
+        while ((match = itemRegex.exec(xml)) !== null && count < 15) {
             const itemXml = match[1];
             const titleMatch = itemXml.match(/<title>(.*?)<\/title>/);
             const linkMatch = itemXml.match(/<link>(.*?)<\/link>/);
             const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/);
             const sourceMatch = itemXml.match(/<source[^>]*>(.*?)<\/source>/);
             const descMatch = itemXml.match(/<description>(.*?)<\/description>/);
+            const imgMatch = itemXml.match(/<media:content[^>]*url="([^"]+)"/) ||
+                             itemXml.match(/<enclosure[^>]*url="([^"]+)"/) ||
+                             itemXml.match(/<img[^>]*src="([^"]+)"/);
+
             if (titleMatch) {
                 let title = titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
                 const source = sourceMatch ? sourceMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : 'Google News';
                 if (source && title.endsWith(' - ' + source)) title = title.slice(0, -(source.length + 3));
+
                 let texto = '';
                 if (descMatch) {
                     texto = descMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]+>/g, '').trim().substring(0, 200);
                     if (texto) texto += '...';
                 }
+
+                const imagem = imgMatch ? imgMatch[1] : null;
+                const link = linkMatch ? linkMatch[1].trim() : '#';
+                const timestamp = pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString();
+
+                // ID estável baseado no título (não muda entre requests)
+                const id = 'news_' + crypto.createHash('md5').update(title).digest('hex').substring(0, 12);
+
                 items.push({
-                    id: 'gnews_' + count + '_' + Date.now(),
-                    categoria: categoria,
+                    id,
+                    categoria,
                     autor: source,
+                    fonte: source,
+                    fonte_logo: getFonteLogo(source),
                     titulo: title,
                     texto: texto || 'Clique para ler a notícia completa.',
-                    imagem: null,
-                    link: linkMatch ? linkMatch[1].trim() : '#',
-                    timestamp: pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString(),
+                    imagem,
+                    link,
+                    timestamp,
+                    tema: categoria,
                     likes: 0,
-                    fonte: 'Google News'
+                    prazo: null,
+                    investidores_hoje: 0,
+                    em_alta: false
                 });
                 count++;
             }
@@ -358,30 +407,47 @@ async function aggregateNews() {
         console.log('📰 Notícias do cache KV');
         return cached;
     }
+
+    // Queries reais — música, lançamentos, shows, editais, negócios
     const queries = [
+        { q: 'lançamento musical álbum 2025', cat: 'lancamentos' },
+        { q: 'nova música single artista', cat: 'lancamentos' },
         { q: 'música brasileira', cat: 'musica' },
-        { q: 'shows turnê', cat: 'shows' },
+        { q: 'shows turnê Brasil', cat: 'shows' },
+        { q: 'festival música Brasil', cat: 'shows' },
         { q: 'indústria musical streaming', cat: 'negocios' },
-        { q: 'artista música lançamento', cat: 'artistas' }
+        { q: 'mercado fonográfico', cat: 'negocios' },
+        { q: 'artista música entrevista', cat: 'artistas' },
+        { q: 'edital cultural música', cat: 'editais' },
+        { q: 'edital lei paulo gustavo', cat: 'editais' },
+        { q: 'edital proac música', cat: 'editais' },
+        { q: 'edital fomento cultural', cat: 'editais' }
     ];
+
     const batches = await Promise.all(queries.map(nq => fetchNewsFromGoogleRSS(nq.q, nq.cat)));
     let all = batches.flat();
+
+    // SEM FALLBACK FAKE — se não tiver notícia real, retorna vazio
     if (all.length === 0) {
-        all = [
-            { id: 'fb1', categoria: 'musica', autor: 'G1 Música', titulo: 'Confira as principais notícias do mundo da música', texto: 'Acompanhe as últimas novidades.', imagem: null, link: 'https://g1.globo.com/pop-arte/musica/', timestamp: new Date().toISOString(), likes: 0, fonte: 'G1' }
-        ];
+        console.log('📰 Nenhuma notícia real encontrada — retornando vazio');
+        return [];
     }
+
+    // Ordena por mais recente
     all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // Deduplicação por título (evita mesma notícia de fontes diferentes)
     const seen = new Set();
     const unique = all.filter(n => {
-        const k = n.titulo.toLowerCase().substring(0, 50);
+        const k = n.titulo.toLowerCase().substring(0, 60);
         if (seen.has(k)) return false;
         seen.add(k);
         return true;
     });
+
     await Storage.set('news_cache', unique);
     await Storage.set('news_cache_time', Date.now());
-    console.log(`📰 ${unique.length} notícias cacheadas no KV`);
+    console.log(`📰 ${unique.length} notícias reais cacheadas no KV`);
     return unique;
 }
 
@@ -412,7 +478,7 @@ module.exports = async (req, res) => {
                 blocks_count = chain.blocks.length;
             } catch (e) {}
             return res.status(200).json({
-                success: true, message: 'pong', version: '8.5.0',
+                success: true, message: 'pong', version: '9.0.0',
                 kv_enabled: !!kv, playlists_count, blocks_count,
                 youtube_enabled: !!YOUTUBE_API_KEY,
                 timestamp: new Date().toISOString()
@@ -420,7 +486,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🔍 BUSCA NO YOUTUBE (NOVO — CORRIGIDO)
+        // 🔍 BUSCA NO YOUTUBE
         // ============================================================
         if (action === 'search_youtube') {
             const { query, limit } = params;
@@ -428,14 +494,12 @@ module.exports = async (req, res) => {
 
             console.log('🎥 Buscando YouTube:', query);
 
-            // 1. Tenta via API direta do YouTube (mais confiável)
             const directResults = await searchYouTube(query, parseInt(limit) || 15);
             if (directResults.length > 0) {
                 console.log(`🎥 YouTube API OK: ${directResults.length} resultados`);
                 return res.status(200).json({ success: true, data: directResults, source: 'youtube_api' });
             }
 
-            // 2. Fallback: tenta via GAS
             console.log('⚠️ YouTube API vazia, tentando GAS...');
             const gasResult = await callGAS('search_youtube', { query, limit: limit || 15 });
             if (gasResult.success && gasResult.data && gasResult.data.success && gasResult.data.data && gasResult.data.data.length > 0) {
@@ -446,13 +510,12 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎬 YOUTUBE VIDEO INFO (para upload de música)
+        // 🎬 YOUTUBE VIDEO INFO
         // ============================================================
         if (action === 'search_isrc') {
             const { youtube_url } = params;
             if (!youtube_url) return res.status(200).json({ success: false, message: 'URL obrigatória' });
 
-            // Extrai video ID
             let videoId = null;
             const patterns = [/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/, /youtube\.com\/watch\?.*v=([^&\n?#]+)/];
             for (let p of patterns) {
@@ -505,7 +568,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎵 PLAYLISTS GLOBAIS (KV)
+        // 🎵 PLAYLISTS GLOBAIS
         // ============================================================
         if (action === 'get_global_playlists') {
             const playlists = await Storage.get('global_playlists') || [];
@@ -558,12 +621,133 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 📰 NOTÍCIAS
+        // 📰 NOTÍCIAS — v9.0.0 (paginado + personalizado + interação)
         // ============================================================
         if (action === 'get_news') {
-            const news = await aggregateNews();
-            const limit = parseInt(params.limit) || 100;
-            return res.status(200).json({ success: true, data: news.slice(0, limit), total: news.length, source: 'google_news_rss', cached: true });
+            const page = parseInt(params.page) || 1;
+            const limit = parseInt(params.limit) || 10;
+            const preferences = (params.preferences || '').split(',').filter(Boolean);
+            const seenIds = (params.seen_ids || '').split(',').filter(Boolean);
+            const userId = params.user_id || 'anon';
+
+            let news = await aggregateNews();
+
+            // Sem notícia real → retorna vazio
+            if (!news.length) {
+                return res.status(200).json({
+                    success: true,
+                    data: [],
+                    has_more: false,
+                    next_page: null,
+                    total: 0,
+                    page: page,
+                    message: 'Nenhuma notícia real encontrada no momento'
+                });
+            }
+
+            // 1. Remove já vistas hoje (pelo usuário)
+            if (seenIds.length) {
+                news = news.filter(n => !seenIds.includes(n.id));
+            }
+
+            // 2. Remove notícias vistas ontem por este usuário
+            if (userId && userId !== 'anon') {
+                const seenYesterday = await Storage.get('news_seen_' + userId) || [];
+                const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+                const seenYesterdayIds = seenYesterday
+                    .filter(s => s.date === yesterday)
+                    .map(s => s.id);
+                if (seenYesterdayIds.length) {
+                    news = news.filter(n => !seenYesterdayIds.includes(n.id));
+                }
+            }
+
+            // 3. Ordena por preferência do usuário (sem inventar nada)
+            if (preferences.length) {
+                news.sort((a, b) => {
+                    const aScore = (preferences.includes(a.categoria) ? 10 : 0) +
+                                   (preferences.includes(a.tema) ? 5 : 0) +
+                                   (a.em_alta ? 3 : 0) +
+                                   ((a.investidores_hoje || 0) / 10);
+                    const bScore = (preferences.includes(b.categoria) ? 10 : 0) +
+                                   (preferences.includes(b.tema) ? 5 : 0) +
+                                   (b.em_alta ? 3 : 0) +
+                                   ((b.investidores_hoje || 0) / 10);
+                    return bScore - aScore;
+                });
+            }
+
+            // 4. Paginação
+            const start = (page - 1) * limit;
+            const end = start + limit;
+            const pageItems = news.slice(start, end);
+            const has_more = end < news.length;
+
+            return res.status(200).json({
+                success: true,
+                data: pageItems,
+                has_more: has_more,
+                next_page: has_more ? page + 1 : null,
+                total: news.length,
+                page: page,
+                source: 'google_news_rss',
+                cached: true
+            });
+        }
+
+        // ============================================================
+        // 📰 MARCAR NOTÍCIAS COMO VISTAS
+        // ============================================================
+        if (action === 'mark_news_seen') {
+            const userId = params.user_id;
+            const newsIds = (params.news_ids || '').split(',').filter(Boolean);
+            const date = params.data || new Date().toISOString().slice(0, 10);
+
+            if (!userId || !newsIds.length) {
+                return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            }
+
+            const key = 'news_seen_' + userId;
+            let seen = await Storage.get(key) || [];
+
+            newsIds.forEach(id => {
+                if (!seen.find(s => s.id === id && s.date === date)) {
+                    seen.push({ id, date });
+                }
+            });
+
+            const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+            seen = seen.filter(s => s.date >= cutoff);
+
+            await Storage.set(key, seen);
+            return res.status(200).json({ success: true, count: seen.length });
+        }
+
+        // ============================================================
+        // 📰 TRACK INTERAÇÃO (personalização)
+        // ============================================================
+        if (action === 'track_news_interaction') {
+            const userId = params.user_id;
+            const newsId = params.news_id;
+            const tipo = params.tipo || 'click';
+            const tema = params.tema || '';
+            const categoria = params.categoria || '';
+
+            if (!userId || !newsId) {
+                return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            }
+
+            const key = 'news_prefs_' + userId;
+            let prefs = await Storage.get(key) || { temas: {}, categorias: {}, interacoes: 0 };
+
+            if (tema) prefs.temas[tema] = (prefs.temas[tema] || 0) + 1;
+            if (categoria) prefs.categorias[categoria] = (prefs.categorias[categoria] || 0) + 1;
+            prefs.interacoes = (prefs.interacoes || 0) + 1;
+            prefs.ultima = new Date().toISOString();
+
+            await Storage.set(key, prefs);
+
+            return res.status(200).json({ success: true, data: prefs });
         }
 
         // ============================================================
@@ -598,7 +782,6 @@ module.exports = async (req, res) => {
         if (action === 'get_admin_stats' || action === 'get_stats') {
             const playlists = await Storage.get('global_playlists') || [];
             const chain = await Storage.get('blockchain') || { blocks: [] };
-            // Tenta GAS primeiro para stats reais
             const gasResult = await callGAS('get_stats');
             if (gasResult.success && gasResult.data && gasResult.data.data) {
                 return res.status(200).json(gasResult.data);
@@ -651,7 +834,6 @@ module.exports = async (req, res) => {
             const nova = { id: 'pl_' + Date.now(), nome, publica, musicas: [], created_at: new Date().toISOString() };
             all[userId].push(nova);
             await Storage.set('user_playlists', all);
-            // Também tenta GAS
             callGAS('create_playlist', { user_id: userId, nome, publica }).catch(() => {});
             return res.status(200).json({ success: true, data: nova });
         }
@@ -722,7 +904,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎵 MÚSICAS (proxy GAS com fallback)
+        // 🎵 MÚSICAS
         // ============================================================
         if (action === 'get_musicas') {
             const gasResult = await callGAS('get_musicas', params);
@@ -874,7 +1056,6 @@ module.exports = async (req, res) => {
             `;
             const result = await sendEmail(email, '🔐 Recuperação de Senha - PLAY MY', html);
             if (result.success) return res.status(200).json({ success: true, message: 'Email enviado!', data: { token: resetToken } });
-            // Fallback: tenta GAS
             const gasResult = await callGAS('request_password_reset', { email, reset_url: 'https://playmy.com.br/reset-password.html' });
             if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
             return res.status(200).json({ success: false, message: 'Erro ao enviar email' });
@@ -930,7 +1111,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎤 GET FOLLOWING ARTISTS
+        // 🎤 REGISTER / CONFIRM EMAIL
         // ============================================================
         if (action === 'register' || action === 'confirm_email' || action === 'resend_confirmation') {
             const gasResult = await callGAS(action, params);
@@ -944,7 +1125,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '8.5.0',
+            version: '9.0.0',
             kv_enabled: !!kv,
             youtube_enabled: !!YOUTUBE_API_KEY,
             action: action || 'nenhuma',
