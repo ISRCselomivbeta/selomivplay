@@ -16,11 +16,6 @@ window.initializeApp = async function () {
   await loadAllData();
 
   loadYouTubeAPI();
-
-  // Registra Service Worker (PWA)
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  }
 };
 
 // ============================================================
@@ -67,6 +62,13 @@ window.loadAllData = async function () {
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 PLAY MY v' + CONFIG.VERSION + ' — Modular');
+
+  // 0. Registra o Service Worker IMEDIATAMENTE (antes do login)
+  //    Precisa estar ativo desde a primeira visita para o navegador
+  //    considerar o site instalável e disparar o beforeinstallprompt.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
 
   // 1. Health check inicial
   HealthCheck.runAll().catch(() => {});
