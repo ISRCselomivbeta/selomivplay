@@ -207,7 +207,9 @@ window.getFallbackData = function (action) {
   if (action === 'get_playlists') return { success: true, data: [] };
   if (action === 'get_global_playlists') return { success: true, data: [] };
   if (action === 'get_tickets') return { success: true, data: [] };
-  if (action === 'get_news') return { success: true, data: [] };
+  if (action === 'get_news') return { success: true, data: [], has_more: false };
+  if (action === 'mark_news_seen') return { success: true };
+  if (action === 'track_news_interaction') return { success: true };
   if (action === 'get_mining_blocks') return { success: true, data: [] };
   if (action === 'get_trades') return { success: true, data: { received: [], sent: [], history: [] } };
   if (action === 'get_top_investments') return { success: true, data: [] };
