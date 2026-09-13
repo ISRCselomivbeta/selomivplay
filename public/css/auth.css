@@ -2,6 +2,7 @@
    auth.css — PLAY MY v8.5.0
    Tela de autenticação: login, registro, termos.
    ============================================================ */
+
 .auth-screen { position: fixed; inset: 0; background: var(--apple-bg); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 9998; overflow-y: auto; }
 .auth-card { background: var(--apple-bg-card); backdrop-filter: var(--blur); border: 0.5px solid var(--apple-separator); border-radius: var(--radius-xl); padding: 40px 32px; width: 100%; max-width: 400px; box-shadow: var(--shadow-xl); animation: springIn 0.5s; }
 .logo-header { text-align: center; margin-bottom: 32px; }
