@@ -30,6 +30,9 @@
 <link rel="stylesheet" href="/css/blockchain.css">
 <link rel="stylesheet" href="/css/responsive.css">
 
+<link rel="stylesheet" href="/css/news.css">
+
+
 <!-- ============================================================ -->
 <!-- ESTILO DO OLHO (MOSTRAR/OCULTAR SENHA) — v1.0.0              -->
 <!-- ============================================================ -->
@@ -198,14 +201,17 @@
   </div>
   <div class="d-flex gap-2 mb-4 flex-wrap" id="newsFilters">
     <button class="btn btn-sm btn-warning" onclick="filterNews('all', this)">Tudo</button>
+    <button class="btn btn-sm btn-outline-warning" onclick="filterNews('lancamentos', this)">🚀 Lançamentos</button>
     <button class="btn btn-sm btn-outline-warning" onclick="filterNews('musica', this)">🎵 Música</button>
     <button class="btn btn-sm btn-outline-warning" onclick="filterNews('shows', this)">🎤 Shows</button>
     <button class="btn btn-sm btn-outline-warning" onclick="filterNews('negocios', this)">💰 Negócios</button>
     <button class="btn btn-sm btn-outline-warning" onclick="filterNews('artistas', this)">⭐ Artistas</button>
+    <button class="btn btn-sm btn-outline-warning" onclick="filterNews('editais', this)">📜 Editais</button>
   </div>
   <div id="newsFeed" style="max-width:680px;margin:0 auto"></div>
+  <div id="newsSentinel" style="height:1px"></div>
 </section>
-
+  
 <section id="portfolioSection" class="section">
 <div class="portfolio-summary">
 <h6 class="text-muted" style="text-transform:uppercase;font-size:11px;font-weight:600">VALOR TOTAL DA CARTEIRA</h6>
