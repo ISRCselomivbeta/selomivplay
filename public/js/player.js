@@ -11,6 +11,7 @@
 // ============================================================
 
 // ============ TOCAR MÚSICA INTERNA ============
+
 window.playTrack = function (index) {
   console.log('🎵 playTrack chamada com index:', index);
 
