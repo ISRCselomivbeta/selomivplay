@@ -197,19 +197,22 @@
 <section id="newsSection" class="section">
   <div class="section-header">
     <h2 class="section-title"><i class="bi bi-newspaper me-2" style="color:var(--apple-yellow)"></i> Feed de Notícias</h2>
-    <button class="btn btn-sm btn-outline-warning" onclick="loadNewsFeed(true)"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+    <button class="btn btn-sm btn-outline-warning" onclick="pmNewsReload()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
   </div>
-  <div class="d-flex gap-2 mb-4 flex-wrap" id="newsFilters">
-    <button class="btn btn-sm btn-warning" onclick="filterNews('all', this)">Tudo</button>
-    <button class="btn btn-sm btn-outline-warning" onclick="filterNews('lancamentos', this)">🚀 Lançamentos</button>
-    <button class="btn btn-sm btn-outline-warning" onclick="filterNews('musica', this)">🎵 Música</button>
-    <button class="btn btn-sm btn-outline-warning" onclick="filterNews('shows', this)">🎤 Shows</button>
-    <button class="btn btn-sm btn-outline-warning" onclick="filterNews('negocios', this)">💰 Negócios</button>
-    <button class="btn btn-sm btn-outline-warning" onclick="filterNews('artistas', this)">⭐ Artistas</button>
-    <button class="btn btn-sm btn-outline-warning" onclick="filterNews('editais', this)">📜 Editais</button>
+
+  <div id="pm-news-root">
+    <div class="pm-filters" id="pm-filters">
+      <button class="pm-filter-btn active" data-cat="all">Tudo</button>
+      <button class="pm-filter-btn" data-cat="lancamentos">🚀 Lançamentos</button>
+      <button class="pm-filter-btn" data-cat="musica">🎵 Música</button>
+      <button class="pm-filter-btn" data-cat="shows">🎤 Shows</button>
+      <button class="pm-filter-btn" data-cat="negocios">💰 Negócios</button>
+      <button class="pm-filter-btn" data-cat="artistas">⭐ Artistas</button>
+      <button class="pm-filter-btn" data-cat="editais">📜 Editais</button>
+    </div>
+    <div id="pm-feed"></div>
+    <div id="pm-sentinel" style="height:1px"></div>
   </div>
-  <div id="newsFeed" style="max-width:680px;margin:0 auto"></div>
-  <div id="newsSentinel" style="height:1px"></div>
 </section>
   
 <section id="portfolioSection" class="section">
@@ -623,9 +626,9 @@ window.togglePassword = function(fieldId, icon) {
 <script src="/js/portfolio.js"></script>
 <script src="/js/trades.js"></script>
 <script src="/js/blockchain.js"></script>
-<script src="/js/news.js"></script>
 <script src="/js/modals.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/news-unified.js"></script>
 
 </body>
 </html>
