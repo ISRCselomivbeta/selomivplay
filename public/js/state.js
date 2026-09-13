@@ -48,8 +48,17 @@ window.state = {
   // Streaming / recompensas
   streamingLastReward: 0,
 
-  // Notícias
-  news: { items: [], filter: 'all' },
+    // Notícias
+  news: {
+    items: [],
+    filter: 'all',
+    page: 1,
+    hasMore: true,
+    loading: false,
+    seenIds: [],
+    seenDate: '',
+    preferences: {}
+  },
 
   // PWA
   deferredInstallPrompt: null
