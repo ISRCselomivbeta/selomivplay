@@ -1,7 +1,8 @@
 // ============================================================
-// js/brand-info.js — PLAY MY v2.1.0
+// js/brand-info.js — PLAY MY v2.2.0
 // Rodapé + Sobre + Como Funciona + Blockchain + FAQ Beta
 // Foco: catálogo próprio do Selo MIV
+// Rodapé aparece tanto logado quanto deslogado.
 // Não depende de nenhum outro módulo.
 // ============================================================
 
@@ -51,107 +52,41 @@
       youtube:   'https://www.youtube.com/@ElzoHenschell'
     },
 
-    versao: '2.1.0',
+    versao: '2.2.0',
     versao_app: 'Beta 0.9',
     ano: new Date().getFullYear()
   };
 
   // ============================================================
-  // 🆕 FAQ — PERGUNTAS FREQUENTES (PLAY MY BETA / SELO MIV)
+  // FAQ — PERGUNTAS FREQUENTES (PLAY MY BETA / SELO MIV)
   // ============================================================
   var FAQ = [
-    {
-      q: 'O que é o PLAY MY?',
-      a: 'PLAY MY é uma plataforma brasileira em versão beta que une streaming de música, investimento em artistas e royalties. O ouvinte pode ouvir de graça, e se quiser, investir em "ações" de músicas do catálogo do Selo MIV para receber uma parte dos ganhos futuros.'
-    },
-    {
-      q: 'Quais músicas posso investir hoje?',
-      a: 'Por enquanto, apenas músicas do catálogo próprio do Selo MIV. Isso garante curadoria, direitos autorais em ordem e transparência total sobre a origem de cada obra. Em breve, outros selos e artistas independentes poderão participar.'
-    },
-    {
-      q: 'Por que só o catálogo do Selo MIV?',
-      a: 'Porque estamos em beta. Preferimos começar com um catálogo controlado, com direitos autorais e contratos em ordem, do que abrir para qualquer música e correr risco jurídico. Quando o modelo estiver maduro, expandimos.'
-    },
-    {
-      q: 'O PLAY MY é igual ao Spotify?',
-      a: 'Não. O Spotify é focado só em ouvir música. O PLAY MY junta streaming + investimento. Você pode só ouvir, ou também investir em músicas do Selo MIV — como se fosse uma "bolsa de música".'
-    },
-    {
-      q: 'Estou na versão beta. O que isso significa?',
-      a: 'Significa que o PLAY MY ainda está em desenvolvimento. Algumas funções podem mudar, bugs podem aparecer e o catálogo ainda está crescendo. Estamos ouvindo feedback para melhorar antes do lançamento oficial.'
-    },
-    {
-      q: 'Preciso pagar algo para usar?',
-      a: 'Não. Ouvir música no PLAY MY é 100% grátis. Você só investe dinheiro se quiser comprar ações de músicas do Selo MIV. E mesmo assim, é você quem decide quanto.'
-    },
-    {
-      q: 'Como funcionam os investimentos?',
-      a: 'Cada música do Selo MIV tem um número limitado de "ações". Você compra ações com saldo (via PIX ou cartão) e passa a ter uma participação nos royalties futuros daquela música. Quanto mais a música toca, maior tende a ser o retorno — mas isso não é garantido.'
-    },
-    {
-      q: 'O que é SELO COIN?',
-      a: 'SELO COIN é a moeda interna do PLAY MY. Ela serve para comprar ingressos, desbloquear conteúdos exclusivos e participar de votações. Importante: SELO COIN NÃO é uma criptomoeda negociável em exchanges, é só dentro da plataforma.'
-    },
-    {
-      q: 'Posso perder dinheiro investindo?',
-      a: 'Sim. Como qualquer investimento, existe risco. Se a música não performar, você pode não recuperar o valor investido. Sempre invista apenas o que você pode perder. O PLAY MY não garante retorno.'
-    },
-    {
-      q: 'O PLAY MY é uma instituição financeira?',
-      a: 'Não. O PLAY MY é uma plataforma de tecnologia e música. Não somos banco, corretora ou instituição financeira regulada pelo Banco Central. As operações são de risco e de responsabilidade do usuário.'
-    },
-    {
-      q: 'Como funciona a blockchain do PLAY MY?',
-      a: 'Usamos uma rede interna própria, desconectada do BTC Central, que registra cada investimento, royalty e trade em blocos encadeados com hash SHA-256. Você pode auditar tudo na seção "Blockchain" do app.'
-    },
-    {
-      q: 'Posso sacar meu dinheiro?',
-      a: 'Sim. Você pode solicitar saque via PIX quando tiver saldo disponível. O prazo e as taxas seguem o que está nos Termos de Uso.'
-    },
-    {
-      q: 'Como faço para investir?',
-      a: 'Passo 1: crie sua conta. Passo 2: adicione saldo via PIX ou cartão. Passo 3: escolha uma música do Selo MIV no Marketplace. Passo 4: clique em "Investir" e escolha a quantidade de ações.'
-    },
-    {
-      q: 'Qual o valor mínimo para investir?',
-      a: 'Cada música tem seu próprio valor por ação. Hoje, os valores começam em torno de R$ 10 por ação. Você escolhe quantas quer comprar.'
-    },
-    {
-      q: 'Posso vender minhas ações?',
-      a: 'Sim, através do sistema de Negociações. Você pode criar uma oferta de venda e outro usuário compra. Também é possível aceitar ofertas de compra de outros usuários.'
-    },
-    {
-      q: 'O que acontece se a música não tocar?',
-      a: 'Se a música não gerar streams, os royalties são baixos ou zero. Nesse caso, suas ações podem desvalorizar. É o risco do investimento em música — algumas músicas estouram, outras não.'
-    },
-    {
-      q: 'De onde vêm os royalties?',
-      a: 'Os royalties vêm de streaming (plays nas plataformas parceiras), vendas, shows e licenciamento das músicas do Selo MIV. Parte disso é distribuída entre os investidores, proporcional ao número de ações.'
-    },
-    {
-      q: 'Quem são os artistas do PLAY MY?',
-      a: 'Hoje, o artista principal é Elzo Henschell, do Selo MIV. Estamos em processo de cadastrar mais artistas do próprio selo. Se você é artista e quer participar, fale com a gente: selomiv@gmail.com.'
-    },
-    {
-      q: 'Como sei que o PLAY MY é confiável?',
-      a: 'Somos transparentes: CNPJ ativo (Selo MIV Produções), e-mail público, endereço, equipe identificada e blockchain auditável. Ainda estamos em beta, então recomendamos começar com valores pequenos.'
-    },
-    {
-      q: 'Posso usar no celular?',
-      a: 'Sim! O PLAY MY é um PWA (aplicativo web progressivo). Você pode instalar no celular ou PC pelo próprio navegador. No Chrome/Android, aparece "Instalar app". No iPhone, use "Adicionar à Tela de Início".'
-    },
-    {
-      q: 'Quando sai da versão beta?',
-      a: 'Não temos data exata. Estamos ouvindo feedback dos primeiros usuários para corrigir bugs, melhorar a experiência e ampliar o catálogo do Selo MIV. A previsão é lançar a versão 1.0 em breve.'
-    },
-    {
-      q: 'Como reporto um bug ou dou sugestão?',
-      a: 'Manda e-mail para selomiv@gmail.com com o assunto "Feedback Beta" e descreve o que aconteceu (print ajuda muito). Todo feedback é lido.'
-    }
+    { q: 'O que é o PLAY MY?', a: 'PLAY MY é uma plataforma brasileira em versão beta que une streaming de música, investimento em artistas e royalties. O ouvinte pode ouvir de graça, e se quiser, investir em "ações" de músicas do catálogo do Selo MIV para receber uma parte dos ganhos futuros.' },
+    { q: 'Quais músicas posso investir hoje?', a: 'Por enquanto, apenas músicas do catálogo próprio do Selo MIV. Isso garante curadoria, direitos autorais em ordem e transparência total sobre a origem de cada obra. Em breve, outros selos e artistas independentes poderão participar.' },
+    { q: 'Por que só o catálogo do Selo MIV?', a: 'Porque estamos em beta. Preferimos começar com um catálogo controlado, com direitos autorais e contratos em ordem, do que abrir para qualquer música e correr risco jurídico. Quando o modelo estiver maduro, expandimos.' },
+    { q: 'O PLAY MY é igual ao Spotify?', a: 'Não. O Spotify é focado só em ouvir música. O PLAY MY junta streaming + investimento. Você pode só ouvir, ou também investir em músicas do Selo MIV — como se fosse uma "bolsa de música".' },
+    { q: 'Estou na versão beta. O que isso significa?', a: 'Significa que o PLAY MY ainda está em desenvolvimento. Algumas funções podem mudar, bugs podem aparecer e o catálogo ainda está crescendo. Estamos ouvindo feedback para melhorar antes do lançamento oficial.' },
+    { q: 'Preciso pagar algo para usar?', a: 'Não. Ouvir música no PLAY MY é 100% grátis. Você só investe dinheiro se quiser comprar ações de músicas do Selo MIV. E mesmo assim, é você quem decide quanto.' },
+    { q: 'Como funcionam os investimentos?', a: 'Cada música do Selo MIV tem um número limitado de "ações". Você compra ações com saldo (via PIX ou cartão) e passa a ter uma participação nos royalties futuros daquela música. Quanto mais a música toca, maior tende a ser o retorno — mas isso não é garantido.' },
+    { q: 'O que é SELO COIN?', a: 'SELO COIN é a moeda interna do PLAY MY. Ela serve para comprar ingressos, desbloquear conteúdos exclusivos e participar de votações. Importante: SELO COIN NÃO é uma criptomoeda negociável em exchanges, é só dentro da plataforma.' },
+    { q: 'Posso perder dinheiro investindo?', a: 'Sim. Como qualquer investimento, existe risco. Se a música não performar, você pode não recuperar o valor investido. Sempre invista apenas o que você pode perder. O PLAY MY não garante retorno.' },
+    { q: 'O PLAY MY é uma instituição financeira?', a: 'Não. O PLAY MY é uma plataforma de tecnologia e música. Não somos banco, corretora ou instituição financeira regulada pelo Banco Central. As operações são de risco e de responsabilidade do usuário.' },
+    { q: 'Como funciona a blockchain do PLAY MY?', a: 'Usamos uma rede interna própria, desconectada do BTC Central, que registra cada investimento, royalty e trade em blocos encadeados com hash SHA-256. Você pode auditar tudo na seção "Blockchain" do app.' },
+    { q: 'Posso sacar meu dinheiro?', a: 'Sim. Você pode solicitar saque via PIX quando tiver saldo disponível. O prazo e as taxas seguem o que está nos Termos de Uso.' },
+    { q: 'Como faço para investir?', a: 'Passo 1: crie sua conta. Passo 2: adicione saldo via PIX ou cartão. Passo 3: escolha uma música do Selo MIV no Marketplace. Passo 4: clique em "Investir" e escolha a quantidade de ações.' },
+    { q: 'Qual o valor mínimo para investir?', a: 'Cada música tem seu próprio valor por ação. Hoje, os valores começam em torno de R$ 10 por ação. Você escolhe quantas quer comprar.' },
+    { q: 'Posso vender minhas ações?', a: 'Sim, através do sistema de Negociações. Você pode criar uma oferta de venda e outro usuário compra. Também é possível aceitar ofertas de compra de outros usuários.' },
+    { q: 'O que acontece se a música não tocar?', a: 'Se a música não gerar streams, os royalties são baixos ou zero. Nesse caso, suas ações podem desvalorizar. É o risco do investimento em música — algumas músicas estouram, outras não.' },
+    { q: 'De onde vêm os royalties?', a: 'Os royalties vêm de streaming (plays nas plataformas parceiras), vendas, shows e licenciamento das músicas do Selo MIV. Parte disso é distribuída entre os investidores, proporcional ao número de ações.' },
+    { q: 'Quem são os artistas do PLAY MY?', a: 'Hoje, o artista principal é Elzo Henschell, do Selo MIV. Estamos em processo de cadastrar mais artistas do próprio selo. Se você é artista e quer participar, fale com a gente: selomiv@gmail.com.' },
+    { q: 'Como sei que o PLAY MY é confiável?', a: 'Somos transparentes: CNPJ ativo (Selo MIV Produções), e-mail público, endereço, equipe identificada e blockchain auditável. Ainda estamos em beta, então recomendamos começar com valores pequenos.' },
+    { q: 'Posso usar no celular?', a: 'Sim! O PLAY MY é um PWA (aplicativo web progressivo). Você pode instalar no celular ou PC pelo próprio navegador. No Chrome/Android, aparece "Instalar app". No iPhone, use "Adicionar à Tela de Início".' },
+    { q: 'Quando sai da versão beta?', a: 'Não temos data exata. Estamos ouvindo feedback dos primeiros usuários para corrigir bugs, melhorar a experiência e ampliar o catálogo do Selo MIV. A previsão é lançar a versão 1.0 em breve.' },
+    { q: 'Como reporto um bug ou dou sugestão?', a: 'Manda e-mail para selomiv@gmail.com com o assunto "Feedback Beta" e descreve o que aconteceu (print ajuda muito). Todo feedback é lido.' }
   ];
 
   // ============================================================
-  // 1. RODAPÉ
+  // 1. RODAPÉ (LOGADO)
   // ============================================================
   function injetarRodape() {
     if (document.getElementById('pm-brand-footer')) return;
@@ -165,7 +100,6 @@
       'color:#8e8e93;font-size:13px;line-height:1.6';
 
     footer.innerHTML =
-      // Aviso Beta
       '<div style="max-width:1100px;margin:0 auto 24px;background:rgba(255,204,0,0.1);' +
         'border-left:3px solid #ffcc00;padding:12px 16px;border-radius:8px;font-size:13px">' +
         '<strong style="color:#ffcc00">⚠️ Versão Beta ' + BRAND.versao_app + '</strong> — ' +
@@ -175,7 +109,6 @@
 
       '<div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px">' +
 
-        // Coluna 1 — Marca
         '<div>' +
           '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">' +
             '<img src="/images/logo.png" alt="PLAY MY" width="32" height="32" ' +
@@ -190,7 +123,6 @@
           '</div>' +
         '</div>' +
 
-        // Coluna 2 — Plataforma
         '<div>' +
           '<h4 style="color:#fff;font-size:14px;margin:0 0 12px 0;font-weight:700">Plataforma</h4>' +
           '<div style="display:flex;flex-direction:column;gap:8px">' +
@@ -202,7 +134,6 @@
           '</div>' +
         '</div>' +
 
-        // Coluna 3 — Contato
         '<div>' +
           '<h4 style="color:#fff;font-size:14px;margin:0 0 12px 0;font-weight:700">Contato</h4>' +
           '<div style="display:flex;flex-direction:column;gap:8px">' +
@@ -212,7 +143,6 @@
           '</div>' +
         '</div>' +
 
-        // Coluna 4 — Institucional
         '<div>' +
           '<h4 style="color:#fff;font-size:14px;margin:0 0 12px 0;font-weight:700">Institucional</h4>' +
           '<div style="display:flex;flex-direction:column;gap:8px">' +
@@ -225,7 +155,6 @@
 
       '</div>' +
 
-      // Redes do artista
       '<div style="max-width:1100px;margin:32px auto 0;padding-top:20px;border-top:1px solid #1c1c1e;' +
         'display:flex;flex-wrap:wrap;gap:16px;align-items:center;font-size:13px">' +
         '<span style="color:#c7c7cc;font-weight:600">' + BRAND.redes_artista.nome + ':</span>' +
@@ -234,7 +163,6 @@
         '<a href="' + BRAND.redes_artista.youtube   + '" target="_blank" rel="noopener" style="color:#8e8e93;text-decoration:none">YouTube</a>' +
       '</div>' +
 
-      // Copyright
       '<div style="max-width:1100px;margin:32px auto 0;padding-top:20px;border-top:1px solid #1c1c1e;' +
         'display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;font-size:12px;color:#6c6c70">' +
         '<span>© ' + BRAND.ano + ' ' + BRAND.razao_social + '. Todos os direitos reservados.</span>' +
@@ -242,6 +170,60 @@
       '</div>';
 
     document.body.appendChild(footer);
+  }
+
+  // ============================================================
+  // 1.1. RODAPÉ NA TELA DE LOGIN (compacto)
+  // ============================================================
+  function injetarRodapeLogin() {
+    if (document.getElementById('pm-brand-footer-login')) return;
+
+    var div = document.createElement('div');
+    div.id = 'pm-brand-footer-login';
+    div.style.cssText =
+      'margin:32px auto 0;padding-top:24px;border-top:1px solid rgba(255,255,255,0.08);' +
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;' +
+      'color:#8e8e93;font-size:12px;line-height:1.6;text-align:center;max-width:420px';
+
+    div.innerHTML =
+      '<div style="background:rgba(255,204,0,0.1);border-left:3px solid #ffcc00;' +
+        'padding:10px 12px;border-radius:8px;font-size:12px;text-align:left;margin-bottom:16px">' +
+        '<strong style="color:#ffcc00">⚠️ Versão Beta ' + BRAND.versao_app + '</strong> — ' +
+        'Hoje negociamos apenas músicas do catálogo do <strong style="color:#fff">' + BRAND.catalogo.nome + '</strong>.' +
+      '</div>' +
+
+      '<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:16px">' +
+        '<a href="#" onclick="event.preventDefault();pmBrandAbrirSobre()" style="color:#ffcc00;text-decoration:none">Sobre</a>' +
+        '<span style="color:#3a3a3c">•</span>' +
+        '<a href="#" onclick="event.preventDefault();pmBrandAbrirComoFunciona()" style="color:#ffcc00;text-decoration:none">Como funciona</a>' +
+        '<span style="color:#3a3a3c">•</span>' +
+        '<a href="#" onclick="event.preventDefault();pmBrandAbrirFaq()" style="color:#ffcc00;text-decoration:none">FAQ</a>' +
+        '<span style="color:#3a3a3c">•</span>' +
+        '<a href="#" onclick="event.preventDefault();pmBrandAbrirBlockchain()" style="color:#ffcc00;text-decoration:none">Blockchain</a>' +
+      '</div>' +
+
+      '<div style="margin-bottom:12px">' +
+        '<div style="color:#c7c7cc;font-weight:600">' + BRAND.razao_social + '</div>' +
+        '<div>CNPJ: ' + BRAND.cnpj + '</div>' +
+        '<div>' + BRAND.endereco + '</div>' +
+      '</div>' +
+
+      '<div style="display:flex;gap:14px;justify-content:center;margin-bottom:12px">' +
+        (BRAND.redes.instagram ? '<a href="' + BRAND.redes.instagram + '" target="_blank" rel="noopener" title="Instagram" style="color:#ffcc00;text-decoration:none;font-size:16px">📷</a>' : '') +
+        (BRAND.redes.facebook  ? '<a href="' + BRAND.redes.facebook  + '" target="_blank" rel="noopener" title="Facebook"  style="color:#ffcc00;text-decoration:none;font-size:16px">📘</a>' : '') +
+        (BRAND.redes.youtube   ? '<a href="' + BRAND.redes.youtube   + '" target="_blank" rel="noopener" title="YouTube"   style="color:#ffcc00;text-decoration:none;font-size:16px">▶️</a>' : '') +
+      '</div>' +
+
+      '<div style="font-size:11px;color:#6c6c70">' +
+        '© ' + BRAND.ano + ' ' + BRAND.razao_social + ' • v' + BRAND.versao + ' (' + BRAND.versao_app + ')' +
+      '</div>';
+
+    var authScreen = document.getElementById('authScreen');
+    if (authScreen) {
+      authScreen.appendChild(div);
+    } else {
+      document.body.appendChild(div);
+    }
   }
 
   // ============================================================
@@ -446,7 +428,7 @@
   }
 
   // ============================================================
-  // 5. MODAL "FAQ — PLAY MY BETA"
+  // 5. MODAL "FAQ"
   // ============================================================
   function injetarFaq() {
     if (document.getElementById('pm-brand-faq')) return;
@@ -524,7 +506,6 @@
     if (m) m.style.display = 'block';
   };
 
-  // Fecha modal ao clicar fora
   document.addEventListener('click', function (e) {
     ['pm-brand-sobre', 'pm-brand-como', 'pm-brand-blockchain', 'pm-brand-faq'].forEach(function (id) {
       var m = document.getElementById(id);
@@ -532,7 +513,6 @@
     });
   });
 
-  // ESC fecha modais
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
       ['pm-brand-sobre', 'pm-brand-como', 'pm-brand-blockchain', 'pm-brand-faq'].forEach(function (id) {
@@ -546,16 +526,26 @@
   // 7. INICIALIZAÇÃO
   // ============================================================
   function init() {
-    if (!document.getElementById('mainApp')) {
-      setTimeout(init, 500);
+    if (!document.body) {
+      setTimeout(init, 200);
       return;
     }
 
-    injetarRodape();
+    // Modais funcionam em qualquer tela
     injetarSobre();
     injetarComoFunciona();
     injetarBlockchain();
     injetarFaq();
+
+    // Rodapé: logado OU login
+    if (document.getElementById('mainApp')) {
+      injetarRodape();
+    } else if (document.getElementById('authScreen')) {
+      injetarRodapeLogin();
+    } else {
+      setTimeout(init, 500);
+      return;
+    }
 
     console.log('✅ [brand-info.js] v' + BRAND.versao + ' injetado (' + FAQ.length + ' FAQs)');
   }
