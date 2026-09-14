@@ -1,6 +1,7 @@
-// BACKEND.JS - VERSÃO 9.2.0 (PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO + CONTADOR DE STREAMS)
+// BACKEND.JS - VERSÃO 9.3.0
 // ============================================================
-// Todas as ações: proxy GAS + KV + notícias reais + YouTube + Streams
+// PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
+// + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
 // ============================================================
 
 const nodemailer = require('nodemailer');
@@ -67,12 +68,12 @@ const MEMORY_STORAGE = {
     news_seen: {},
     news_prefs: {},
     streams: {},
-    streams_user: {}
+    streams_user: {},
+    elo: {},
+    valuation: {},
+    isrc: {}
 };
 
-// ============================================================
-// STORAGE (KV com fallback memória)
-// ============================================================
 const Storage = {
     async get(key) {
         if (kv) {
@@ -160,6 +161,20 @@ function sanitize(input) {
 function validateEmail(email) {
     if (typeof email !== 'string') return false;
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+function extractYouTubeId(url) {
+    if (!url || typeof url !== 'string') return null;
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+        /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
+        /youtu\.be\/([^&\n?#]+)/,
+        /youtube\.com\/shorts\/([^&\n?#]+)/
+    ];
+    for (let p of patterns) {
+        const m = url.match(p);
+        if (m && m[1] && m[1].length === 11) return m[1];
+    }
+    return null;
 }
 
 // ============================================================
@@ -335,35 +350,29 @@ async function addBlockToChain(data) {
 async function fetchNewsFromGoogleRSS(query, categoria) {
     try {
         const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 12000);
-
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.2)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.3)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
         clearTimeout(timeout);
-
         if (!response.ok) {
             console.log(`⚠️ Google News HTTP ${response.status} para "${query}"`);
             return [];
         }
-
         const xml = await response.text();
         if (!xml.includes('<item>')) {
             console.log(`⚠️ Google News sem <item> para "${query}"`);
             return [];
         }
-
         const items = [];
         const itemRegex = /<item>([\s\S]*?)<\/item>/g;
         let match;
         let count = 0;
-
         while ((match = itemRegex.exec(xml)) !== null && count < 15) {
             const itemXml = match[1];
             const titleMatch = itemXml.match(/<title>(.*?)<\/title>/);
@@ -371,36 +380,25 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
             const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/);
             const sourceMatch = itemXml.match(/<source[^>]*>(.*?)<\/source>/);
             const descMatch = itemXml.match(/<description>(.*?)<\/description>/);
-
             if (titleMatch) {
                 let title = titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
                 const source = sourceMatch ? sourceMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : 'Google News';
                 if (source && title.endsWith(' - ' + source)) title = title.slice(0, -(source.length + 3));
-
                 let texto = '';
                 if (descMatch) {
                     texto = descMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]+>/g, '').trim().substring(0, 200);
                     if (texto) texto += '...';
                 }
-
                 const id = 'news_' + crypto.createHash('md5').update(title).digest('hex').substring(0, 12);
-
                 items.push({
-                    id,
-                    categoria,
-                    autor: source,
-                    fonte: source,
+                    id, categoria, autor: source, fonte: source,
                     fonte_logo: getFonteLogo(source),
                     titulo: title,
                     texto: texto || 'Clique para ler a notícia completa.',
                     imagem: null,
                     link: linkMatch ? linkMatch[1].trim() : '#',
                     timestamp: pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString(),
-                    tema: categoria,
-                    likes: 0,
-                    prazo: null,
-                    investidores_hoje: 0,
-                    em_alta: false
+                    tema: categoria, likes: 0, prazo: null, investidores_hoje: 0, em_alta: false
                 });
                 count++;
             }
@@ -420,7 +418,6 @@ async function aggregateNews() {
         console.log(`📰 Cache KV: ${cached.length} notícias`);
         return cached;
     }
-
     const queries = [
         { q: 'lançamento musical álbum 2025', cat: 'lancamentos' },
         { q: 'nova música single artista', cat: 'lancamentos' },
@@ -435,19 +432,15 @@ async function aggregateNews() {
         { q: 'edital proac música', cat: 'editais' },
         { q: 'edital fomento cultural', cat: 'editais' }
     ];
-
     console.log('📰 Buscando notícias reais (direto)...');
     const batches = await Promise.all(queries.map(nq => fetchNewsFromGoogleRSS(nq.q, nq.cat)));
     let all = batches.flat();
     console.log(`📰 Total bruto: ${all.length} notícias`);
-
     if (all.length === 0) {
         console.log('📰 Nenhuma notícia real encontrada — retornando vazio');
         return [];
     }
-
     all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
     const seen = new Set();
     const unique = all.filter(n => {
         const k = n.titulo.toLowerCase().substring(0, 60);
@@ -455,11 +448,356 @@ async function aggregateNews() {
         seen.add(k);
         return true;
     });
-
     await Storage.set('news_cache', unique);
     await Storage.set('news_cache_time', Date.now());
     console.log(`📰 ${unique.length} notícias reais cacheadas no KV`);
     return unique;
+}
+
+// ============================================================
+// 🆕 VALIDAR ISRC
+// ============================================================
+function validarISRC(isrc) {
+    if (!isrc || typeof isrc !== 'string') return false;
+    const limpo = isrc.replace(/[-\s]/g, '').toUpperCase();
+    if (limpo.length !== 12) return false;
+    const regex = /^[A-Z]{2}[A-Z0-9]{3}[0-9]{2}[0-9]{5}$/;
+    return regex.test(limpo);
+}
+
+function normalizarISRC(isrc) {
+    if (!isrc) return null;
+    return isrc.replace(/[-\s]/g, '').toUpperCase();
+}
+
+function formatarISRC(isrc) {
+    if (!isrc) return '';
+    const limpo = normalizarISRC(isrc);
+    if (limpo.length !== 12) return isrc;
+    return `${limpo.slice(0, 2)}-${limpo.slice(2, 5)}-${limpo.slice(5, 7)}-${limpo.slice(7)}`;
+}
+
+// ============================================================
+// 🆕 BUSCAR ISRC NO MUSICBRAINZ
+// ============================================================
+async function buscarIsrcMusicBrainz(titulo, artista) {
+    const resultados = [];
+    try {
+        const query = artista
+            ? `recording:"${titulo}" AND artist:"${artista}"`
+            : `recording:"${titulo}"`;
+
+        const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
+
+        const r = await fetch(url, {
+            headers: {
+                'User-Agent': 'PLAYMY/9.3 (contato@playmy.com.br)',
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!r.ok) {
+            console.warn('[isrc] MusicBrainz HTTP', r.status);
+            return resultados;
+        }
+
+        const data = await r.json();
+
+        if (data.recordings) {
+            for (const rec of data.recordings) {
+                if (rec.isrcs && rec.isrcs.length) {
+                    for (const isrc of rec.isrcs) {
+                        const artistas = (rec['artist-credit'] || [])
+                            .map(a => a.name || (a.artist && a.artist.name) || '')
+                            .filter(Boolean)
+                            .join(', ');
+
+                        resultados.push({
+                            isrc: normalizarISRC(isrc),
+                            isrc_formatado: formatarISRC(isrc),
+                            titulo: rec.title,
+                            artista: artistas,
+                            score: rec.score || 0,
+                            fonte: 'musicbrainz'
+                        });
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('[isrc] MusicBrainz erro:', e.message);
+    }
+    return resultados;
+}
+
+// ============================================================
+// 🆕 CALCULAR ELO
+// ============================================================
+const ELO_CONFIG = {
+    base: 1000,
+    k_fator: 32,
+    ganhos: {
+        stream_play_my: 2,
+        view_youtube: 1,
+        stream_spotify: 3,
+        stream_deezer: 3,
+        stream_apple: 3,
+        investimento: 5,
+        trade_aceito: 10,
+        curtida: 1,
+        compartilhamento: 2
+    },
+    limites: {
+        play_my_max: 300,
+        externos_max: 400,
+        consistencia_max: 100,
+        tendencia_max: 150
+    },
+    faixas: {
+        'lendario': { min: 1600, cor: '#FFD700', label: 'Lendário' },
+        'excelente': { min: 1400, cor: '#34c759', label: 'Excelente' },
+        'bom': { min: 1200, cor: '#5AC8FA', label: 'Bom' },
+        'neutro': { min: 1000, cor: '#8E8E93', label: 'Neutro' },
+        'atencao': { min: 800, cor: '#FF9500', label: 'Atenção' },
+        'baixa': { min: 0, cor: '#FF3B30', label: 'Baixa' }
+    }
+};
+
+function calcularTendenciaMeses(porDia) {
+    const porMes = {};
+    for (const [dia, valor] of Object.entries(porDia || {})) {
+        const mes = dia.slice(0, 7);
+        porMes[mes] = (porMes[mes] || 0) + valor;
+    }
+    const valores = Object.values(porMes).sort((a, b) => a - b);
+    if (valores.length < 2) return 0;
+    const ultimo = valores[valores.length - 1];
+    const penultimo = valores[valores.length - 2];
+    if (penultimo === 0) return 1;
+    return (ultimo - penultimo) / penultimo;
+}
+
+async function calcularELO(music_id) {
+    const playmy = await Storage.get('stream_' + music_id) || { total: 0, por_dia: {} };
+    const periodos = await Storage.get('royalties_periodos') || [];
+    let streamsExternos = 0;
+    const streamsPorPlataforma = {};
+
+    for (const periodo of periodos) {
+        const dados = await Storage.get('royalties_' + periodo);
+        if (!dados) continue;
+        for (const musica of Object.values(dados.musicas || {})) {
+            if (musica.isrc === music_id || musica.titulo === music_id) {
+                streamsExternos += musica.streams_total || 0;
+                for (const [plat, qtd] of Object.entries(musica.plataformas || {})) {
+                    streamsPorPlataforma[plat] = (streamsPorPlataforma[plat] || 0) + qtd;
+                }
+            }
+        }
+    }
+
+    let elo = ELO_CONFIG.base;
+    const breakdown = { base: ELO_CONFIG.base };
+
+    const ajustePlayMy = Math.min(ELO_CONFIG.limites.play_my_max, ((playmy.total || 0) * ELO_CONFIG.ganhos.stream_play_my) / 10);
+    elo += ajustePlayMy;
+    breakdown.play_my = Math.round(ajustePlayMy);
+
+    const ajusteExternos = Math.min(ELO_CONFIG.limites.externos_max, (streamsExternos * ELO_CONFIG.ganhos.stream_spotify) / 100);
+    elo += ajusteExternos;
+    breakdown.externos = Math.round(ajusteExternos);
+
+    const mesesAtivos = Object.keys(playmy.por_dia || {})
+        .map(d => d.slice(0, 7))
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .length;
+
+    let ajusteConsistencia = 0;
+    if (mesesAtivos >= 6) ajusteConsistencia = ELO_CONFIG.limites.consistencia_max;
+    else if (mesesAtivos >= 3) ajusteConsistencia = 50;
+    else if (mesesAtivos >= 1) ajusteConsistencia = 20;
+    elo += ajusteConsistencia;
+    breakdown.consistencia = ajusteConsistencia;
+
+    const tendencia = calcularTendenciaMeses(playmy.por_dia || {});
+    let ajusteTendencia = 0;
+    if (tendencia > 0.2) ajusteTendencia = ELO_CONFIG.limites.tendencia_max;
+    else if (tendencia > 0.05) ajusteTendencia = 80;
+    else if (tendencia < -0.2) ajusteTendencia = -ELO_CONFIG.limites.tendencia_max;
+    else if (tendencia < -0.05) ajusteTendencia = -80;
+    elo += ajusteTendencia;
+    breakdown.tendencia = ajusteTendencia;
+
+    const ultimoDia = Object.keys(playmy.por_dia || {}).sort().pop();
+    let penalidade = 0;
+    if (ultimoDia) {
+        const dias = Math.floor((Date.now() - new Date(ultimoDia).getTime()) / 86400000);
+        if (dias > 60) penalidade = -200;
+        else if (dias > 30) penalidade = -100;
+        else if (dias > 15) penalidade = -50;
+    }
+    elo += penalidade;
+    breakdown.inatividade = penalidade;
+
+    elo = Math.max(0, Math.min(2000, Math.round(elo)));
+
+    let faixa = 'baixa';
+    for (const [nome, dados] of Object.entries(ELO_CONFIG.faixas)) {
+        if (elo >= dados.min) { faixa = nome; break; }
+    }
+
+    return {
+        music_id,
+        elo,
+        faixa,
+        faixa_label: ELO_CONFIG.faixas[faixa].label,
+        cor: ELO_CONFIG.faixas[faixa].cor,
+        breakdown,
+        streams_por_plataforma: streamsPorPlataforma,
+        atualizado_em: new Date().toISOString()
+    };
+}
+
+// ============================================================
+// 🆕 CALCULAR VALUATION
+// ============================================================
+const MERCADO = {
+    valor_por_stream: {
+        play_my: 0.015,
+        youtube: 0.002,
+        spotify: 0.004,
+        deezer: 0.003,
+        apple_music: 0.007,
+        amazon_music: 0.005,
+        outros: 0.003
+    },
+    multiplo_base: 10,
+    meses_projecao: 12,
+    elo_ajuste_max: 0.5
+};
+
+function projetarReceita(streamsPorMes, plataforma) {
+    const valores = Object.values(streamsPorMes || {}).sort((a, b) => a - b);
+    if (valores.length === 0) return { projecao_streams: 0, projecao_receita: 0, tendencia: 0, confianca: 0 };
+
+    const media = valores.reduce((a, b) => a + b, 0) / valores.length;
+    let tendencia = 0;
+    if (valores.length >= 2) {
+        const ultimo = valores[valores.length - 1];
+        const penultimo = valores[valores.length - 2];
+        tendencia = penultimo > 0 ? (ultimo - penultimo) / penultimo : 0;
+    }
+
+    const tendenciaLimitada = Math.max(-0.3, Math.min(0.3, tendencia));
+    let projecaoTotal = 0;
+    let streamAtual = media;
+    for (let mes = 0; mes < MERCADO.meses_projecao; mes++) {
+        streamAtual = streamAtual * (1 + tendenciaLimitada);
+        projecaoTotal += streamAtual;
+    }
+
+    const valorStream = MERCADO.valor_por_stream[plataforma] || MERCADO.valor_por_stream.outros;
+    return {
+        projecao_streams: Math.round(projecaoTotal),
+        projecao_receita: Math.round(projecaoTotal * valorStream * 100) / 100,
+        tendencia: Math.round(tendencia * 1000) / 10,
+        confianca: Math.min(100, valores.length * 20)
+    };
+}
+
+async function calcularValuation(music_id, video_id_youtube) {
+    const dados = {
+        music_id,
+        fontes: {},
+        projecoes: {},
+        receita_anual_projetada: 0,
+        valuation: 0,
+        elo: 1000,
+        elo_faixa: 'neutro',
+        elo_cor: '#8E8E93',
+        multiplo_base: MERCADO.multiplo_base,
+        multiplo_final: MERCADO.multiplo_base,
+        ajuste_elo: 0,
+        atualizado_em: new Date().toISOString()
+    };
+
+    const playmy = await Storage.get('stream_' + music_id) || { total: 0, por_dia: {} };
+    if (playmy.por_dia) {
+        const porMes = {};
+        for (const [dia, valor] of Object.entries(playmy.por_dia)) {
+            const mes = dia.slice(0, 7);
+            porMes[mes] = (porMes[mes] || 0) + valor;
+        }
+        dados.fontes.play_my = { total: playmy.total, por_mes: porMes };
+        dados.projecoes.play_my = projetarReceita(porMes, 'play_my');
+    }
+
+    if (video_id_youtube) {
+        try {
+            const info = await getYouTubeVideoInfo(video_id_youtube);
+            if (info) {
+                dados.fontes.youtube = { video_id: video_id_youtube, views_total: info.views, likes: info.likes };
+                dados.projecoes.youtube = {
+                    projecao_receita: Math.round(info.views * MERCADO.valor_por_stream.youtube * 100) / 100,
+                    confianca: 30,
+                    observacao: 'YouTube não expõe streams mensais'
+                };
+            }
+        } catch (e) {}
+    }
+
+    const periodos = await Storage.get('royalties_periodos') || [];
+    const porPlataforma = {};
+    for (const periodo of periodos) {
+        const dadosPeriodo = await Storage.get('royalties_' + periodo);
+        if (!dadosPeriodo) continue;
+        for (const musica of Object.values(dadosPeriodo.musicas || {})) {
+            if (musica.isrc === music_id || musica.titulo === music_id) {
+                for (const [plataforma, streams] of Object.entries(musica.plataformas || {})) {
+                    const platKey = plataforma.toLowerCase().replace(/\s/g, '_');
+                    if (!porPlataforma[platKey]) porPlataforma[platKey] = {};
+                    porPlataforma[platKey][periodo] = streams;
+                }
+            }
+        }
+    }
+
+    for (const [plataforma, dadosPlat] of Object.entries(porPlataforma)) {
+        dados.fontes[plataforma] = { por_mes: dadosPlat };
+        dados.projecoes[plataforma] = projetarReceita(dadosPlat, plataforma);
+    }
+
+    let receitaAnual = 0;
+    for (const proj of Object.values(dados.projecoes)) {
+        receitaAnual += proj.projecao_receita || 0;
+    }
+    dados.receita_anual_projetada = Math.round(receitaAnual * 100) / 100;
+
+    try {
+        let eloData = await Storage.get('elo_' + music_id);
+        if (!eloData) {
+            eloData = await calcularELO(music_id);
+            await Storage.set('elo_' + music_id, eloData);
+        }
+        dados.elo = eloData.elo;
+        dados.elo_faixa = eloData.faixa;
+        dados.elo_cor = eloData.cor;
+    } catch (e) {}
+
+    const ajusteBruto = (dados.elo - 1000) / 1000;
+    const ajusteELO = ajusteBruto * MERCADO.elo_ajuste_max;
+    const multiploFinal = MERCADO.multiplo_base * (1 + ajusteELO);
+
+    dados.ajuste_elo = Math.round(ajusteELO * 1000) / 10;
+    dados.multiplo_final = Math.round(multiploFinal * 100) / 100;
+    dados.valuation = Math.round(receitaAnual * multiploFinal * 100) / 100;
+    dados.valuation_faixa = {
+        conservador: Math.round(receitaAnual * (multiploFinal * 0.8) * 100) / 100,
+        realista: dados.valuation,
+        otimista: Math.round(receitaAnual * (multiploFinal * 1.3) * 100) / 100
+    };
+
+    return dados;
 }
 
 // ============================================================
@@ -481,7 +819,7 @@ module.exports = async (req, res) => {
         // PING
         // ============================================================
         if (action === 'ping') {
-            let playlists_count = 0, blocks_count = 0, streams_count = 0;
+            let playlists_count = 0, blocks_count = 0, streams_count = 0, elo_count = 0;
             try {
                 const pls = await Storage.get('global_playlists') || [];
                 playlists_count = pls.length;
@@ -489,10 +827,12 @@ module.exports = async (req, res) => {
                 blocks_count = chain.blocks.length;
                 const streams = await Storage.get('streams') || {};
                 streams_count = Object.keys(streams).length;
+                const elo = await Storage.get('elo_ranking') || [];
+                elo_count = elo.length;
             } catch (e) {}
             return res.status(200).json({
-                success: true, message: 'pong', version: '9.2.0',
-                kv_enabled: !!kv, playlists_count, blocks_count, streams_count,
+                success: true, message: 'pong', version: '9.3.0',
+                kv_enabled: !!kv, playlists_count, blocks_count, streams_count, elo_count,
                 youtube_enabled: !!YOUTUBE_API_KEY,
                 timestamp: new Date().toISOString()
             });
@@ -504,21 +844,17 @@ module.exports = async (req, res) => {
         if (action === 'search_youtube') {
             const { query, limit } = params;
             if (!query) return res.status(200).json({ success: false, message: 'Query obrigatória' });
-
             console.log('🎥 Buscando YouTube:', query);
-
             const directResults = await searchYouTube(query, parseInt(limit) || 15);
             if (directResults.length > 0) {
                 console.log(`🎥 YouTube API OK: ${directResults.length} resultados`);
                 return res.status(200).json({ success: true, data: directResults, source: 'youtube_api' });
             }
-
             console.log('⚠️ YouTube API vazia, tentando GAS...');
             const gasResult = await callGAS('search_youtube', { query, limit: limit || 15 });
             if (gasResult.success && gasResult.data && gasResult.data.success && gasResult.data.data && gasResult.data.data.length > 0) {
                 return res.status(200).json({ success: true, data: gasResult.data.data, source: 'gas' });
             }
-
             return res.status(200).json({ success: true, data: [], message: 'Nenhum resultado' });
         }
 
@@ -528,28 +864,17 @@ module.exports = async (req, res) => {
         if (action === 'search_isrc') {
             const { youtube_url } = params;
             if (!youtube_url) return res.status(200).json({ success: false, message: 'URL obrigatória' });
-
-            let videoId = null;
-            const patterns = [/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/, /youtube\.com\/watch\?.*v=([^&\n?#]+)/];
-            for (let p of patterns) {
-                const m = youtube_url.match(p);
-                if (m && m[1] && m[1].length === 11) { videoId = m[1]; break; }
-            }
+            const videoId = extractYouTubeId(youtube_url);
             if (!videoId) return res.status(200).json({ success: false, message: 'URL inválida' });
-
             const info = await getYouTubeVideoInfo(videoId);
             if (info) {
                 return res.status(200).json({
                     success: true,
                     data: {
-                        title: info.title,
-                        artist: info.artist,
+                        title: info.title, artist: info.artist,
                         isrc: 'ISRC_' + Date.now(),
-                        source: 'youtube',
-                        video_id: videoId,
-                        views: info.views,
-                        likes: info.likes,
-                        thumbnail: info.thumbnail
+                        source: 'youtube', video_id: videoId,
+                        views: info.views, likes: info.likes, thumbnail: info.thumbnail
                     }
                 });
             }
@@ -565,19 +890,232 @@ module.exports = async (req, res) => {
             const cacheKey = `yt_${video_id}`;
             const cached = cache.get(cacheKey);
             if (cached) return res.status(200).json({ success: true, data: cached, cached: true });
-
             const info = await getYouTubeVideoInfo(video_id);
             if (info) {
                 const stats = { views: info.views, likes: info.likes, comments: info.comments };
                 cache.set(cacheKey, stats, 3600);
                 return res.status(200).json({ success: true, data: stats });
             }
-
             const hash = video_id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
             const views = 100000 + (hash % 9000000);
             const stats = { views, likes: Math.floor(views * 0.05), comments: Math.floor(views * 0.01), estimated_earnings: (views / 1000) * 1.5 };
             cache.set(cacheKey, stats, 3600);
             return res.status(200).json({ success: true, data: stats });
+        }
+
+        // ============================================================
+        // 🆕 ELO
+        // ============================================================
+        if (action === 'calcular_elo') {
+            const { music_id } = params;
+            if (!music_id) return res.status(200).json({ success: false, message: 'music_id obrigatório' });
+            const resultado = await calcularELO(music_id);
+            await Storage.set('elo_' + music_id, resultado);
+            return res.status(200).json({ success: true, data: resultado });
+        }
+
+        if (action === 'atualizar_todos_elos') {
+            const idx = await Storage.get('streams_index') || [];
+            const resultados = [];
+            for (const id of idx) {
+                try {
+                    const r = await calcularELO(id);
+                    await Storage.set('elo_' + id, r);
+                    resultados.push(r);
+                } catch (e) {}
+            }
+            resultados.sort((a, b) => b.elo - a.elo);
+            await Storage.set('elo_ranking', resultados);
+            await Storage.set('elo_ultima_atualizacao', new Date().toISOString());
+            return res.status(200).json({ success: true, data: { total: resultados.length, ranking: resultados } });
+        }
+
+        if (action === 'get_elo_ranking') {
+            const ranking = await Storage.get('elo_ranking') || [];
+            const ultima = await Storage.get('elo_ultima_atualizacao');
+            return res.status(200).json({
+                success: true,
+                data: { ultima_atualizacao: ultima, total: ranking.length, ranking: ranking.slice(0, 50) }
+            });
+        }
+
+        if (action === 'ver_elo') {
+            const { music_id } = params;
+            if (!music_id) return res.status(200).json({ success: false, message: 'music_id obrigatório' });
+            let elo = await Storage.get('elo_' + music_id);
+            if (!elo) {
+                elo = await calcularELO(music_id);
+                await Storage.set('elo_' + music_id, elo);
+            }
+            return res.status(200).json({ success: true, data: elo });
+        }
+
+        // ============================================================
+        // 🆕 VALUATION
+        // ============================================================
+        if (action === 'calcular_valuation') {
+            const { music_id, video_id } = params;
+            if (!music_id) return res.status(200).json({ success: false, message: 'music_id obrigatório' });
+            const resultado = await calcularValuation(music_id, video_id);
+            await Storage.set('valuation_' + music_id, resultado);
+            return res.status(200).json({ success: true, data: resultado });
+        }
+
+        if (action === 'valuation_catalogo') {
+            const idx = await Storage.get('streams_index') || [];
+            const valuations = [];
+            for (const id of idx) {
+                try {
+                    const v = await calcularValuation(id, null);
+                    valuations.push(v);
+                } catch (e) {}
+            }
+            valuations.sort((a, b) => b.valuation - a.valuation);
+            const total = valuations.reduce((s, v) => s + (v.valuation || 0), 0);
+            const receitaTotal = valuations.reduce((s, v) => s + (v.receita_anual_projetada || 0), 0);
+            const resultado = {
+                valuation_total: Math.round(total * 100) / 100,
+                receita_anual_total: Math.round(receitaTotal * 100) / 100,
+                quantidade_musicas: valuations.length,
+                musicas: valuations,
+                atualizado_em: new Date().toISOString()
+            };
+            await Storage.set('valuation_catalogo', resultado);
+            return res.status(200).json({ success: true, data: resultado });
+        }
+
+        if (action === 'ver_valuation') {
+            const { music_id, video_id } = params;
+            if (!music_id) return res.status(200).json({ success: false, message: 'music_id obrigatório' });
+            let v = await Storage.get('valuation_' + music_id);
+            if (!v) {
+                v = await calcularValuation(music_id, video_id);
+                await Storage.set('valuation_' + music_id, v);
+            }
+            return res.status(200).json({ success: true, data: v });
+        }
+
+        // ============================================================
+        // 🆕 ISRC
+        // ============================================================
+        if (action === 'validar_isrc') {
+            const { isrc } = params;
+            if (!isrc) return res.status(200).json({ success: false, message: 'isrc obrigatório' });
+            const valido = validarISRC(isrc);
+            const normalizado = normalizarISRC(isrc);
+            return res.status(200).json({
+                success: true,
+                data: {
+                    isrc_original: isrc,
+                    isrc_normalizado: normalizado,
+                    isrc_formatado: formatarISRC(normalizado),
+                    valido,
+                    formato_esperado: 'CC-XXX-YY-NNNNN'
+                }
+            });
+        }
+
+        if (action === 'buscar_isrc') {
+            const { titulo, artista, link_youtube } = params;
+            let videoId = null;
+            if (link_youtube) videoId = extractYouTubeId(link_youtube);
+            if (!titulo && !videoId) {
+                return res.status(200).json({ success: false, message: 'Informe título ou link do YouTube' });
+            }
+            let tituloBusca = titulo || '';
+            let artistaBusca = artista || '';
+            if (videoId) {
+                const info = await getYouTubeVideoInfo(videoId);
+                if (info) {
+                    tituloBusca = tituloBusca || info.title;
+                    artistaBusca = artistaBusca || info.artist;
+                }
+            }
+            tituloBusca = tituloBusca
+                .replace(/\(official.*?\)/gi, '')
+                .replace(/\[official.*?\]/gi, '')
+                .replace(/\(clipe.*?\)/gi, '')
+                .replace(/\(áudio.*?\)/gi, '')
+                .replace(/\(audio.*?\)/gi, '')
+                .replace(/\(lyric.*?\)/gi, '')
+                .replace(/\(hd.*?\)/gi, '')
+                .replace(/\[hd\]/gi, '')
+                .replace(/oficial/gi, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            const isrcs = await buscarIsrcMusicBrainz(tituloBusca, artistaBusca);
+
+            const unicos = {};
+            for (const item of isrcs) {
+                if (!unicos[item.isrc] || (item.score || 0) > (unicos[item.isrc].score || 0)) {
+                    unicos[item.isrc] = item;
+                }
+            }
+            const lista = Object.values(unicos).sort((a, b) => (b.score || 0) - (a.score || 0));
+
+            return res.status(200).json({
+                success: true,
+                titulo_consultado: tituloBusca,
+                artista_consultado: artistaBusca,
+                isrcs: lista.slice(0, 10),
+                total: lista.length,
+                fonte: 'musicbrainz'
+            });
+        }
+
+        if (action === 'vincular_isrc') {
+            const { music_id, isrc, link_youtube } = params;
+            if (!music_id || !isrc) return res.status(200).json({ success: false, message: 'music_id e isrc obrigatórios' });
+            if (!validarISRC(isrc)) return res.status(200).json({ success: false, message: 'ISRC inválido' });
+
+            const isrcNormalizado = normalizarISRC(isrc);
+            const isrcKey = 'isrc_' + isrcNormalizado;
+            const existente = await Storage.get(isrcKey);
+            if (existente && existente.music_id !== music_id) {
+                return res.status(200).json({ success: false, message: 'ISRC já vinculado a outra música', conflito: existente });
+            }
+
+            let vid = null;
+            if (link_youtube) vid = extractYouTubeId(link_youtube);
+
+            const vinculo = {
+                music_id,
+                isrc: isrcNormalizado,
+                isrc_formatado: formatarISRC(isrcNormalizado),
+                video_id: vid,
+                vinculado_em: new Date().toISOString()
+            };
+            await Storage.set(isrcKey, vinculo);
+
+            let idx = await Storage.get('isrc_index') || [];
+            if (!idx.includes(isrcNormalizado)) {
+                idx.push(isrcNormalizado);
+                await Storage.set('isrc_index', idx);
+            }
+
+            return res.status(200).json({ success: true, data: vinculo });
+        }
+
+        if (action === 'ver_isrc') {
+            const { isrc } = params;
+            if (!isrc) return res.status(200).json({ success: false, message: 'isrc obrigatório' });
+            const normalizado = normalizarISRC(isrc);
+            const vinculo = await Storage.get('isrc_' + normalizado);
+            return res.status(200).json({
+                success: true,
+                data: vinculo || { isrc: normalizado, vinculado: false }
+            });
+        }
+
+        if (action === 'listar_isrcs') {
+            const idx = await Storage.get('isrc_index') || [];
+            const lista = [];
+            for (const codigo of idx) {
+                const v = await Storage.get('isrc_' + codigo);
+                if (v) lista.push(v);
+            }
+            return res.status(200).json({ success: true, data: { total: lista.length, isrcs: lista } });
         }
 
         // ============================================================
@@ -642,119 +1180,67 @@ module.exports = async (req, res) => {
             const preferences = (params.preferences || '').split(',').filter(Boolean);
             const seenIds = (params.seen_ids || '').split(',').filter(Boolean);
             const userId = params.user_id || 'anon';
-
             let news = await aggregateNews();
-
             if (!news.length) {
                 return res.status(200).json({
-                    success: true,
-                    data: [],
-                    has_more: false,
-                    next_page: null,
-                    total: 0,
-                    page: page,
-                    message: 'Nenhuma notícia real encontrada no momento'
+                    success: true, data: [], has_more: false, next_page: null,
+                    total: 0, page: page, message: 'Nenhuma notícia real encontrada no momento'
                 });
             }
-
-            if (seenIds.length) {
-                news = news.filter(n => !seenIds.includes(n.id));
-            }
-
+            if (seenIds.length) news = news.filter(n => !seenIds.includes(n.id));
             if (userId && userId !== 'anon') {
                 const seenYesterday = await Storage.get('news_seen_' + userId) || [];
                 const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-                const seenYesterdayIds = seenYesterday
-                    .filter(s => s.date === yesterday)
-                    .map(s => s.id);
-                if (seenYesterdayIds.length) {
-                    news = news.filter(n => !seenYesterdayIds.includes(n.id));
-                }
+                const seenYesterdayIds = seenYesterday.filter(s => s.date === yesterday).map(s => s.id);
+                if (seenYesterdayIds.length) news = news.filter(n => !seenYesterdayIds.includes(n.id));
             }
-
             if (preferences.length) {
                 news.sort((a, b) => {
-                    const aScore = (preferences.includes(a.categoria) ? 10 : 0) +
-                                   (preferences.includes(a.tema) ? 5 : 0) +
-                                   (a.em_alta ? 3 : 0) +
-                                   ((a.investidores_hoje || 0) / 10);
-                    const bScore = (preferences.includes(b.categoria) ? 10 : 0) +
-                                   (preferences.includes(b.tema) ? 5 : 0) +
-                                   (b.em_alta ? 3 : 0) +
-                                   ((b.investidores_hoje || 0) / 10);
+                    const aScore = (preferences.includes(a.categoria) ? 10 : 0) + (preferences.includes(a.tema) ? 5 : 0) + (a.em_alta ? 3 : 0) + ((a.investidores_hoje || 0) / 10);
+                    const bScore = (preferences.includes(b.categoria) ? 10 : 0) + (preferences.includes(b.tema) ? 5 : 0) + (b.em_alta ? 3 : 0) + ((b.investidores_hoje || 0) / 10);
                     return bScore - aScore;
                 });
             }
-
             const start = (page - 1) * limit;
             const end = start + limit;
             const pageItems = news.slice(start, end);
             const has_more = end < news.length;
-
             return res.status(200).json({
-                success: true,
-                data: pageItems,
-                has_more: has_more,
-                next_page: has_more ? page + 1 : null,
-                total: news.length,
-                page: page,
-                source: 'google_news_rss_direct',
-                cached: true
+                success: true, data: pageItems, has_more, next_page: has_more ? page + 1 : null,
+                total: news.length, page, source: 'google_news_rss_direct', cached: true
             });
         }
 
-        // ============================================================
-        // 📰 MARCAR NOTÍCIAS COMO VISTAS
-        // ============================================================
         if (action === 'mark_news_seen') {
             const userId = params.user_id;
             const newsIds = (params.news_ids || '').split(',').filter(Boolean);
             const date = params.data || new Date().toISOString().slice(0, 10);
-
-            if (!userId || !newsIds.length) {
-                return res.status(200).json({ success: false, message: 'Dados incompletos' });
-            }
-
+            if (!userId || !newsIds.length) return res.status(200).json({ success: false, message: 'Dados incompletos' });
             const key = 'news_seen_' + userId;
             let seen = await Storage.get(key) || [];
-
             newsIds.forEach(id => {
-                if (!seen.find(s => s.id === id && s.date === date)) {
-                    seen.push({ id, date });
-                }
+                if (!seen.find(s => s.id === id && s.date === date)) seen.push({ id, date });
             });
-
             const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
             seen = seen.filter(s => s.date >= cutoff);
-
             await Storage.set(key, seen);
             return res.status(200).json({ success: true, count: seen.length });
         }
 
-        // ============================================================
-        // 📰 TRACK INTERAÇÃO
-        // ============================================================
         if (action === 'track_news_interaction') {
             const userId = params.user_id;
             const newsId = params.news_id;
             const tipo = params.tipo || 'click';
             const tema = params.tema || '';
             const categoria = params.categoria || '';
-
-            if (!userId || !newsId) {
-                return res.status(200).json({ success: false, message: 'Dados incompletos' });
-            }
-
+            if (!userId || !newsId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
             const key = 'news_prefs_' + userId;
             let prefs = await Storage.get(key) || { temas: {}, categorias: {}, interacoes: 0 };
-
             if (tema) prefs.temas[tema] = (prefs.temas[tema] || 0) + 1;
             if (categoria) prefs.categorias[categoria] = (prefs.categorias[categoria] || 0) + 1;
             prefs.interacoes = (prefs.interacoes || 0) + 1;
             prefs.ultima = new Date().toISOString();
-
             await Storage.set(key, prefs);
-
             return res.status(200).json({ success: true, data: prefs });
         }
 
@@ -791,6 +1277,7 @@ module.exports = async (req, res) => {
             const playlists = await Storage.get('global_playlists') || [];
             const chain = await Storage.get('blockchain') || { blocks: [] };
             const streams = await Storage.get('streams') || {};
+            const elo = await Storage.get('elo_ranking') || [];
             const gasResult = await callGAS('get_stats');
             if (gasResult.success && gasResult.data && gasResult.data.data) {
                 return res.status(200).json(gasResult.data);
@@ -803,7 +1290,8 @@ module.exports = async (req, res) => {
                     playlists_count: playlists.length,
                     total_investido: 0,
                     blocks_count: chain.blocks.length,
-                    streams_count: Object.keys(streams).length
+                    streams_count: Object.keys(streams).length,
+                    elo_count: elo.length
                 }
             });
         }
@@ -903,7 +1391,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎵 STREAMING — v9.2.0 (COM CONTADOR)
+        // 🎵 STREAMING
         // ============================================================
         if (action === 'register_streaming') {
             const { music_id, user_id, duration } = params;
@@ -911,10 +1399,8 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: false, message: 'Dados incompletos' });
             }
 
-            // 1. Blockchain interna
             await addBlockToChain({ type: 'streaming', music_id, user_id, duration: duration || 30 });
 
-            // 2. Contador de streams por música
             const key = 'streams_' + music_id;
             let contador = await Storage.get(key) || {
                 music_id: music_id,
@@ -936,7 +1422,6 @@ module.exports = async (req, res) => {
 
             await Storage.set(key, contador);
 
-            // 3. Contador global (todos os streams)
             const globalKey = 'streams_global';
             let globalCont = await Storage.get(globalKey) || { total: 0, hoje: 0, ultima_data: '' };
             if (globalCont.ultima_data !== hoje) {
@@ -947,7 +1432,6 @@ module.exports = async (req, res) => {
             globalCont.hoje++;
             await Storage.set(globalKey, globalCont);
 
-            // 4. Contador por usuário
             const userKey = 'streams_user_' + user_id;
             let userContador = await Storage.get(userKey) || {
                 user_id: user_id,
@@ -960,7 +1444,6 @@ module.exports = async (req, res) => {
 
             await Storage.set(userKey, userContador);
 
-            // 5. GAS (mantém compatibilidade)
             callGAS('register_streaming', {
                 music_id: music_id,
                 user_id: user_id,
@@ -982,8 +1465,6 @@ module.exports = async (req, res) => {
 
         if (action === 'get_streaming_stats') {
             const { music_id, user_id } = params;
-
-            // Stats por música
             if (music_id) {
                 const contador = await Storage.get('streams_' + music_id) || { total: 0, hoje: 0 };
                 return res.status(200).json({
@@ -996,8 +1477,6 @@ module.exports = async (req, res) => {
                     }
                 });
             }
-
-            // Stats globais
             const globalCont = await Storage.get('streams_global') || { total: 0, hoje: 0 };
             return res.status(200).json({
                 success: true,
@@ -1009,14 +1488,9 @@ module.exports = async (req, res) => {
             });
         }
 
-        // ============================================================
-        // 🏆 RANKING DE STREAMS
-        // ============================================================
         if (action === 'get_streaming_ranking') {
             const limit = parseInt(params.limit) || 20;
             const streams = await Storage.get('streams') || {};
-
-            // Se streams estiver vazio, busca todas as chaves streams_*
             const ranking = Object.values(streams)
                 .filter(s => s && s.music_id)
                 .sort((a, b) => b.total - a.total)
@@ -1027,7 +1501,6 @@ module.exports = async (req, res) => {
                     streams_total: s.total,
                     streams_hoje: s.hoje
                 }));
-
             return res.status(200).json({ success: true, data: ranking });
         }
 
@@ -1130,7 +1603,6 @@ module.exports = async (req, res) => {
                 quantidade: qty, valor_total: valor_total || (qty * parseFloat(valor_unitario || 0))
             });
 
-            // 🆕 Registra investidor para distribuição de royalties
             const invKey = 'investidores_' + music_id;
             let investidores = await Storage.get(invKey) || [];
             const idx = investidores.findIndex(i => i.user_id === user_id);
@@ -1264,7 +1736,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.2.0',
+            version: '9.3.0',
             kv_enabled: !!kv,
             youtube_enabled: !!YOUTUBE_API_KEY,
             action: action || 'nenhuma',
