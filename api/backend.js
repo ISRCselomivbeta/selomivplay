@@ -1,6 +1,6 @@
-// BACKEND.JS - VERSÃO 9.1.0 (PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO)
+// BACKEND.JS - VERSÃO 9.2.0 (PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO + CONTADOR DE STREAMS)
 // ============================================================
-// Todas as ações: proxy GAS + KV + notícias reais + YouTube
+// Todas as ações: proxy GAS + KV + notícias reais + YouTube + Streams
 // ============================================================
 
 const nodemailer = require('nodemailer');
@@ -65,7 +65,9 @@ const MEMORY_STORAGE = {
     ledger: {},
     portfolio: {},
     news_seen: {},
-    news_prefs: {}
+    news_prefs: {},
+    streams: {},
+    streams_user: {}
 };
 
 // ============================================================
@@ -340,7 +342,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.1)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.2)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -479,16 +481,18 @@ module.exports = async (req, res) => {
         // PING
         // ============================================================
         if (action === 'ping') {
-            let playlists_count = 0, blocks_count = 0;
+            let playlists_count = 0, blocks_count = 0, streams_count = 0;
             try {
                 const pls = await Storage.get('global_playlists') || [];
                 playlists_count = pls.length;
                 const chain = await Storage.get('blockchain') || { blocks: [] };
                 blocks_count = chain.blocks.length;
+                const streams = await Storage.get('streams') || {};
+                streams_count = Object.keys(streams).length;
             } catch (e) {}
             return res.status(200).json({
-                success: true, message: 'pong', version: '9.1.0',
-                kv_enabled: !!kv, playlists_count, blocks_count,
+                success: true, message: 'pong', version: '9.2.0',
+                kv_enabled: !!kv, playlists_count, blocks_count, streams_count,
                 youtube_enabled: !!YOUTUBE_API_KEY,
                 timestamp: new Date().toISOString()
             });
@@ -630,7 +634,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 📰 NOTÍCIAS — v9.1.0 (paginado + personalizado + interação)
+        // 📰 NOTÍCIAS
         // ============================================================
         if (action === 'get_news') {
             const page = parseInt(params.page) || 1;
@@ -786,13 +790,21 @@ module.exports = async (req, res) => {
         if (action === 'get_admin_stats' || action === 'get_stats') {
             const playlists = await Storage.get('global_playlists') || [];
             const chain = await Storage.get('blockchain') || { blocks: [] };
+            const streams = await Storage.get('streams') || {};
             const gasResult = await callGAS('get_stats');
             if (gasResult.success && gasResult.data && gasResult.data.data) {
                 return res.status(200).json(gasResult.data);
             }
             return res.status(200).json({
                 success: true,
-                data: { total_usuarios: 1, total_musicas: FALLBACK_MUSICAS.length, playlists_count: playlists.length, total_investido: 0, blocks_count: chain.blocks.length }
+                data: {
+                    total_usuarios: 1,
+                    total_musicas: FALLBACK_MUSICAS.length,
+                    playlists_count: playlists.length,
+                    total_investido: 0,
+                    blocks_count: chain.blocks.length,
+                    streams_count: Object.keys(streams).length
+                }
             });
         }
 
@@ -891,20 +903,132 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // STREAMING
+        // 🎵 STREAMING — v9.2.0 (COM CONTADOR)
         // ============================================================
         if (action === 'register_streaming') {
-            const { music_id, user_id } = params;
-            if (!music_id || !user_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
-            await addBlockToChain({ type: 'streaming', music_id, user_id });
-            callGAS('register_streaming', { music_id, user_id, duration: 30 }).catch(() => {});
-            return res.status(200).json({ success: true, data: { reward: 1 } });
+            const { music_id, user_id, duration } = params;
+            if (!music_id || !user_id) {
+                return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            }
+
+            // 1. Blockchain interna
+            await addBlockToChain({ type: 'streaming', music_id, user_id, duration: duration || 30 });
+
+            // 2. Contador de streams por música
+            const key = 'streams_' + music_id;
+            let contador = await Storage.get(key) || {
+                music_id: music_id,
+                total: 0,
+                hoje: 0,
+                ultima_data: '',
+                ultima_atualizacao: ''
+            };
+
+            const hoje = new Date().toISOString().slice(0, 10);
+            if (contador.ultima_data !== hoje) {
+                contador.hoje = 0;
+                contador.ultima_data = hoje;
+            }
+
+            contador.total++;
+            contador.hoje++;
+            contador.ultima_atualizacao = new Date().toISOString();
+
+            await Storage.set(key, contador);
+
+            // 3. Contador global (todos os streams)
+            const globalKey = 'streams_global';
+            let globalCont = await Storage.get(globalKey) || { total: 0, hoje: 0, ultima_data: '' };
+            if (globalCont.ultima_data !== hoje) {
+                globalCont.hoje = 0;
+                globalCont.ultima_data = hoje;
+            }
+            globalCont.total++;
+            globalCont.hoje++;
+            await Storage.set(globalKey, globalCont);
+
+            // 4. Contador por usuário
+            const userKey = 'streams_user_' + user_id;
+            let userContador = await Storage.get(userKey) || {
+                user_id: user_id,
+                total: 0,
+                musicas: {}
+            };
+
+            userContador.total++;
+            userContador.musicas[music_id] = (userContador.musicas[music_id] || 0) + 1;
+
+            await Storage.set(userKey, userContador);
+
+            // 5. GAS (mantém compatibilidade)
+            callGAS('register_streaming', {
+                music_id: music_id,
+                user_id: user_id,
+                duration: duration || 30
+            }).catch(() => {});
+
+            console.log(`🎵 [stream] música ${music_id} | total: ${contador.total} | hoje: ${contador.hoje}`);
+
+            return res.status(200).json({
+                success: true,
+                data: {
+                    reward: 1,
+                    streams_total: contador.total,
+                    streams_hoje: contador.hoje,
+                    streams_global: globalCont.total
+                }
+            });
         }
 
         if (action === 'get_streaming_stats') {
-            const gasResult = await callGAS('get_streaming_stats', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
-            return res.status(200).json({ success: true, data: { total_earnings: 0, songs_count: 0, total_seconds: 0, rank: 0 } });
+            const { music_id, user_id } = params;
+
+            // Stats por música
+            if (music_id) {
+                const contador = await Storage.get('streams_' + music_id) || { total: 0, hoje: 0 };
+                return res.status(200).json({
+                    success: true,
+                    data: {
+                        music_id: music_id,
+                        streams_total: contador.total,
+                        streams_hoje: contador.hoje,
+                        ultima_atualizacao: contador.ultima_atualizacao
+                    }
+                });
+            }
+
+            // Stats globais
+            const globalCont = await Storage.get('streams_global') || { total: 0, hoje: 0 };
+            return res.status(200).json({
+                success: true,
+                data: {
+                    streams_total: globalCont.total,
+                    streams_hoje: globalCont.hoje,
+                    ultima_atualizacao: globalCont.ultima_data
+                }
+            });
+        }
+
+        // ============================================================
+        // 🏆 RANKING DE STREAMS
+        // ============================================================
+        if (action === 'get_streaming_ranking') {
+            const limit = parseInt(params.limit) || 20;
+            const streams = await Storage.get('streams') || {};
+
+            // Se streams estiver vazio, busca todas as chaves streams_*
+            const ranking = Object.values(streams)
+                .filter(s => s && s.music_id)
+                .sort((a, b) => b.total - a.total)
+                .slice(0, limit)
+                .map((s, i) => ({
+                    posicao: i + 1,
+                    music_id: s.music_id,
+                    streams_total: s.total,
+                    streams_hoje: s.hoje
+                }));
+
+            return res.status(200).json({ success: true, data: ranking });
         }
 
         // ============================================================
@@ -1005,6 +1129,17 @@ module.exports = async (req, res) => {
                 type: 'investimento', music_id, user_id,
                 quantidade: qty, valor_total: valor_total || (qty * parseFloat(valor_unitario || 0))
             });
+
+            // 🆕 Registra investidor para distribuição de royalties
+            const invKey = 'investidores_' + music_id;
+            let investidores = await Storage.get(invKey) || [];
+            const idx = investidores.findIndex(i => i.user_id === user_id);
+            if (idx >= 0) {
+                investidores[idx].acoes += qty;
+            } else {
+                investidores.push({ user_id: user_id, acoes: qty, desde: new Date().toISOString() });
+            }
+            await Storage.set(invKey, investidores);
 
             const gasResult = await callGAS('buy', {
                 music_id: sanitize(music_id), quantidade: qty,
@@ -1129,7 +1264,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.1.0',
+            version: '9.2.0',
             kv_enabled: !!kv,
             youtube_enabled: !!YOUTUBE_API_KEY,
             action: action || 'nenhuma',
