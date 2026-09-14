@@ -1,13 +1,14 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v8.6.0
+// js/marketplace.js — PLAY MY v9.0.0
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
 //
-// MUDANÇAS v8.6.0:
-//   - Adicionar músicas do YouTube em playlists (usuário + globais)
-//   - Modal de seleção de playlist
-//   - Botão "Adicionar à playlist" no player
+// MUDANÇAS v9.0.0:
+//   - Badge "🔥 Em alta" baseado em streams
+//   - Botão "▶ Ouvir" nos cards (YouTube oficial)
+//   - Contador de streams no card
+//   - Mantém YouTube em playlists (v8.6.0)
 // ============================================================
 
 // ============================================================
@@ -24,9 +25,14 @@ window.changeSection = function (section) {
 
   window.scrollTo(0, 0);
 
-  if (section === 'news' && typeof loadNewsFeed === 'function') loadNewsFeed();
+  if (section === 'news' && typeof pmNewsReload === 'function') pmNewsReload();
   if (section === 'trades' && typeof loadTradeOffers === 'function') loadTradeOffers();
   if (section === 'blockchain' && typeof loadBlockchainData === 'function') loadBlockchainData();
+  if (section === 'portfolio') {
+    if (typeof loadPortfolio === 'function') loadPortfolio();
+    if (typeof loadLedger === 'function') loadLedger();
+    if (typeof loadDividends === 'function') loadDividends();
+  }
 };
 
 window.toggleSidebar = function () {
@@ -48,6 +54,7 @@ window.loadMarketplace = async function () {
   }
   renderMarketplace();
   renderRecommended();
+  carregarStreamsDasMusicas(); // 🆕
 };
 
 window.loadExternalMarketplace = async function () {
@@ -129,6 +136,32 @@ window.loadTickets = async function () {
 };
 
 // ============================================================
+// 🆕 CARREGAR STREAMS DAS MÚSICAS
+// ============================================================
+window.carregarStreamsDasMusicas = async function () {
+  if (!state.playlist || !state.playlist.length) return;
+
+  // Carrega em lote (só as 20 primeiras pra não pesar)
+  const limite = Math.min(state.playlist.length, 20);
+
+  try {
+    const r = await callAPI('get_streaming_ranking', { limit: 50 });
+    if (r && r.success && r.data) {
+      const mapa = {};
+      r.data.forEach(x => {
+        mapa[String(x.music_id)] = x.streams_total || 0;
+      });
+      state.streamsMap = mapa;
+
+      // Re-renderiza o marketplace com os streams
+      renderMarketplace();
+    }
+  } catch (e) {
+    console.warn('⚠️ carregarStreamsDasMusicas:', e.message);
+  }
+};
+
+// ============================================================
 // RENDERIZAÇÃO — MERCADO
 // ============================================================
 window.renderMarketplace = function () {
@@ -142,10 +175,14 @@ window.renderMarketplace = function () {
 
   c.innerHTML = state.playlist.slice(0, 14).map((t, i) => {
     const cover = getCoverUrl(t, false);
+    const streams = (state.streamsMap && state.streamsMap[String(t.id)]) || 0;
+    const emAlta = streams > 100; // limiar
+
     return '<div class="spotify-card">' +
       '<div class="spotify-cover">' +
         '<img src="' + cover + '" loading="lazy" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
         '<div class="play-overlay" onclick="playTrack(' + i + ')"><i class="bi bi-play-fill"></i></div>' +
+        (emAlta ? '<div class="em-alta-badge" title="Em alta">🔥</div>' : '') +
       '</div>' +
       '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
       '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
@@ -153,9 +190,19 @@ window.renderMarketplace = function () {
         '<span class="spotify-elo">' + (t.percentual_disponivel || 0) + '%</span>' +
         '<span class="spotify-price">' + formatCurrency(t.valor_acao || 0) + '</span>' +
       '</div>' +
-      '<button class="btn-invest" onclick="openInvestModal(' + i + ')">' +
-        '<i class="bi bi-currency-dollar"></i> INVESTIR' +
-      '</button>' +
+      (streams > 0
+        ? '<div style="font-size:11px;color:var(--apple-label-2);margin-top:4px"><i class="bi bi-play-circle"></i> ' + formatNumber(streams) + ' streams</div>'
+        : '') +
+      '<div style="display:flex;gap:6px;margin-top:8px">' +
+        '<button class="btn-invest" style="flex:1" onclick="openInvestModal(' + i + ')">' +
+          '<i class="bi bi-currency-dollar"></i> INVESTIR' +
+        '</button>' +
+        (t.link_youtube
+          ? '<button class="btn-ouvir" title="Ouvir no YouTube" onclick="window.open(\'' + t.link_youtube + '\', \'_blank\')">' +
+              '<i class="bi bi-play-fill"></i>' +
+            '</button>'
+          : '') +
+      '</div>' +
     '</div>';
   }).join('');
 };
@@ -170,11 +217,15 @@ window.renderRecommended = function () {
   }
 
   const p = state.playlist[0];
+  const streams = (state.streamsMap && state.streamsMap[String(p.id)]) || 0;
+
   rec.innerHTML =
     '<img src="' + getCoverUrl(p, false) + '" class="recommended-cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
     '<div class="recommended-info">' +
       '<h4>' + (p.titulo || '') + ' • ' + (p.artista || '') + '</h4>' +
-      '<p>' + formatCurrency(p.valor_acao || 0) + ' por ação</p>' +
+      '<p>' + formatCurrency(p.valor_acao || 0) + ' por ação' +
+        (streams > 0 ? ' • ' + formatNumber(streams) + ' streams' : '') +
+      '</p>' +
     '</div>' +
     '<button class="btn-play" onclick="playTrack(0)"><i class="bi bi-play-fill"></i></button>';
 };
@@ -492,7 +543,6 @@ window.displaySearchResults = function (all) {
     let clickAction;
     if (isYT) {
       const vid = String(item.id || '').replace('yt_', '');
-      // ✅ Salva dados da música para adicionar à playlist depois
       state._lastYouTubeTrack = {
         id: 'yt_' + vid,
         titulo: title,
@@ -505,7 +555,6 @@ window.displaySearchResults = function (all) {
       clickAction = 'playSearchResult(\'' + item._type + '\', \'' + item.id + '\')';
     }
 
-    // ✅ Botão "adicionar à playlist" para resultados do YouTube
     const addBtn = isYT
       ? '<button class="search-result-add" title="Adicionar à playlist" onclick="event.stopPropagation(); addYouTubeToPlaylistUI(\'' + String(item.id || '').replace('yt_', '') + '\', \'' + title.replace(/'/g, "\\'") + '\', \'' + sub.replace(/'/g, "\\'") + '\')"><i class="bi bi-plus-square"></i></button>'
       : '';
@@ -546,7 +595,6 @@ window.openPlaylistSelector = function (track) {
 
   state._pendingYouTubeTrack = track;
 
-  // Cria modal se não existir
   if (!document.getElementById('playlistSelectorModal')) {
     createPlaylistSelectorModal();
   }
@@ -1015,7 +1063,6 @@ window.playUserPlaylist = function (id) {
     if (idx !== -1) {
       queueItems.push({ type: 'internal', index: idx });
     } else if (sid.startsWith('yt_')) {
-      // Música do YouTube
       const vid = sid.replace('yt_', '');
       queueItems.push({
         type: 'youtube',
@@ -1349,4 +1396,4 @@ window.toggleFavoriteMusic = async function (musicId) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] carregado — v8.6.0 (YouTube em playlists)');
+console.log('✅ [marketplace.js] v9.0.0 carregado — badges "Em alta" + streams + botão Ouvir');
