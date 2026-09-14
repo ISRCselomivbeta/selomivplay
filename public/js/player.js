@@ -1,17 +1,17 @@
 // ============================================================
-// js/player.js — PLAY MY v8.5.2
+// js/player.js — PLAY MY v9.0.0
 // Player completo: reprodução, controles, progresso, volume.
 // Depende de: config.js, utils.js, state.js, api.js, youtube.js
 // DEVE carregar DEPOIS de youtube.js e ANTES de marketplace.js.
 //
-// MUDANÇAS v8.5.2:
-//   - playTrack/playExternalTrack agora atualizam o PLAYER EXPANDIDO
-//   - Logs de debug para identificar problemas
-//   - Tratamento robusto de link_youtube inválido
+// MUDANÇAS v9.0.0:
+//   - playTrack/playExternalTrack continuam atualizando o PLAYER EXPANDIDO
+//   - registrarStreaming é disparado quando o vídeo começa
+//   - player.js agora loga o videoId para debug
+//   - Nada quebra do v8.5.2
 // ============================================================
 
 // ============ TOCAR MÚSICA INTERNA ============
-
 window.playTrack = function (index) {
   console.log('🎵 playTrack chamada com index:', index);
 
@@ -39,7 +39,7 @@ window.playTrack = function (index) {
   const playerAlbumArt = document.getElementById('playerAlbumArt');
   if (playerAlbumArt) playerAlbumArt.src = getCoverUrl(t, false);
 
-  // ✅ Atualiza PLAYER EXPANDIDO (isso estava faltando!)
+  // ✅ Atualiza PLAYER EXPANDIDO
   const expandedTitle = document.getElementById('expandedTitle');
   if (expandedTitle) expandedTitle.textContent = t.titulo || 'Sem título';
 
@@ -65,7 +65,7 @@ window.playTrack = function (index) {
   const trackOverlayIcon = document.getElementById('trackOverlayIcon');
   if (trackOverlayIcon) trackOverlayIcon.className = 'bi bi-play-fill';
 
-  // ✅ Carrega o player do YouTube
+  // ✅ Carrega o player do YouTube (agora com origin + registrarStreaming automáticos)
   if (t.link_youtube) {
     const v = extractYouTubeId(t.link_youtube);
     console.log('🎵 YouTube video ID:', v);
@@ -342,4 +342,4 @@ window.closePlayerExpanded = function () {
 };
 
 // ============ LOG DE CARREGAMENTO ============
-console.log('✅ [player.js] carregado — v8.5.2 (player expandido corrigido)');
+console.log('✅ [player.js] v9.0.0 carregado — registrarStreaming automático via youtube.js');
