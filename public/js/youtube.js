@@ -1,13 +1,13 @@
 // ============================================================
-// js/youtube.js — PLAY MY v8.6.2
+// js/youtube.js — PLAY MY v9.0.0
 // Integração YouTube: API IFrame, busca, player.
 // Depende de: config.js, utils.js, state.js, api.js
 //
-// MUDANÇAS v8.6.2:
-//   - loadYouTubeAPI à prova de balas (5 cenários)
-//   - initializeYouTubePlayer com auto-recuperação
-//   - searchYouTubeDirect RESTAURADO (estava faltando!)
-//   - updatePlayerProgress RESTAURADO (estava faltando!)
+// MUDANÇAS v9.0.0 (A PONTE):
+//   - origin: window.location.origin  → YouTube conta a view
+//   - enablejsapi: 1                  → API de controle ativa
+//   - registrarStreaming()            → avisa o backend
+//   - onStateChange PLAYING          → dispara registro
 // ============================================================
 
 // ✅ Array global para callbacks
@@ -104,7 +104,45 @@ window.loadYouTubeAPI = function (cb) {
 };
 
 // ============================================================
-// BUSCA DIRETA (ESTAVA FALTANDO!)
+// 🆕 REGISTRAR STREAMING — A PONTE
+// Avisa o backend que a música começou a tocar.
+// O backend guarda o contador de streams por música.
+// ============================================================
+window.registrarStreaming = function (videoId) {
+  const user = window.state && window.state.currentUser;
+  if (!user || !user.id) {
+    console.log('🎵 [registrarStreaming] usuário não logado — não registra');
+    return;
+  }
+
+  // Evita registrar 2x o mesmo vídeo em menos de 30s
+  const agora = Date.now();
+  if (window._ultimoStream && window._ultimoStream.id === videoId &&
+      (agora - window._ultimoStream.ts) < 30000) {
+    console.log('🎵 [registrarStreaming] duplicado, ignorando');
+    return;
+  }
+  window._ultimoStream = { id: videoId, ts: agora };
+
+  console.log('🎵 [registrarStreaming] ✅ registrando stream:', videoId);
+
+  if (typeof window.callAPI === 'function') {
+    window.callAPI('register_streaming', {
+      music_id: videoId,
+      user_id: user.id,
+      duration: 30
+    }).then(r => {
+      if (r && r.success) {
+        console.log('🎵 [registrarStreaming] backend OK:', r.data);
+      }
+    }).catch(e => {
+      console.warn('🎵 [registrarStreaming] erro:', e.message);
+    });
+  }
+};
+
+// ============================================================
+// BUSCA DIRETA
 // ============================================================
 window.searchYouTubeDirect = async function (query) {
   console.log('🎥 Buscando YouTube:', query);
@@ -178,7 +216,9 @@ window.initializeYouTubePlayer = function (videoId) {
         modestbranding: 1,
         rel: 0,
         playsinline: 1,
-        enablejsapi: 1
+        enablejsapi: 1,
+        // ✅ A PONTE: diz ao YouTube de onde vem o player
+        origin: window.location.origin
       },
       events: {
         onReady: function (e) {
@@ -206,8 +246,10 @@ window.initializeYouTubePlayer = function (videoId) {
             e.data === 0 ? '(ENDED)' : '');
 
           if (e.data === 1) {
+            // ✅ A PONTE: quando começa a tocar, avisa o backend
             state.isPlaying = true;
             if (loading) loading.style.display = 'none';
+            window.registrarStreaming(videoId);
           } else if (e.data === 2) {
             state.isPlaying = false;
           } else if (e.data === 0) {
@@ -245,7 +287,7 @@ window.initializeYouTubePlayer = function (videoId) {
 };
 
 // ============================================================
-// PROGRESSO (ESTAVA FALTANDO!)
+// PROGRESSO
 // ============================================================
 window.updatePlayerProgress = function () {
   if (!state.youtubePlayer || !state.youtubePlayer.getCurrentTime) return;
@@ -281,4 +323,4 @@ window.updatePlayerProgress = function () {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [youtube.js] carregado — v8.6.2 (completo + searchYouTubeDirect)');
+console.log('✅ [youtube.js] v9.0.0 carregado — A PONTE (origin + enablejsapi + registrarStreaming)');
