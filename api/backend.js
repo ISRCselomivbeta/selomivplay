@@ -1,7 +1,14 @@
-// BACKEND.JS - VERSÃO 9.5.0
+// BACKEND.JS - VERSÃO 9.6.0
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
+//
+// MUDANÇAS v9.6.0 (correção de HTTP 500 no /api/backend?action=ping):
+//   - nodemailer com require protegido (evita morte da função se
+//     a dependência estiver ausente/quebrada no deploy da Vercel)
+//   - sendEmail trata nodemailer === null
+//   - req.body / req.query protegidos com fallback {}
+//   - versão bumpada para 9.6.0
 //
 // MUDANÇAS v9.5.0:
 //   - aggregateNews com Promise.allSettled + timeout global 8s
@@ -17,7 +24,17 @@
 //   - aggregateNews reduzido de 12 para 6 queries
 // ============================================================
 
-const nodemailer = require('nodemailer');
+// ============================================================
+// CARREGAMENTO PROTEGIDO DE DEPENDÊNCIAS
+// ============================================================
+let nodemailer = null;
+try {
+    nodemailer = require('nodemailer');
+    console.log('✅ nodemailer carregado');
+} catch (e) {
+    console.warn('⚠️ nodemailer não disponível — email cairá para fallback GAS:', e.message);
+}
+
 const crypto = require('crypto');
 
 let kv = null;
@@ -192,7 +209,7 @@ function extractYouTubeId(url) {
 }
 
 // ============================================================
-// CHAMAR GAS — timeout 6s + 1 retry (evita 500)
+// CHAMAR GAS — timeout 6s + 1 retry (evita 500 por timeout)
 // ============================================================
 async function callGAS(action, params = {}, retries = 1) {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -227,9 +244,13 @@ async function callGAS(action, params = {}, retries = 1) {
 }
 
 // ============================================================
-// ENVIO DE EMAIL
+// ENVIO DE EMAIL (protegido: se nodemailer faltar, retorna erro controlado)
 // ============================================================
 async function sendEmail(to, subject, html, retries = 3) {
+    if (!nodemailer) {
+        console.warn('⚠️ [email] nodemailer indisponível — retornando erro controlado');
+        return { success: false, error: 'nodemailer indisponível' };
+    }
     const emailPass = process.env.EMAIL_PASS;
     if (!emailPass) return { success: false, error: 'EMAIL_PASS não configurada' };
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -370,7 +391,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.5)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.6)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -484,7 +505,6 @@ async function aggregateNews() {
     console.log(`📰 Total bruto: ${all.length} notícias`);
 
     if (all.length === 0) {
-        // Cache negativo curto (30s) para não martelar o Google
         console.log('📰 Nenhuma notícia real — cache negativo 30s');
         await Storage.set('news_cache', []);
         await Storage.set('news_cache_time', Date.now() - (15 * 60 * 1000) + (30 * 1000));
@@ -544,7 +564,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
 
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.5 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.6 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -862,7 +882,10 @@ module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    const params = req.method === 'POST' ? req.body : req.query;
+    // ✅ Proteção: req.body / req.query podem estar ausentes
+    const params = req.method === 'POST'
+        ? (req.body || {})
+        : (req.query || {});
     const { action } = params;
 
     console.log(`🚀 [${action}]`);
@@ -889,8 +912,9 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.5.0',
+                version: '9.6.0',
                 kv_enabled: !!kv,
+                nodemailer_enabled: !!nodemailer,
                 playlists_count,
                 blocks_count,
                 streams_count,
@@ -1243,7 +1267,6 @@ module.exports = async (req, res) => {
             const seenIds = (params.seen_ids || '').split(',').filter(Boolean);
             const userId = params.user_id || 'anon';
 
-            // Verifica se veio do cache ANTES de chamar aggregateNews
             const cachedBefore = await Storage.get('news_cache');
             const cachedTimeBefore = await Storage.get('news_cache_time');
             const wasCached = !!(cachedBefore && cachedTimeBefore && Date.now() - cachedTimeBefore < 15 * 60 * 1000);
@@ -1505,7 +1528,6 @@ module.exports = async (req, res) => {
 
             await Storage.set(key, contador);
 
-            // Adiciona ao índice de streams
             let idx = await Storage.get('streams_index') || [];
             if (!idx.includes(music_id)) {
                 idx.push(music_id);
@@ -1631,7 +1653,7 @@ module.exports = async (req, res) => {
             const password = params.password;
             if (!email || !password) return res.status(200).json({ success: false, message: 'Email e senha obrigatórios' });
             if (!validateEmail(email)) return res.status(200).json({ success: false, message: 'Email inválido' });
-            const clientIP = req.ip || req.connection?.remoteAddress || 'unknown';
+            const clientIP = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
             const rateCheck = rateLimiter.check(clientIP);
             if (!rateCheck.allowed) return res.status(200).json({ success: false, message: rateCheck.message });
 
@@ -1832,8 +1854,9 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.5.0',
+            version: '9.6.0',
             kv_enabled: !!kv,
+            nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
             action: action || 'nenhuma',
             timestamp: new Date().toISOString()
