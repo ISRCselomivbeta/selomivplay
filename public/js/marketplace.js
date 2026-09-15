@@ -1,20 +1,19 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v9.0.0
+// js/marketplace.js — PLAY MY v9.1.0
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
 //
-// MUDANÇAS v9.0.0:
-//   - Badge "🔥 Em alta" baseado em streams
-//   - Botão "▶ Ouvir" nos cards (YouTube oficial)
-//   - Contador de streams no card
-//   - Mantém YouTube em playlists (v8.6.0)
+// MUDANÇAS v9.1.0:
+//   - Badge de ELO nos cards (⚡ 1520)
+//   - Ordenação por ELO (opcional)
+//   - ELO carregado junto com os streams
+//   - Mantém: "🔥 Em alta", "▶ Ouvir", streams no card
 // ============================================================
 
 // ============================================================
 // NAVEGAÇÃO ENTRE SEÇÕES
 // ============================================================
-
 window.changeSection = function (section) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   const el = document.getElementById(section + 'Section');
@@ -32,6 +31,11 @@ window.changeSection = function (section) {
     if (typeof loadPortfolio === 'function') loadPortfolio();
     if (typeof loadLedger === 'function') loadLedger();
     if (typeof loadDividends === 'function') loadDividends();
+  }
+  if (section === 'admin') {
+    if (typeof loadValuationPanel === 'function') loadValuationPanel();
+    if (typeof loadEloPanel === 'function') loadEloPanel();
+    if (typeof loadStreamsPanel === 'function') loadStreamsPanel();
   }
 };
 
@@ -54,7 +58,8 @@ window.loadMarketplace = async function () {
   }
   renderMarketplace();
   renderRecommended();
-  carregarStreamsDasMusicas(); // 🆕
+  carregarStreamsDasMusicas();
+  carregarELOsDasMusicas(); // 🆕
 };
 
 window.loadExternalMarketplace = async function () {
@@ -136,13 +141,10 @@ window.loadTickets = async function () {
 };
 
 // ============================================================
-// 🆕 CARREGAR STREAMS DAS MÚSICAS
+// CARREGAR STREAMS DAS MÚSICAS
 // ============================================================
 window.carregarStreamsDasMusicas = async function () {
   if (!state.playlist || !state.playlist.length) return;
-
-  // Carrega em lote (só as 20 primeiras pra não pesar)
-  const limite = Math.min(state.playlist.length, 20);
 
   try {
     const r = await callAPI('get_streaming_ranking', { limit: 50 });
@@ -152,14 +154,48 @@ window.carregarStreamsDasMusicas = async function () {
         mapa[String(x.music_id)] = x.streams_total || 0;
       });
       state.streamsMap = mapa;
-
-      // Re-renderiza o marketplace com os streams
       renderMarketplace();
+      renderRecommended();
     }
   } catch (e) {
     console.warn('⚠️ carregarStreamsDasMusicas:', e.message);
   }
 };
+
+// ============================================================
+// 🆕 CARREGAR ELOs DAS MÚSICAS
+// ============================================================
+window.carregarELOsDasMusicas = async function () {
+  if (!state.playlist || !state.playlist.length) return;
+
+  try {
+    const r = await callAPI('get_elo_ranking');
+    if (r && r.success && r.data && r.data.ranking) {
+      const mapa = {};
+      r.data.ranking.forEach(x => {
+        mapa[String(x.music_id)] = {
+          elo: x.elo || 1000,
+          faixa: x.faixa || 'neutro',
+          faixa_label: x.faixa_label || 'Neutro',
+          cor: x.cor || '#8E8E93'
+        };
+      });
+      state.eloMap = mapa;
+      renderMarketplace();
+      renderRecommended();
+    }
+  } catch (e) {
+    console.warn('⚠️ carregarELOsDasMusicas:', e.message);
+  }
+};
+
+// ============================================================
+// 🆕 OBTER ELO DE UMA MÚSICA
+// ============================================================
+function getEloMusica(musicId) {
+  if (!state.eloMap) return null;
+  return state.eloMap[String(musicId)] || null;
+}
 
 // ============================================================
 // RENDERIZAÇÃO — MERCADO
@@ -173,16 +209,35 @@ window.renderMarketplace = function () {
     return;
   }
 
-  c.innerHTML = state.playlist.slice(0, 14).map((t, i) => {
+  // 🆕 Ordenação: se o usuário escolheu ordenar por ELO, usa; senão mantém ordem original
+  let lista = state.playlist.slice(0, 14);
+  if (state.ordenarPor === 'elo' && state.eloMap) {
+    lista = state.playlist.slice().sort((a, b) => {
+      const eloA = getEloMusica(a.id)?.elo || 0;
+      const eloB = getEloMusica(b.id)?.elo || 0;
+      return eloB - eloA;
+    }).slice(0, 14);
+  }
+
+  c.innerHTML = lista.map((t) => {
     const cover = getCoverUrl(t, false);
     const streams = (state.streamsMap && state.streamsMap[String(t.id)]) || 0;
-    const emAlta = streams > 100; // limiar
+    const emAlta = streams > 100;
+    const eloInfo = getEloMusica(t.id);
+    const idx = state.playlist.findIndex(x => String(x.id) === String(t.id));
 
     return '<div class="spotify-card">' +
       '<div class="spotify-cover">' +
         '<img src="' + cover + '" loading="lazy" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
-        '<div class="play-overlay" onclick="playTrack(' + i + ')"><i class="bi bi-play-fill"></i></div>' +
+        '<div class="play-overlay" onclick="playTrack(' + idx + ')"><i class="bi bi-play-fill"></i></div>' +
         (emAlta ? '<div class="em-alta-badge" title="Em alta">🔥</div>' : '') +
+        (eloInfo && eloInfo.elo >= 1400
+          ? '<div class="elo-badge" title="ELO ' + eloInfo.elo + ' — ' + eloInfo.faixa_label + '" ' +
+              'style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
+              'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">' +
+              '⚡ ' + eloInfo.elo +
+            '</div>'
+          : '') +
       '</div>' +
       '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
       '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
@@ -190,11 +245,19 @@ window.renderMarketplace = function () {
         '<span class="spotify-elo">' + (t.percentual_disponivel || 0) + '%</span>' +
         '<span class="spotify-price">' + formatCurrency(t.valor_acao || 0) + '</span>' +
       '</div>' +
-      (streams > 0
-        ? '<div style="font-size:11px;color:var(--apple-label-2);margin-top:4px"><i class="bi bi-play-circle"></i> ' + formatNumber(streams) + ' streams</div>'
-        : '') +
+      (eloInfo
+        ? '<div style="font-size:11px;margin-top:4px">' +
+            '<span style="color:' + eloInfo.cor + ';font-weight:700">⚡ ' + eloInfo.elo + '</span>' +
+            '<span style="color:var(--apple-label-2);margin-left:6px">' + eloInfo.faixa_label + '</span>' +
+            (streams > 0
+              ? '<span style="color:var(--apple-label-2);margin-left:6px"><i class="bi bi-play-circle"></i> ' + formatNumber(streams) + '</span>'
+              : '') +
+          '</div>'
+        : (streams > 0
+            ? '<div style="font-size:11px;color:var(--apple-label-2);margin-top:4px"><i class="bi bi-play-circle"></i> ' + formatNumber(streams) + ' streams</div>'
+            : '')) +
       '<div style="display:flex;gap:6px;margin-top:8px">' +
-        '<button class="btn-invest" style="flex:1" onclick="openInvestModal(' + i + ')">' +
+        '<button class="btn-invest" style="flex:1" onclick="openInvestModal(' + idx + ')">' +
           '<i class="bi bi-currency-dollar"></i> INVESTIR' +
         '</button>' +
         (t.link_youtube
@@ -207,6 +270,20 @@ window.renderMarketplace = function () {
   }).join('');
 };
 
+// ============================================================
+// 🆕 ALTERNAR ORDENAÇÃO (ELO vs PADRÃO)
+// ============================================================
+window.alternarOrdenacao = function () {
+  state.ordenarPor = state.ordenarPor === 'elo' ? 'padrao' : 'elo';
+  renderMarketplace();
+  if (typeof showToast === 'function') {
+    showToast(
+      state.ordenarPor === 'elo' ? '⚡ Ordenado por ELO' : '📋 Ordem padrão',
+      'info'
+    );
+  }
+};
+
 window.renderRecommended = function () {
   const rec = document.getElementById('recommendedCard');
   if (!rec) return;
@@ -216,14 +293,29 @@ window.renderRecommended = function () {
     return;
   }
 
-  const p = state.playlist[0];
+  // Recomendado: música com maior ELO
+  let destaque = state.playlist[0];
+  if (state.eloMap) {
+    let maiorElo = 0;
+    state.playlist.forEach(t => {
+      const eloInfo = getEloMusica(t.id);
+      if (eloInfo && eloInfo.elo > maiorElo) {
+        maiorElo = eloInfo.elo;
+        destaque = t;
+      }
+    });
+  }
+
+  const p = destaque;
   const streams = (state.streamsMap && state.streamsMap[String(p.id)]) || 0;
+  const eloInfo = getEloMusica(p.id);
 
   rec.innerHTML =
     '<img src="' + getCoverUrl(p, false) + '" class="recommended-cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
     '<div class="recommended-info">' +
       '<h4>' + (p.titulo || '') + ' • ' + (p.artista || '') + '</h4>' +
       '<p>' + formatCurrency(p.valor_acao || 0) + ' por ação' +
+        (eloInfo ? ' • ⚡ ' + eloInfo.elo : '') +
         (streams > 0 ? ' • ' + formatNumber(streams) + ' streams' : '') +
       '</p>' +
     '</div>' +
@@ -270,10 +362,25 @@ window.renderTopInvestments = function () {
     return;
   }
 
-  c.innerHTML = state.topInvestments.map(t =>
-    '<div class="spotify-card">' +
+  // 🆕 Ordena top investments por ELO se disponível
+  let lista = state.topInvestments.slice();
+  if (state.eloMap) {
+    lista.sort((a, b) => {
+      const eloA = getEloMusica(a.id)?.elo || 0;
+      const eloB = getEloMusica(b.id)?.elo || 0;
+      return eloB - eloA;
+    });
+  }
+
+  c.innerHTML = lista.map(t => {
+    const eloInfo = getEloMusica(t.id);
+    return '<div class="spotify-card">' +
       '<div class="spotify-cover">' +
         '<img src="' + getCoverUrl(t, false) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+        (eloInfo && eloInfo.elo >= 1400
+          ? '<div style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
+              'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
+          : '') +
       '</div>' +
       '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
       '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
@@ -281,8 +388,8 @@ window.renderTopInvestments = function () {
         '<span class="spotify-elo">' + (t.investment_score || 0) + '</span>' +
         '<span class="spotify-price">' + formatCurrency(t.valor_acao || 0) + '</span>' +
       '</div>' +
-    '</div>'
-  ).join('');
+    '</div>';
+  }).join('');
 };
 
 // ============================================================
@@ -366,15 +473,20 @@ window.renderFavorites = function () {
   ];
 
   if (favs.length) {
-    fc.innerHTML = favs.map(t =>
-      '<div class="spotify-card">' +
+    fc.innerHTML = favs.map(t => {
+      const eloInfo = getEloMusica(t.id);
+      return '<div class="spotify-card">' +
         '<div class="spotify-cover">' +
           '<img src="' + getCoverUrl(t, false) + '">' +
+          (eloInfo && eloInfo.elo >= 1400
+            ? '<div style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
+                'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
+            : '') +
         '</div>' +
         '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
         '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
-      '</div>'
-    ).join('');
+      '</div>';
+    }).join('');
   } else {
     fc.innerHTML = '<div class="empty-state-actionable" style="grid-column:1/-1"><i class="bi bi-star empty-icon"></i><h5 class="text-muted">Sem favoritas</h5></div>';
   }
@@ -530,6 +642,7 @@ window.displaySearchResults = function (all) {
     const isYT = item._type === 'youtube';
     const isExt = item._type === 'external';
     const cover = getCoverUrlSmall(item, isExt);
+    const eloInfo = !isYT ? getEloMusica(item.id) : null;
 
     const badge = isYT
       ? '<span class="search-result-badge" style="background:rgba(255,59,48,.18);color:var(--apple-red)">▶ YT</span>'
@@ -562,7 +675,9 @@ window.displaySearchResults = function (all) {
     return '<div class="search-result-item" onclick="' + clickAction + '">' +
       '<img src="' + cover + '" class="search-result-cover" onerror="this.src=\'' + PLACEHOLDERS.MIV_56 + '\'">' +
       '<div class="search-result-info">' +
-        '<div class="search-result-title">' + title + '</div>' +
+        '<div class="search-result-title">' + title +
+          (eloInfo ? ' <span style="color:' + eloInfo.cor + ';font-size:11px;margin-left:6px">⚡ ' + eloInfo.elo + '</span>' : '') +
+        '</div>' +
         '<div class="search-result-artist">' + sub + '</div>' +
       '</div>' +
       addBtn +
@@ -572,8 +687,9 @@ window.displaySearchResults = function (all) {
 };
 
 // ============================================================
-// ADICIONAR YOUTUBE À PLAYLIST
+// (Resto do arquivo continua igual — playlists, investimentos, etc.)
 // ============================================================
+
 window.addYouTubeToPlaylistUI = function (videoId, titulo, artista) {
   const track = {
     id: 'yt_' + videoId,
@@ -583,7 +699,6 @@ window.addYouTubeToPlaylistUI = function (videoId, titulo, artista) {
     is_youtube: true,
     from_youtube: true
   };
-
   openPlaylistSelector(track);
 };
 
@@ -592,65 +707,50 @@ window.openPlaylistSelector = function (track) {
     showToast('Faça login para adicionar músicas', 'error');
     return;
   }
-
   state._pendingYouTubeTrack = track;
-
-  if (!document.getElementById('playlistSelectorModal')) {
-    createPlaylistSelectorModal();
-  }
-
+  if (!document.getElementById('playlistSelectorModal')) createPlaylistSelectorModal();
   const list = document.getElementById('playlistSelectorList');
   if (!list) return;
-
   const playlists = state.userPlaylists || [];
   const globalPlaylists = state.currentUser.tipo === 'admin' ? (state.globalPlaylists || []) : [];
-
   let html = '';
-
   if (playlists.length) {
     html += '<div style="margin-bottom:12px;font-weight:600">Minhas Playlists</div>';
     html += playlists.map(p =>
       '<div class="playlist-selector-item" onclick="selectPlaylistForYouTube(\'' + p.id + '\', false)">' +
         '<div style="display:flex;align-items:center;gap:12px">' +
           '<div class="playlist-cover"><i class="bi bi-music-note-list"></i></div>' +
-          '<div>' +
-            '<div style="font-weight:600">' + (p.nome || '') + '</div>' +
+          '<div><div style="font-weight:600">' + (p.nome || '') + '</div>' +
             '<div style="font-size:12px;color:var(--apple-label-2)">' + ((p.musicas || []).length) + ' músicas</div>' +
           '</div>' +
         '</div>' +
       '</div>'
     ).join('');
   }
-
   if (globalPlaylists.length) {
     html += '<div style="margin:16px 0 12px;font-weight:600">Playlists Globais (admin)</div>';
     html += globalPlaylists.map(p =>
       '<div class="playlist-selector-item" onclick="selectPlaylistForYouTube(\'' + p.id + '\', true)">' +
         '<div style="display:flex;align-items:center;gap:12px">' +
           '<div class="playlist-cover" style="background:linear-gradient(135deg,var(--apple-blue),var(--apple-purple))"><i class="bi bi-globe"></i></div>' +
-          '<div>' +
-            '<div style="font-weight:600">' + (p.nome || '') + '</div>' +
+          '<div><div style="font-weight:600">' + (p.nome || '') + '</div>' +
             '<div style="font-size:12px;color:var(--apple-label-2)">' + ((p.musicas || []).length) + ' músicas</div>' +
           '</div>' +
         '</div>' +
       '</div>'
     ).join('');
   }
-
   if (!html) {
     html = '<div style="text-align:center;padding:20px;color:var(--apple-label-2)">' +
       '<p>Você não tem playlists ainda.</p>' +
       '<button class="btn-miv mt-3" style="width:auto" onclick="closeModal(\'playlistSelectorModal\'); openCreatePlaylistModal();">Criar Playlist</button>' +
       '</div>';
   }
-
   list.innerHTML = html;
-
   const info = document.getElementById('playlistSelectorTrackInfo');
   if (info) {
     info.innerHTML = '🎵 <strong>' + (track.titulo || 'Sem título') + '</strong><br><small style="color:var(--apple-label-2)">' + (track.artista || '') + '</small>';
   }
-
   showModal('playlistSelectorModal');
 };
 
@@ -662,9 +762,7 @@ window.createPlaylistSelectorModal = function () {
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Adicionar à Playlist</h5>
-        <button class="modal-close" onclick="closeModal('playlistSelectorModal')">
-          <i class="bi bi-x"></i>
-        </button>
+        <button class="modal-close" onclick="closeModal('playlistSelectorModal')"><i class="bi bi-x"></i></button>
       </div>
       <div class="modal-body">
         <div id="playlistSelectorTrackInfo" style="margin-bottom:16px;padding:12px;background:var(--apple-gray-6);border-radius:var(--radius-md)"></div>
@@ -675,27 +773,11 @@ window.createPlaylistSelectorModal = function () {
       </div>
     </div>
   `;
-
   const style = document.createElement('style');
   style.textContent = `
-    .playlist-selector-item {
-      padding: 12px;
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      margin-bottom: 8px;
-      background: var(--apple-gray-6);
-      transition: background 0.2s;
-    }
+    .playlist-selector-item { padding: 12px; border-radius: var(--radius-md); cursor: pointer; margin-bottom: 8px; background: var(--apple-gray-6); transition: background 0.2s; }
     .playlist-selector-item:hover { background: var(--apple-gray-5); }
-    .search-result-add {
-      background: transparent;
-      border: none;
-      color: var(--apple-green);
-      font-size: 20px;
-      cursor: pointer;
-      padding: 6px 10px;
-      border-radius: 8px;
-    }
+    .search-result-add { background: transparent; border: none; color: var(--apple-green); font-size: 20px; cursor: pointer; padding: 6px 10px; border-radius: 8px; }
     .search-result-add:hover { background: rgba(52,199,89,0.15); }
   `;
   document.head.appendChild(style);
@@ -704,31 +786,17 @@ window.createPlaylistSelectorModal = function () {
 
 window.selectPlaylistForYouTube = async function (playlistId, isGlobal) {
   const track = state._pendingYouTubeTrack;
-  if (!track) {
-    showToast('Erro: música não encontrada', 'error');
-    return;
-  }
-
+  if (!track) { showToast('Erro: música não encontrada', 'error'); return; }
   showToast('Adicionando...', 'info');
-
   try {
     const action = isGlobal ? 'add_music_to_global_playlist' : 'add_music_to_playlist';
-    const params = {
-      playlist_id: playlistId,
-      music_id: track.id,
-      music_data: JSON.stringify(track)
-    };
-
+    const params = { playlist_id: playlistId, music_id: track.id, music_data: JSON.stringify(track) };
     const r = await callAPI(action, params);
-
     if (r && r.success) {
       showToast('✅ Música adicionada!', 'success');
       closeModal('playlistSelectorModal');
-      if (isGlobal) {
-        await loadGlobalPlaylists();
-      } else {
-        await loadUserPlaylists();
-      }
+      if (isGlobal) await loadGlobalPlaylists();
+      else await loadUserPlaylists();
       state._pendingYouTubeTrack = null;
     } else {
       showToast(r.message || 'Erro ao adicionar', 'error');
@@ -740,19 +808,17 @@ window.selectPlaylistForYouTube = async function (playlistId, isGlobal) {
 };
 
 // ============================================================
-// INVESTIMENTO INTERNO
+// INVESTIMENTO INTERNO / EXTERNO
 // ============================================================
 window.openInvestModal = function (i) {
   if (i < 0 || i >= state.playlist.length) return;
   const t = state.playlist[i];
   state.currentInvestTrack = t;
-
   document.getElementById('investTrackTitle').textContent = t.titulo || '';
   document.getElementById('investTrackArtist').textContent = t.artista || '';
   document.getElementById('investUnitPriceDisplay').textContent = formatCurrency(t.valor_acao || 0);
   document.getElementById('investAvailableBalanceDisplay').textContent = formatCurrency(state.userBalance);
   document.getElementById('investQuantityField').value = 1;
-
   updateInvestmentTotal();
   showModal('investModal');
 };
@@ -761,7 +827,6 @@ window.updateInvestmentTotal = function () {
   if (!state.currentInvestTrack) return;
   const q = parseInt(document.getElementById('investQuantityField').value) || 1;
   const t = q * (state.currentInvestTrack.valor_acao || 0);
-
   document.getElementById('investTotalPriceDisplay').textContent = formatCurrency(t);
   document.getElementById('confirmInvestBtn').disabled = t > state.userBalance;
 };
@@ -774,19 +839,12 @@ window.adjustQuantity = function (a) {
 
 window.confirmInvestment = async function () {
   if (!state.currentUser || !state.currentInvestTrack) return;
-
   const q = parseInt(document.getElementById('investQuantityField').value) || 1;
   const t = q * (state.currentInvestTrack.valor_acao || 0);
-
-  if (t > state.userBalance) {
-    showToast('Saldo insuficiente', 'error');
-    return;
-  }
-
+  if (t > state.userBalance) { showToast('Saldo insuficiente', 'error'); return; }
   const btn = document.getElementById('confirmInvestBtn');
   btn.disabled = true;
   btn.innerHTML = 'Processando...';
-
   try {
     const r = await callAPI('buy', {
       music_id: state.currentInvestTrack.id,
@@ -794,17 +852,12 @@ window.confirmInvestment = async function () {
       valor_total: t,
       valor_unitario: state.currentInvestTrack.valor_acao
     });
-
     if (r && r.success) {
-      if (r.data && r.data.novo_saldo !== undefined) {
-        state.userBalance = r.data.novo_saldo;
-      } else {
-        state.userBalance -= t;
-      }
+      if (r.data && r.data.novo_saldo !== undefined) state.userBalance = r.data.novo_saldo;
+      else state.userBalance -= t;
       updateBalanceDisplay();
       if (typeof loadPortfolio === 'function') await loadPortfolio();
       if (typeof loadLedger === 'function') await loadLedger();
-
       showToast('✅ Investimento realizado!', 'success');
       closeModal('investModal');
     } else {
@@ -819,19 +872,14 @@ window.confirmInvestment = async function () {
   }
 };
 
-// ============================================================
-// INVESTIMENTO EXTERNO
-// ============================================================
 window.openInvestExternalModal = function (i) {
   if (i < 0 || i >= state.externalPlaylist.length) return;
   const t = state.externalPlaylist[i];
   state.currentExternalTrack = t;
-
   document.getElementById('investExternalTitleDisplay').textContent = t.titulo || '';
   document.getElementById('investExternalArtistDisplay').textContent = t.artista || '';
   document.getElementById('investExternalUnitPriceDisplay').textContent = formatCurrency(t.valor_acao || 0);
   document.getElementById('investExternalQuantityField').value = 1;
-
   updateExternalInvestmentTotal();
   showModal('investExternalModal');
 };
@@ -851,15 +899,9 @@ window.adjustExternalQuantity = function (a) {
 
 window.confirmExternalInvestment = async function () {
   if (!state.currentUser || !state.currentExternalTrack) return;
-
   const q = parseInt(document.getElementById('investExternalQuantityField').value) || 1;
   const t = q * (state.currentExternalTrack.valor_acao || 0);
-
-  if (t > state.userBalance) {
-    showToast('Saldo insuficiente', 'error');
-    return;
-  }
-
+  if (t > state.userBalance) { showToast('Saldo insuficiente', 'error'); return; }
   try {
     const r = await callAPI('buy_external', {
       external_id: state.currentExternalTrack.id,
@@ -867,7 +909,6 @@ window.confirmExternalInvestment = async function () {
       valor_total: t,
       valor_unitario: state.currentExternalTrack.valor_acao
     });
-
     if (r && r.success) {
       state.userBalance -= t;
       updateBalanceDisplay();
@@ -881,9 +922,6 @@ window.confirmExternalInvestment = async function () {
   }
 };
 
-// ============================================================
-// SUGERIR MÚSICA EXTERNA
-// ============================================================
 window.openAddExternalMusicModal = function () {
   if (!state.currentUser) { showToast('Faça login', 'error'); return; }
   showModal('addExternalMusicModal');
@@ -896,22 +934,12 @@ window.submitExternalMusic = async function () {
   const p = parseFloat(document.getElementById('externalPriceField').value);
   const pct = parseFloat(document.getElementById('externalPercentField').value);
   const msg = document.getElementById('externalMessageField').value.trim();
-
-  if (!y || !t || !a || !p) {
-    showToast('Preencha os campos', 'error');
-    return;
-  }
-
+  if (!y || !t || !a || !p) { showToast('Preencha os campos', 'error'); return; }
   try {
     const r = await callAPI('suggest_external_music', {
-      link_youtube: y,
-      titulo: t,
-      artista: a,
-      valor_acao: p,
-      percentual_disponivel: pct,
-      mensagem: msg
+      link_youtube: y, titulo: t, artista: a,
+      valor_acao: p, percentual_disponivel: pct, mensagem: msg
     });
-
     if (r && r.success) {
       showToast('✅ Música sugerida!', 'success');
       closeModal('addExternalMusicModal');
@@ -919,9 +947,7 @@ window.submitExternalMusic = async function () {
     } else {
       showToast((r && r.message) || 'Erro', 'error');
     }
-  } catch (e) {
-    showToast('Erro', 'error');
-  }
+  } catch (e) { showToast('Erro', 'error'); }
 };
 
 // ============================================================
@@ -929,8 +955,7 @@ window.submitExternalMusic = async function () {
 // ============================================================
 window.openAddMusicModal = function () {
   if (!state.currentUser || (state.currentUser.tipo !== 'artista' && state.currentUser.tipo !== 'admin')) {
-    showToast('Apenas artistas', 'error');
-    return;
+    showToast('Apenas artistas', 'error'); return;
   }
   showModal('addMusicModal');
 };
@@ -941,24 +966,16 @@ let videoIdAtual = null;
 window.analisarVideoYouTube = async function () {
   const link = document.getElementById('musicYoutubeField').value.trim();
   videoIdAtual = extractYouTubeId(link);
-
-  if (!videoIdAtual) {
-    showToast('Link inválido', 'error');
-    return;
-  }
-
+  if (!videoIdAtual) { showToast('Link inválido', 'error'); return; }
   const btn = document.getElementById('btnAnalisarVideo');
   btn.disabled = true;
   btn.innerHTML = 'Analisando...';
-
   try {
     const r = await callAPI('search_isrc', { youtube_url: link });
-
     if (r && r.success && r.data) {
       dadosVideoAnalisado = { views: 0, titulo: r.data.title || 'Música' };
       document.getElementById('musicTitleField').value = r.data.title || '';
       document.getElementById('musicCoverField').value = 'https://img.youtube.com/vi/' + videoIdAtual + '/maxresdefault.jpg';
-
       const res = document.getElementById('musicAnalysisResult');
       if (res) {
         res.style.display = 'block';
@@ -979,23 +996,13 @@ window.analisarVideoYouTube = async function () {
 };
 
 window.finalizarCadastroComYouTube = async function () {
-  if (!dadosVideoAnalisado || !videoIdAtual) {
-    showToast('Analise um vídeo primeiro', 'error');
-    return;
-  }
-
+  if (!dadosVideoAnalisado || !videoIdAtual) { showToast('Analise um vídeo primeiro', 'error'); return; }
   const genero = document.getElementById('musicGenreField').value;
   const preco = parseFloat(document.getElementById('musicPriceField').value);
   const percentual = parseFloat(document.getElementById('musicPercentField').value);
-
-  if (!genero || !preco || !percentual) {
-    showToast('Preencha os campos', 'error');
-    return;
-  }
-
+  if (!genero || !preco || !percentual) { showToast('Preencha os campos', 'error'); return; }
   const btn = document.getElementById('btnFinalizarCadastro');
   btn.disabled = true;
-
   try {
     const r = await callAPI('upload_music', {
       titulo: dadosVideoAnalisado.titulo,
@@ -1006,7 +1013,6 @@ window.finalizarCadastroComYouTube = async function () {
       valor_acao: preco,
       percentual_disponivel: percentual
     });
-
     if (r && r.success) {
       showToast('✅ Música cadastrada!', 'success');
       closeModal('addMusicModal');
@@ -1030,13 +1036,11 @@ window.openCreatePlaylistModal = function () { showModal('createPlaylistModal');
 window.createPlaylist = async function () {
   const name = document.getElementById('playlistNameField').value.trim();
   if (!name || !state.currentUser) return;
-
   try {
     const r = await callAPI('create_playlist', {
       nome: name,
       publica: document.getElementById('playlistPublicField').checked
     });
-
     if (r && r.success) {
       showToast('✅ Playlist criada!', 'success');
       closeModal('createPlaylistModal');
@@ -1044,18 +1048,12 @@ window.createPlaylist = async function () {
     } else {
       showToast((r && r.message) || 'Erro', 'error');
     }
-  } catch (e) {
-    showToast('Erro', 'error');
-  }
+  } catch (e) { showToast('Erro', 'error'); }
 };
 
 window.playUserPlaylist = function (id) {
   const pl = (state.userPlaylists || []).find(p => String(p.id) === String(id));
-  if (!pl || !pl.musicas || !pl.musicas.length) {
-    showToast('Playlist vazia', 'warning');
-    return;
-  }
-
+  if (!pl || !pl.musicas || !pl.musicas.length) { showToast('Playlist vazia', 'warning'); return; }
   const queueItems = [];
   (pl.musicas || []).forEach(mid => {
     const sid = String(mid);
@@ -1063,25 +1061,12 @@ window.playUserPlaylist = function (id) {
     if (idx !== -1) {
       queueItems.push({ type: 'internal', index: idx });
     } else if (sid.startsWith('yt_')) {
-      const vid = sid.replace('yt_', '');
-      queueItems.push({
-        type: 'youtube',
-        videoId: vid,
-        titulo: 'YouTube',
-        artista: ''
-      });
+      queueItems.push({ type: 'youtube', videoId: sid.replace('yt_', ''), titulo: 'YouTube', artista: '' });
     }
   });
-
-  if (!queueItems.length) {
-    showToast('Nenhuma música disponível', 'warning');
-    return;
-  }
-
+  if (!queueItems.length) { showToast('Nenhuma música disponível', 'warning'); return; }
   playQueue.items = queueItems.map(item => {
-    if (item.type === 'youtube') {
-      return { type: 'internal', index: -1, youtubeData: item };
-    }
+    if (item.type === 'youtube') return { type: 'internal', index: -1, youtubeData: item };
     return item;
   });
   playQueue.currentIndex = 0;
@@ -1093,25 +1078,18 @@ window.playUserPlaylist = function (id) {
 // PLAYLISTS GLOBAIS (ADMIN)
 // ============================================================
 window.openCreateGlobalPlaylistModal = function () {
-  if (!state.currentUser || state.currentUser.tipo !== 'admin') {
-    showToast('Apenas admin', 'error');
-    return;
-  }
+  if (!state.currentUser || state.currentUser.tipo !== 'admin') { showToast('Apenas admin', 'error'); return; }
   showModal('createGlobalPlaylistModal');
 };
 
 window.createGlobalPlaylist = async function () {
   const nome = document.getElementById('globalPlaylistNameField').value.trim();
   const desc = document.getElementById('globalPlaylistDescField').value.trim();
-
   if (!nome) { showToast('Digite um nome', 'error'); return; }
-
   const btn = document.getElementById('createGlobalPlaylistBtn');
   btn.disabled = true;
-
   try {
     const r = await callAPI('create_global_playlist', { nome, descricao: desc });
-
     if (r && r.success) {
       showToast('✅ Playlist global criada!', 'success');
       closeModal('createGlobalPlaylistModal');
@@ -1121,31 +1099,19 @@ window.createGlobalPlaylist = async function () {
     } else {
       showToast((r && r.message) || 'Erro', 'error');
     }
-  } catch (e) {
-    showToast('Erro', 'error');
-  } finally {
-    btn.disabled = false;
-  }
+  } catch (e) { showToast('Erro', 'error'); }
+  finally { btn.disabled = false; }
 };
 
 window.openManageGlobalPlaylist = function (playlistId) {
-  if (!state.currentUser || state.currentUser.tipo !== 'admin') {
-    showToast('Apenas admin', 'error');
-    return;
-  }
-
+  if (!state.currentUser || state.currentUser.tipo !== 'admin') { showToast('Apenas admin', 'error'); return; }
   const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(playlistId));
   if (!pl) { showToast('Playlist não encontrada', 'error'); return; }
-
   state.currentManagingPlaylistId = playlistId;
   document.getElementById('manageGlobalPlaylistName').value = pl.nome || '';
-
   const sel = document.getElementById('manageGlobalMusicSelect');
   sel.innerHTML = '<option value="">Selecione uma música...</option>' +
-    (state.playlist || []).map(m =>
-      '<option value="' + m.id + '">' + (m.titulo || '') + ' — ' + (m.artista || '') + '</option>'
-    ).join('');
-
+    (state.playlist || []).map(m => '<option value="' + m.id + '">' + (m.titulo || '') + ' — ' + (m.artista || '') + '</option>').join('');
   renderManageGlobalMusicList();
   showModal('manageGlobalPlaylistModal');
 };
@@ -1153,27 +1119,21 @@ window.openManageGlobalPlaylist = function (playlistId) {
 window.renderManageGlobalMusicList = function () {
   const list = document.getElementById('manageGlobalMusicList');
   if (!list) return;
-
   const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(state.currentManagingPlaylistId));
   if (!pl) { list.innerHTML = ''; return; }
-
   const musicIds = pl.musicas || [];
   document.getElementById('manageGlobalMusicCount').textContent = musicIds.length;
-
   if (!musicIds.length) {
     list.innerHTML = '<div class="text-muted text-center p-3">Nenhuma música ainda</div>';
     return;
   }
-
   list.innerHTML = musicIds.map(id => {
     const m = (state.playlist || []).find(x => String(x.id) === String(id));
     if (!m) {
       if (String(id).startsWith('yt_')) {
         return '<div class="d-flex align-items-center justify-content-between p-2 mb-1" style="background:var(--apple-gray-5);border-radius:var(--radius-sm)">' +
           '<div style="font-size:13px;color:var(--apple-label-2)">🎥 Vídeo do YouTube (' + String(id).substring(0, 15) + ')</div>' +
-          '<button class="btn btn-sm btn-outline-danger" onclick="removeMusicFromGlobalPlaylist(\'' + id + '\')">' +
-            '<i class="bi bi-trash"></i>' +
-          '</button>' +
+          '<button class="btn btn-sm btn-outline-danger" onclick="removeMusicFromGlobalPlaylist(\'' + id + '\')"><i class="bi bi-trash"></i></button>' +
         '</div>';
       }
       return '';
@@ -1181,14 +1141,10 @@ window.renderManageGlobalMusicList = function () {
     return '<div class="d-flex align-items-center justify-content-between p-2 mb-1" style="background:var(--apple-gray-5);border-radius:var(--radius-sm)">' +
       '<div class="d-flex align-items-center gap-2">' +
         '<img src="' + getCoverUrl(m, false) + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover">' +
-        '<div>' +
-          '<div class="text-white" style="font-size:13px;font-weight:600">' + (m.titulo || '') + '</div>' +
-          '<div class="text-muted" style="font-size:11px">' + (m.artista || '') + '</div>' +
-        '</div>' +
+        '<div><div class="text-white" style="font-size:13px;font-weight:600">' + (m.titulo || '') + '</div>' +
+          '<div class="text-muted" style="font-size:11px">' + (m.artista || '') + '</div></div>' +
       '</div>' +
-      '<button class="btn btn-sm btn-outline-danger" onclick="removeMusicFromGlobalPlaylist(\'' + id + '\')">' +
-        '<i class="bi bi-trash"></i>' +
-      '</button>' +
+      '<button class="btn btn-sm btn-outline-danger" onclick="removeMusicFromGlobalPlaylist(\'' + id + '\')"><i class="bi bi-trash"></i></button>' +
     '</div>';
   }).join('');
 };
@@ -1196,13 +1152,11 @@ window.renderManageGlobalMusicList = function () {
 window.addMusicToGlobalPlaylist = async function () {
   const musicId = document.getElementById('manageGlobalMusicSelect').value;
   if (!musicId) { showToast('Selecione uma música', 'warning'); return; }
-
   try {
     const r = await callAPI('add_music_to_global_playlist', {
       playlist_id: state.currentManagingPlaylistId,
       music_id: musicId
     });
-
     if (r && r.success) {
       const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(state.currentManagingPlaylistId));
       if (pl) pl.musicas = r.data.musicas || pl.musicas || [];
@@ -1213,9 +1167,7 @@ window.addMusicToGlobalPlaylist = async function () {
     } else {
       showToast((r && r.message) || 'Erro', 'error');
     }
-  } catch (e) {
-    showToast('Erro', 'error');
-  }
+  } catch (e) { showToast('Erro', 'error'); }
 };
 
 window.removeMusicFromGlobalPlaylist = async function (musicId) {
@@ -1224,7 +1176,6 @@ window.removeMusicFromGlobalPlaylist = async function (musicId) {
       playlist_id: state.currentManagingPlaylistId,
       music_id: musicId
     });
-
     if (r && r.success) {
       const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(state.currentManagingPlaylistId));
       if (pl) pl.musicas = r.data.musicas || (pl.musicas || []).filter(id => String(id) !== String(musicId));
@@ -1233,29 +1184,20 @@ window.removeMusicFromGlobalPlaylist = async function (musicId) {
       renderAdminGlobalPlaylists();
       showToast('🗑️ Removida', 'success');
     }
-  } catch (e) {
-    showToast('Erro', 'error');
-  }
+  } catch (e) { showToast('Erro', 'error'); }
 };
 
 window.playGlobalPlaylist = function (playlistId) {
   const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(playlistId));
   if (!pl) { showToast('Playlist não encontrada', 'error'); return; }
-
   const ids = (pl.musicas || []).map(String);
   if (!ids.length) { showToast('Playlist vazia', 'warning'); return; }
-
   const queueItems = [];
   ids.forEach(id => {
     const idx = state.playlist.findIndex(m => String(m.id) === String(id));
     if (idx !== -1) queueItems.push({ type: 'internal', index: idx });
   });
-
-  if (!queueItems.length) {
-    showToast('Nenhuma música disponível', 'warning');
-    return;
-  }
-
+  if (!queueItems.length) { showToast('Nenhuma música disponível', 'warning'); return; }
   playQueue.setQueue(queueItems);
   showToast('▶️ Tocando: ' + (pl.nome || ''), 'success');
 };
@@ -1264,10 +1206,7 @@ window.playGlobalPlaylist = function (playlistId) {
 // TICKETS
 // ============================================================
 window.openCreateTicketModal = function () {
-  if (!state.currentUser || (state.currentUser.tipo !== 'artista' && state.currentUser.tipo !== 'admin')) {
-    showToast('Apenas artistas', 'error');
-    return;
-  }
+  if (!state.currentUser || (state.currentUser.tipo !== 'artista' && state.currentUser.tipo !== 'admin')) { showToast('Apenas artistas', 'error'); return; }
   showModal('createTicketModal');
 };
 
@@ -1277,21 +1216,13 @@ window.createTicket = async function () {
   const preco = parseFloat(document.getElementById('ticketPriceField').value) || 0;
   const qtd = parseInt(document.getElementById('ticketQuantityField').value) || 0;
   const data = document.getElementById('ticketDateField').value;
-
-  if (!titulo || preco <= 0 || qtd <= 0) {
-    showToast('Preencha os campos', 'error');
-    return;
-  }
-
+  if (!titulo || preco <= 0 || qtd <= 0) { showToast('Preencha os campos', 'error'); return; }
   try {
     const r = await callAPI('create_ticket', {
-      titulo, descricao: desc,
-      preco_selo: preco,
-      quantidade_total: qtd,
-      data_evento: data,
+      titulo, descricao: desc, preco_selo: preco,
+      quantidade_total: qtd, data_evento: data,
       artista_nome: state.currentUser.nome
     });
-
     if (r && r.success) {
       showToast('✅ Ingresso criado!', 'success');
       closeModal('createTicketModal');
@@ -1299,27 +1230,17 @@ window.createTicket = async function () {
     } else {
       showToast((r && r.message) || 'Erro', 'error');
     }
-  } catch (e) {
-    showToast('Erro', 'error');
-  }
+  } catch (e) { showToast('Erro', 'error'); }
 };
 
 window.redeemTicket = async function (id) {
   if (!state.currentUser) return;
-
   const ticket = state.tickets.find(t => String(t.id) === String(id));
   if (!ticket) return;
-
-  if (state.seloCoinBalance < ticket.preco_selo) {
-    showToast('SELO insuficiente', 'error');
-    return;
-  }
-
+  if (state.seloCoinBalance < ticket.preco_selo) { showToast('SELO insuficiente', 'error'); return; }
   if (!confirm('Resgatar por ' + ticket.preco_selo + ' SELO?')) return;
-
   try {
     const r = await callAPI('redeem_ticket', { ticket_id: id });
-
     if (r && r.success) {
       state.seloCoinBalance -= ticket.preco_selo;
       ticket.quantidade_disponivel = Math.max(0, ticket.quantidade_disponivel - 1);
@@ -1329,23 +1250,16 @@ window.redeemTicket = async function (id) {
     } else {
       showToast((r && r.message) || 'Erro', 'error');
     }
-  } catch (e) {
-    showToast('Erro', 'error');
-  }
+  } catch (e) { showToast('Erro', 'error'); }
 };
 
 // ============================================================
-// FOLLOW DE ARTISTAS
+// FOLLOW / FAVORITOS
 // ============================================================
 window.toggleFollow = async function (artistId) {
-  if (!state.currentUser) {
-    showToast('Faça login', 'error');
-    return;
-  }
-
+  if (!state.currentUser) { showToast('Faça login', 'error'); return; }
   const sid = String(artistId);
   const isFollowing = (state.followingArtists || []).map(String).includes(sid);
-
   if (isFollowing) {
     state.followingArtists = state.followingArtists.filter(x => String(x) !== sid);
     showToast('Deixou de seguir', 'info');
@@ -1353,47 +1267,29 @@ window.toggleFollow = async function (artistId) {
     state.followingArtists.push(sid);
     showToast('❤️ Seguindo!', 'success');
   }
-
   renderArtists();
   renderFeaturedArtists();
-
   try {
-    await callAPI('toggle_follow', {
-      artist_id: artistId,
-      action: isFollowing ? 'unfollow' : 'follow'
-    });
+    await callAPI('toggle_follow', { artist_id: artistId, action: isFollowing ? 'unfollow' : 'follow' });
   } catch (e) {}
 };
 
-// ============================================================
-// FAVORITOS (toggle)
-// ============================================================
 window.toggleFavoriteMusic = async function (musicId) {
-  if (!state.currentUser) {
-    showToast('Faça login', 'error');
-    return;
-  }
-
+  if (!state.currentUser) { showToast('Faça login', 'error'); return; }
   const sid = String(musicId);
   const wasFav = (state.favoriteMusicIds || []).map(String).includes(sid);
-
   if (wasFav) {
     state.favoriteMusicIds = state.favoriteMusicIds.filter(x => String(x) !== sid);
   } else {
     state.favoriteMusicIds.push(sid);
   }
-
   renderFavorites();
-
   try {
-    await callAPI('toggle_favorite', {
-      music_id: musicId,
-      action: wasFav ? 'remove' : 'add'
-    });
+    await callAPI('toggle_favorite', { music_id: musicId, action: wasFav ? 'remove' : 'add' });
   } catch (e) {}
 };
 
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.0.0 carregado — badges "Em alta" + streams + botão Ouvir');
+console.log('✅ [marketplace.js] v9.1.0 carregado — ELO + streams + badge "Em alta" + Ouvir');
