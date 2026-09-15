@@ -1,12 +1,23 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.0.0
+// SERVICE WORKER — PLAY MY v9.1.0
 // Cache inteligente por tipo de recurso + PWA
+//
+// MUDANÇAS v9.1.0:
+//   - Adicionado NAVIGATE_HOME (usado pelo offline.html)
+//   - JS adicionado ao pré-cache (api.js, router.js, auth.js...)
+//   - Estratégia de JS/CSS: cache-first + revalidate em background
+//   - Imagens: stale-while-revalidate
+//   - Navegação: network-first com timeout de 6s
+//   - Fallback para offline.html quando index.html não está em cache
+//   - Logs mais informativos
 // ============================================================
 
-const SW_VERSION = '9.0.0';
+const SW_VERSION = '9.1.0';
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
+
+const NETWORK_TIMEOUT_MS = 6000;
 
 // Recursos essenciais (instalação imediata)
 const STATIC_ASSETS = [
@@ -15,6 +26,8 @@ const STATIC_ASSETS = [
   '/offline.html',
   '/manifest.json',
   '/images/logo.png',
+
+  // CSS
   '/css/main.css',
   '/css/auth.css',
   '/css/marketplace.css',
@@ -22,7 +35,30 @@ const STATIC_ASSETS = [
   '/css/modals.css',
   '/css/blockchain.css',
   '/css/news.css',
-  '/css/responsive.css'
+  '/css/responsive.css',
+
+  // JS (ordem importa para o router; mas cache não depende de ordem)
+  '/js/config.js',
+  '/js/utils.js',
+  '/js/state.js',
+  '/js/router.js',
+  '/js/api.js',
+  '/js/auth.js',
+  '/js/youtube.js',
+  '/js/player.js',
+  '/js/marketplace.js',
+  '/js/portfolio.js',
+  '/js/trades.js',
+  '/js/blockchain.js',
+  '/js/modals.js',
+  '/js/news.js',
+  '/js/news-unified.js',
+  '/js/stream-tracker.js',
+  '/js/valuation-panel.js',
+  '/js/elo-panel.js',
+  '/js/streams-panel.js',
+  '/js/brand-info.js',
+  '/js/app.js'
 ];
 
 // Domínios que NUNCA devem ser cacheados (dados em tempo real)
@@ -31,8 +67,45 @@ const NO_CACHE_HOSTS = [
   'script.googleusercontent.com',
   'selomivplay-seyv.vercel.app',
   'selomivplay.vercel.app',
-  'www.googleapis.com'
+  'www.googleapis.com',
+  'news.google.com',
+  'allorigins.win',
+  'corsproxy.io',
+  'codetabs.com',
+  'r.jina.ai',
+  'youtube.com',
+  'ytimg.com',
+  'googlevideo.com'
 ];
+
+// ============================================================
+// HELPERS
+// ============================================================
+function fetchWithTimeout(request, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms);
+    fetch(request).then(
+      (res) => { clearTimeout(timer); resolve(res); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
+function isStaticAsset(url) {
+  return (
+    url.pathname.startsWith('/css/') ||
+    url.pathname.startsWith('/js/') ||
+    url.pathname.startsWith('/images/') ||
+    /\.(css|js)$/i.test(url.pathname)
+  );
+}
+
+function isImage(request, url) {
+  return (
+    request.destination === 'image' ||
+    /\.(png|jpg|jpeg|gif|webp|svg|ico|avif)$/i.test(url.pathname)
+  );
+}
 
 // ============================================================
 // INSTALL — pré-cache dos assets essenciais
@@ -46,7 +119,7 @@ self.addEventListener('install', (event) => {
         return Promise.all(
           STATIC_ASSETS.map((url) =>
             cache.add(url).catch((err) => {
-              console.warn('[SW] Falha ao cachear:', url, err.message);
+              console.warn('[SW] Falha ao cachear:', url, '-', err.message);
             })
           )
         );
@@ -88,45 +161,29 @@ self.addEventListener('fetch', (event) => {
   if (url.protocol === 'chrome-extension:' || url.protocol === 'moz-extension:') return;
 
   // ============================================================
-  // 1. APIs externas conhecidas → SEMPRE da rede (network-only)
+  // 1. Hosts conhecidos como "tempo real" → network-only
   // ============================================================
   if (NO_CACHE_HOSTS.some((host) => url.hostname.includes(host))) {
-    return;
+    return; // deixa o navegador fazer fetch normal
   }
 
   // ============================================================
   // 1.1. API do próprio domínio (/api/...) → network-only
   // ============================================================
   if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request).catch(() =>
+        new Response(
+          JSON.stringify({ success: false, offline: true, message: 'Sem conexão' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+    );
     return;
   }
 
   // ============================================================
-  // 2. Google News RSS e proxies CORS → network-only
-  // ============================================================
-  if (
-    url.hostname.includes('news.google.com') ||
-    url.hostname.includes('allorigins.win') ||
-    url.hostname.includes('corsproxy.io') ||
-    url.hostname.includes('codetabs.com') ||
-    url.hostname.includes('r.jina.ai')
-  ) {
-    return;
-  }
-
-  // ============================================================
-  // 3. YouTube → network-only (não cachear iframes/vídeos)
-  // ============================================================
-  if (
-    url.hostname.includes('youtube.com') ||
-    url.hostname.includes('ytimg.com') ||
-    url.hostname.includes('googlevideo.com')
-  ) {
-    return;
-  }
-
-  // ============================================================
-  // 4. CDN (Bootstrap, Bootstrap Icons, jsDelivr) → cache-first
+  // 2. CDN (jsDelivr, cdnjs) → cache-first
   // ============================================================
   if (
     url.hostname.includes('cdn.jsdelivr.net') ||
@@ -134,7 +191,15 @@ self.addEventListener('fetch', (event) => {
   ) {
     event.respondWith(
       caches.match(request).then((cached) => {
-        if (cached) return cached;
+        if (cached) {
+          // Revalida em background
+          fetch(request).then((response) => {
+            if (response && response.status === 200) {
+              caches.open(CACHE_STATIC).then((cache) => cache.put(request, response));
+            }
+          }).catch(() => {});
+          return cached;
+        }
         return fetch(request).then((response) => {
           if (response && response.status === 200) {
             const clone = response.clone();
@@ -148,46 +213,36 @@ self.addEventListener('fetch', (event) => {
   }
 
   // ============================================================
-  // 5. Imagens → cache-first com fallback
+  // 3. Imagens → stale-while-revalidate
   // ============================================================
-  if (
-    request.destination === 'image' ||
-    /\.(png|jpg|jpeg|gif|webp|svg|ico)$/i.test(url.pathname)
-  ) {
+  if (isImage(request, url)) {
     event.respondWith(
       caches.match(request).then((cached) => {
-        if (cached) {
-          // Atualiza em background
-          fetch(request).then((response) => {
+        const fetchPromise = fetch(request)
+          .then((response) => {
             if (response && response.status === 200) {
-              caches.open(CACHE_IMAGES).then((cache) => cache.put(request, response));
+              const clone = response.clone();
+              caches.open(CACHE_IMAGES).then((cache) => cache.put(request, clone));
             }
-          }).catch(() => {});
-          return cached;
-        }
-        return fetch(request).then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_IMAGES).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        }).catch(() => {
-          return caches.match('/images/logo.png');
-        });
+            return response;
+          })
+          .catch(() => cached || caches.match('/images/logo.png'));
+
+        return cached || fetchPromise;
       })
     );
     return;
   }
 
   // ============================================================
-  // 6. HTML/navegação → network-first com fallback para index/offline
+  // 4. HTML/navegação → network-first com timeout + fallback
   // ============================================================
   if (
     request.mode === 'navigate' ||
     (request.headers.get('accept') || '').includes('text/html')
   ) {
     event.respondWith(
-      fetch(request)
+      fetchWithTimeout(request, NETWORK_TIMEOUT_MS)
         .then((response) => {
           if (response && response.status === 200) {
             const clone = response.clone();
@@ -200,7 +255,14 @@ self.addEventListener('fetch', (event) => {
             if (cached) return cached;
             return caches.match('/index.html').then((idx) => {
               if (idx) return idx;
-              return caches.match('/offline.html');
+              return caches.match('/offline.html').then((off) => {
+                if (off) return off;
+                // Último recurso: HTML inline
+                return new Response(
+                  '<!DOCTYPE html><html><body style="background:#000;color:#fff;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h1>📴 Offline</h1><p>Sem conexão e sem cache disponível.</p></div></body></html>',
+                  { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+                );
+              });
             });
           });
         })
@@ -209,7 +271,29 @@ self.addEventListener('fetch', (event) => {
   }
 
   // ============================================================
-  // 7. Outros recursos (JS, CSS) → network-first com cache em background
+  // 5. JS/CSS e demais estáticos → cache-first + revalidate
+  // ============================================================
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const fetchPromise = fetch(request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              const clone = response.clone();
+              caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
+            }
+            return response;
+          })
+          .catch(() => cached);
+
+        return cached || fetchPromise;
+      })
+    );
+    return;
+  }
+
+  // ============================================================
+  // 6. Outros recursos → cache-first com revalidate
   // ============================================================
   event.respondWith(
     caches.match(request).then((cached) => {
@@ -222,13 +306,14 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => cached);
+
       return cached || fetchPromise;
     })
   );
 });
 
 // ============================================================
-// MESSAGE — comunicação com o app (skip waiting, clear cache)
+// MESSAGE — comunicação com o app
 // ============================================================
 self.addEventListener('message', (event) => {
   const { data } = event;
@@ -259,6 +344,22 @@ self.addEventListener('message', (event) => {
       if (event.source && event.source.postMessage) {
         event.source.postMessage({ type: 'VERSION', version: SW_VERSION });
       }
+      break;
+
+    // ✅ NOVO: usado pelo offline.html para forçar navegação
+    case 'NAVIGATE_HOME':
+      event.waitUntil(
+        self.clients.matchAll({ type: 'window' }).then((clients) => {
+          clients.forEach((client) => {
+            client.navigate((data && data.url) || '/');
+          });
+        })
+      );
+      break;
+
+    // ✅ NOVO: forçar atualização do SW
+    case 'FORCE_UPDATE':
+      self.skipWaiting();
       break;
   }
 });
