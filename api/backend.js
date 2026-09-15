@@ -1,12 +1,20 @@
-// BACKEND.JS - VERSÃO 9.4.0
+// BACKEND.JS - VERSÃO 9.5.0
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
 //
+// MUDANÇAS v9.5.0:
+//   - aggregateNews com Promise.allSettled + timeout global 8s
+//   - RSS timeout reduzido de 12s para 6s + check content-type
+//   - callGAS com timeout 6s e 1 retry (evita 500 por timeout)
+//   - action=ping paralelo (Promise.allSettled) — resposta rápida
+//   - get_news retorna cached:wasCached (real)
+//   - cache negativo curto (30s) para não martelar o Google
+//
 // MUDANÇAS v9.4.0:
 //   - register_streaming agora adiciona ao streams_index
 //   - get_streaming_ranking varre o streams_index
-//   - aggregateNews reduzido de 12 para 6 queries (evita timeout 500)
+//   - aggregateNews reduzido de 12 para 6 queries
 // ============================================================
 
 const nodemailer = require('nodemailer');
@@ -184,9 +192,9 @@ function extractYouTubeId(url) {
 }
 
 // ============================================================
-// CHAMAR GAS
+// CHAMAR GAS — timeout 6s + 1 retry (evita 500)
 // ============================================================
-async function callGAS(action, params = {}, retries = 2) {
+async function callGAS(action, params = {}, retries = 1) {
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             const gasUrl = new URL(GAS_URL);
@@ -199,7 +207,7 @@ async function callGAS(action, params = {}, retries = 2) {
                 }
             });
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 10000);
+            const timeout = setTimeout(() => controller.abort(), 6000);
             const response = await fetch(gasUrl.toString(), {
                 method: 'GET',
                 headers: { 'Cache-Control': 'no-cache', 'Accept': 'application/json' },
@@ -213,7 +221,7 @@ async function callGAS(action, params = {}, retries = 2) {
         } catch (error) {
             console.log(`⚠️ [GAS] Tentativa ${attempt}/${retries}:`, error.message);
             if (attempt === retries) return { success: false, error: error.message };
-            await new Promise(r => setTimeout(r, 500 * attempt));
+            await new Promise(r => setTimeout(r, 300 * attempt));
         }
     }
 }
@@ -352,29 +360,39 @@ async function addBlockToChain(data) {
 
 // ============================================================
 // NOTÍCIAS REAIS — Google News RSS (busca DIRETA, sem proxy)
+// timeout 6s + check content-type
 // ============================================================
 async function fetchNewsFromGoogleRSS(query, categoria) {
     try {
         const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 12000);
+        const timeout = setTimeout(() => controller.abort(), 6000);
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.4)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.5)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
         clearTimeout(timeout);
+
         if (!response.ok) {
             console.log(`⚠️ Google News HTTP ${response.status} para "${query}"`);
             return [];
         }
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('xml') && !contentType.includes('rss') && !contentType.includes('html')) {
+            console.log(`⚠️ Google News content-type inesperado: ${contentType}`);
+            return [];
+        }
+
         const xml = await response.text();
         if (!xml.includes('<item>')) {
             console.log(`⚠️ Google News sem <item> para "${query}"`);
             return [];
         }
+
         const items = [];
         const itemRegex = /<item>([\s\S]*?)<\/item>/g;
         let match;
@@ -417,6 +435,9 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
     }
 }
 
+// ============================================================
+// AGGREGATE NEWS — allSettled + timeout global 8s + cache negativo
+// ============================================================
 async function aggregateNews() {
     const cached = await Storage.get('news_cache');
     const cachedTime = await Storage.get('news_cache_time');
@@ -425,7 +446,6 @@ async function aggregateNews() {
         return cached;
     }
 
-    // 🆕 Reduzido de 12 para 6 queries (evita timeout 500)
     const queries = [
         { q: 'lançamento musical álbum', cat: 'lancamentos' },
         { q: 'música brasileira', cat: 'musica' },
@@ -435,13 +455,39 @@ async function aggregateNews() {
         { q: 'edital cultural música', cat: 'editais' }
     ];
 
-    console.log('📰 Buscando notícias reais (direto)...');
-    const batches = await Promise.all(queries.map(nq => fetchNewsFromGoogleRSS(nq.q, nq.cat)));
-    let all = batches.flat();
+    console.log('📰 Buscando notícias reais (allSettled + 8s global)...');
+
+    const batchesPromise = Promise.allSettled(
+        queries.map(nq => fetchNewsFromGoogleRSS(nq.q, nq.cat))
+    );
+
+    const timeoutPromise = new Promise(resolve =>
+        setTimeout(() => {
+            console.warn('📰 aggregateNews timeout global (8s) — usando cache antigo');
+            resolve('__timeout__');
+        }, 8000)
+    );
+
+    const result = await Promise.race([batchesPromise, timeoutPromise]);
+
+    if (result === '__timeout__') {
+        const stale = await Storage.get('news_cache');
+        return stale || [];
+    }
+
+    let all = [];
+    for (const b of result) {
+        if (b.status === 'fulfilled' && Array.isArray(b.value)) all.push(...b.value);
+        else if (b.status === 'rejected') console.warn('📰 query falhou:', b.reason?.message);
+    }
+
     console.log(`📰 Total bruto: ${all.length} notícias`);
 
     if (all.length === 0) {
-        console.log('📰 Nenhuma notícia real encontrada — retornando vazio');
+        // Cache negativo curto (30s) para não martelar o Google
+        console.log('📰 Nenhuma notícia real — cache negativo 30s');
+        await Storage.set('news_cache', []);
+        await Storage.set('news_cache_time', Date.now() - (15 * 60 * 1000) + (30 * 1000));
         return [];
     }
 
@@ -498,7 +544,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
 
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.4 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.5 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -823,23 +869,32 @@ module.exports = async (req, res) => {
 
     try {
         // ============================================================
-        // PING
+        // PING — paralelo, resposta rápida
         // ============================================================
         if (action === 'ping') {
             let playlists_count = 0, blocks_count = 0, streams_count = 0, elo_count = 0;
             try {
-                const pls = await Storage.get('global_playlists') || [];
-                playlists_count = pls.length;
-                const chain = await Storage.get('blockchain') || { blocks: [] };
-                blocks_count = chain.blocks.length;
-                const streams = await Storage.get('streams') || {};
-                streams_count = Object.keys(streams).length;
-                const elo = await Storage.get('elo_ranking') || [];
-                elo_count = elo.length;
+                const [pls, chain, streams, elo] = await Promise.allSettled([
+                    Storage.get('global_playlists'),
+                    Storage.get('blockchain'),
+                    Storage.get('streams'),
+                    Storage.get('elo_ranking')
+                ]);
+                playlists_count = (pls.value || []).length;
+                blocks_count = (chain.value?.blocks || []).length;
+                streams_count = Object.keys(streams.value || {}).length;
+                elo_count = (elo.value || []).length;
             } catch (e) {}
+
             return res.status(200).json({
-                success: true, message: 'pong', version: '9.4.0',
-                kv_enabled: !!kv, playlists_count, blocks_count, streams_count, elo_count,
+                success: true,
+                message: 'pong',
+                version: '9.5.0',
+                kv_enabled: !!kv,
+                playlists_count,
+                blocks_count,
+                streams_count,
+                elo_count,
                 youtube_enabled: !!YOUTUBE_API_KEY,
                 timestamp: new Date().toISOString()
             });
@@ -866,7 +921,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎬 YOUTUBE VIDEO INFO
+        // 🎬 YOUTUBE VIDEO INFO / ISRC
         // ============================================================
         if (action === 'search_isrc') {
             const { youtube_url } = params;
@@ -1187,20 +1242,33 @@ module.exports = async (req, res) => {
             const preferences = (params.preferences || '').split(',').filter(Boolean);
             const seenIds = (params.seen_ids || '').split(',').filter(Boolean);
             const userId = params.user_id || 'anon';
+
+            // Verifica se veio do cache ANTES de chamar aggregateNews
+            const cachedBefore = await Storage.get('news_cache');
+            const cachedTimeBefore = await Storage.get('news_cache_time');
+            const wasCached = !!(cachedBefore && cachedTimeBefore && Date.now() - cachedTimeBefore < 15 * 60 * 1000);
+
             let news = await aggregateNews();
+
             if (!news.length) {
                 return res.status(200).json({
                     success: true, data: [], has_more: false, next_page: null,
-                    total: 0, page: page, message: 'Nenhuma notícia real encontrada no momento'
+                    total: 0, page: page,
+                    source: 'google_news_rss_direct',
+                    cached: wasCached,
+                    message: 'Nenhuma notícia real encontrada no momento'
                 });
             }
+
             if (seenIds.length) news = news.filter(n => !seenIds.includes(n.id));
+
             if (userId && userId !== 'anon') {
                 const seenYesterday = await Storage.get('news_seen_' + userId) || [];
                 const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
                 const seenYesterdayIds = seenYesterday.filter(s => s.date === yesterday).map(s => s.id);
                 if (seenYesterdayIds.length) news = news.filter(n => !seenYesterdayIds.includes(n.id));
             }
+
             if (preferences.length) {
                 news.sort((a, b) => {
                     const aScore = (preferences.includes(a.categoria) ? 10 : 0) + (preferences.includes(a.tema) ? 5 : 0) + (a.em_alta ? 3 : 0) + ((a.investidores_hoje || 0) / 10);
@@ -1208,13 +1276,21 @@ module.exports = async (req, res) => {
                     return bScore - aScore;
                 });
             }
+
             const start = (page - 1) * limit;
             const end = start + limit;
             const pageItems = news.slice(start, end);
             const has_more = end < news.length;
+
             return res.status(200).json({
-                success: true, data: pageItems, has_more, next_page: has_more ? page + 1 : null,
-                total: news.length, page, source: 'google_news_rss_direct', cached: true
+                success: true,
+                data: pageItems,
+                has_more,
+                next_page: has_more ? page + 1 : null,
+                total: news.length,
+                page,
+                source: 'google_news_rss_direct',
+                cached: wasCached
             });
         }
 
@@ -1429,7 +1505,7 @@ module.exports = async (req, res) => {
 
             await Storage.set(key, contador);
 
-            // 🆕 Adiciona ao índice de streams
+            // Adiciona ao índice de streams
             let idx = await Storage.get('streams_index') || [];
             if (!idx.includes(music_id)) {
                 idx.push(music_id);
@@ -1502,7 +1578,6 @@ module.exports = async (req, res) => {
             });
         }
 
-        // 🆕 RANKING — varre o streams_index
         if (action === 'get_streaming_ranking') {
             const limit = parseInt(params.limit) || 20;
             const idx = await Storage.get('streams_index') || [];
@@ -1757,7 +1832,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.4.0',
+            version: '9.5.0',
             kv_enabled: !!kv,
             youtube_enabled: !!YOUTUBE_API_KEY,
             action: action || 'nenhuma',
