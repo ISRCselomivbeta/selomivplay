@@ -1,7 +1,12 @@
-// BACKEND.JS - VERSÃO 9.3.0
+// BACKEND.JS - VERSÃO 9.4.0
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
+//
+// MUDANÇAS v9.4.0:
+//   - register_streaming agora adiciona ao streams_index
+//   - get_streaming_ranking varre o streams_index
+//   - aggregateNews reduzido de 12 para 6 queries (evita timeout 500)
 // ============================================================
 
 const nodemailer = require('nodemailer');
@@ -69,6 +74,7 @@ const MEMORY_STORAGE = {
     news_prefs: {},
     streams: {},
     streams_user: {},
+    streams_index: [],
     elo: {},
     valuation: {},
     isrc: {}
@@ -355,7 +361,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.3)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.4)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -418,29 +424,29 @@ async function aggregateNews() {
         console.log(`📰 Cache KV: ${cached.length} notícias`);
         return cached;
     }
+
+    // 🆕 Reduzido de 12 para 6 queries (evita timeout 500)
     const queries = [
-        { q: 'lançamento musical álbum 2025', cat: 'lancamentos' },
-        { q: 'nova música single artista', cat: 'lancamentos' },
+        { q: 'lançamento musical álbum', cat: 'lancamentos' },
         { q: 'música brasileira', cat: 'musica' },
         { q: 'shows turnê Brasil', cat: 'shows' },
-        { q: 'festival música Brasil', cat: 'shows' },
         { q: 'indústria musical streaming', cat: 'negocios' },
-        { q: 'mercado fonográfico', cat: 'negocios' },
         { q: 'artista música entrevista', cat: 'artistas' },
-        { q: 'edital cultural música', cat: 'editais' },
-        { q: 'edital lei paulo gustavo', cat: 'editais' },
-        { q: 'edital proac música', cat: 'editais' },
-        { q: 'edital fomento cultural', cat: 'editais' }
+        { q: 'edital cultural música', cat: 'editais' }
     ];
+
     console.log('📰 Buscando notícias reais (direto)...');
     const batches = await Promise.all(queries.map(nq => fetchNewsFromGoogleRSS(nq.q, nq.cat)));
     let all = batches.flat();
     console.log(`📰 Total bruto: ${all.length} notícias`);
+
     if (all.length === 0) {
         console.log('📰 Nenhuma notícia real encontrada — retornando vazio');
         return [];
     }
+
     all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
     const seen = new Set();
     const unique = all.filter(n => {
         const k = n.titulo.toLowerCase().substring(0, 60);
@@ -448,6 +454,7 @@ async function aggregateNews() {
         seen.add(k);
         return true;
     });
+
     await Storage.set('news_cache', unique);
     await Storage.set('news_cache_time', Date.now());
     console.log(`📰 ${unique.length} notícias reais cacheadas no KV`);
@@ -455,7 +462,7 @@ async function aggregateNews() {
 }
 
 // ============================================================
-// 🆕 VALIDAR ISRC
+// VALIDAR ISRC
 // ============================================================
 function validarISRC(isrc) {
     if (!isrc || typeof isrc !== 'string') return false;
@@ -478,7 +485,7 @@ function formatarISRC(isrc) {
 }
 
 // ============================================================
-// 🆕 BUSCAR ISRC NO MUSICBRAINZ
+// BUSCAR ISRC NO MUSICBRAINZ
 // ============================================================
 async function buscarIsrcMusicBrainz(titulo, artista) {
     const resultados = [];
@@ -491,7 +498,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
 
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.3 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.4 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -531,7 +538,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
 }
 
 // ============================================================
-// 🆕 CALCULAR ELO
+// CALCULAR ELO
 // ============================================================
 const ELO_CONFIG = {
     base: 1000,
@@ -578,7 +585,7 @@ function calcularTendenciaMeses(porDia) {
 }
 
 async function calcularELO(music_id) {
-    const playmy = await Storage.get('stream_' + music_id) || { total: 0, por_dia: {} };
+    const playmy = await Storage.get('streams_' + music_id) || { total: 0, por_dia: {} };
     const periodos = await Storage.get('royalties_periodos') || [];
     let streamsExternos = 0;
     const streamsPorPlataforma = {};
@@ -659,7 +666,7 @@ async function calcularELO(music_id) {
 }
 
 // ============================================================
-// 🆕 CALCULAR VALUATION
+// CALCULAR VALUATION
 // ============================================================
 const MERCADO = {
     valor_por_stream: {
@@ -721,7 +728,7 @@ async function calcularValuation(music_id, video_id_youtube) {
         atualizado_em: new Date().toISOString()
     };
 
-    const playmy = await Storage.get('stream_' + music_id) || { total: 0, por_dia: {} };
+    const playmy = await Storage.get('streams_' + music_id) || { total: 0, por_dia: {} };
     if (playmy.por_dia) {
         const porMes = {};
         for (const [dia, valor] of Object.entries(playmy.por_dia)) {
@@ -831,7 +838,7 @@ module.exports = async (req, res) => {
                 elo_count = elo.length;
             } catch (e) {}
             return res.status(200).json({
-                success: true, message: 'pong', version: '9.3.0',
+                success: true, message: 'pong', version: '9.4.0',
                 kv_enabled: !!kv, playlists_count, blocks_count, streams_count, elo_count,
                 youtube_enabled: !!YOUTUBE_API_KEY,
                 timestamp: new Date().toISOString()
@@ -904,7 +911,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🆕 ELO
+        // ELO
         // ============================================================
         if (action === 'calcular_elo') {
             const { music_id } = params;
@@ -951,7 +958,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🆕 VALUATION
+        // VALUATION
         // ============================================================
         if (action === 'calcular_valuation') {
             const { music_id, video_id } = params;
@@ -996,7 +1003,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🆕 ISRC
+        // ISRC
         // ============================================================
         if (action === 'validar_isrc') {
             const { isrc } = params;
@@ -1422,6 +1429,13 @@ module.exports = async (req, res) => {
 
             await Storage.set(key, contador);
 
+            // 🆕 Adiciona ao índice de streams
+            let idx = await Storage.get('streams_index') || [];
+            if (!idx.includes(music_id)) {
+                idx.push(music_id);
+                await Storage.set('streams_index', idx);
+            }
+
             const globalKey = 'streams_global';
             let globalCont = await Storage.get(globalKey) || { total: 0, hoje: 0, ultima_data: '' };
             if (globalCont.ultima_data !== hoje) {
@@ -1488,19 +1502,26 @@ module.exports = async (req, res) => {
             });
         }
 
+        // 🆕 RANKING — varre o streams_index
         if (action === 'get_streaming_ranking') {
             const limit = parseInt(params.limit) || 20;
-            const streams = await Storage.get('streams') || {};
-            const ranking = Object.values(streams)
-                .filter(s => s && s.music_id)
-                .sort((a, b) => b.total - a.total)
-                .slice(0, limit)
-                .map((s, i) => ({
-                    posicao: i + 1,
-                    music_id: s.music_id,
-                    streams_total: s.total,
-                    streams_hoje: s.hoje
-                }));
+            const idx = await Storage.get('streams_index') || [];
+            const lista = [];
+
+            for (const id of idx) {
+                const d = await Storage.get('streams_' + id);
+                if (d) lista.push(d);
+            }
+
+            lista.sort((a, b) => (b.total || 0) - (a.total || 0));
+
+            const ranking = lista.slice(0, limit).map((s, i) => ({
+                posicao: i + 1,
+                music_id: s.music_id,
+                streams_total: s.total || 0,
+                streams_hoje: s.hoje || 0
+            }));
+
             return res.status(200).json({ success: true, data: ranking });
         }
 
@@ -1736,7 +1757,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.3.0',
+            version: '9.4.0',
             kv_enabled: !!kv,
             youtube_enabled: !!YOUTUBE_API_KEY,
             action: action || 'nenhuma',
