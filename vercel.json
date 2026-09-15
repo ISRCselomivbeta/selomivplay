@@ -9,6 +9,26 @@
       "destination": "/api/backend"
     },
     {
+      "source": "/api/elo",
+      "destination": "/api/elo"
+    },
+    {
+      "source": "/api/valuation",
+      "destination": "/api/valuation"
+    },
+    {
+      "source": "/api/isrc",
+      "destination": "/api/isrc"
+    },
+    {
+      "source": "/api/royalties",
+      "destination": "/api/royalties"
+    },
+    {
+      "source": "/api/streams",
+      "destination": "/api/streams"
+    },
+    {
       "source": "/((?!api/|manifest\\.json|sw\\.js|images/|css/|js/|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
       "destination": "/index.html"
     }
@@ -89,7 +109,21 @@
   ],
   "functions": {
     "api/backend.js": {
-      "memory": 1024,
+      "maxDuration": 30
+    },
+    "api/elo.js": {
+      "maxDuration": 30
+    },
+    "api/valuation.js": {
+      "maxDuration": 30
+    },
+    "api/isrc.js": {
+      "maxDuration": 30
+    },
+    "api/royalties.js": {
+      "maxDuration": 30
+    },
+    "api/streams.js": {
       "maxDuration": 30
     }
   },
