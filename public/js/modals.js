@@ -1,8 +1,14 @@
 // ============================================================
-// js/modals.js — PLAY MY v8.5.0
-// Modais, saldo, saque, PWA, UI updates.
+// js/modals.js — PLAY MY v9.0.0
+// Modais, saldo, saque, PWA, UI updates, ISRC.
 // Depende de: config.js, utils.js, state.js, api.js
 // DEVE carregar DEPOIS de news.js e ANTES de app.js.
+//
+// MUDANÇAS v9.0.0:
+//   - Modal de cadastro de música com campo ISRC (obrigatório)
+//   - Busca automática de ISRC (MusicBrainz)
+//   - Validação em tempo real do formato do ISRC
+//   - Mantém: saldo, saque, PWA, UI updates
 // ============================================================
 
 // ============================================================
@@ -24,14 +30,12 @@ window.closeModal = function (id) {
   }
 };
 
-// Fechar modal ao clicar no overlay (fora do conteúdo)
 document.addEventListener('click', function (e) {
   if (e.target && e.target.classList && e.target.classList.contains('modal-overlay')) {
     closeModal(e.target.id);
   }
 });
 
-// Fechar modal com ESC
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') {
     document.querySelectorAll('.modal-overlay.show').forEach(m => {
@@ -41,12 +45,11 @@ document.addEventListener('keydown', function (e) {
 });
 
 // ============================================================
-// ATUALIZAR UI DO USUÁRIO (badge, nav, saldo)
+// ATUALIZAR UI DO USUÁRIO
 // ============================================================
 window.updateUserInterface = function () {
   if (!state.currentUser) return;
 
-  // Badge do usuário (Ouvinte / Artista / Admin)
   const b = document.getElementById('userBadge');
   if (b) {
     b.textContent =
@@ -60,51 +63,42 @@ window.updateUserInterface = function () {
       'var(--apple-green)';
   }
 
-  // Item do menu do artista
   const a = document.getElementById('artistNavItem');
   if (a) {
     a.style.display =
       (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin')
-        ? 'block'
-        : 'none';
+        ? 'block' : 'none';
   }
 
-  // Item do menu do admin
   const ad = document.getElementById('adminNavItem');
   if (ad) {
     ad.style.display = state.currentUser.tipo === 'admin' ? 'block' : 'none';
   }
 
-  // Atualiza saldo
   updateBalanceDisplay();
 };
 
 // ============================================================
-// ATUALIZAR SALDO (carteira + selo coin)
+// ATUALIZAR SALDO
 // ============================================================
 window.updateBalanceDisplay = async function () {
   const el = document.getElementById('currentBalance');
   const seloEl = document.getElementById('seloCoinBalance');
 
-  // Sem usuário logado: mostra zero
   if (!state.currentUser || !state.currentUser.id) {
     if (el) el.textContent = formatCurrency(0);
     if (seloEl) seloEl.textContent = '0';
     return;
   }
 
-  // Busca do backend
   try {
     const r = await callAPI('get_saldo');
     if (r && r.success && r.data) {
       state.userBalance = r.data.saldo_disponivel || 0;
       state.seloCoinBalance = r.data.selo_coin || 0;
     }
-  } catch (e) {
-    // silencioso — usa valores em cache
-  }
+  } catch (e) {}
 
-  // Atualiza UI
   if (el) el.textContent = formatCurrency(state.userBalance);
   if (seloEl) seloEl.textContent = new Intl.NumberFormat('pt-BR').format(state.seloCoinBalance);
 };
@@ -132,7 +126,6 @@ window.processBalanceAdd = function () {
     return;
   }
 
-  // Abre Mercado Pago em nova aba
   window.open(CONFIG.MERCADO_PAGO_LINK, '_blank');
   closeModal('addBalanceModal');
   showToast('Finalize o pagamento. Saldo será creditado após confirmação.', 'info', 6000);
@@ -177,7 +170,6 @@ window.requestWithdrawal = async function () {
       state.userBalance -= amount;
       updateBalanceDisplay();
 
-      // Recarrega extrato se disponível
       if (typeof loadLedger === 'function') await loadLedger();
 
       closeModal('withdrawalModal');
@@ -194,9 +186,140 @@ window.requestWithdrawal = async function () {
 };
 
 // ============================================================
+// 🆕 ISRC — VALIDAÇÃO EM TEMPO REAL
+// ============================================================
+window.validarIsrcInput = function () {
+  const input = document.getElementById('musicIsrcField');
+  const feedback = document.getElementById('musicIsrcFeedback');
+  if (!input || !feedback) return;
+
+  const valor = input.value.trim();
+  if (!valor) {
+    feedback.innerHTML = '';
+    return;
+  }
+
+  const limpo = valor.replace(/[-\s]/g, '').toUpperCase();
+
+  // Validação do formato
+  const regex = /^[A-Z]{2}[A-Z0-9]{3}[0-9]{2}[0-9]{5}$/;
+
+  if (limpo.length === 12 && regex.test(limpo)) {
+    feedback.innerHTML = '<span style="color:var(--apple-green)">✅ ISRC válido</span>';
+
+    // Formata visualmente com hífens
+    const formatado = `${limpo.slice(0, 2)}-${limpo.slice(2, 5)}-${limpo.slice(5, 7)}-${limpo.slice(7)}`;
+    if (valor !== formatado) input.value = formatado;
+  } else if (limpo.length < 12) {
+    feedback.innerHTML = '<span style="color:var(--apple-yellow)">⚠️ ' + (12 - limpo.length) + ' caracteres restantes</span>';
+  } else {
+    feedback.innerHTML = '<span style="color:var(--apple-red)">❌ Formato inválido</span>';
+  }
+};
+
+// ============================================================
+// 🆕 BUSCAR ISRC AUTOMATICAMENTE (via backend)
+// ============================================================
+window.buscarIsrcAutomatico = async function () {
+  const tituloEl = document.getElementById('musicTitleField');
+  const artistaEl = document.getElementById('musicArtistField');
+  const ytEl = document.getElementById('musicYoutubeField');
+  const btn = document.getElementById('btnBuscarIsrc');
+  const resultados = document.getElementById('isrcResultados');
+
+  if (!resultados) return;
+
+  const titulo = tituloEl ? tituloEl.value.trim() : '';
+  const artista = artistaEl ? artistaEl.value.trim() : '';
+  const linkYt = ytEl ? ytEl.value.trim() : '';
+
+  if (!titulo && !linkYt) {
+    showToast('Informe o título ou o link do YouTube primeiro', 'warning');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Buscando...';
+  }
+
+  resultados.style.display = 'block';
+  resultados.innerHTML = '<div class="text-center p-3 text-muted">' +
+    '<div class="spinner-border spinner-border-sm"></div> Consultando MusicBrainz...' +
+  '</div>';
+
+  try {
+    const r = await callAPI('buscar_isrc', {
+      titulo: titulo,
+      artista: artista,
+      link_youtube: linkYt
+    });
+
+    if (!r || !r.success || !r.isrcs || !r.isrcs.length) {
+      resultados.innerHTML =
+        '<div style="padding:12px;background:rgba(255,204,0,0.1);border-radius:8px;color:#c7c7cc;font-size:13px">' +
+          '⚠️ Nenhum ISRC encontrado automaticamente.<br><br>' +
+          'Você pode obter o ISRC:<br>' +
+          '• Na UBC/Abramus (se for associado)<br>' +
+          '• Na sua distribuidora (ROC Nation, OneRPM, etc.)<br>' +
+          '• No SISRC (gratuito)<br><br>' +
+          'Ou digite manualmente no campo acima.' +
+        '</div>';
+      return;
+    }
+
+    let html = '<div style="font-size:12px;color:var(--apple-label-2);margin-bottom:8px">' +
+      r.total + ' ISRC(s) encontrado(s). Clique para usar:</div>';
+
+    r.isrcs.forEach(function (item) {
+      html +=
+        '<div onclick="escolherIsrc(\'' + item.isrc + '\')" ' +
+          'style="padding:10px;background:var(--apple-gray-6);border-radius:8px;' +
+          'margin-bottom:6px;cursor:pointer;transition:background 0.2s" ' +
+          'onmouseover="this.style.background=\'var(--apple-gray-5)\'" ' +
+          'onmouseout="this.style.background=\'var(--apple-gray-6)\'">' +
+          '<div style="color:var(--apple-yellow);font-weight:700;font-size:14px">' + item.isrc_formatado + '</div>' +
+          '<div style="color:#fff;font-size:13px">' + (item.titulo || '—') + '</div>' +
+          '<div style="color:var(--apple-label-2);font-size:11px">' +
+            (item.artista || '—') + ' • fonte: ' + item.fonte +
+            ' • score: ' + (item.score || 0) +
+          '</div>' +
+        '</div>';
+    });
+
+    resultados.innerHTML = html;
+
+  } catch (e) {
+    console.error('Erro buscar ISRC:', e);
+    resultados.innerHTML = '<div class="text-danger p-3">Erro ao buscar ISRC</div>';
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-search"></i> Buscar';
+    }
+  }
+};
+
+// ============================================================
+// 🆕 ESCOLHER ISRC DA LISTA
+// ============================================================
+window.escolherIsrc = function (isrc) {
+  const input = document.getElementById('musicIsrcField');
+  const resultados = document.getElementById('isrcResultados');
+
+  if (input) {
+    input.value = isrc;
+    validarIsrcInput();
+  }
+
+  if (resultados) resultados.style.display = 'none';
+
+  showToast('✅ ISRC selecionado: ' + isrc, 'success');
+};
+
+// ============================================================
 // PWA — INSTALAÇÃO
 // ============================================================
-// Evento disparado pelo navegador quando o app pode ser instalado
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   state.deferredInstallPrompt = e;
@@ -226,7 +349,7 @@ window.installApp = function () {
 };
 
 // ============================================================
-// MODO OFFLINE / ONLINE (badge)
+// MODO OFFLINE / ONLINE
 // ============================================================
 window.addEventListener('online', () => {
   const b = document.getElementById('offlineBadge');
@@ -243,4 +366,4 @@ window.addEventListener('offline', () => {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [modals.js] carregado — modais, saldo, saque, PWA prontos');
+console.log('✅ [modals.js] v9.0.0 carregado — modais, saldo, saque, PWA, ISRC');
