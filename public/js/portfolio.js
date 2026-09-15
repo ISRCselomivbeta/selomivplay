@@ -1,10 +1,11 @@
 // ============================================================
-// js/portfolio.js — PLAY MY v9.1.0
+// js/portfolio.js — PLAY MY v9.2.0
 // Portfólio, extrato, dividendos, dados do artista, dados do admin.
 // Depende de: config.js, utils.js, state.js, api.js
 // DEVE carregar DEPOIS de marketplace.js e ANTES de trades.js.
 //
-// MUDANÇAS v9.1.0:
+// MUDANÇAS v9.2.0:
+//   - ADICIONADA função loadLedger (estava faltando!)
 //   - Mostra ELO + valuation em cada ativo
 //   - Mostra faixa de ELO (Lendário, Excelente, etc)
 //   - Mostra projeção de receita por ativo
@@ -28,7 +29,7 @@ window.loadPortfolio = async function () {
     console.warn('⚠️ loadPortfolio:', e.message);
   }
 
-  // 🆕 Carrega ELOs e valuations para enriquecer o portfólio
+  // Carrega ELOs e valuations para enriquecer o portfólio
   await carregarELOsEValuations();
 
   renderPortfolio();
@@ -37,7 +38,25 @@ window.loadPortfolio = async function () {
 };
 
 // ============================================================
-// 🆕 CARREGAR ELOs E VALUATIONS DAS MÚSICAS DO PORTFÓLIO
+// CARREGAR EXTRATO (ESTAVA FALTANDO!)
+// ============================================================
+window.loadLedger = async function () {
+  if (!state.currentUser) return;
+
+  try {
+    const r = await callAPI('get_extrato');
+    if (r && r.success && r.data) {
+      state.ledgerData = r.data;
+    }
+  } catch (e) {
+    console.warn('⚠️ loadLedger:', e.message);
+  }
+
+  renderLedger();
+};
+
+// ============================================================
+// CARREGAR ELOs E VALUATIONS DAS MÚSICAS DO PORTFÓLIO
 // ============================================================
 window.carregarELOsEValuations = async function () {
   const ativos = state.portfolioAssets || [];
@@ -111,8 +130,6 @@ window.renderPortfolio = function () {
     // Calcula valor atual com base na valuation
     let valorAtual = x.valor_total || 0;
     if (valuationInfo && valuationInfo.valuation > 0) {
-      // Valor proporcional do ativo = (valuation / total_acoes) × ações_do_usuario
-      // Simplificado: usa valor investido × (1 + ajuste_elo / 100)
       valorAtual = (x.valor_total || 0) * (1 + (valuationInfo.ajuste_elo || 0) / 100);
     }
 
@@ -144,7 +161,7 @@ window.renderPortfolio = function () {
         '<span class="spotify-price">' + formatCurrency(x.valor_total || 0) + '</span>' +
       '</div>' +
 
-      // 🆕 Valor atual + ganho
+      // Valor atual + ganho
       (valuationInfo && valuationInfo.valuation > 0
         ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--apple-separator)">' +
             '<div style="display:flex;justify-content:space-between;font-size:11px">' +
@@ -186,7 +203,7 @@ window.updatePortfolioValue = function () {
 };
 
 // ============================================================
-// 🆕 MÉTRICAS DO PORTFÓLIO (ELO médio, valuation, ganho)
+// MÉTRICAS DO PORTFÓLIO (ELO médio, valuation, ganho)
 // ============================================================
 window.updatePortfolioMetrics = function () {
   const c = document.getElementById('portfolioMetrics');
@@ -268,7 +285,7 @@ window.renderLedger = function () {
   const c = document.getElementById('ledgerContent');
   if (!c) return;
 
-  if (!state.ledgerData.length) {
+  if (!state.ledgerData || !state.ledgerData.length) {
     c.innerHTML = '<tr><td colspan="4" class="text-center py-5 text-muted">Nenhuma transação</td></tr>';
     return;
   }
@@ -455,7 +472,7 @@ window.loadAdminData = async function () {
       const elSelo = document.getElementById('adminSeloCirculation');
       if (elSelo) elSelo.textContent = new Intl.NumberFormat('pt-BR').format(r.data.total_investido || 0);
 
-      // 🆕 ELO count
+      // ELO count
       if (r.data.elo_count !== undefined) {
         const elElo = document.getElementById('adminEloCount');
         if (elElo) elElo.textContent = r.data.elo_count;
@@ -469,4 +486,4 @@ window.loadAdminData = async function () {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [portfolio.js] v9.1.0 carregado — portfólio, extrato, dividendos, ELO, valuation, artista e admin');
+console.log('✅ [portfolio.js] v9.2.0 carregado — portfólio, extrato, dividendos, ELO, valuation, artista e admin');
