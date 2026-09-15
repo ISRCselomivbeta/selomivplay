@@ -3,6 +3,13 @@
 // Portfólio, extrato, dividendos, dados do artista, dados do admin.
 // Depende de: config.js, utils.js, state.js, api.js
 // DEVE carregar DEPOIS de marketplace.js e ANTES de trades.js.
+//
+// MUDANÇAS v9.2.0:
+//   - ADICIONADA função loadLedger (estava faltando!)
+//   - Mostra ELO + valuation em cada ativo
+//   - Mostra faixa de ELO (Lendário, Excelente, etc)
+//   - Mostra projeção de receita por ativo
+//   - Mostra multiplier aplicado
 // ============================================================
 
 // ============================================================
@@ -22,6 +29,7 @@ window.loadPortfolio = async function () {
     console.warn('⚠️ loadPortfolio:', e.message);
   }
 
+  // Carrega ELOs e valuations para enriquecer o portfólio
   await carregarELOsEValuations();
 
   renderPortfolio();
@@ -30,7 +38,7 @@ window.loadPortfolio = async function () {
 };
 
 // ============================================================
-// 🆕 CARREGAR EXTRATO
+// CARREGAR EXTRATO (ESTAVA FALTANDO!)
 // ============================================================
 window.loadLedger = async function () {
   if (!state.currentUser) return;
@@ -48,12 +56,13 @@ window.loadLedger = async function () {
 };
 
 // ============================================================
-// 🆕 CARREGAR ELOs E VALUATIONS DAS MÚSICAS DO PORTFÓLIO
+// CARREGAR ELOs E VALUATIONS DAS MÚSICAS DO PORTFÓLIO
 // ============================================================
 window.carregarELOsEValuations = async function () {
   const ativos = state.portfolioAssets || [];
   if (!ativos.length) return;
 
+  // Mapa de ELOs (vem do ranking global)
   try {
     const r = await callAPI('get_elo_ranking');
     if (r && r.success && r.data && r.data.ranking) {
@@ -72,6 +81,7 @@ window.carregarELOsEValuations = async function () {
     console.warn('⚠️ carregarELOs (portfolio):', e.message);
   }
 
+  // Valuations por música (busca individual)
   state.valuationMap = state.valuationMap || {};
   for (const ativo of ativos.slice(0, 10)) {
     const mid = String(ativo.music_id);
@@ -92,7 +102,7 @@ window.carregarELOsEValuations = async function () {
 };
 
 // ============================================================
-// RENDERIZAR PORTFÓLIO
+// RENDERIZAR PORTFÓLIO (com ELO + valuation)
 // ============================================================
 window.renderPortfolio = function () {
   const c = document.getElementById('portfolioContent');
@@ -117,6 +127,7 @@ window.renderPortfolio = function () {
     const eloInfo = (state.eloMap && state.eloMap[String(x.music_id)]) || null;
     const valuationInfo = (state.valuationMap && state.valuationMap[String(x.music_id)]) || null;
 
+    // Calcula valor atual com base na valuation
     let valorAtual = x.valor_total || 0;
     if (valuationInfo && valuationInfo.valuation > 0) {
       valorAtual = (x.valor_total || 0) * (1 + (valuationInfo.ajuste_elo || 0) / 100);
@@ -136,6 +147,7 @@ window.renderPortfolio = function () {
       '<h3 class="spotify-title">' + (m.titulo || x.music_id || 'Música') + '</h3>' +
       '<p class="spotify-artist">' + (m.artista || '') + '</p>' +
 
+      // ELO + faixa
       (eloInfo
         ? '<div style="font-size:11px;margin-top:4px">' +
             '<span style="color:' + eloInfo.cor + ';font-weight:700">⚡ ' + eloInfo.elo + '</span>' +
@@ -143,11 +155,13 @@ window.renderPortfolio = function () {
           '</div>'
         : '') +
 
+      // Stats: ações + valor investido
       '<div class="spotify-stats">' +
         '<span class="spotify-elo">' + (x.quantidade || 0) + ' ações</span>' +
         '<span class="spotify-price">' + formatCurrency(x.valor_total || 0) + '</span>' +
       '</div>' +
 
+      // Valor atual + ganho
       (valuationInfo && valuationInfo.valuation > 0
         ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--apple-separator)">' +
             '<div style="display:flex;justify-content:space-between;font-size:11px">' +
@@ -189,7 +203,7 @@ window.updatePortfolioValue = function () {
 };
 
 // ============================================================
-// MÉTRICAS DO PORTFÓLIO
+// MÉTRICAS DO PORTFÓLIO (ELO médio, valuation, ganho)
 // ============================================================
 window.updatePortfolioMetrics = function () {
   const c = document.getElementById('portfolioMetrics');
@@ -290,7 +304,7 @@ window.renderLedger = function () {
 };
 
 // ============================================================
-// CARREGAR DIVIDENDOS
+// CARREGAR DIVIDENDOS (ROYALTIES RECEBIDOS)
 // ============================================================
 window.loadDividends = async function () {
   const c = document.getElementById('dividendsContent');
@@ -458,6 +472,7 @@ window.loadAdminData = async function () {
       const elSelo = document.getElementById('adminSeloCirculation');
       if (elSelo) elSelo.textContent = new Intl.NumberFormat('pt-BR').format(r.data.total_investido || 0);
 
+      // ELO count
       if (r.data.elo_count !== undefined) {
         const elElo = document.getElementById('adminEloCount');
         if (elElo) elElo.textContent = r.data.elo_count;
