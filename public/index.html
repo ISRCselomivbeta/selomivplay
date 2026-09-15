@@ -19,8 +19,7 @@
 <link rel="icon" type="image/png" href="/images/logo.png">
 
 <!-- ============================================================ -->
-<!-- CSS MODULARES — ORDEM OBRIGATÓRIA                            -->
-<!-- main (variáveis) primeiro, responsive (media queries) último -->
+<!-- CSS MODULARES                                                -->
 <!-- ============================================================ -->
 <link rel="stylesheet" href="/css/main.css">
 <link rel="stylesheet" href="/css/auth.css">
@@ -29,38 +28,29 @@
 <link rel="stylesheet" href="/css/modals.css">
 <link rel="stylesheet" href="/css/blockchain.css">
 <link rel="stylesheet" href="/css/responsive.css">
-
 <link rel="stylesheet" href="/css/news.css">
 
-
 <!-- ============================================================ -->
-<!-- ESTILO DO OLHO (MOSTRAR/OCULTAR SENHA) — v1.0.0              -->
+<!-- ESTILO DO OLHO (MOSTRAR/OCULTAR SENHA)                        -->
 <!-- ============================================================ -->
 <style id="playmy-password-toggle-style">
-.playmy-password-wrap {
-  position: relative;
-  display: block;
-}
-.playmy-password-wrap > input {
-  padding-right: 50px !important;
-}
+.playmy-password-wrap { position: relative; display: block; }
+.playmy-password-wrap > input { padding-right: 50px !important; }
 .playmy-password-toggle {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--apple-label-2, #8e8e93);
-  font-size: 18px;
-  cursor: pointer;
-  user-select: none;
-  z-index: 5;
-  padding: 6px;
-  border-radius: 50%;
+  position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+  color: var(--apple-label-2, #8e8e93); font-size: 18px; cursor: pointer;
+  user-select: none; z-index: 5; padding: 6px; border-radius: 50%;
   transition: color 0.15s ease, background 0.15s ease;
 }
 .playmy-password-toggle:hover {
-  color: var(--apple-green, #34c759);
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--apple-green, #34c759); background: rgba(255, 255, 255, 0.06);
+}
+
+/* 🆕 Badge de ELO nos cards */
+.elo-badge {
+  position: absolute; top: 8px; left: 8px;
+  font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 8px;
+  color: #000; z-index: 2;
 }
 </style>
 
@@ -87,8 +77,6 @@
 </div>
 <div id="loginForm">
 <div class="form-group"><label class="text-muted mb-2">E-mail</label><input type="email" id="loginEmailField" class="form-control-custom" placeholder="Digite seu e-mail" autocomplete="email"></div>
-
-<!-- ⬇️ CAMPO DE SENHA COM OLHO ⬇️ -->
 <div class="form-group">
   <label class="text-muted mb-2">Senha</label>
   <div class="playmy-password-wrap">
@@ -96,8 +84,6 @@
     <i class="bi bi-eye playmy-password-toggle" onclick="togglePassword('loginPasswordField', this)" title="Mostrar/ocultar senha"></i>
   </div>
 </div>
-<!-- ⬆️ FIM DO CAMPO COM OLHO ⬆️ -->
-
 <button class="btn-miv mb-3" onclick="handleLogin()" id="loginBtn"><i class="bi bi-box-arrow-in-right"></i> Entrar</button>
 <p class="text-center mb-3"><a href="#" class="auth-link small" onclick="event.preventDefault(); openResetPasswordModal();"><i class="bi bi-question-circle"></i> Esqueceu sua senha?</a></p>
 <p class="text-center text-muted">Novo por aqui? <a href="#" class="auth-link" onclick="showRegisterForm()">Criar conta</a></p>
@@ -105,8 +91,6 @@
 <div id="registerForm" style="display:none">
 <div class="form-group"><label class="text-muted mb-2">Nome completo</label><input type="text" id="registerNameField" class="form-control-custom" placeholder="Digite seu nome completo"></div>
 <div class="form-group"><label class="text-muted mb-2">E-mail</label><input type="email" id="registerEmailField" class="form-control-custom" placeholder="Digite seu e-mail"></div>
-
-<!-- ⬇️ CAMPO DE SENHA COM OLHO (REGISTRO) ⬇️ -->
 <div class="form-group">
   <label class="text-muted mb-2">Senha (mínimo 6 caracteres)</label>
   <div class="playmy-password-wrap">
@@ -114,8 +98,6 @@
     <i class="bi bi-eye playmy-password-toggle" onclick="togglePassword('registerPasswordField', this)" title="Mostrar/ocultar senha"></i>
   </div>
 </div>
-<!-- ⬆️ FIM DO CAMPO COM OLHO ⬆️ -->
-
 <div class="form-group"><label class="text-muted mb-2">Selecione seu perfil</label><select id="registerTypeField" class="form-control-custom" onchange="toggleArtistField()"><option value="">Selecione...</option><option value="ouvinte">🎧 Ouvinte/Investidor</option><option value="artista">🎤 Artista</option></select></div>
 <div class="form-group" id="artistLinkField" style="display:none"><label class="text-muted mb-2">Link do trabalho</label><input type="url" id="registerLinkField" class="form-control-custom" placeholder="YouTube, Spotify..."></div>
 <div class="terms-checkbox">
@@ -183,7 +165,12 @@
 </header>
 
 <section id="marketplaceSection" class="section active">
-<div class="section-header-spotify"><h2>Seus mixes mais ouvidos</h2></div>
+<div class="section-header-spotify">
+  <h2>Seus mixes mais ouvidos</h2>
+  <button class="btn btn-sm btn-outline-warning" onclick="alternarOrdenacao()" title="Alternar ordenação">
+    <i class="bi bi-sort-down"></i> Ordenar
+  </button>
+</div>
 <div id="marketplaceContent" class="spotify-grid"></div>
 <div class="section-header-spotify" style="margin-top:24px"><h2>Playlists Globais</h2></div>
 <div id="globalPlaylistsGrid" class="spotify-grid"></div>
@@ -199,7 +186,6 @@
     <h2 class="section-title"><i class="bi bi-newspaper me-2" style="color:var(--apple-yellow)"></i> Feed de Notícias</h2>
     <button class="btn btn-sm btn-outline-warning" onclick="pmNewsReload()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
   </div>
-
   <div id="pm-news-root">
     <div class="pm-filters" id="pm-filters">
       <button class="pm-filter-btn active" data-cat="all">Tudo</button>
@@ -214,7 +200,7 @@
     <div id="pm-sentinel" style="height:1px"></div>
   </div>
 </section>
-  
+
 <section id="portfolioSection" class="section">
 <div class="portfolio-summary">
 <h6 class="text-muted" style="text-transform:uppercase;font-size:11px;font-weight:600">VALOR TOTAL DA CARTEIRA</h6>
@@ -222,17 +208,17 @@
 <small class="text-muted">Atualizado em tempo real</small>
 <div class="mt-2 blockchain-verified"><i class="bi bi-shield-check"></i> Todos os ativos registrados na blockchain</div>
 </div>
+
+<!-- 🆕 MÉTRICAS DO PORTFÓLIO (ELO médio, ganho, valuation) -->
+<div id="portfolioMetrics"></div>
+
 <div class="section-header"><h2 class="section-title">📊 Meus Ativos</h2><span class="badge bg-secondary" id="assetsCount">0 ativos</span></div>
 <div id="portfolioContent" class="spotify-grid"></div>
 
-<!-- 🆕 DIVIDENDOS RECEBIDOS -->
+<!-- DIVIDENDOS RECEBIDOS -->
 <div class="section-header" style="margin-top:40px">
-  <h2 class="section-title">
-    <i class="bi bi-coin me-2" style="color:var(--apple-yellow)"></i>Dividendos Recebidos
-  </h2>
-  <button class="btn btn-sm btn-outline-success" onclick="loadDividends()">
-    <i class="bi bi-arrow-clockwise"></i> Atualizar
-  </button>
+  <h2 class="section-title"><i class="bi bi-coin me-2" style="color:var(--apple-yellow)"></i>Dividendos Recebidos</h2>
+  <button class="btn btn-sm btn-outline-success" onclick="loadDividends()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
 </div>
 <div id="dividendsContent" class="spotify-grid"></div>
 </section>
@@ -288,16 +274,46 @@
 <div id="artistMusicContent" class="spotify-grid"></div>
 </section>
 
+<!-- ============================================================ -->
+<!-- PAINEL ADMIN — v9.3.0 (com Valuation, ELO, Streams)          -->
+<!-- ============================================================ -->
 <section id="adminSection" class="section">
 <div class="section-header"><h2 class="section-title">🛡️ Painel Admin</h2>
 <button class="btn-miv btn-sm" style="width:auto" onclick="openCreateGlobalPlaylistModal()"><i class="bi bi-plus-circle"></i> Playlist Global</button>
 </div>
+
+<!-- Estatísticas gerais -->
 <div class="artist-stats">
 <div class="stat-card"><div class="stat-icon"><i class="bi bi-people"></i></div><div class="stat-value" id="adminUsersCount">0</div><div class="stat-label">Usuários</div></div>
 <div class="stat-card"><div class="stat-icon"><i class="bi bi-music-note-beamed"></i></div><div class="stat-value" id="adminMusicsCount">0</div><div class="stat-label">Músicas</div></div>
 <div class="stat-card"><div class="stat-icon" style="color:var(--apple-blue)"><i class="bi bi-globe"></i></div><div class="stat-value" id="adminGlobalPlaylistsCount">0</div><div class="stat-label">Playlists Globais</div></div>
 <div class="stat-card"><div class="stat-icon" style="color:var(--selo-coin)"><i class="bi bi-coin"></i></div><div class="stat-value" style="color:var(--selo-coin)" id="adminSeloCirculation">0</div><div class="stat-label">SELO em Circulação</div></div>
 </div>
+
+<!-- 🆕 VALUATION ARTÍSTICO -->
+<div class="section-header" style="margin-top:40px">
+  <h2 class="section-title"><i class="bi bi-cash-stack me-2" style="color:var(--apple-green)"></i>Valuation Artístico</h2>
+  <button class="btn btn-sm btn-outline-success" onclick="loadValuationPanel()"><i class="bi bi-arrow-clockwise"></i> Recalcular</button>
+</div>
+<div id="valuationPanelContent"></div>
+
+<!-- 🆕 PAINEL DE ELO -->
+<div class="section-header" style="margin-top:40px">
+  <h2 class="section-title"><i class="bi bi-lightning-charge-fill me-2" style="color:#FFD700"></i>Painel de ELO</h2>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-sm btn-outline-warning" onclick="atualizarTodosElos()"><i class="bi bi-arrow-clockwise"></i> Recalcular</button>
+    <button class="btn btn-sm btn-outline-warning" onclick="loadEloPanel()"><i class="bi bi-eye"></i> Ver</button>
+  </div>
+</div>
+<div id="eloPanelContent"></div>
+
+<!-- 🆕 PAINEL DE STREAMS -->
+<div class="section-header" style="margin-top:40px">
+  <h2 class="section-title"><i class="bi bi-play-circle me-2" style="color:var(--apple-blue)"></i>Streams por Plataforma</h2>
+  <button class="btn btn-sm btn-outline-primary" onclick="loadStreamsPanel()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+</div>
+<div id="streamsPanelContent"></div>
+
 <div id="adminGlobalPlaylistsContent"></div>
 </section>
 
@@ -470,25 +486,60 @@
 </div>
 </div>
 
+<!-- ============================================================ -->
+<!-- MODAL CADASTRAR MÚSICA — v9.3.0 (com ISRC + Artista)         -->
+<!-- ============================================================ -->
 <div id="addMusicModal" class="modal-overlay">
 <div class="modal-content" style="max-width:700px">
 <div class="modal-header"><h5 class="modal-title">Cadastrar Música</h5><button class="modal-close" onclick="closeModal('addMusicModal')"><i class="bi bi-x"></i></button></div>
 <div class="modal-body">
+
+<!-- Link do YouTube -->
 <div class="form-group"><label class="text-muted mb-2">Link do YouTube</label>
 <div class="input-group">
-<input type="url" id="musicYoutubeField" class="form-control-custom">
+<input type="url" id="musicYoutubeField" class="form-control-custom" placeholder="https://youtube.com/watch?v=...">
 <button class="btn btn-danger" onclick="analisarVideoYouTube()" id="btnAnalisarVideo"><i class="bi bi-search"></i> Analisar</button>
 </div></div>
+
+<!-- Título -->
 <div class="form-group"><label class="text-muted mb-2">Título</label><input type="text" id="musicTitleField" class="form-control-custom"></div>
+
+<!-- 🆕 Artista -->
+<div class="form-group"><label class="text-muted mb-2">Artista</label><input type="text" id="musicArtistField" class="form-control-custom" placeholder="Nome do artista"></div>
+
+<!-- 🆕 ISRC (obrigatório para IPO) -->
+<div class="form-group">
+  <label class="text-muted mb-2">
+    ISRC <span style="color:var(--apple-red)">*</span>
+    <small style="color:var(--apple-label-2);font-size:11px;margin-left:6px">(International Standard Recording Code)</small>
+  </label>
+  <div class="input-group">
+    <input type="text" id="musicIsrcField" class="form-control-custom" placeholder="BR-ABC-26-00001" maxlength="15" oninput="validarIsrcInput()">
+    <button class="btn btn-warning" type="button" onclick="buscarIsrcAutomatico()" id="btnBuscarIsrc"><i class="bi bi-search"></i> Buscar</button>
+  </div>
+  <small id="musicIsrcFeedback" style="font-size:11px;margin-top:4px;display:block"></small>
+  <small style="color:var(--apple-label-2);font-size:11px;margin-top:4px;display:block">
+    Obrigatório para IPO. <a href="https://www.ubc.org.br" target="_blank" style="color:var(--apple-yellow)">Obtenha na UBC/Abramus</a>.
+  </small>
+  <div id="isrcResultados" style="display:none;margin-top:8px;max-height:200px;overflow-y:auto"></div>
+</div>
+
+<!-- Gênero -->
 <div class="form-group"><label class="text-muted mb-2">Gênero</label>
 <select id="musicGenreField" class="form-control-custom">
 <option value="">Selecione...</option>
 <option value="POP">POP</option><option value="HIPHOP">HIP HOP</option><option value="ROCK">ROCK</option>
 <option value="ELETRONICA">ELETRÔNICA</option><option value="MPB">MPB</option><option value="SERTANEJO">SERTANEJO</option><option value="FUNK">FUNK</option>
 </select></div>
+
+<!-- Valor por ação -->
 <div class="form-group"><label class="text-muted mb-2">Valor por Ação</label><input type="number" id="musicPriceField" class="form-control-custom" value="10.00" min="1" step="0.01"></div>
+
+<!-- Percentual -->
 <div class="form-group"><label class="text-muted mb-2">Percentual</label><input type="number" id="musicPercentField" class="form-control-custom" value="20" min="1" max="100"></div>
+
 <input type="hidden" id="musicCoverField">
+
 <div id="musicAnalysisResult" style="display:none;background:rgba(52,199,89,0.1);border:0.5px solid rgba(52,199,89,0.3);border-radius:var(--radius-md);padding:12px;margin-top:12px"></div>
 </div>
 <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('addMusicModal')">Cancelar</button><button class="btn btn-miv" style="width:auto" onclick="finalizarCadastroComYouTube()" id="btnFinalizarCadastro">Cadastrar</button></div>
@@ -604,14 +655,10 @@
 </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- FUNÇÃO DO OLHO (MOSTRAR/OCULTAR SENHA) — v1.0.0              -->
-<!-- ============================================================ -->
 <script>
 window.togglePassword = function(fieldId, icon) {
   var field = document.getElementById(fieldId);
   if (!field) return;
-
   if (field.type === 'password') {
     field.type = 'text';
     icon.className = 'bi bi-eye-slash playmy-password-toggle';
@@ -624,7 +671,6 @@ window.togglePassword = function(fieldId, icon) {
 
 <!-- ============================================================ -->
 <!-- MÓDULOS JS — ORDEM OBRIGATÓRIA                               -->
-<!-- NÃO altere a ordem: cada módulo depende dos anteriores       -->
 <!-- ============================================================ -->
 <script src="/js/config.js"></script>
 <script src="/js/utils.js"></script>
@@ -641,7 +687,12 @@ window.togglePassword = function(fieldId, icon) {
 <script src="/js/app.js"></script>
 <script src="/js/news-unified.js"></script>
 <script src="/js/brand-info.js"></script>
+<script src="/js/stream-tracker.js"></script>
 
+<!-- 🆕 PAINÉIS NOVOS -->
+<script src="/js/valuation-panel.js"></script>
+<script src="/js/elo-panel.js"></script>
+<script src="/js/streams-panel.js"></script>
 
 </body>
 </html>
