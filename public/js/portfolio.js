@@ -1,8 +1,14 @@
 // ============================================================
-// js/portfolio.js — PLAY MY v9.0.0
+// js/portfolio.js — PLAY MY v9.1.0
 // Portfólio, extrato, dividendos, dados do artista, dados do admin.
 // Depende de: config.js, utils.js, state.js, api.js
 // DEVE carregar DEPOIS de marketplace.js e ANTES de trades.js.
+//
+// MUDANÇAS v9.1.0:
+//   - Mostra ELO + valuation em cada ativo
+//   - Mostra faixa de ELO (Lendário, Excelente, etc)
+//   - Mostra projeção de receita por ativo
+//   - Mostra multiplier aplicado
 // ============================================================
 
 // ============================================================
@@ -22,30 +28,62 @@ window.loadPortfolio = async function () {
     console.warn('⚠️ loadPortfolio:', e.message);
   }
 
+  // 🆕 Carrega ELOs e valuations para enriquecer o portfólio
+  await carregarELOsEValuations();
+
   renderPortfolio();
   updatePortfolioValue();
+  updatePortfolioMetrics();
 };
 
 // ============================================================
-// CARREGAR EXTRATO
+// 🆕 CARREGAR ELOs E VALUATIONS DAS MÚSICAS DO PORTFÓLIO
 // ============================================================
-window.loadLedger = async function () {
-  if (!state.currentUser) return;
+window.carregarELOsEValuations = async function () {
+  const ativos = state.portfolioAssets || [];
+  if (!ativos.length) return;
 
+  // Mapa de ELOs (vem do ranking global)
   try {
-    const r = await callAPI('get_extrato');
-    if (r && r.success && r.data) {
-      state.ledgerData = r.data;
+    const r = await callAPI('get_elo_ranking');
+    if (r && r.success && r.data && r.data.ranking) {
+      const mapa = {};
+      r.data.ranking.forEach(x => {
+        mapa[String(x.music_id)] = {
+          elo: x.elo || 1000,
+          faixa: x.faixa || 'neutro',
+          faixa_label: x.faixa_label || 'Neutro',
+          cor: x.cor || '#8E8E93'
+        };
+      });
+      state.eloMap = mapa;
     }
   } catch (e) {
-    console.warn('⚠️ loadLedger:', e.message);
+    console.warn('⚠️ carregarELOs (portfolio):', e.message);
   }
 
-  renderLedger();
+  // Valuations por música (busca individual)
+  state.valuationMap = state.valuationMap || {};
+  for (const ativo of ativos.slice(0, 10)) {
+    const mid = String(ativo.music_id);
+    if (state.valuationMap[mid]) continue;
+
+    try {
+      const r = await callAPI('ver_valuation', { music_id: mid });
+      if (r && r.success && r.data) {
+        state.valuationMap[mid] = {
+          valuation: r.data.valuation || 0,
+          receita_anual_projetada: r.data.receita_anual_projetada || 0,
+          multiplo_final: r.data.multiplo_final || 10,
+          ajuste_elo: r.data.ajuste_elo || 0
+        };
+      }
+    } catch (e) {}
+  }
 };
 
 // ============================================================
-// RENDERIZAR PORTFÓLIO
+// RENDERIZAR PORTFÓLIO (com ELO + valuation)
 // ============================================================
 window.renderPortfolio = function () {
   const c = document.getElementById('portfolioContent');
@@ -60,22 +98,74 @@ window.renderPortfolio = function () {
     c.innerHTML = '<div class="empty-state-actionable" style="grid-column:1/-1">' +
       '<i class="bi bi-briefcase empty-icon"></i>' +
       '<h5 class="text-muted">Nenhum investimento</h5>' +
+      '<p class="text-muted small">Explore o Marketplace para começar.</p>' +
     '</div>';
     return;
   }
 
   c.innerHTML = a.map(x => {
-    const m = state.playlist.find(y => String(y.id) === String(x.music_id)) || {};
+    const m = (state.playlist || []).find(y => String(y.id) === String(x.music_id)) || {};
+    const eloInfo = (state.eloMap && state.eloMap[String(x.music_id)]) || null;
+    const valuationInfo = (state.valuationMap && state.valuationMap[String(x.music_id)]) || null;
+
+    // Calcula valor atual com base na valuation
+    let valorAtual = x.valor_total || 0;
+    if (valuationInfo && valuationInfo.valuation > 0) {
+      // Valor proporcional do ativo = (valuation / total_acoes) × ações_do_usuario
+      // Simplificado: usa valor investido × (1 + ajuste_elo / 100)
+      valorAtual = (x.valor_total || 0) * (1 + (valuationInfo.ajuste_elo || 0) / 100);
+    }
+
+    const ganho = valorAtual - (x.valor_total || 0);
+    const ganhoPct = x.valor_total > 0 ? (ganho / x.valor_total) * 100 : 0;
+
     return '<div class="spotify-card">' +
       '<div class="spotify-cover">' +
         '<img src="' + getCoverUrl(m, false) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+        (eloInfo && eloInfo.elo >= 1400
+          ? '<div style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
+              'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
+          : '') +
       '</div>' +
       '<h3 class="spotify-title">' + (m.titulo || x.music_id || 'Música') + '</h3>' +
       '<p class="spotify-artist">' + (m.artista || '') + '</p>' +
+
+      // ELO + faixa
+      (eloInfo
+        ? '<div style="font-size:11px;margin-top:4px">' +
+            '<span style="color:' + eloInfo.cor + ';font-weight:700">⚡ ' + eloInfo.elo + '</span>' +
+            '<span style="color:var(--apple-label-2);margin-left:6px">' + eloInfo.faixa_label + '</span>' +
+          '</div>'
+        : '') +
+
+      // Stats: ações + valor investido
       '<div class="spotify-stats">' +
         '<span class="spotify-elo">' + (x.quantidade || 0) + ' ações</span>' +
         '<span class="spotify-price">' + formatCurrency(x.valor_total || 0) + '</span>' +
       '</div>' +
+
+      // 🆕 Valor atual + ganho
+      (valuationInfo && valuationInfo.valuation > 0
+        ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--apple-separator)">' +
+            '<div style="display:flex;justify-content:space-between;font-size:11px">' +
+              '<span style="color:var(--apple-label-2)">Valor atual</span>' +
+              '<span style="color:#fff;font-weight:700">' + formatCurrency(valorAtual) + '</span>' +
+            '</div>' +
+            '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:2px">' +
+              '<span style="color:var(--apple-label-2)">Ganho</span>' +
+              '<span style="color:' + (ganho >= 0 ? 'var(--apple-green)' : 'var(--apple-red)') + ';font-weight:700">' +
+                (ganho >= 0 ? '+' : '') + formatCurrency(ganho) +
+                ' (' + (ganhoPct >= 0 ? '+' : '') + ganhoPct.toFixed(1) + '%)' +
+              '</span>' +
+            '</div>' +
+            (valuationInfo.multiplo_final
+              ? '<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:2px">' +
+                  '<span style="color:var(--apple-label-2)">Múltiplo</span>' +
+                  '<span style="color:var(--apple-label-2)">' + valuationInfo.multiplo_final + 'x</span>' +
+                '</div>'
+              : '') +
+          '</div>'
+        : '') +
     '</div>';
   }).join('');
 };
@@ -93,6 +183,82 @@ window.updatePortfolioValue = function () {
   });
 
   el.textContent = formatCurrency(t);
+};
+
+// ============================================================
+// 🆕 MÉTRICAS DO PORTFÓLIO (ELO médio, valuation, ganho)
+// ============================================================
+window.updatePortfolioMetrics = function () {
+  const c = document.getElementById('portfolioMetrics');
+  if (!c) return;
+
+  const ativos = state.portfolioAssets || [];
+  if (!ativos.length) { c.innerHTML = ''; return; }
+
+  let totalInvestido = 0;
+  let valorAtualTotal = 0;
+  let eloTotal = 0;
+  let eloCount = 0;
+  let valuationTotal = 0;
+
+  ativos.forEach(x => {
+    const investido = x.valor_total || 0;
+    totalInvestido += investido;
+
+    const eloInfo = (state.eloMap && state.eloMap[String(x.music_id)]) || null;
+    if (eloInfo) {
+      eloTotal += eloInfo.elo;
+      eloCount++;
+    }
+
+    const valInfo = (state.valuationMap && state.valuationMap[String(x.music_id)]) || null;
+    if (valInfo && valInfo.valuation > 0) {
+      const ajuste = 1 + (valInfo.ajuste_elo || 0) / 100;
+      valorAtualTotal += investido * ajuste;
+      valuationTotal += valInfo.valuation;
+    } else {
+      valorAtualTotal += investido;
+    }
+  });
+
+  const eloMedio = eloCount > 0 ? Math.round(eloTotal / eloCount) : 0;
+  const ganho = valorAtualTotal - totalInvestido;
+  const ganhoPct = totalInvestido > 0 ? (ganho / totalInvestido) * 100 : 0;
+
+  c.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px">' +
+
+      '<div class="stat-card">' +
+        '<div class="stat-icon" style="color:var(--apple-green)"><i class="bi bi-cash-stack"></i></div>' +
+        '<div class="stat-value">' + formatCurrency(totalInvestido) + '</div>' +
+        '<div class="stat-label">Total Investido</div>' +
+      '</div>' +
+
+      '<div class="stat-card">' +
+        '<div class="stat-icon" style="color:#FFD700"><i class="bi bi-lightning-charge-fill"></i></div>' +
+        '<div class="stat-value">⚡ ' + eloMedio + '</div>' +
+        '<div class="stat-label">ELO Médio</div>' +
+      '</div>' +
+
+      '<div class="stat-card">' +
+        '<div class="stat-icon" style="color:' + (ganho >= 0 ? 'var(--apple-green)' : 'var(--apple-red)') + '">' +
+          '<i class="bi bi-' + (ganho >= 0 ? 'graph-up-arrow' : 'graph-down-arrow') + '"></i>' +
+        '</div>' +
+        '<div class="stat-value" style="color:' + (ganho >= 0 ? 'var(--apple-green)' : 'var(--apple-red)') + '">' +
+          (ganho >= 0 ? '+' : '') + formatCurrency(ganho) +
+        '</div>' +
+        '<div class="stat-label">Ganho (' + (ganhoPct >= 0 ? '+' : '') + ganhoPct.toFixed(1) + '%)</div>' +
+      '</div>' +
+
+      (valuationTotal > 0
+        ? '<div class="stat-card">' +
+            '<div class="stat-icon" style="color:var(--apple-blue)"><i class="bi bi-graph-up"></i></div>' +
+            '<div class="stat-value">' + formatCurrency(valuationTotal) + '</div>' +
+            '<div class="stat-label">Valuation do Catálogo</div>' +
+          '</div>'
+        : '') +
+
+    '</div>';
 };
 
 // ============================================================
@@ -121,7 +287,7 @@ window.renderLedger = function () {
 };
 
 // ============================================================
-// 🆕 CARREGAR DIVIDENDOS (ROYALTIES RECEBIDOS)
+// CARREGAR DIVIDENDOS (ROYALTIES RECEBIDOS)
 // ============================================================
 window.loadDividends = async function () {
   const c = document.getElementById('dividendsContent');
@@ -141,27 +307,16 @@ window.loadDividends = async function () {
   '</div>';
 
   try {
-    // Tenta endpoint novo (royalties) primeiro
     let r = await callAPI('extrato_usuario', { user_id: state.currentUser.id });
+    if (!r || !r.success) r = await callAPI('get_extrato');
 
-    // Se não existir, cai no extrato normal
-    if (!r || !r.success) {
-      r = await callAPI('get_extrato');
-    }
-
-    // Extrai a lista de royalties
     let royalties = [];
     if (r && r.success && r.data) {
-      if (Array.isArray(r.data)) {
-        royalties = r.data;
-      } else if (Array.isArray(r.data.ultimos)) {
-        royalties = r.data.ultimos;
-      } else if (Array.isArray(r.data.royalties)) {
-        royalties = r.data.royalties;
-      }
+      if (Array.isArray(r.data)) royalties = r.data;
+      else if (Array.isArray(r.data.ultimos)) royalties = r.data.ultimos;
+      else if (Array.isArray(r.data.royalties)) royalties = r.data.royalties;
     }
 
-    // Filtra só o que for royalty/dividendo
     const apenasRoyalties = royalties.filter(x => {
       const tipo = String(x.tipo || '').toLowerCase();
       return tipo === 'royalty' || tipo === 'royalties' || tipo === 'dividendo';
@@ -180,21 +335,16 @@ window.loadDividends = async function () {
     const ultimos = apenasRoyalties.slice(-20).reverse();
 
     c.innerHTML =
-      // Resumo
       '<div class="portfolio-summary" style="grid-column:1/-1;margin-bottom:24px">' +
         '<h6 class="text-muted" style="text-transform:uppercase;font-size:11px;font-weight:600">TOTAL RECEBIDO EM ROYALTIES</h6>' +
         '<div class="portfolio-value" style="color:var(--apple-green)">' + formatCurrency(total) + '</div>' +
         '<small class="text-muted">' + apenasRoyalties.length + ' pagamento' + (apenasRoyalties.length !== 1 ? 's' : '') + '</small>' +
       '</div>' +
 
-      // Tabela
       '<div class="table-responsive" style="grid-column:1/-1">' +
         '<table class="ledger-table">' +
           '<thead><tr>' +
-            '<th>Data</th>' +
-            '<th>Música</th>' +
-            '<th>Período</th>' +
-            '<th class="text-end">Valor</th>' +
+            '<th>Data</th><th>Música</th><th>Período</th><th class="text-end">Valor</th>' +
           '</tr></thead>' +
           '<tbody>' +
             ultimos.map(x => {
@@ -259,15 +409,28 @@ window.renderArtistMusic = function (musics) {
     return;
   }
 
-  c.innerHTML = musics.map(t =>
-    '<div class="spotify-card">' +
+  c.innerHTML = musics.map(t => {
+    const eloInfo = (state.eloMap && state.eloMap[String(t.id)]) || null;
+    const valInfo = (state.valuationMap && state.valuationMap[String(t.id)]) || null;
+
+    return '<div class="spotify-card">' +
       '<div class="spotify-cover">' +
         '<img src="' + getCoverUrl(t, false) + '">' +
+        (eloInfo && eloInfo.elo >= 1400
+          ? '<div style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
+              'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
+          : '') +
       '</div>' +
       '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
       '<p class="spotify-artist">' + formatCurrency(t.valor_acao || 0) + '</p>' +
-    '</div>'
-  ).join('');
+      (eloInfo
+        ? '<div style="font-size:11px;color:' + eloInfo.cor + ';margin-top:4px;font-weight:700">⚡ ' + eloInfo.elo + ' ' + eloInfo.faixa_label + '</div>'
+        : '') +
+      (valInfo && valInfo.valuation > 0
+        ? '<div style="font-size:11px;color:var(--apple-blue);margin-top:2px">💰 ' + formatCurrency(valInfo.valuation) + '</div>'
+        : '') +
+    '</div>';
+  }).join('');
 };
 
 // ============================================================
@@ -291,6 +454,12 @@ window.loadAdminData = async function () {
 
       const elSelo = document.getElementById('adminSeloCirculation');
       if (elSelo) elSelo.textContent = new Intl.NumberFormat('pt-BR').format(r.data.total_investido || 0);
+
+      // 🆕 ELO count
+      if (r.data.elo_count !== undefined) {
+        const elElo = document.getElementById('adminEloCount');
+        if (elElo) elElo.textContent = r.data.elo_count;
+      }
     }
   } catch (e) {
     console.warn('⚠️ loadAdminData:', e.message);
@@ -300,4 +469,4 @@ window.loadAdminData = async function () {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [portfolio.js] v9.0.0 carregado — portfólio, extrato, dividendos, artista e admin');
+console.log('✅ [portfolio.js] v9.1.0 carregado — portfólio, extrato, dividendos, ELO, valuation, artista e admin');
