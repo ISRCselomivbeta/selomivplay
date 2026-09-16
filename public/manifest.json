@@ -1,74 +1,537 @@
-{
-  "name": "PLAY MY — Música sem limites",
-  "short_name": "PLAY MY",
-  "description": "Plataforma de investimento em música com streaming, blockchain e royalties.",
-  "start_url": "/",
-  "scope": "/",
-  "id": "/",
-  "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#000000",
-  "theme_color": "#000000",
-  "lang": "pt-BR",
-  "dir": "ltr",
-  "categories": ["music", "entertainment", "finance"],
-  "prefer_related_applications": false,
-  "icons": [
-    {
-      "src": "/images/logo.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/images/logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/images/logo.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/images/logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+// ============================================================
+// js/app.js — PLAY MY v9.3.0
+// Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
+// + Detecção de app nativo (Capacitor/TWA)
+// + Safe areas (iPhone notch)
+// + Status bar dinâmica
+// + Splash screen handling
+// + Deep linking (?section=)
+// Depende de TODOS os módulos anteriores.
+// DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
+//
+// MUDANÇAS v9.3.0:
+//   - Detecção de ambiente nativo (Capacitor, TWA, standalone)
+//   - Safe area insets (notch, home indicator)
+//   - Status bar com cor dinâmica por scroll
+//   - Splash screen escondida quando o app está pronto
+//   - Bloqueio de gestos nativos (pull-to-refresh, pinch-zoom)
+//   - Deep linking via URL (?section=marketplace)
+//   - Aliases para openSellModal / confirmSell (v9.4.0 do portfolio)
+//
+// MUDANÇAS v9.2.0:
+//   - Bootstrap com HealthCheck + restoreSession
+//   - Aliases globais para compatibilidade com HTML inline
+//   - PWA install prompt
+// ============================================================
+
+// ============================================================
+// DETECÇÃO DE AMBIENTE NATIVO
+// ============================================================
+window.APP_ENV = (function () {
+  const ua = navigator.userAgent || '';
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                       window.navigator.standalone === true;
+  const isCapacitor = !!(window.Capacitor && window.Capacitor.isNative);
+  const isTWA = document.referrer.includes('android-app://');
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isAndroid = /Android/.test(ua);
+
+  return {
+    isStandalone,
+    isCapacitor,
+    isTWA,
+    isIOS,
+    isAndroid,
+    isNative: isCapacitor || isTWA,
+    isPWA: isStandalone && !isCapacitor && !isTWA,
+    platform: isIOS ? 'ios' : (isAndroid ? 'android' : 'web')
+  };
+})();
+
+console.log('🌍 Ambiente:', window.APP_ENV);
+
+// ============================================================
+// APLICAR SAFE AREAS (notch, home indicator)
+// ============================================================
+function applySafeAreas() {
+  const style = document.createElement('style');
+  style.id = 'playmy-safe-areas';
+  style.textContent = `
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
     }
-  ],
-  "shortcuts": [
-    {
-      "name": "Marketplace",
-      "short_name": "Marketplace",
-      "description": "Explorar músicas para investir",
-      "url": "/?section=marketplace",
-      "icons": [{ "src": "/images/logo.png", "sizes": "192x192", "type": "image/png" }]
-    },
-    {
-      "name": "Notícias",
-      "short_name": "Notícias",
-      "description": "Últimas notícias do mundo da música",
-      "url": "/?section=news",
-      "icons": [{ "src": "/images/logo.png", "sizes": "192x192", "type": "image/png" }]
-    },
-    {
-      "name": "Meu Portfólio",
-      "short_name": "Portfólio",
-      "description": "Ver meus investimentos",
-      "url": "/?section=portfolio",
-      "icons": [{ "src": "/images/logo.png", "sizes": "192x192", "type": "image/png" }]
+
+    /* Aplica padding nas áreas com notch */
+    body {
+      padding-top: var(--safe-top);
+      padding-left: var(--safe-left);
+      padding-right: var(--safe-right);
     }
-  ],
-  "share_target": {
-    "action": "/",
-    "method": "GET",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url"
+
+    /* Header respeitando o notch */
+    .app-header {
+      padding-top: var(--safe-top);
     }
+
+    /* Player fixo respeitando o home indicator */
+    .player-miv {
+      padding-bottom: var(--safe-bottom);
+    }
+
+    /* Sidebar respeitando o notch */
+    .sidebar {
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+    }
+
+    /* Modais com scroll interno */
+    .modal-content {
+      max-height: calc(100vh - var(--safe-top) - var(--safe-bottom) - 40px);
+    }
+
+    /* Impede seleção de texto (comportamento nativo) */
+    * {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    /* Permite seleção apenas em inputs e textos */
+    input, textarea, [contenteditable], .selectable {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    /* Impede pull-to-refresh */
+    html, body {
+      overscroll-behavior-y: contain;
+    }
+
+    /* Impede zoom por duplo toque */
+    * {
+      touch-action: manipulation;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// ============================================================
+// STATUS BAR DINÂMICA (iOS PWA + Capacitor)
+// ============================================================
+function setupStatusBar() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+
+  // Muda a cor da status bar conforme scroll
+  window.addEventListener('scroll', () => {
+    const currentScroll = window.scrollY;
+    meta.setAttribute('content', currentScroll > 50 ? '#0a0a0a' : '#000000');
+  }, { passive: true });
+}
+
+// ============================================================
+// SPLASH SCREEN (esconder quando o app estiver pronto)
+// ============================================================
+function hideSplashScreen() {
+  const splash = document.getElementById('loadingScreen');
+  if (!splash) return;
+  if (splash.style.display === 'none') return;
+
+  splash.style.transition = 'opacity 0.4s ease, visibility 0.4s ease';
+  splash.style.opacity = '0';
+  splash.style.visibility = 'hidden';
+
+  setTimeout(() => {
+    splash.style.display = 'none';
+  }, 400);
+}
+
+// ============================================================
+// BLOQUEIO DE GESTOS NATIVOS
+// ============================================================
+function blockNativeGestures() {
+  // Impede pinch-zoom
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('gesturechange', (e) => e.preventDefault());
+  document.addEventListener('gestureend', (e) => e.preventDefault());
+
+  // Impede duplo-toque zoom
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  // Impede zoom de dois dedos
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+}
+
+// ============================================================
+// DEEP LINKING (abrir direto numa seção via URL)
+// ============================================================
+function handleDeepLink() {
+  const params = new URLSearchParams(window.location.search);
+  const section = params.get('section');
+  if (section && typeof changeSection === 'function') {
+    setTimeout(() => {
+      try {
+        changeSection(section);
+        console.log('🔗 Deep link →', section);
+      } catch (e) {
+        console.warn('⚠️ Deep link falhou:', e);
+      }
+    }, 500);
+  }
+
+  // Suporte a share_target (título/texto/url compartilhados)
+  const sharedUrl = params.get('url');
+  const sharedTitle = params.get('title');
+  const sharedText = params.get('text');
+  if (sharedUrl || sharedTitle || sharedText) {
+    console.log('📤 Compartilhado:', { sharedUrl, sharedTitle, sharedText });
+    // Opcional: abrir modal de sugestão externa com os dados preenchidos
+    setTimeout(() => {
+      if (sharedUrl && typeof openAddExternalMusicModal === 'function') {
+        openAddExternalMusicModal();
+        setTimeout(() => {
+          const field = document.getElementById('externalYoutubeLinkField');
+          if (field) field.value = sharedUrl;
+          const titleField = document.getElementById('externalTitleField');
+          if (titleField && sharedTitle) titleField.value = sharedTitle;
+        }, 300);
+      }
+    }, 1000);
   }
 }
+
+// ============================================================
+// INICIALIZAÇÃO DA APLICAÇÃO (após login)
+// ============================================================
+window.initializeApp = async function () {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+
+  updateUserInterface();
+  await loadAllData();
+
+  loadYouTubeAPI();
+
+  // Registra Service Worker (PWA)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+
+  // Esconde splash depois de tudo carregado
+  setTimeout(hideSplashScreen, 300);
+};
+
+// ============================================================
+// CARREGAR TODOS OS DADOS EM PARALELO
+// ============================================================
+window.loadAllData = async function () {
+  showLoading('Carregando dados...');
+
+  try {
+    await Promise.all([
+      loadMarketplace(),
+      loadExternalMarketplace(),
+      loadPortfolio(),
+      loadLedger(),
+      loadTopInvestments(),
+      loadUserPlaylists(),
+      loadGlobalPlaylists(),
+      loadArtists(),
+      loadTickets(),
+      loadFollowing()
+    ]);
+
+    await updateBalanceDisplay();
+
+    if (state.currentUser && state.currentUser.tipo === 'artista') {
+      await loadArtistData();
+    }
+
+    if (state.currentUser && state.currentUser.tipo === 'admin') {
+      await loadAdminData();
+    }
+
+    showToast('Sistema carregado!', 'success');
+  } catch (e) {
+    console.error('Erro ao carregar dados:', e);
+    showToast('Alguns dados não carregaram', 'warning');
+  } finally {
+    hideLoading();
+  }
+};
+
+// ============================================================
+// BOOTSTRAP — DISPARA QUANDO O DOM ESTIVER PRONTO
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('🚀 PLAY MY v' + CONFIG.VERSION + ' — Modular');
+  console.log('📱 Plataforma:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
+
+  // Aplica safe areas
+  applySafeAreas();
+  setupStatusBar();
+  blockNativeGestures();
+
+  // Registra Service Worker imediatamente (PWA instalável)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+
+  // 1. Health check inicial
+  HealthCheck.runAll().catch(() => {});
+
+  // 2. Health check periódico (a cada 3 minutos)
+  setInterval(() => HealthCheck.runAll(), 180000);
+
+  // 3. Restaura sessão salva
+  const restored = restoreSession();
+
+  if (restored) {
+    await initializeApp();
+  } else {
+    hideLoading();
+    // Se não restaurou, esconde splash também
+    setTimeout(hideSplashScreen, 800);
+  }
+});
+
+// ============================================================
+// PWA — INSTALAÇÃO (celular + PC)
+// ============================================================
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  state.deferredInstallPrompt = e;
+  const btn = document.getElementById('installAppBtn');
+  if (btn) {
+    btn.style.display = 'inline-block';
+    btn.classList.remove('hidden');
+  }
+  console.log('📲 PWA: prompt de instalação disponível');
+});
+
+window.addEventListener('appinstalled', () => {
+  console.log('✅ PWA: app instalado');
+  state.deferredInstallPrompt = null;
+  const btn = document.getElementById('installAppBtn');
+  if (btn) btn.style.display = 'none';
+  if (typeof showToast === 'function') {
+    showToast('✅ App instalado! Procure o ícone PLAY MY na tela inicial.', 'success', 5000);
+  }
+});
+
+window.installApp = async function () {
+  // Se é nativo (Capacitor/TWA), não faz nada
+  if (APP_ENV.isNative) {
+    showToast('Você já está usando o app nativo!', 'success');
+    return;
+  }
+
+  if (state.deferredInstallPrompt) {
+    try {
+      state.deferredInstallPrompt.prompt();
+      const choice = await state.deferredInstallPrompt.userChoice;
+      console.log('📲 PWA: escolha do usuário =', choice.outcome);
+      if (choice.outcome === 'accepted') {
+        if (typeof showToast === 'function') {
+          showToast('✅ Instalando PLAY MY...', 'success', 3000);
+        }
+      } else {
+        if (typeof showToast === 'function') {
+          showToast('Instalação cancelada', 'info', 3000);
+        }
+      }
+      state.deferredInstallPrompt = null;
+      const btn = document.getElementById('installAppBtn');
+      if (btn) btn.style.display = 'none';
+      return;
+    } catch (e) {
+      console.warn('Erro no prompt nativo:', e);
+    }
+  }
+
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isAndroid = /Android/.test(ua);
+
+  let msg = '';
+  if (isIOS) {
+    msg = '📱 No iPhone/iPad:\n\n1. Toque no botão Compartilhar (□↑)\n2. Escolha "Adicionar à Tela de Início"\n3. Confirme com "Adicionar"';
+  } else if (isAndroid) {
+    msg = '📱 No Android:\n\n1. Toque no menu (⋮) do navegador\n2. Escolha "Instalar app" ou "Adicionar à tela inicial"\n3. Confirme';
+  } else {
+    msg = '💻 No computador:\n\n1. Clique no ícone de instalação na barra de endereço\n2. Ou vá em Menu → "Instalar PLAY MY"\n3. Confirme';
+  }
+
+  alert(msg);
+};
+
+// ============================================================
+// ALIASES GLOBAIS (compatibilidade total com HTML inline)
+// ============================================================
+
+// Auth (auth.js)
+window.handleLogin = window.handleLogin || handleLogin;
+window.handleRegister = window.handleRegister || handleRegister;
+window.logout = window.logout || logout;
+window.openResetPasswordModal = window.openResetPasswordModal || openResetPasswordModal;
+window.sendResetEmail = window.sendResetEmail || sendResetEmail;
+window.showRegisterForm = window.showRegisterForm || showRegisterForm;
+window.showLoginForm = window.showLoginForm || showLoginForm;
+window.toggleArtistField = window.toggleArtistField || toggleArtistField;
+
+// Modals (modals.js)
+window.showModal = window.showModal || showModal;
+window.closeModal = window.closeModal || closeModal;
+window.updateUserInterface = window.updateUserInterface || updateUserInterface;
+window.updateBalanceDisplay = window.updateBalanceDisplay || updateBalanceDisplay;
+window.openAddBalanceModal = window.openAddBalanceModal || openAddBalanceModal;
+window.setBalanceAmount = window.setBalanceAmount || setBalanceAmount;
+window.processBalanceAdd = window.processBalanceAdd || processBalanceAdd;
+window.openWithdrawalModal = window.openWithdrawalModal || openWithdrawalModal;
+window.requestWithdrawal = window.requestWithdrawal || requestWithdrawal;
+
+// Marketplace (marketplace.js)
+window.changeSection = window.changeSection || changeSection;
+window.toggleSidebar = window.toggleSidebar || toggleSidebar;
+window.loadMarketplace = window.loadMarketplace || loadMarketplace;
+window.loadExternalMarketplace = window.loadExternalMarketplace || loadExternalMarketplace;
+window.loadTopInvestments = window.loadTopInvestments || loadTopInvestments;
+window.loadUserPlaylists = window.loadUserPlaylists || loadUserPlaylists;
+window.loadGlobalPlaylists = window.loadGlobalPlaylists || loadGlobalPlaylists;
+window.loadArtists = window.loadArtists || loadArtists;
+window.loadFollowing = window.loadFollowing || loadFollowing;
+window.loadTickets = window.loadTickets || loadTickets;
+window.renderMarketplace = window.renderMarketplace || renderMarketplace;
+window.renderRecommended = window.renderRecommended || renderRecommended;
+window.renderExternalMarketplace = window.renderExternalMarketplace || renderExternalMarketplace;
+window.renderTopInvestments = window.renderTopInvestments || renderTopInvestments;
+window.renderArtists = window.renderArtists || renderArtists;
+window.renderFeaturedArtists = window.renderFeaturedArtists || renderFeaturedArtists;
+window.renderPlaylists = window.renderPlaylists || renderPlaylists;
+window.renderFavorites = window.renderFavorites || renderFavorites;
+window.renderGlobalPlaylists = window.renderGlobalPlaylists || renderGlobalPlaylists;
+window.renderAdminGlobalPlaylists = window.renderAdminGlobalPlaylists || renderAdminGlobalPlaylists;
+window.renderTickets = window.renderTickets || renderTickets;
+window.performSearch = window.performSearch || performSearch;
+window.displaySearchResults = window.displaySearchResults || displaySearchResults;
+window.openInvestModal = window.openInvestModal || openInvestModal;
+window.updateInvestmentTotal = window.updateInvestmentTotal || updateInvestmentTotal;
+window.adjustQuantity = window.adjustQuantity || adjustQuantity;
+window.confirmInvestment = window.confirmInvestment || confirmInvestment;
+window.openInvestExternalModal = window.openInvestExternalModal || openInvestExternalModal;
+window.updateExternalInvestmentTotal = window.updateExternalInvestmentTotal || updateExternalInvestmentTotal;
+window.adjustExternalQuantity = window.adjustExternalQuantity || adjustExternalQuantity;
+window.confirmExternalInvestment = window.confirmExternalInvestment || confirmExternalInvestment;
+window.openAddExternalMusicModal = window.openAddExternalMusicModal || openAddExternalMusicModal;
+window.submitExternalMusic = window.submitExternalMusic || submitExternalMusic;
+window.openAddMusicModal = window.openAddMusicModal || openAddMusicModal;
+window.analisarVideoYouTube = window.analisarVideoYouTube || analisarVideoYouTube;
+window.finalizarCadastroComYouTube = window.finalizarCadastroComYouTube || finalizarCadastroComYouTube;
+window.openCreatePlaylistModal = window.openCreatePlaylistModal || openCreatePlaylistModal;
+window.createPlaylist = window.createPlaylist || createPlaylist;
+window.playUserPlaylist = window.playUserPlaylist || playUserPlaylist;
+window.openCreateGlobalPlaylistModal = window.openCreateGlobalPlaylistModal || openCreateGlobalPlaylistModal;
+window.createGlobalPlaylist = window.createGlobalPlaylist || createGlobalPlaylist;
+window.openManageGlobalPlaylist = window.openManageGlobalPlaylist || openManageGlobalPlaylist;
+window.addMusicToGlobalPlaylist = window.addMusicToGlobalPlaylist || addMusicToGlobalPlaylist;
+window.removeMusicFromGlobalPlaylist = window.removeMusicFromGlobalPlaylist || removeMusicFromGlobalPlaylist;
+window.playGlobalPlaylist = window.playGlobalPlaylist || playGlobalPlaylist;
+window.openCreateTicketModal = window.openCreateTicketModal || openCreateTicketModal;
+window.createTicket = window.createTicket || createTicket;
+window.redeemTicket = window.redeemTicket || redeemTicket;
+window.toggleFollow = window.toggleFollow || toggleFollow;
+window.toggleFavoriteMusic = window.toggleFavoriteMusic || toggleFavoriteMusic;
+
+// Portfolio (portfolio.js)
+window.loadPortfolio = window.loadPortfolio || loadPortfolio;
+window.loadLedger = window.loadLedger || loadLedger;
+window.loadArtistData = window.loadArtistData || loadArtistData;
+window.loadAdminData = window.loadAdminData || loadAdminData;
+window.renderPortfolio = window.renderPortfolio || renderPortfolio;
+window.updatePortfolioValue = window.updatePortfolioValue || updatePortfolioValue;
+window.updatePortfolioMetrics = window.updatePortfolioMetrics || updatePortfolioMetrics;
+window.renderLedger = window.renderLedger || renderLedger;
+window.renderArtistMusic = window.renderArtistMusic || renderArtistMusic;
+window.loadDividends = window.loadDividends || loadDividends;
+window.carregarELOsEValuations = window.carregarELOsEValuations || carregarELOsEValuations;
+
+// 🆕 Sell modal (portfolio.js v9.4.0)
+window.openSellModal = window.openSellModal || openSellModal;
+window.updateSellTotal = window.updateSellTotal || updateSellTotal;
+window.adjustSellQuantity = window.adjustSellQuantity || adjustSellQuantity;
+window.setSellPrice = window.setSellPrice || setSellPrice;
+window.confirmSell = window.confirmSell || confirmSell;
+
+// Trades (trades.js)
+window.openTradeModal = window.openTradeModal || openTradeModal;
+window.createTradeOffer = window.createTradeOffer || createTradeOffer;
+window.loadTradeOffers = window.loadTradeOffers || loadTradeOffers;
+window.renderTrades = window.renderTrades || renderTrades;
+window.renderTradeCard = window.renderTradeCard || renderTradeCard;
+window.acceptTradeOffer = window.acceptTradeOffer || acceptTradeOffer;
+window.declineTradeOffer = window.declineTradeOffer || declineTradeOffer;
+window.cancelTradeOffer = window.cancelTradeOffer || cancelTradeOffer;
+
+// Blockchain (blockchain.js)
+window.openBlockchainExplorer = window.openBlockchainExplorer || openBlockchainExplorer;
+window.loadBlockchainData = window.loadBlockchainData || loadBlockchainData;
+
+// News (news-unified.js) — compatibilidade com botões existentes
+window.pmNewsReload = window.pmNewsReload || function () {};
+window.pmNewsLoadMore = window.pmNewsLoadMore || function () {};
+
+// Player (player.js)
+window.playTrack = window.playTrack || playTrack;
+window.playExternalTrack = window.playExternalTrack || playExternalTrack;
+window.playSearchResult = window.playSearchResult || playSearchResult;
+window.togglePlay = window.togglePlay || togglePlay;
+window.playNext = window.playNext || playNext;
+window.playPrevious = window.playPrevious || playPrevious;
+window.updatePlayerIcons = window.updatePlayerIcons || updatePlayerIcons;
+window.toggleMute = window.toggleMute || toggleMute;
+window.handleVolumeClick = window.handleVolumeClick || handleVolumeClick;
+window.handleProgressClick = window.handleProgressClick || handleProgressClick;
+window.handleExpandedProgressClick = window.handleExpandedProgressClick || handleExpandedProgressClick;
+window.toggleShuffle = window.toggleShuffle || toggleShuffle;
+window.toggleRepeat = window.toggleRepeat || toggleRepeat;
+window.toggleFavorite = window.toggleFavorite || toggleFavorite;
+window.openPlayerExpanded = window.openPlayerExpanded || openPlayerExpanded;
+window.closePlayerExpanded = window.closePlayerExpanded || closePlayerExpanded;
+
+// YouTube (youtube.js)
+window.searchYouTubeDirect = window.searchYouTubeDirect || searchYouTubeDirect;
+window.loadYouTubeAPI = window.loadYouTubeAPI || loadYouTubeAPI;
+window.initializeYouTubePlayer = window.initializeYouTubePlayer || initializeYouTubePlayer;
+window.updatePlayerProgress = window.updatePlayerProgress || updatePlayerProgress;
+
+// API (api.js)
+window.callAPI = window.callAPI || callAPI;
+window.getFallbackData = window.getFallbackData || getFallbackData;
+
+// ============================================================
+// DEEP LINK — roda depois do boot
+// ============================================================
+window.addEventListener('load', () => {
+  setTimeout(handleDeepLink, 1000);
+});
+
+// ============================================================
+// LOG FINAL
+// ============================================================
+console.log('✅ [app.js] v9.3.0 carregado — aplicação inicializada');
+console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
+console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
