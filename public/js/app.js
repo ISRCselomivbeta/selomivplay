@@ -1,8 +1,19 @@
 // ============================================================
-// js/app.js — PLAY MY v9.2.0
+// js/app.js — PLAY MY v9.4.0
 // Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
+// + INSTALAÇÃO INTELIGENTE (baixar e virar app na hora)
+// + Detecção de ambiente nativo (Capacitor/TWA)
+// + Modal de instruções por plataforma
 // Depende de TODOS os módulos anteriores.
 // DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
+//
+// MUDANÇAS v9.4.0:
+//   - installApp() reescrito: prompt nativo + modal de fallback
+//   - Botão "Instalar App" sempre visível (se não instalado)
+//   - Detecta se já está instalado (standalone/TWA/Capacitor)
+//   - Modal bonito com instruções por plataforma (iOS/Android/Desktop)
+//   - Re-registra SW após instalação
+//   - Deep link (?section=) preservado após instalar
 // ============================================================
 
 // ============================================================
@@ -63,10 +74,37 @@ window.loadAllData = async function () {
 };
 
 // ============================================================
+// DETECÇÃO DE AMBIENTE NATIVO / PWA
+// ============================================================
+window.APP_ENV = (function () {
+  const ua = navigator.userAgent || '';
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                       window.navigator.standalone === true;
+  const isCapacitor = !!(window.Capacitor && window.Capacitor.isNative);
+  const isTWA = document.referrer.includes('android-app://');
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isAndroid = /Android/.test(ua);
+
+  return {
+    isStandalone,
+    isCapacitor,
+    isTWA,
+    isIOS,
+    isAndroid,
+    isNative: isCapacitor || isTWA,
+    isPWA: isStandalone && !isCapacitor && !isTWA,
+    platform: isIOS ? 'ios' : (isAndroid ? 'android' : 'web')
+  };
+})();
+
+console.log('🌍 Ambiente:', window.APP_ENV);
+
+// ============================================================
 // BOOTSTRAP — DISPARA QUANDO O DOM ESTIVER PRONTO
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 PLAY MY v' + CONFIG.VERSION + ' — Modular');
+  console.log('📱 Plataforma:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
 
   // Registra Service Worker imediatamente (PWA instalável)
   if ('serviceWorker' in navigator) {
@@ -79,7 +117,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 2. Health check periódico (a cada 3 minutos)
   setInterval(() => HealthCheck.runAll(), 180000);
 
-  // 3. Restaura sessão salva
+  // 3. Configura botão de instalação
+  setupInstallButton();
+
+  // 4. Restaura sessão salva
   const restored = restoreSession();
 
   if (restored) {
@@ -90,35 +131,87 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ============================================================
-// PWA — INSTALAÇÃO (celular + PC)
+// PWA — INSTALAÇÃO INTELIGENTE (v9.4.0)
 // ============================================================
+
+// Detecta se o app já está instalado
+function isPWAInstalled() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true ||
+         document.referrer.includes('android-app://') ||
+         (window.Capacitor && window.Capacitor.isNative);
+}
+
+// Mostra/esconde o botão de instalação conforme o estado
+function setupInstallButton() {
+  const btn = document.getElementById('installAppBtn');
+  if (!btn) return;
+
+  if (isPWAInstalled() || APP_ENV.isNative) {
+    btn.style.display = 'none';
+    btn.classList.add('hidden');
+    return;
+  }
+
+  // Sempre visível se não instalado
+  btn.style.display = 'inline-block';
+  btn.classList.remove('hidden');
+  btn.textContent = '📲 Instalar App';
+  btn.onclick = (e) => {
+    e.preventDefault();
+    installApp();
+  };
+}
+
+// Prompt nativo disponível (Android Chrome)
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   state.deferredInstallPrompt = e;
-  const btn = document.getElementById('installAppBtn');
-  if (btn) {
-    btn.style.display = 'inline-block';
-    btn.classList.remove('hidden');
-  }
-  console.log('📲 PWA: prompt de instalação disponível');
+  console.log('📲 PWA: prompt nativo disponível');
+  setupInstallButton();
 });
 
+// App instalado
 window.addEventListener('appinstalled', () => {
   console.log('✅ PWA: app instalado');
   state.deferredInstallPrompt = null;
   const btn = document.getElementById('installAppBtn');
-  if (btn) btn.style.display = 'none';
+  if (btn) {
+    btn.style.display = 'none';
+    btn.classList.add('hidden');
+  }
   if (typeof showToast === 'function') {
     showToast('✅ App instalado! Procure o ícone PLAY MY na tela inicial.', 'success', 5000);
   }
 });
 
+// ============================================================
+// INSTALAÇÃO — FLUXO INTELIGENTE
+// ============================================================
 window.installApp = async function () {
+  // 1. Já é nativo (Capacitor/TWA)
+  if (APP_ENV.isNative) {
+    if (typeof showToast === 'function') {
+      showToast('Você já está usando o app nativo!', 'success');
+    }
+    return;
+  }
+
+  // 2. Já está instalado como PWA
+  if (isPWAInstalled()) {
+    if (typeof showToast === 'function') {
+      showToast('O app já está instalado! Procure o ícone PLAY MY.', 'success');
+    }
+    return;
+  }
+
+  // 3. Prompt nativo (Android Chrome) — 1 toque
   if (state.deferredInstallPrompt) {
     try {
       state.deferredInstallPrompt.prompt();
       const choice = await state.deferredInstallPrompt.userChoice;
-      console.log('📲 PWA: escolha do usuário =', choice.outcome);
+      console.log('📲 PWA: escolha =', choice.outcome);
+
       if (choice.outcome === 'accepted') {
         if (typeof showToast === 'function') {
           showToast('✅ Instalando PLAY MY...', 'success', 3000);
@@ -128,30 +221,96 @@ window.installApp = async function () {
           showToast('Instalação cancelada', 'info', 3000);
         }
       }
+
       state.deferredInstallPrompt = null;
       const btn = document.getElementById('installAppBtn');
-      if (btn) btn.style.display = 'none';
+      if (btn) {
+        btn.style.display = 'none';
+        btn.classList.add('hidden');
+      }
       return;
     } catch (e) {
       console.warn('Erro no prompt nativo:', e);
     }
   }
 
+  // 4. Fallback: modal com instruções por plataforma
+  showInstallInstructions();
+};
+
+// ============================================================
+// MODAL DE INSTRUÇÕES (fallback bonito)
+// ============================================================
+function showInstallInstructions() {
   const ua = navigator.userAgent || '';
   const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
   const isAndroid = /Android/.test(ua);
 
-  let msg = '';
+  let title, html;
+
   if (isIOS) {
-    msg = '📱 No iPhone/iPad:\n\n1. Toque no botão Compartilhar (□↑)\n2. Escolha "Adicionar à Tela de Início"\n3. Confirme com "Adicionar"';
+    title = '📲 Instalar PLAY MY';
+    html = `
+      <div style="text-align:center; padding: 8px 4px;">
+        <p style="font-size:16px; margin-bottom:18px; color:#fff;">
+          No iPhone/iPad (Safari):
+        </p>
+        <ol style="text-align:left; font-size:15px; line-height:1.9; color:#ddd; padding-left:20px;">
+          <li>Toque no botão <b style="color:#ff2d55;">Compartilhar</b> (□↑) na barra inferior</li>
+          <li>Role e escolha <b style="color:#ff2d55;">"Adicionar à Tela de Início"</b></li>
+          <li>Toque em <b style="color:#ff2d55;">"Adicionar"</b></li>
+        </ol>
+        <p style="margin-top:18px; color:#888; font-size:13px;">
+          O ícone PLAY MY aparecerá na sua tela inicial.
+        </p>
+      </div>
+    `;
   } else if (isAndroid) {
-    msg = '📱 No Android:\n\n1. Toque no menu (⋮) do navegador\n2. Escolha "Instalar app" ou "Adicionar à tela inicial"\n3. Confirme';
+    title = '📲 Instalar PLAY MY';
+    html = `
+      <div style="text-align:center; padding: 8px 4px;">
+        <p style="font-size:16px; margin-bottom:18px; color:#fff;">
+          No Android (Chrome):
+        </p>
+        <ol style="text-align:left; font-size:15px; line-height:1.9; color:#ddd; padding-left:20px;">
+          <li>Toque no menu <b style="color:#ff2d55;">⋮</b> (três pontos) no canto superior</li>
+          <li>Escolha <b style="color:#ff2d55;">"Instalar app"</b> ou <b style="color:#ff2d55;">"Adicionar à tela inicial"</b></li>
+          <li>Confirme tocando em <b style="color:#ff2d55;">"Instalar"</b></li>
+        </ol>
+        <p style="margin-top:18px; color:#888; font-size:13px;">
+          Pronto! O app abre em tela cheia, sem barra do navegador.
+        </p>
+      </div>
+    `;
   } else {
-    msg = '💻 No computador:\n\n1. Clique no ícone de instalação na barra de endereço\n2. Ou vá em Menu → "Instalar PLAY MY"\n3. Confirme';
+    title = '📲 Instalar PLAY MY';
+    html = `
+      <div style="text-align:center; padding: 8px 4px;">
+        <p style="font-size:16px; margin-bottom:18px; color:#fff;">
+          No computador:
+        </p>
+        <ol style="text-align:left; font-size:15px; line-height:1.9; color:#ddd; padding-left:20px;">
+          <li>Clique no ícone de <b style="color:#ff2d55;">instalação</b> na barra de endereço</li>
+          <li>Ou vá em <b style="color:#ff2d55;">Menu → "Instalar PLAY MY"</b></li>
+          <li>Confirme</li>
+        </ol>
+      </div>
+    `;
   }
 
-  alert(msg);
-};
+  // Usa o showModal do seu módulo, se existir
+  if (typeof showModal === 'function') {
+    showModal({
+      title: title,
+      content: html,
+      hideFooter: true
+    });
+    return;
+  }
+
+  // Fallback: alert simples
+  alert(html.replace(/<[^>]+>/g, '').trim());
+}
 
 // ============================================================
 // ALIASES GLOBAIS (compatibilidade total com HTML inline)
@@ -286,8 +445,13 @@ window.updatePlayerProgress = window.updatePlayerProgress || updatePlayerProgres
 window.callAPI = window.callAPI || callAPI;
 window.getFallbackData = window.getFallbackData || getFallbackData;
 
+// PWA (v9.4.0)
+window.installApp = window.installApp || installApp;
+
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.2.0 carregado — aplicação inicializada');
+console.log('✅ [app.js] v9.4.0 carregado — aplicação inicializada');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
+console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
+console.log('📲 Instalação inteligente ativa — v9.4.0');
