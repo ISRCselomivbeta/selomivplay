@@ -144,3 +144,70 @@ body {
 .ledger-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
 .ledger-table th { background: transparent; color: var(--apple-label-2); font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 0.5px solid var(--apple-separator); font-size: 12px; text-transform: uppercase; }
 .ledger-table td { padding: 14px 16px; border-bottom: 0.5px solid var(--apple-separator); color: var(--apple-label); font-size: 14px; }
+
+/* ============================================================
+   BOTÃO DE INSTALAÇÃO PWA — v9.5.0
+   Adicionado no final do main.css
+   ============================================================ */
+#installAppBtn {
+  position: fixed;
+  bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+  right: 16px;
+  z-index: 9998;
+  background: linear-gradient(135deg, #ff2d55, #ff6b35);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 12px 22px;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 6px 24px rgba(255, 45, 85, 0.45);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: pulseInstall 2.4s ease-in-out infinite;
+  font-family: inherit;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: -0.01em;
+}
+
+#installAppBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 32px rgba(255, 45, 85, 0.6);
+}
+
+#installAppBtn:active {
+  transform: scale(0.97);
+}
+
+#installAppBtn.hidden {
+  display: none !important;
+}
+
+#installAppBtn:not(.hidden) {
+  display: inline-flex;
+}
+
+@keyframes pulseInstall {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+/* Mobile: ajusta posição para não colidir com o player */
+@media (max-width: 768px) {
+  #installAppBtn {
+    bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+    right: 12px;
+    padding: 10px 18px;
+    font-size: 13px;
+  }
+}
+
+/* Desktop: sobe um pouco */
+@media (min-width: 769px) {
+  #installAppBtn {
+    bottom: 24px;
+    right: 24px;
+  }
+}
