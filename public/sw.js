@@ -1,6 +1,11 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.1.0
+// SERVICE WORKER — PLAY MY v9.6.0
 // Cache inteligente por tipo de recurso + PWA
+//
+// MUDANÇAS v9.6.0:
+//   - Adicionados os 4 ícones novos ao pré-cache
+//   - SW_VERSION atualizado para forçar limpeza de cache antigo
+//   - Mantém NAVIGATE_HOME, JS pré-cache, stale-while-revalidate
 //
 // MUDANÇAS v9.1.0:
 //   - Adicionado NAVIGATE_HOME (usado pelo offline.html)
@@ -9,10 +14,9 @@
 //   - Imagens: stale-while-revalidate
 //   - Navegação: network-first com timeout de 6s
 //   - Fallback para offline.html quando index.html não está em cache
-//   - Logs mais informativos
 // ============================================================
 
-const SW_VERSION = '9.1.0';
+const SW_VERSION = '9.6.0';
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
@@ -25,7 +29,13 @@ const STATIC_ASSETS = [
   '/index.html',
   '/offline.html',
   '/manifest.json',
+
+  // ÍCONES PWA (v9.6.0)
   '/images/logo.png',
+  '/images/icon-192.png',
+  '/images/icon-512.png',
+  '/images/icon-maskable-192.png',
+  '/images/icon-maskable-512.png',
 
   // CSS
   '/css/main.css',
@@ -164,7 +174,7 @@ self.addEventListener('fetch', (event) => {
   // 1. Hosts conhecidos como "tempo real" → network-only
   // ============================================================
   if (NO_CACHE_HOSTS.some((host) => url.hostname.includes(host))) {
-    return; // deixa o navegador fazer fetch normal
+    return;
   }
 
   // ============================================================
@@ -192,7 +202,6 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) {
-          // Revalida em background
           fetch(request).then((response) => {
             if (response && response.status === 200) {
               caches.open(CACHE_STATIC).then((cache) => cache.put(request, response));
@@ -257,7 +266,6 @@ self.addEventListener('fetch', (event) => {
               if (idx) return idx;
               return caches.match('/offline.html').then((off) => {
                 if (off) return off;
-                // Último recurso: HTML inline
                 return new Response(
                   '<!DOCTYPE html><html><body style="background:#000;color:#fff;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h1>📴 Offline</h1><p>Sem conexão e sem cache disponível.</p></div></body></html>',
                   { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
@@ -346,7 +354,6 @@ self.addEventListener('message', (event) => {
       }
       break;
 
-    // ✅ NOVO: usado pelo offline.html para forçar navegação
     case 'NAVIGATE_HOME':
       event.waitUntil(
         self.clients.matchAll({ type: 'window' }).then((clients) => {
@@ -357,7 +364,6 @@ self.addEventListener('message', (event) => {
       );
       break;
 
-    // ✅ NOVO: forçar atualização do SW
     case 'FORCE_UPDATE':
       self.skipWaiting();
       break;
