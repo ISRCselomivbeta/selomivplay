@@ -3,18 +3,14 @@
   "outputDirectory": "public",
   "cleanUrls": true,
   "trailingSlash": false,
+
   "rewrites": [
-    { "source": "/api/backend", "destination": "/api/backend" },
-    { "source": "/api/elo", "destination": "/api/elo" },
-    { "source": "/api/valuation", "destination": "/api/valuation" },
-    { "source": "/api/isrc", "destination": "/api/isrc" },
-    { "source": "/api/royalties", "destination": "/api/royalties" },
-    { "source": "/api/streams", "destination": "/api/streams" },
     {
       "source": "/((?!api/|manifest\\.json|sw\\.js|images/|css/|js/|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
       "destination": "/index.html"
     }
   ],
+
   "headers": [
     {
       "source": "/(.*)",
@@ -67,7 +63,9 @@
       "source": "/api/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Accept, Authorization" }
       ]
     },
     {
@@ -89,25 +87,15 @@
       ]
     }
   ],
+
   "functions": {
-    "api/backend.js": {
-      "maxDuration": 30
-    },
-    "api/elo.js": {
-      "maxDuration": 30
-    },
-    "api/valuation.js": {
-      "maxDuration": 30
-    },
-    "api/isrc.js": {
-      "maxDuration": 30
-    },
-    "api/royalties.js": {
-      "maxDuration": 30
-    },
-    "api/streams.js": {
-      "maxDuration": 30
-    }
+    "api/backend.js":   { "maxDuration": 15 },
+    "api/elo.js":       { "maxDuration": 15 },
+    "api/valuation.js": { "maxDuration": 15 },
+    "api/isrc.js":      { "maxDuration": 15 },
+    "api/royalties.js": { "maxDuration": 15 },
+    "api/streams.js":   { "maxDuration": 15 }
   },
+
   "regions": ["gru1"]
 }
