@@ -1,8 +1,16 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v9.1.0
+// js/marketplace.js — PLAY MY v9.2.0
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
+//
+// MUDANÇAS v9.2.0:
+//   - Normalização de arrays em TODOS os loaders
+//     (get_artists, get_musicas, get_playlists, etc. podem vir
+//      como objeto; agora sempre viram array antes do state)
+//   - renderFeaturedArtists blindado com Array.isArray
+//   - renderArtists blindado
+//   - onerror nas imagens do YouTube (evita 404 quebrando card)
 //
 // MUDANÇAS v9.1.0:
 //   - Badge de ELO nos cards (⚡ 1520)
@@ -10,6 +18,26 @@
 //   - ELO carregado junto com os streams
 //   - Mantém: "🔥 Em alta", "▶ Ouvir", streams no card
 // ============================================================
+
+// ============================================================
+// NORMALIZADOR UNIVERSAL DE ARRAYS
+// ============================================================
+function ensureArray(data) {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== 'object') return [];
+  // Tenta os campos mais comuns
+  if (Array.isArray(data.data)) return data.data;
+  if (Array.isArray(data.artists)) return data.artists;
+  if (Array.isArray(data.musicas)) return data.musicas;
+  if (Array.isArray(data.playlists)) return data.playlists;
+  if (Array.isArray(data.tickets)) return data.tickets;
+  if (Array.isArray(data.investimentos)) return data.investimentos;
+  if (Array.isArray(data.ranking)) return data.ranking;
+  if (Array.isArray(data.items)) return data.items;
+  if (Array.isArray(data.list)) return data.list;
+  if (Array.isArray(data.result)) return data.result;
+  return [];
+}
 
 // ============================================================
 // NAVEGAÇÃO ENTRE SEÇÕES
@@ -50,26 +78,28 @@ window.toggleSidebar = function () {
 window.loadMarketplace = async function () {
   try {
     const r = await callAPI('get_musicas');
-    if (r && r.success && r.data && r.data.length) {
-      state.playlist = r.data;
+    if (r && r.success) {
+      state.playlist = ensureArray(r.data);
     }
   } catch (e) {
     console.warn('⚠️ loadMarketplace:', e.message);
+    state.playlist = [];
   }
   renderMarketplace();
   renderRecommended();
   carregarStreamsDasMusicas();
-  carregarELOsDasMusicas(); // 🆕
+  carregarELOsDasMusicas();
 };
 
 window.loadExternalMarketplace = async function () {
   try {
     const r = await callAPI('get_external_musicas');
-    if (r && r.success && r.data) {
-      state.externalPlaylist = r.data;
+    if (r && r.success) {
+      state.externalPlaylist = ensureArray(r.data);
     }
   } catch (e) {
     console.warn('⚠️ loadExternalMarketplace:', e.message);
+    state.externalPlaylist = [];
   }
   renderExternalMarketplace();
 };
@@ -77,10 +107,12 @@ window.loadExternalMarketplace = async function () {
 window.loadTopInvestments = async function () {
   try {
     const r = await callAPI('get_top_investments');
-    if (r && r.success && r.data) {
-      state.topInvestments = r.data;
+    if (r && r.success) {
+      state.topInvestments = ensureArray(r.data);
     }
-  } catch (e) {}
+  } catch (e) {
+    state.topInvestments = [];
+  }
   renderTopInvestments();
 };
 
@@ -88,10 +120,12 @@ window.loadUserPlaylists = async function () {
   if (!state.currentUser) return;
   try {
     const r = await callAPI('get_playlists');
-    if (r && r.success && r.data) {
-      state.userPlaylists = r.data;
+    if (r && r.success) {
+      state.userPlaylists = ensureArray(r.data);
     }
-  } catch (e) {}
+  } catch (e) {
+    state.userPlaylists = [];
+  }
   renderPlaylists();
   renderFavorites();
 };
@@ -99,10 +133,12 @@ window.loadUserPlaylists = async function () {
 window.loadGlobalPlaylists = async function () {
   try {
     const r = await callAPI('get_global_playlists');
-    if (r && r.success && r.data) {
-      state.globalPlaylists = r.data;
+    if (r && r.success) {
+      state.globalPlaylists = ensureArray(r.data);
     }
-  } catch (e) {}
+  } catch (e) {
+    state.globalPlaylists = [];
+  }
   renderGlobalPlaylists();
   if (state.currentUser && state.currentUser.tipo === 'admin') {
     renderAdminGlobalPlaylists();
@@ -112,10 +148,18 @@ window.loadGlobalPlaylists = async function () {
 window.loadArtists = async function () {
   try {
     const r = await callAPI('get_artists');
-    if (r && r.success && r.data) {
-      state.artists = r.data;
+    if (r && r.success) {
+      // ✅ Blindagem: força array, aconteça o que acontecer
+      state.artists = ensureArray(r.data);
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('⚠️ loadArtists:', e.message);
+    state.artists = [];
+  }
+  // ✅ Segurança extra: se por algum motivo state.artists não for array
+  if (!Array.isArray(state.artists)) {
+    state.artists = [];
+  }
   renderArtists();
   renderFeaturedArtists();
 };
@@ -124,19 +168,23 @@ window.loadFollowing = async function () {
   if (!state.currentUser) return;
   try {
     const r = await callAPI('get_following');
-    if (r && r.success && r.data) {
-      state.followingArtists = Array.isArray(r.data) ? r.data.map(String) : [];
+    if (r && r.success) {
+      state.followingArtists = ensureArray(r.data).map(String);
     }
-  } catch (e) {}
+  } catch (e) {
+    state.followingArtists = [];
+  }
 };
 
 window.loadTickets = async function () {
   try {
     const r = await callAPI('get_tickets');
-    if (r && r.success && r.data) {
-      state.tickets = r.data;
+    if (r && r.success) {
+      state.tickets = ensureArray(r.data);
     }
-  } catch (e) {}
+  } catch (e) {
+    state.tickets = [];
+  }
   renderTickets();
 };
 
@@ -148,9 +196,10 @@ window.carregarStreamsDasMusicas = async function () {
 
   try {
     const r = await callAPI('get_streaming_ranking', { limit: 50 });
-    if (r && r.success && r.data) {
+    if (r && r.success) {
+      const lista = ensureArray(r.data);
       const mapa = {};
-      r.data.forEach(x => {
+      lista.forEach(x => {
         mapa[String(x.music_id)] = x.streams_total || 0;
       });
       state.streamsMap = mapa;
@@ -163,16 +212,20 @@ window.carregarStreamsDasMusicas = async function () {
 };
 
 // ============================================================
-// 🆕 CARREGAR ELOs DAS MÚSICAS
+// CARREGAR ELOs DAS MÚSICAS
 // ============================================================
 window.carregarELOsDasMusicas = async function () {
   if (!state.playlist || !state.playlist.length) return;
 
   try {
     const r = await callAPI('get_elo_ranking');
-    if (r && r.success && r.data && r.data.ranking) {
+    if (r && r.success) {
+      // Aceita tanto {data: {ranking: []}} quanto {data: []}
+      const ranking = ensureArray(
+        (r.data && r.data.ranking) ? r.data.ranking : r.data
+      );
       const mapa = {};
-      r.data.ranking.forEach(x => {
+      ranking.forEach(x => {
         mapa[String(x.music_id)] = {
           elo: x.elo || 1000,
           faixa: x.faixa || 'neutro',
@@ -190,7 +243,7 @@ window.carregarELOsDasMusicas = async function () {
 };
 
 // ============================================================
-// 🆕 OBTER ELO DE UMA MÚSICA
+// OBTER ELO DE UMA MÚSICA
 // ============================================================
 function getEloMusica(musicId) {
   if (!state.eloMap) return null;
@@ -204,15 +257,16 @@ window.renderMarketplace = function () {
   const c = document.getElementById('marketplaceContent');
   if (!c) return;
 
-  if (!state.playlist.length) {
+  const playlist = Array.isArray(state.playlist) ? state.playlist : [];
+
+  if (!playlist.length) {
     c.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--apple-label-2);padding:40px">Nenhuma música disponível</div>';
     return;
   }
 
-  // 🆕 Ordenação: se o usuário escolheu ordenar por ELO, usa; senão mantém ordem original
-  let lista = state.playlist.slice(0, 14);
+  let lista = playlist.slice(0, 14);
   if (state.ordenarPor === 'elo' && state.eloMap) {
-    lista = state.playlist.slice().sort((a, b) => {
+    lista = playlist.slice().sort((a, b) => {
       const eloA = getEloMusica(a.id)?.elo || 0;
       const eloB = getEloMusica(b.id)?.elo || 0;
       return eloB - eloA;
@@ -224,7 +278,7 @@ window.renderMarketplace = function () {
     const streams = (state.streamsMap && state.streamsMap[String(t.id)]) || 0;
     const emAlta = streams > 100;
     const eloInfo = getEloMusica(t.id);
-    const idx = state.playlist.findIndex(x => String(x.id) === String(t.id));
+    const idx = playlist.findIndex(x => String(x.id) === String(t.id));
 
     return '<div class="spotify-card">' +
       '<div class="spotify-cover">' +
@@ -271,7 +325,7 @@ window.renderMarketplace = function () {
 };
 
 // ============================================================
-// 🆕 ALTERNAR ORDENAÇÃO (ELO vs PADRÃO)
+// ALTERNAR ORDENAÇÃO (ELO vs PADRÃO)
 // ============================================================
 window.alternarOrdenacao = function () {
   state.ordenarPor = state.ordenarPor === 'elo' ? 'padrao' : 'elo';
@@ -288,16 +342,16 @@ window.renderRecommended = function () {
   const rec = document.getElementById('recommendedCard');
   if (!rec) return;
 
-  if (!state.playlist[0]) {
+  const playlist = Array.isArray(state.playlist) ? state.playlist : [];
+  if (!playlist[0]) {
     rec.innerHTML = '';
     return;
   }
 
-  // Recomendado: música com maior ELO
-  let destaque = state.playlist[0];
+  let destaque = playlist[0];
   if (state.eloMap) {
     let maiorElo = 0;
-    state.playlist.forEach(t => {
+    playlist.forEach(t => {
       const eloInfo = getEloMusica(t.id);
       if (eloInfo && eloInfo.elo > maiorElo) {
         maiorElo = eloInfo.elo;
@@ -326,7 +380,9 @@ window.renderExternalMarketplace = function () {
   const c = document.getElementById('externalContent');
   if (!c) return;
 
-  if (!state.externalPlaylist.length) {
+  const externalPlaylist = Array.isArray(state.externalPlaylist) ? state.externalPlaylist : [];
+
+  if (!externalPlaylist.length) {
     c.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--apple-label-2)">' +
       '<i class="bi bi-globe" style="font-size:48px;color:var(--apple-orange)"></i>' +
       '<h3>Nenhuma música externa</h3>' +
@@ -335,7 +391,7 @@ window.renderExternalMarketplace = function () {
     return;
   }
 
-  c.innerHTML = state.externalPlaylist.map((t, i) =>
+  c.innerHTML = externalPlaylist.map((t, i) =>
     '<div class="spotify-card external-card">' +
       '<div class="external-badge">EXT</div>' +
       '<div class="spotify-cover">' +
@@ -357,13 +413,14 @@ window.renderTopInvestments = function () {
   const c = document.getElementById('investmentsContent');
   if (!c) return;
 
-  if (!state.topInvestments.length) {
+  const topInvestments = Array.isArray(state.topInvestments) ? state.topInvestments : [];
+
+  if (!topInvestments.length) {
     c.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--apple-label-2);padding:40px">Nenhuma recomendação</div>';
     return;
   }
 
-  // 🆕 Ordena top investments por ELO se disponível
-  let lista = state.topInvestments.slice();
+  let lista = topInvestments.slice();
   if (state.eloMap) {
     lista.sort((a, b) => {
       const eloA = getEloMusica(a.id)?.elo || 0;
@@ -399,12 +456,15 @@ window.renderArtists = function () {
   const c = document.getElementById('artistsContent');
   if (!c) return;
 
-  if (!state.artists.length) {
+  // ✅ Blindagem
+  const artists = Array.isArray(state.artists) ? state.artists : [];
+
+  if (!artists.length) {
     c.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--apple-label-2)">Nenhum artista</div>';
     return;
   }
 
-  c.innerHTML = state.artists.map(a => {
+  c.innerHTML = artists.map(a => {
     const isFollowing = (state.followingArtists || []).map(String).includes(String(a.id));
     const avatar = a.avatar && a.avatar.startsWith('http') ? a.avatar : PLACEHOLDERS.ARTIST;
     return '<div class="artist-card">' +
@@ -422,7 +482,10 @@ window.renderFeaturedArtists = function () {
   const c = document.getElementById('featuredArtistsGrid');
   if (!c) return;
 
-  const items = (state.artists || []).slice(0, 6);
+  // ✅ Blindagem dupla
+  const artists = Array.isArray(state.artists) ? state.artists : [];
+  const items = artists.slice(0, 6);
+
   if (!items.length) { c.innerHTML = ''; return; }
 
   c.innerHTML = items.map(a => {
@@ -445,8 +508,10 @@ window.renderPlaylists = function () {
   const pc = document.getElementById('playlistsContent');
   if (!pc) return;
 
-  if (state.userPlaylists.length) {
-    pc.innerHTML = state.userPlaylists.map(p =>
+  const userPlaylists = Array.isArray(state.userPlaylists) ? state.userPlaylists : [];
+
+  if (userPlaylists.length) {
+    pc.innerHTML = userPlaylists.map(p =>
       '<div class="playlist-item" onclick="playUserPlaylist(\'' + p.id + '\')">' +
         '<div class="playlist-cover"><i class="bi bi-music-note-list"></i></div>' +
         '<div class="flex-grow-1">' +
@@ -467,9 +532,12 @@ window.renderFavorites = function () {
   const fc = document.getElementById('favoritesContent');
   if (!fc) return;
 
+  const playlist = Array.isArray(state.playlist) ? state.playlist : [];
+  const externalPlaylist = Array.isArray(state.externalPlaylist) ? state.externalPlaylist : [];
+
   const favs = [
-    ...(state.playlist || []).filter(t => state.favoriteMusicIds && state.favoriteMusicIds.map(String).includes(String(t.id))),
-    ...(state.externalPlaylist || []).filter(t => state.favoriteMusicIds && state.favoriteMusicIds.map(String).includes(String(t.id)))
+    ...playlist.filter(t => state.favoriteMusicIds && state.favoriteMusicIds.map(String).includes(String(t.id))),
+    ...externalPlaylist.filter(t => state.favoriteMusicIds && state.favoriteMusicIds.map(String).includes(String(t.id)))
   ];
 
   if (favs.length) {
@@ -477,7 +545,7 @@ window.renderFavorites = function () {
       const eloInfo = getEloMusica(t.id);
       return '<div class="spotify-card">' +
         '<div class="spotify-cover">' +
-          '<img src="' + getCoverUrl(t, false) + '">' +
+          '<img src="' + getCoverUrl(t, false) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
           (eloInfo && eloInfo.elo >= 1400
             ? '<div style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
                 'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
@@ -498,7 +566,7 @@ window.renderFavorites = function () {
 window.renderGlobalPlaylists = function () {
   const c1 = document.getElementById('globalPlaylistsGrid');
   const c2 = document.getElementById('globalPlaylistsContent');
-  const items = state.globalPlaylists || [];
+  const items = Array.isArray(state.globalPlaylists) ? state.globalPlaylists : [];
   const isAdmin = state.currentUser && state.currentUser.tipo === 'admin';
 
   const html = items.length ? items.map(p =>
@@ -536,7 +604,7 @@ window.renderAdminGlobalPlaylists = function () {
   const c = document.getElementById('adminGlobalPlaylistsContent');
   if (!c) return;
 
-  const items = state.globalPlaylists || [];
+  const items = Array.isArray(state.globalPlaylists) ? state.globalPlaylists : [];
   if (!items.length) {
     c.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-globe empty-icon"></i><h5 class="text-muted">Nenhuma playlist global</h5></div>';
     return;
@@ -565,12 +633,14 @@ window.renderTickets = function () {
   const c = document.getElementById('ticketsContent');
   if (!c) return;
 
-  if (!state.tickets.length) {
+  const tickets = Array.isArray(state.tickets) ? state.tickets : [];
+
+  if (!tickets.length) {
     c.innerHTML = '<div class="empty-state-actionable"><i class="bi bi-ticket-perforated empty-icon"></i><h5 class="text-muted">Nenhum ingresso disponível</h5></div>';
     return;
   }
 
-  c.innerHTML = state.tickets.map(t =>
+  c.innerHTML = tickets.map(t =>
     '<div class="ticket-card">' +
       '<div class="d-flex justify-content-between">' +
         '<div class="ticket-title">' + (t.titulo || 'Ingresso') + '</div>' +
@@ -603,12 +673,15 @@ window.performSearch = async function () {
     const ql = String(q).toLowerCase();
     const safeStr = (v) => String(v == null ? '' : v).toLowerCase();
 
-    const internal = (state.playlist || []).filter(i => {
+    const playlist = Array.isArray(state.playlist) ? state.playlist : [];
+    const externalPlaylist = Array.isArray(state.externalPlaylist) ? state.externalPlaylist : [];
+
+    const internal = playlist.filter(i => {
       if (!i) return false;
       return safeStr(i.titulo).includes(ql) || safeStr(i.artista).includes(ql);
     });
 
-    const external = (state.externalPlaylist || []).filter(i => {
+    const external = externalPlaylist.filter(i => {
       if (!i) return false;
       return safeStr(i.titulo).includes(ql) || safeStr(i.artista).includes(ql);
     });
@@ -673,7 +746,7 @@ window.displaySearchResults = function (all) {
       : '';
 
     return '<div class="search-result-item" onclick="' + clickAction + '">' +
-      '<img src="' + cover + '" class="search-result-cover" onerror="this.src=\'' + PLACEHOLDERS.MIV_56 + '\'">' +
+      '<img src="' + cover + '" class="search-result-cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_56 + '\'">' +
       '<div class="search-result-info">' +
         '<div class="search-result-title">' + title +
           (eloInfo ? ' <span style="color:' + eloInfo.cor + ';font-size:11px;margin-left:6px">⚡ ' + eloInfo.elo + '</span>' : '') +
@@ -711,8 +784,8 @@ window.openPlaylistSelector = function (track) {
   if (!document.getElementById('playlistSelectorModal')) createPlaylistSelectorModal();
   const list = document.getElementById('playlistSelectorList');
   if (!list) return;
-  const playlists = state.userPlaylists || [];
-  const globalPlaylists = state.currentUser.tipo === 'admin' ? (state.globalPlaylists || []) : [];
+  const playlists = Array.isArray(state.userPlaylists) ? state.userPlaylists : [];
+  const globalPlaylists = state.currentUser.tipo === 'admin' ? (Array.isArray(state.globalPlaylists) ? state.globalPlaylists : []) : [];
   let html = '';
   if (playlists.length) {
     html += '<div style="margin-bottom:12px;font-weight:600">Minhas Playlists</div>';
@@ -811,8 +884,9 @@ window.selectPlaylistForYouTube = async function (playlistId, isGlobal) {
 // INVESTIMENTO INTERNO / EXTERNO
 // ============================================================
 window.openInvestModal = function (i) {
-  if (i < 0 || i >= state.playlist.length) return;
-  const t = state.playlist[i];
+  const playlist = Array.isArray(state.playlist) ? state.playlist : [];
+  if (i < 0 || i >= playlist.length) return;
+  const t = playlist[i];
   state.currentInvestTrack = t;
   document.getElementById('investTrackTitle').textContent = t.titulo || '';
   document.getElementById('investTrackArtist').textContent = t.artista || '';
@@ -873,8 +947,9 @@ window.confirmInvestment = async function () {
 };
 
 window.openInvestExternalModal = function (i) {
-  if (i < 0 || i >= state.externalPlaylist.length) return;
-  const t = state.externalPlaylist[i];
+  const externalPlaylist = Array.isArray(state.externalPlaylist) ? state.externalPlaylist : [];
+  if (i < 0 || i >= externalPlaylist.length) return;
+  const t = externalPlaylist[i];
   state.currentExternalTrack = t;
   document.getElementById('investExternalTitleDisplay').textContent = t.titulo || '';
   document.getElementById('investExternalArtistDisplay').textContent = t.artista || '';
@@ -1052,12 +1127,14 @@ window.createPlaylist = async function () {
 };
 
 window.playUserPlaylist = function (id) {
-  const pl = (state.userPlaylists || []).find(p => String(p.id) === String(id));
+  const playlists = Array.isArray(state.userPlaylists) ? state.userPlaylists : [];
+  const pl = playlists.find(p => String(p.id) === String(id));
   if (!pl || !pl.musicas || !pl.musicas.length) { showToast('Playlist vazia', 'warning'); return; }
+  const playlist = Array.isArray(state.playlist) ? state.playlist : [];
   const queueItems = [];
   (pl.musicas || []).forEach(mid => {
     const sid = String(mid);
-    const idx = state.playlist.findIndex(m => String(m.id) === sid);
+    const idx = playlist.findIndex(m => String(m.id) === sid);
     if (idx !== -1) {
       queueItems.push({ type: 'internal', index: idx });
     } else if (sid.startsWith('yt_')) {
@@ -1105,13 +1182,15 @@ window.createGlobalPlaylist = async function () {
 
 window.openManageGlobalPlaylist = function (playlistId) {
   if (!state.currentUser || state.currentUser.tipo !== 'admin') { showToast('Apenas admin', 'error'); return; }
-  const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(playlistId));
+  const playlists = Array.isArray(state.globalPlaylists) ? state.globalPlaylists : [];
+  const pl = playlists.find(p => String(p.id) === String(playlistId));
   if (!pl) { showToast('Playlist não encontrada', 'error'); return; }
   state.currentManagingPlaylistId = playlistId;
   document.getElementById('manageGlobalPlaylistName').value = pl.nome || '';
   const sel = document.getElementById('manageGlobalMusicSelect');
+  const playlist = Array.isArray(state.playlist) ? state.playlist : [];
   sel.innerHTML = '<option value="">Selecione uma música...</option>' +
-    (state.playlist || []).map(m => '<option value="' + m.id + '">' + (m.titulo || '') + ' — ' + (m.artista || '') + '</option>').join('');
+    playlist.map(m => '<option value="' + m.id + '">' + (m.titulo || '') + ' — ' + (m.artista || '') + '</option>').join('');
   renderManageGlobalMusicList();
   showModal('manageGlobalPlaylistModal');
 };
@@ -1119,7 +1198,8 @@ window.openManageGlobalPlaylist = function (playlistId) {
 window.renderManageGlobalMusicList = function () {
   const list = document.getElementById('manageGlobalMusicList');
   if (!list) return;
-  const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(state.currentManagingPlaylistId));
+  const playlists = Array.isArray(state.globalPlaylists) ? state.globalPlaylists : [];
+  const pl = playlists.find(p => String(p.id) === String(state.currentManagingPlaylistId));
   if (!pl) { list.innerHTML = ''; return; }
   const musicIds = pl.musicas || [];
   document.getElementById('manageGlobalMusicCount').textContent = musicIds.length;
@@ -1127,8 +1207,9 @@ window.renderManageGlobalMusicList = function () {
     list.innerHTML = '<div class="text-muted text-center p-3">Nenhuma música ainda</div>';
     return;
   }
+  const playlist = Array.isArray(state.playlist) ? state.playlist : [];
   list.innerHTML = musicIds.map(id => {
-    const m = (state.playlist || []).find(x => String(x.id) === String(id));
+    const m = playlist.find(x => String(x.id) === String(id));
     if (!m) {
       if (String(id).startsWith('yt_')) {
         return '<div class="d-flex align-items-center justify-content-between p-2 mb-1" style="background:var(--apple-gray-5);border-radius:var(--radius-sm)">' +
@@ -1140,7 +1221,7 @@ window.renderManageGlobalMusicList = function () {
     }
     return '<div class="d-flex align-items-center justify-content-between p-2 mb-1" style="background:var(--apple-gray-5);border-radius:var(--radius-sm)">' +
       '<div class="d-flex align-items-center gap-2">' +
-        '<img src="' + getCoverUrl(m, false) + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover">' +
+        '<img src="' + getCoverUrl(m, false) + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
         '<div><div class="text-white" style="font-size:13px;font-weight:600">' + (m.titulo || '') + '</div>' +
           '<div class="text-muted" style="font-size:11px">' + (m.artista || '') + '</div></div>' +
       '</div>' +
@@ -1188,13 +1269,15 @@ window.removeMusicFromGlobalPlaylist = async function (musicId) {
 };
 
 window.playGlobalPlaylist = function (playlistId) {
-  const pl = (state.globalPlaylists || []).find(p => String(p.id) === String(playlistId));
+  const playlists = Array.isArray(state.globalPlaylists) ? state.globalPlaylists : [];
+  const pl = playlists.find(p => String(p.id) === String(playlistId));
   if (!pl) { showToast('Playlist não encontrada', 'error'); return; }
   const ids = (pl.musicas || []).map(String);
   if (!ids.length) { showToast('Playlist vazia', 'warning'); return; }
+  const playlist = Array.isArray(state.playlist) ? state.playlist : [];
   const queueItems = [];
   ids.forEach(id => {
-    const idx = state.playlist.findIndex(m => String(m.id) === String(id));
+    const idx = playlist.findIndex(m => String(m.id) === String(id));
     if (idx !== -1) queueItems.push({ type: 'internal', index: idx });
   });
   if (!queueItems.length) { showToast('Nenhuma música disponível', 'warning'); return; }
@@ -1235,7 +1318,8 @@ window.createTicket = async function () {
 
 window.redeemTicket = async function (id) {
   if (!state.currentUser) return;
-  const ticket = state.tickets.find(t => String(t.id) === String(id));
+  const tickets = Array.isArray(state.tickets) ? state.tickets : [];
+  const ticket = tickets.find(t => String(t.id) === String(id));
   if (!ticket) return;
   if (state.seloCoinBalance < ticket.preco_selo) { showToast('SELO insuficiente', 'error'); return; }
   if (!confirm('Resgatar por ' + ticket.preco_selo + ' SELO?')) return;
@@ -1292,4 +1376,4 @@ window.toggleFavoriteMusic = async function (musicId) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.1.0 carregado — ELO + streams + badge "Em alta" + Ouvir');
+console.log('✅ [marketplace.js] v9.2.0 carregado — ELO + streams + badge "Em alta" + Ouvir + array-safe');
