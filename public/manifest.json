@@ -1,46 +1,109 @@
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/offline.html',
-  '/manifest.json',
-
-  // Ícones novos
-  '/images/icon-192.png',
-  '/images/icon-512.png',
-  '/images/icon-maskable-192.png',
-  '/images/icon-maskable-512.png',
-  '/images/logo.png',
-
-  // CSS
-  '/css/main.css',
-  '/css/auth.css',
-  '/css/marketplace.css',
-  '/css/player.css',
-  '/css/modals.css',
-  '/css/blockchain.css',
-  '/css/news.css',
-  '/css/responsive.css',
-
-  // JS (todos)
-  '/js/config.js',
-  '/js/utils.js',
-  '/js/state.js',
-  '/js/router.js',
-  '/js/api.js',
-  '/js/auth.js',
-  '/js/youtube.js',
-  '/js/player.js',
-  '/js/marketplace.js',
-  '/js/portfolio.js',
-  '/js/trades.js',
-  '/js/blockchain.js',
-  '/js/modals.js',
-  '/js/news.js',
-  '/js/news-unified.js',
-  '/js/stream-tracker.js',
-  '/js/valuation-panel.js',
-  '/js/elo-panel.js',
-  '/js/streams-panel.js',
-  '/js/brand-info.js',
-  '/js/app.js'
-];
+{
+  "name": "PLAY MY — Música sem limites",
+  "short_name": "PLAY MY",
+  "description": "Plataforma de investimento em música com streaming, blockchain e royalties.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "id": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["music", "entertainment", "finance"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/images/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/images/screenshot-mobile.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "PLAY MY no celular"
+    },
+    {
+      "src": "/images/screenshot-desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "PLAY MY no computador"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Marketplace",
+      "short_name": "Marketplace",
+      "description": "Explorar músicas para investir",
+      "url": "/?section=marketplace",
+      "icons": [
+        {
+          "src": "/images/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Notícias",
+      "short_name": "Notícias",
+      "description": "Últimas notícias do mundo da música",
+      "url": "/?section=news",
+      "icons": [
+        {
+          "src": "/images/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Meu Portfólio",
+      "short_name": "Portfólio",
+      "description": "Ver meus investimentos",
+      "url": "/?section=portfolio",
+      "icons": [
+        {
+          "src": "/images/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
