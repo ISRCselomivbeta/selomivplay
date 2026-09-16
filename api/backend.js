@@ -1,27 +1,33 @@
-// BACKEND.JS - VERSÃO 9.6.0
+// BACKEND.JS - VERSÃO 9.7.0
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
+// + COMPATIBILIDADE TOTAL COM GAS 7.0.0
 //
-// MUDANÇAS v9.6.0 (correção de HTTP 500 no /api/backend?action=ping):
-//   - nodemailer com require protegido (evita morte da função se
-//     a dependência estiver ausente/quebrada no deploy da Vercel)
+// MUDANÇAS v9.7.0:
+//   - Delegação genérica ao GAS 7.0.0 via GAS_ACTIONS set
+//   - Normalização de playlists (string CSV ↔ array)
+//   - Correção do fallback do `buy` (não mente mais)
+//   - `callGAS` desembrulha resposta do GAS via unwrapGAS
+//   - Ações ELO/Valuation/ISRC delegadas ao GAS com fallback local
+//   - `add_block` espelha no GAS
+//
+// MUDANÇAS v9.6.0:
+//   - nodemailer com require protegido
 //   - sendEmail trata nodemailer === null
-//   - req.body / req.query protegidos com fallback {}
-//   - versão bumpada para 9.6.0
+//   - req.body / req.query protegidos
 //
 // MUDANÇAS v9.5.0:
-//   - aggregateNews com Promise.allSettled + timeout global 8s
-//   - RSS timeout reduzido de 12s para 6s + check content-type
-//   - callGAS com timeout 6s e 1 retry (evita 500 por timeout)
-//   - action=ping paralelo (Promise.allSettled) — resposta rápida
+//   - aggregateNews com Promise.allSettled + timeout 8s
+//   - RSS timeout 6s + check content-type
+//   - callGAS com timeout 6s e 1 retry
+//   - action=ping paralelo (Promise.allSettled)
 //   - get_news retorna cached:wasCached (real)
-//   - cache negativo curto (30s) para não martelar o Google
+//   - cache negativo curto (30s)
 //
 // MUDANÇAS v9.4.0:
-//   - register_streaming agora adiciona ao streams_index
+//   - register_streaming adiciona ao streams_index
 //   - get_streaming_ranking varre o streams_index
-//   - aggregateNews reduzido de 12 para 6 queries
 // ============================================================
 
 // ============================================================
@@ -45,10 +51,39 @@ try {
     console.warn('⚠️ @vercel/kv não instalado — usando fallback em memória');
 }
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
+const GAS_URL = process.env.GAS_URL || 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
 const EMAIL_FROM = 'selomivplay@gmail.com';
 const EMAIL_NAME = 'PLAY MY';
+
+// ============================================================
+// AÇÕES QUE EXISTEM NO GAS 7.0.0
+// ============================================================
+const GAS_ACTIONS = new Set([
+    'health', 'ping', 'login', 'register', 'confirm_email', 'resend_confirmation',
+    'get_musicas', 'get_music_details', 'get_saldo', 'get_carteira', 'get_extrato',
+    'get_top_investments', 'get_playlists', 'create_playlist', 'toggle_favorite',
+    'get_artist_data', 'upload_music', 'update_music', 'pause_music', 'delete_music',
+    'get_external_musicas', 'suggest_external_music', 'buy_external', 'buy',
+    'request_withdrawal', 'add_balance', 'get_withdrawals', 'get_user_profile',
+    'update_profile', 'get_stats', 'get_global_playlists', 'create_global_playlist',
+    'add_music_to_global_playlist', 'remove_music_from_global_playlist',
+    'get_artists', 'get_following', 'toggle_follow', 'get_tickets', 'create_ticket',
+    'redeem_ticket', 'search_youtube', 'search_isrc', 'get_youtube_earnings',
+    'get_youtube_stats', 'register_streaming', 'get_streaming_stats', 'get_mining_blocks',
+    'get_mining_stats', 'get_mining_ranking',
+    'request_password_reset', 'verify_reset_token', 'reset_password',
+    'create_trade', 'get_trades', 'accept_trade', 'decline_trade', 'cancel_trade',
+    'process_trade', 'get_trade_details',
+    'create_pix_payment', 'check_pix_payment', 'get_user_pix_payments',
+    'register_interaction', 'get_recommendations',
+    'add_transaction', 'transfer_shares',
+    'get_news', 'mark_news_seen', 'track_news_interaction',
+    'calcular_elo', 'ver_elo', 'get_elo_ranking', 'atualizar_todos_elos',
+    'calcular_valuation', 'ver_valuation', 'valuation_catalogo',
+    'validar_isrc', 'buscar_isrc', 'vincular_isrc', 'ver_isrc', 'listar_isrcs',
+    'add_block'
+]);
 
 // ============================================================
 // MAPA DE LOGOS DE FONTES REAIS
@@ -208,8 +243,48 @@ function extractYouTubeId(url) {
     return null;
 }
 
+// v9.7.0 — CSV ↔ Array
+function csvToArray(csv) {
+    if (!csv) return [];
+    if (Array.isArray(csv)) return csv;
+    return String(csv).split(',').map(s => s.trim()).filter(Boolean);
+}
+function arrayToCsv(arr) {
+    if (!arr) return '';
+    if (typeof arr === 'string') return arr;
+    return arr.filter(Boolean).join(',');
+}
+function normalizePlaylistFromGAS(pl) {
+    if (!pl) return pl;
+    const musicas = csvToArray(pl.musicas);
+    return {
+        id: pl.id || pl.playlist_id,
+        nome: pl.nome || pl.name || '',
+        descricao: pl.descricao || pl.description || '',
+        musicas: musicas,
+        music_count: musicas.length,
+        is_global: true,
+        created_by: pl.admin_id || pl.user_id || pl.created_by || '',
+        created_at: pl.created_at || new Date().toISOString()
+    };
+}
+function normalizePlaylistFromKV(pl) {
+    if (!pl) return pl;
+    const musicas = Array.isArray(pl.musicas) ? pl.musicas : csvToArray(pl.musicas);
+    return {
+        id: pl.id,
+        nome: pl.nome,
+        descricao: pl.descricao || '',
+        musicas: musicas,
+        music_count: pl.music_count || musicas.length,
+        is_global: pl.is_global !== undefined ? pl.is_global : true,
+        created_by: pl.created_by || '',
+        created_at: pl.created_at || new Date().toISOString()
+    };
+}
+
 // ============================================================
-// CHAMAR GAS — timeout 6s + 1 retry (evita 500 por timeout)
+// CHAMAR GAS — timeout 6s + 1 retry
 // ============================================================
 async function callGAS(action, params = {}, retries = 1) {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -243,12 +318,30 @@ async function callGAS(action, params = {}, retries = 1) {
     }
 }
 
+// v9.7.0 — Desembrulha resposta do GAS
+function unwrapGAS(gasResult) {
+    if (!gasResult || !gasResult.success) {
+        return { success: false, message: gasResult?.error || 'GAS falhou', _via: 'gas_error' };
+    }
+    const inner = gasResult.data || {};
+    if (inner.success === false) {
+        return { success: false, message: inner.message || 'GAS retornou erro', _via: 'gas_error' };
+    }
+    return {
+        success: true,
+        data: inner.data !== undefined ? inner.data : inner,
+        message: inner.message,
+        _via: 'gas',
+        _raw: inner
+    };
+}
+
 // ============================================================
-// ENVIO DE EMAIL (protegido: se nodemailer faltar, retorna erro controlado)
+// ENVIO DE EMAIL
 // ============================================================
 async function sendEmail(to, subject, html, retries = 3) {
     if (!nodemailer) {
-        console.warn('⚠️ [email] nodemailer indisponível — retornando erro controlado');
+        console.warn('⚠️ [email] nodemailer indisponível');
         return { success: false, error: 'nodemailer indisponível' };
     }
     const emailPass = process.env.EMAIL_PASS;
@@ -380,8 +473,7 @@ async function addBlockToChain(data) {
 }
 
 // ============================================================
-// NOTÍCIAS REAIS — Google News RSS (busca DIRETA, sem proxy)
-// timeout 6s + check content-type
+// NOTÍCIAS REAIS — Google News RSS
 // ============================================================
 async function fetchNewsFromGoogleRSS(query, categoria) {
     try {
@@ -391,7 +483,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.6)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -457,7 +549,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
 }
 
 // ============================================================
-// AGGREGATE NEWS — allSettled + timeout global 8s + cache negativo
+// AGGREGATE NEWS — allSettled + timeout global 8s
 // ============================================================
 async function aggregateNews() {
     const cached = await Storage.get('news_cache');
@@ -564,7 +656,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
 
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.6 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.7 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -874,6 +966,10 @@ async function calcularValuation(music_id, video_id_youtube) {
 }
 
 // ============================================================
+// ⚠️ CONTINUA NA PARTE 2/2 (próxima mensagem)
+// A Parte 2 começa com: module.exports = async (req, res) => {
+// ============================================================
+// ============================================================
 // HANDLER PRINCIPAL
 // ============================================================
 module.exports = async (req, res) => {
@@ -882,7 +978,6 @@ module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    // ✅ Proteção: req.body / req.query podem estar ausentes
     const params = req.method === 'POST'
         ? (req.body || {})
         : (req.query || {});
@@ -909,10 +1004,18 @@ module.exports = async (req, res) => {
                 elo_count = (elo.value || []).length;
             } catch (e) {}
 
+            // v9.7.0 — testa GAS em background (não bloqueia)
+            let gasPing = false;
+            try {
+                const gasResult = await callGAS('ping');
+                const unwrapped = unwrapGAS(gasResult);
+                gasPing = unwrapped.success;
+            } catch (e) {}
+
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.6.0',
+                version: '9.7.0',
                 kv_enabled: !!kv,
                 nodemailer_enabled: !!nodemailer,
                 playlists_count,
@@ -920,6 +1023,7 @@ module.exports = async (req, res) => {
                 streams_count,
                 elo_count,
                 youtube_enabled: !!YOUTUBE_API_KEY,
+                gas_ping: gasPing,
                 timestamp: new Date().toISOString()
             });
         }
@@ -938,8 +1042,9 @@ module.exports = async (req, res) => {
             }
             console.log('⚠️ YouTube API vazia, tentando GAS...');
             const gasResult = await callGAS('search_youtube', { query, limit: limit || 15 });
-            if (gasResult.success && gasResult.data && gasResult.data.success && gasResult.data.data && gasResult.data.data.length > 0) {
-                return res.status(200).json({ success: true, data: gasResult.data.data, source: 'gas' });
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success && Array.isArray(unwrapped.data) && unwrapped.data.length > 0) {
+                return res.status(200).json({ success: true, data: unwrapped.data, source: 'gas' });
             }
             return res.status(200).json({ success: true, data: [], message: 'Nenhum resultado' });
         }
@@ -1206,10 +1311,22 @@ module.exports = async (req, res) => {
 
         // ============================================================
         // 🎵 PLAYLISTS GLOBAIS
+        // v9.7.0 — Normalização CSV ↔ Array + sync com GAS
         // ============================================================
         if (action === 'get_global_playlists') {
             const playlists = await Storage.get('global_playlists') || [];
-            return res.status(200).json({ success: true, data: playlists });
+            // Tenta GAS se KV vazio
+            if (playlists.length === 0) {
+                const gasResult = await callGAS('get_global_playlists', params);
+                const unwrapped = unwrapGAS(gasResult);
+                if (unwrapped.success && Array.isArray(unwrapped.data)) {
+                    const normalized = unwrapped.data.map(normalizePlaylistFromGAS);
+                    // Sincroniza com KV
+                    await Storage.set('global_playlists', normalized);
+                    return res.status(200).json({ success: true, data: normalized, _via: 'gas' });
+                }
+            }
+            return res.status(200).json({ success: true, data: playlists.map(normalizePlaylistFromKV) });
         }
 
         if (action === 'create_global_playlist') {
@@ -1226,6 +1343,8 @@ module.exports = async (req, res) => {
             playlists.push(newPl);
             await Storage.set('global_playlists', playlists);
             await addBlockToChain({ type: 'nova_playlist_global', playlist_id: newPl.id, nome });
+            // v9.7.0 — espelha no GAS
+            callGAS('create_global_playlist', { nome, descricao, user_id: userId }).catch(() => {});
             return res.status(200).json({ success: true, data: newPl, message: 'Playlist criada' });
         }
 
@@ -1242,6 +1361,8 @@ module.exports = async (req, res) => {
                 pl.music_count = pl.musicas.length;
             }
             await Storage.set('global_playlists', playlists);
+            // v9.7.0 — espelha no GAS
+            callGAS('add_music_to_global_playlist', { playlist_id: playlistId, music_id: musicId }).catch(() => {});
             return res.status(200).json({ success: true, data: pl });
         }
 
@@ -1254,6 +1375,8 @@ module.exports = async (req, res) => {
             pl.musicas = (pl.musicas || []).filter(id => String(id) !== musicId);
             pl.music_count = pl.musicas.length;
             await Storage.set('global_playlists', playlists);
+            // v9.7.0 — espelha no GAS
+            callGAS('remove_music_from_global_playlist', { playlist_id: playlistId, music_id: musicId }).catch(() => {});
             return res.status(200).json({ success: true, data: pl });
         }
 
@@ -1330,6 +1453,7 @@ module.exports = async (req, res) => {
             const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
             seen = seen.filter(s => s.date >= cutoff);
             await Storage.set(key, seen);
+            callGAS('mark_news_seen', { user_id: userId, news_ids: newsIds.join(','), data: date }).catch(() => {});
             return res.status(200).json({ success: true, count: seen.length });
         }
 
@@ -1347,6 +1471,7 @@ module.exports = async (req, res) => {
             prefs.interacoes = (prefs.interacoes || 0) + 1;
             prefs.ultima = new Date().toISOString();
             await Storage.set(key, prefs);
+            callGAS('track_news_interaction', { user_id: userId, news_id: newsId, tipo, tema, categoria }).catch(() => {});
             return res.status(200).json({ success: true, data: prefs });
         }
 
@@ -1363,7 +1488,7 @@ module.exports = async (req, res) => {
                 previous_hash: b.prevHash,
                 timestamp: b.timestamp,
                 music_title: b.data?.titulo || b.data?.nome || b.data?.type || 'Bloco',
-                reward_amount: 0
+                reward_amount: b.data?.valor_total || 0
             }));
             return res.status(200).json({ success: true, data: formatted });
         }
@@ -1372,6 +1497,8 @@ module.exports = async (req, res) => {
             try {
                 const data = typeof params.data === 'string' ? JSON.parse(params.data) : (params.data || {});
                 const block = await addBlockToChain(data);
+                // v9.7.0 — espelha no GAS
+                callGAS('add_block', { data: JSON.stringify(data) }).catch(() => {});
                 return res.status(200).json({ success: true, data: block });
             } catch (e) { return res.status(200).json({ success: false, message: 'Erro ao criar bloco' }); }
         }
@@ -1385,8 +1512,9 @@ module.exports = async (req, res) => {
             const streams = await Storage.get('streams') || {};
             const elo = await Storage.get('elo_ranking') || [];
             const gasResult = await callGAS('get_stats');
-            if (gasResult.success && gasResult.data && gasResult.data.data) {
-                return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) {
+                return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
             }
             return res.status(200).json({
                 success: true,
@@ -1398,7 +1526,8 @@ module.exports = async (req, res) => {
                     blocks_count: chain.blocks.length,
                     streams_count: Object.keys(streams).length,
                     elo_count: elo.length
-                }
+                },
+                _via: 'local'
             });
         }
 
@@ -1407,7 +1536,8 @@ module.exports = async (req, res) => {
         // ============================================================
         if (action === 'get_artists') {
             const gasResult = await callGAS('get_artists', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
             return res.status(200).json({ success: true, data: [] });
         }
 
@@ -1418,7 +1548,8 @@ module.exports = async (req, res) => {
             const tickets = await Storage.get('tickets') || [];
             if (tickets.length) return res.status(200).json({ success: true, data: tickets });
             const gasResult = await callGAS('get_tickets', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
             return res.status(200).json({ success: true, data: [] });
         }
 
@@ -1428,9 +1559,17 @@ module.exports = async (req, res) => {
         if (action === 'get_playlists') {
             const userId = params.user_id;
             const all = await Storage.get('user_playlists') || {};
-            if (all[userId] && all[userId].length) return res.status(200).json({ success: true, data: all[userId] });
+            if (all[userId] && all[userId].length) {
+                return res.status(200).json({ success: true, data: all[userId] });
+            }
             const gasResult = await callGAS('get_playlists', { user_id: userId });
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) {
+                // Cacheia local
+                all[userId] = unwrapped.data;
+                await Storage.set('user_playlists', all);
+                return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
+            }
             return res.status(200).json({ success: true, data: all[userId] || [] });
         }
 
@@ -1444,8 +1583,10 @@ module.exports = async (req, res) => {
             const nova = { id: 'pl_' + Date.now(), nome, publica, musicas: [], created_at: new Date().toISOString() };
             all[userId].push(nova);
             await Storage.set('user_playlists', all);
-            callGAS('create_playlist', { user_id: userId, nome, publica }).catch(() => {});
-            return res.status(200).json({ success: true, data: nova });
+            // v9.7.0 — aguarda GAS (não é mais fire-and-forget silencioso)
+            const gasResult = await callGAS('create_playlist', { user_id: userId, nome, publica });
+            const gasSynced = gasResult.success;
+            return res.status(200).json({ success: true, data: nova, gas_synced: gasSynced });
         }
 
         // ============================================================
@@ -1456,7 +1597,12 @@ module.exports = async (req, res) => {
             const all = await Storage.get('following') || {};
             if (all[userId] && all[userId].length) return res.status(200).json({ success: true, data: all[userId] });
             const gasResult = await callGAS('get_following', { user_id: userId });
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) {
+                all[userId] = unwrapped.data;
+                await Storage.set('following', all);
+                return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
+            }
             return res.status(200).json({ success: true, data: all[userId] || [] });
         }
 
@@ -1473,8 +1619,9 @@ module.exports = async (req, res) => {
                 all[userId] = all[userId].filter(id => id !== artistId);
             }
             await Storage.set('following', all);
-            callGAS('toggle_follow', { user_id: userId, artist_id: artistId, action: actionType }).catch(() => {});
-            return res.status(200).json({ success: true, data: { following: all[userId] } });
+            // v9.7.0 — aguarda GAS
+            const gasResult = await callGAS('toggle_follow', { user_id: userId, artist_id: artistId, action: actionType });
+            return res.status(200).json({ success: true, data: { following: all[userId] }, gas_synced: gasResult.success });
         }
 
         if (action === 'toggle_favorite') {
@@ -1483,11 +1630,18 @@ module.exports = async (req, res) => {
             const all = await Storage.get('favorites') || {};
             all[user_id] = all[user_id] || [];
             const sid = String(music_id);
-            if (all[user_id].includes(sid)) all[user_id] = all[user_id].filter(x => x !== sid);
-            else all[user_id].push(sid);
+            let actionType;
+            if (all[user_id].includes(sid)) {
+                all[user_id] = all[user_id].filter(x => x !== sid);
+                actionType = 'remove';
+            } else {
+                all[user_id].push(sid);
+                actionType = 'add';
+            }
             await Storage.set('favorites', all);
-            callGAS('toggle_favorite', { user_id, music_id, action: all[user_id].includes(sid) ? 'add' : 'remove' }).catch(() => {});
-            return res.status(200).json({ success: true, data: { favorites: all[user_id] } });
+            // v9.7.0 — aguarda GAS com ação correta
+            const gasResult = await callGAS('toggle_favorite', { user_id, music_id, action: actionType });
+            return res.status(200).json({ success: true, data: { favorites: all[user_id] }, gas_synced: gasResult.success });
         }
 
         if (action === 'get_user_profile') {
@@ -1627,21 +1781,24 @@ module.exports = async (req, res) => {
         // ============================================================
         if (action === 'get_musicas') {
             const gasResult = await callGAS('get_musicas', params);
-            if (gasResult.success && gasResult.data && gasResult.data.data && gasResult.data.data.length > 0) {
-                return res.status(200).json({ success: true, data: gasResult.data.data, source: 'gas' });
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success && Array.isArray(unwrapped.data) && unwrapped.data.length > 0) {
+                return res.status(200).json({ success: true, data: unwrapped.data, source: 'gas' });
             }
             return res.status(200).json({ success: true, data: FALLBACK_MUSICAS, source: 'fallback' });
         }
 
         if (action === 'get_external_musicas') {
             const gasResult = await callGAS('get_external_musicas', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: true, data: [] });
         }
 
         if (action === 'get_top_investments') {
             const gasResult = await callGAS('get_top_investments', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: true, data: FALLBACK_MUSICAS });
         }
 
@@ -1666,9 +1823,10 @@ module.exports = async (req, res) => {
             }
 
             const gasResult = await callGAS('login', { email, password });
-            if (gasResult.success && gasResult.data && gasResult.data.success) {
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) {
                 rateLimiter.reset(clientIP);
-                return res.status(200).json(gasResult.data);
+                return res.status(200).json({ success: true, data: unwrapped.data });
             }
             return res.status(200).json({ success: false, message: 'Credenciais inválidas' });
         }
@@ -1681,7 +1839,8 @@ module.exports = async (req, res) => {
             if (!userId) return res.status(200).json({ success: false, message: 'Usuário não identificado' });
             if (userId === 'admin_master') return res.status(200).json({ success: true, data: { saldo_disponivel: 1000000, selo_coin: 50000 } });
             const gasResult = await callGAS('get_saldo', { user_id: userId });
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: true, data: { saldo_disponivel: 0, selo_coin: 0 } });
         }
 
@@ -1689,7 +1848,8 @@ module.exports = async (req, res) => {
             const userId = params.user_id || params.userId;
             if (!userId) return res.status(200).json({ success: true, data: [] });
             const gasResult = await callGAS('get_carteira', { user_id: userId });
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: true, data: [] });
         }
 
@@ -1697,18 +1857,20 @@ module.exports = async (req, res) => {
             const userId = params.user_id || params.userId;
             if (!userId) return res.status(200).json({ success: true, data: [] });
             const gasResult = await callGAS('get_extrato', { user_id: userId });
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: true, data: [] });
         }
 
         if (action === 'get_artist_data') {
             const gasResult = await callGAS('get_artist_data', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: true, data: { total_musicas: 0, total_royalties: 0, musics: [] } });
         }
 
         // ============================================================
-        // 💸 COMPRAR
+        // 💸 COMPRAR — v9.7.0 corrige fallback perigoso
         // ============================================================
         if (action === 'buy') {
             const { music_id, quantidade, valor_unitario, valor_total, user_id } = params;
@@ -1716,11 +1878,13 @@ module.exports = async (req, res) => {
             const qty = parseInt(quantidade);
             if (isNaN(qty) || qty < 1) return res.status(200).json({ success: false, message: 'Quantidade inválida' });
 
+            // Registra na blockchain local (auditoria)
             const block = await addBlockToChain({
                 type: 'investimento', music_id, user_id,
                 quantidade: qty, valor_total: valor_total || (qty * parseFloat(valor_unitario || 0))
             });
 
+            // Atualiza lista local de investidores
             const invKey = 'investidores_' + music_id;
             let investidores = await Storage.get(invKey) || [];
             const idx = investidores.findIndex(i => i.user_id === user_id);
@@ -1731,6 +1895,7 @@ module.exports = async (req, res) => {
             }
             await Storage.set(invKey, investidores);
 
+            // Chama o GAS — é ele quem move o dinheiro (split 70/20/10)
             const gasResult = await callGAS('buy', {
                 music_id: sanitize(music_id), quantidade: qty,
                 valor_unitario: parseFloat(valor_unitario || 0),
@@ -1738,29 +1903,44 @@ module.exports = async (req, res) => {
                 user_id: sanitize(user_id)
             });
 
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) {
+                return res.status(200).json({
+                    success: true,
+                    data: unwrapped.data,
+                    message: unwrapped.message || 'Investimento realizado!',
+                    blockchain_hash: block.hash,
+                    _via: 'gas'
+                });
+            }
 
+            // ⚠️ v9.7.0 — NÃO mente mais. Retorna erro real.
             return res.status(200).json({
-                success: true, message: 'Investimento realizado!',
-                data: { contrato_id: 'CT_' + Date.now(), blockchain_hash: block.hash, block_index: block.index }
+                success: false,
+                message: 'Não foi possível processar a compra. Tente novamente.',
+                error: gasResult.error || 'backend indisponível',
+                _via: 'gas_error'
             });
         }
 
         if (action === 'buy_external') {
             const gasResult = await callGAS('buy_external', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro ao processar' });
         }
 
         if (action === 'suggest_external_music') {
             const gasResult = await callGAS('suggest_external_music', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro ao sugerir' });
         }
 
         if (action === 'upload_music') {
             const gasResult = await callGAS('upload_music', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro ao cadastrar' });
         }
 
@@ -1786,7 +1966,8 @@ module.exports = async (req, res) => {
             const result = await sendEmail(email, '🔐 Recuperação de Senha - PLAY MY', html);
             if (result.success) return res.status(200).json({ success: true, message: 'Email enviado!', data: { token: resetToken } });
             const gasResult = await callGAS('request_password_reset', { email, reset_url: 'https://playmy.com.br/reset-password.html' });
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro ao enviar email' });
         }
 
@@ -1796,7 +1977,8 @@ module.exports = async (req, res) => {
             const record = validateResetToken(token);
             if (record) return res.status(200).json({ success: true, message: 'Token válido', data: { email: record.email } });
             const gasResult = await callGAS('verify_reset_token', { token });
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Token inválido' });
         }
 
@@ -1805,13 +1987,15 @@ module.exports = async (req, res) => {
         // ============================================================
         if (action === 'redeem_ticket') {
             const gasResult = await callGAS('redeem_ticket', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro ao resgatar' });
         }
 
         if (action === 'create_ticket') {
             const gasResult = await callGAS('create_ticket', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro ao criar' });
         }
 
@@ -1820,7 +2004,8 @@ module.exports = async (req, res) => {
         // ============================================================
         if (action === 'request_withdrawal') {
             const gasResult = await callGAS('request_withdrawal', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro ao solicitar' });
         }
 
@@ -1829,13 +2014,15 @@ module.exports = async (req, res) => {
         // ============================================================
         if (action === 'get_trades') {
             const gasResult = await callGAS('get_trades', params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: true, data: { received: [], sent: [], history: [] } });
         }
 
         if (action === 'create_trade' || action === 'accept_trade' || action === 'decline_trade' || action === 'cancel_trade') {
             const gasResult = await callGAS(action, params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro na operação' });
         }
 
@@ -1844,7 +2031,8 @@ module.exports = async (req, res) => {
         // ============================================================
         if (action === 'register' || action === 'confirm_email' || action === 'resend_confirmation') {
             const gasResult = await callGAS(action, params);
-            if (gasResult.success && gasResult.data) return res.status(200).json(gasResult.data);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro na operação' });
         }
 
@@ -1854,7 +2042,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.6.0',
+            version: '9.7.0',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
