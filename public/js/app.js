@@ -1,25 +1,25 @@
 // ============================================================
-// js/app.js — PLAY MY v9.5.0
+// js/app.js — PLAY MY v9.6.0
 // Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
 // + Detecção de app nativo (Capacitor/TWA)
 // + Safe areas (iPhone notch)
 // + Status bar dinâmica
 // + Splash screen handling
 // + Deep linking (?section=)
-// + INSTALAÇÃO INTELIGENTE (compatível com modals.js v9.0.0)
+// + INSTALAÇÃO INTELIGENTE via SIDEBAR (sem balão flutuante)
 // Depende de TODOS os módulos anteriores.
 // DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
+//
+// MUDANÇAS v9.6.0:
+//   - REMOVIDO: balão flutuante do canto inferior direito
+//   - MOVIDO: botão "Instalar App" para o SIDEBAR
+//   - ID mudou de installAppBtn → installNavItem
+//   - setupInstallButton() agora controla o item do menu
 //
 // MUDANÇAS v9.5.0:
 //   - CORRIGIDO: showModal(id) — compatível com modals.js v9.0.0
 //   - CORRIGIDO: installApp sobrescreve a versão do modals.js
 //   - Modal de instruções criado DINAMICAMENTE (com ID fixo)
-//   - Botão "Instalar App" sempre visível (se não instalado)
-//   - Detecta se já está instalado (standalone/TWA/Capacitor)
-//
-// MUDANÇAS v9.4.0:
-//   - installApp() reescrito: prompt nativo + modal de fallback
-//   - Re-registra SW após instalação
 //
 // MUDANÇAS v9.3.0:
 //   - Detecção de ambiente nativo (Capacitor, TWA, standalone)
@@ -28,12 +28,10 @@
 //   - Splash screen escondida quando o app está pronto
 //   - Bloqueio de gestos nativos (pull-to-refresh, pinch-zoom)
 //   - Deep linking via URL (?section=marketplace)
-//   - Aliases para openSellModal / confirmSell (v9.4.0 do portfolio)
 //
 // MUDANÇAS v9.2.0:
 //   - Bootstrap com HealthCheck + restoreSession
 //   - Aliases globais para compatibilidade com HTML inline
-//   - PWA install prompt
 // ============================================================
 
 // ============================================================
@@ -290,7 +288,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 2. Health check periódico (a cada 3 minutos)
   setInterval(() => HealthCheck.runAll(), 180000);
 
-  // 3. Configura botão de instalação
+  // 3. Configura item de instalação no sidebar
   setupInstallButton();
 
   // 4. Restaura sessão salva
@@ -305,7 +303,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ============================================================
-// PWA — INSTALAÇÃO INTELIGENTE (v9.5.0)
+// PWA — INSTALAÇÃO INTELIGENTE via SIDEBAR (v9.6.0)
 // Compatível com showModal(id) do modals.js v9.0.0
 // ============================================================
 
@@ -317,24 +315,18 @@ function isPWAInstalled() {
          (window.Capacitor && window.Capacitor.isNative);
 }
 
-// Mostra/esconde o botão de instalação conforme o estado
+// Mostra/esconde o ITEM DE INSTALAÇÃO NO SIDEBAR
 function setupInstallButton() {
-  const btn = document.getElementById('installAppBtn');
-  if (!btn) return;
+  const navItem = document.getElementById('installNavItem');
+  if (!navItem) return;
 
   if (isPWAInstalled() || APP_ENV.isNative) {
-    btn.style.display = 'none';
-    btn.classList.add('hidden');
+    navItem.style.display = 'none';
     return;
   }
 
-  btn.style.display = 'inline-block';
-  btn.classList.remove('hidden');
-  btn.textContent = '📲 Instalar App';
-  btn.onclick = (e) => {
-    e.preventDefault();
-    window.installApp();
-  };
+  // Mostra o item no menu lateral
+  navItem.style.display = 'block';
 }
 
 // Prompt nativo disponível (Android Chrome)
@@ -349,18 +341,17 @@ window.addEventListener('beforeinstallprompt', (e) => {
 window.addEventListener('appinstalled', () => {
   console.log('✅ PWA: app instalado');
   state.deferredInstallPrompt = null;
-  const btn = document.getElementById('installAppBtn');
-  if (btn) {
-    btn.style.display = 'none';
-    btn.classList.add('hidden');
-  }
+
+  const navItem = document.getElementById('installNavItem');
+  if (navItem) navItem.style.display = 'none';
+
   if (typeof showToast === 'function') {
     showToast('✅ App instalado! Procure o ícone PLAY MY na tela inicial.', 'success', 5000);
   }
 });
 
 // ============================================================
-// INSTALAÇÃO — FLUXO INTELIGENTE (v9.5.0)
+// INSTALAÇÃO — FLUXO INTELIGENTE (v9.6.0)
 // SOBRESCREVE a versão simples do modals.js
 // ============================================================
 window.installApp = async function () {
@@ -398,11 +389,7 @@ window.installApp = async function () {
       }
 
       state.deferredInstallPrompt = null;
-      const btn = document.getElementById('installAppBtn');
-      if (btn) {
-        btn.style.display = 'none';
-        btn.classList.add('hidden');
-      }
+      setupInstallButton();
       return;
     } catch (e) {
       console.warn('Erro no prompt nativo:', e);
@@ -414,7 +401,7 @@ window.installApp = async function () {
 };
 
 // ============================================================
-// MODAL DE INSTRUÇÕES — CRIA DINAMICAMENTE (compatível com showModal(id))
+// MODAL DE INSTRUÇÕES — CRIA DINAMICAMENTE
 // ============================================================
 function showInstallInstructions() {
   const ua = navigator.userAgent || '';
@@ -423,7 +410,6 @@ function showInstallInstructions() {
 
   const MODAL_ID = 'installInstructionsModal';
 
-  // Remove modal anterior se existir
   const old = document.getElementById(MODAL_ID);
   if (old) old.remove();
 
@@ -476,7 +462,6 @@ function showInstallInstructions() {
     `;
   }
 
-  // Cria o modal dinamicamente (compatível com modals.js)
   const modal = document.createElement('div');
   modal.id = MODAL_ID;
   modal.className = 'modal-overlay';
@@ -500,7 +485,6 @@ function showInstallInstructions() {
   `;
   document.body.appendChild(modal);
 
-  // ✅ CORRIGIDO: showModal(id) — formato do modals.js
   if (typeof showModal === 'function') {
     try {
       showModal(MODAL_ID);
@@ -511,7 +495,6 @@ function showInstallInstructions() {
     }
   }
 
-  // Fallback final: abre manualmente
   modal.classList.add('show');
   document.body.style.overflow = 'hidden';
 }
@@ -627,7 +610,7 @@ window.cancelTradeOffer = window.cancelTradeOffer || cancelTradeOffer;
 window.openBlockchainExplorer = window.openBlockchainExplorer || openBlockchainExplorer;
 window.loadBlockchainData = window.loadBlockchainData || loadBlockchainData;
 
-// News (news-unified.js) — compatibilidade com botões existentes
+// News (news-unified.js)
 window.pmNewsReload = window.pmNewsReload || function () {};
 window.pmNewsLoadMore = window.pmNewsLoadMore || function () {};
 
@@ -669,7 +652,7 @@ window.addEventListener('load', () => {
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.5.0 carregado — aplicação inicializada');
+console.log('✅ [app.js] v9.6.0 carregado — aplicação inicializada');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
-console.log('📲 Instalação inteligente ativa — v9.5.0');
+console.log('📲 Instalação via sidebar ativa — v9.6.0');
