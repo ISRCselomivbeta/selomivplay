@@ -1,8 +1,16 @@
 // ============================================================
-// js/portfolio.js — PLAY MY v9.2.0
+// js/portfolio.js — PLAY MY v9.3.0
 // Portfólio, extrato, dividendos, dados do artista, dados do admin.
 // Depende de: config.js, utils.js, state.js, api.js
 // DEVE carregar DEPOIS de marketplace.js e ANTES de trades.js.
+//
+// MUDANÇAS v9.3.0:
+//   - 🆕 Botão "VENDER" em cada card do portfólio
+//   - 🆕 Modal de venda (openSellModal, confirmSell)
+//   - 🆕 Chama create_trade (oferta de venda para o mercado)
+//   - 🆕 Venda direta ao mercado (se suportado) com fallback para trade
+//   - Validação: quantidade <= ações disponíveis, preço >= 0
+//   - Feedback visual com toast em todas as ações
 //
 // MUDANÇAS v9.2.0:
 //   - ADICIONADA função loadLedger (estava faltando!)
@@ -38,7 +46,7 @@ window.loadPortfolio = async function () {
 };
 
 // ============================================================
-// CARREGAR EXTRATO (ESTAVA FALTANDO!)
+// CARREGAR EXTRATO
 // ============================================================
 window.loadLedger = async function () {
   if (!state.currentUser) return;
@@ -102,7 +110,7 @@ window.carregarELOsEValuations = async function () {
 };
 
 // ============================================================
-// RENDERIZAR PORTFÓLIO (com ELO + valuation)
+// RENDERIZAR PORTFÓLIO — v9.3.0 (com botão VENDER)
 // ============================================================
 window.renderPortfolio = function () {
   const c = document.getElementById('portfolioContent');
@@ -127,7 +135,6 @@ window.renderPortfolio = function () {
     const eloInfo = (state.eloMap && state.eloMap[String(x.music_id)]) || null;
     const valuationInfo = (state.valuationMap && state.valuationMap[String(x.music_id)]) || null;
 
-    // Calcula valor atual com base na valuation
     let valorAtual = x.valor_total || 0;
     if (valuationInfo && valuationInfo.valuation > 0) {
       valorAtual = (x.valor_total || 0) * (1 + (valuationInfo.ajuste_elo || 0) / 100);
@@ -135,6 +142,9 @@ window.renderPortfolio = function () {
 
     const ganho = valorAtual - (x.valor_total || 0);
     const ganhoPct = x.valor_total > 0 ? (ganho / x.valor_total) * 100 : 0;
+
+    // Preço médio por ação
+    const precoMedio = x.quantidade > 0 ? (x.valor_total || 0) / x.quantidade : 0;
 
     return '<div class="spotify-card">' +
       '<div class="spotify-cover">' +
@@ -155,10 +165,14 @@ window.renderPortfolio = function () {
           '</div>'
         : '') +
 
-      // Stats: ações + valor investido
+      // Stats: ações + valor investido + preço médio
       '<div class="spotify-stats">' +
         '<span class="spotify-elo">' + (x.quantidade || 0) + ' ações</span>' +
         '<span class="spotify-price">' + formatCurrency(x.valor_total || 0) + '</span>' +
+      '</div>' +
+
+      '<div style="font-size:11px;color:var(--apple-label-2);margin-top:2px">' +
+        'Preço médio: ' + formatCurrency(precoMedio) +
       '</div>' +
 
       // Valor atual + ganho
@@ -183,8 +197,210 @@ window.renderPortfolio = function () {
               : '') +
           '</div>'
         : '') +
+
+      // 🆕 BOTÃO VENDER
+      '<div style="display:flex;gap:6px;margin-top:10px">' +
+        '<button class="btn-invest" style="flex:1;background:linear-gradient(135deg,#ff9500,#ff6b00);color:#fff;border:none;padding:10px;border-radius:8px;font-weight:700;cursor:pointer" ' +
+          'onclick="openSellModal(\'' + x.music_id + '\')">' +
+          '<i class="bi bi-cash-coin"></i> VENDER' +
+        '</button>' +
+      '</div>' +
     '</div>';
   }).join('');
+};
+
+// ============================================================
+// 🆕 MODAL DE VENDA
+// ============================================================
+window.openSellModal = function (musicId) {
+  if (!state.currentUser) {
+    showToast('Faça login para vender', 'error');
+    return;
+  }
+
+  const ativo = (state.portfolioAssets || []).find(a => String(a.music_id) === String(musicId));
+  if (!ativo) {
+    showToast('Ativo não encontrado', 'error');
+    return;
+  }
+
+  const m = (state.playlist || []).find(y => String(y.id) === String(musicId)) || {};
+  const eloInfo = (state.eloMap && state.eloMap[String(musicId)]) || null;
+
+  // Preço sugerido: valor atual da ação
+  const precoMedio = ativo.quantidade > 0 ? (ativo.valor_total || 0) / ativo.quantidade : 0;
+  const precoSugerido = Math.round(precoMedio * 100) / 100;
+
+  state._sellingAsset = {
+    music_id: musicId,
+    quantidade_disponivel: ativo.quantidade || 0,
+    preco_medio: precoMedio,
+    preco_sugerido: precoSugerido
+  };
+
+  // Preenche o modal
+  const title = document.getElementById('sellMusicTitle');
+  const artist = document.getElementById('sellMusicArtist');
+  const qtyAvail = document.getElementById('sellQtyAvailable');
+  const eloEl = document.getElementById('sellEloInfo');
+  const qtyField = document.getElementById('sellQuantityField');
+  const priceField = document.getElementById('sellPriceField');
+
+  if (title) title.textContent = m.titulo || 'Música';
+  if (artist) artist.textContent = m.artista || '';
+  if (qtyAvail) qtyAvail.textContent = ativo.quantidade || 0;
+
+  if (eloEl) {
+    if (eloInfo) {
+      eloEl.innerHTML = '<span style="color:' + eloInfo.cor + ';font-weight:700">⚡ ' + eloInfo.elo + '</span> ' +
+                        '<span style="color:var(--apple-label-2)">' + eloInfo.faixa_label + '</span>';
+    } else {
+      eloEl.innerHTML = '<span style="color:var(--apple-label-2)">Sem ELO calculado</span>';
+    }
+  }
+
+  if (qtyField) {
+    qtyField.value = 1;
+    qtyField.max = ativo.quantidade || 1;
+  }
+  if (priceField) {
+    priceField.value = precoSugerido.toFixed(2);
+  }
+
+  updateSellTotal();
+  showModal('sellModal');
+};
+
+window.updateSellTotal = function () {
+  if (!state._sellingAsset) return;
+
+  const q = parseInt(document.getElementById('sellQuantityField').value) || 0;
+  const p = parseFloat(document.getElementById('sellPriceField').value) || 0;
+
+  const total = q * p;
+  const lucro = (p - state._sellingAsset.preco_medio) * q;
+  const lucroPct = state._sellingAsset.preco_medio > 0
+    ? ((p - state._sellingAsset.preco_medio) / state._sellingAsset.preco_medio) * 100
+    : 0;
+
+  const totalEl = document.getElementById('sellTotalDisplay');
+  const lucroEl = document.getElementById('sellProfitDisplay');
+
+  if (totalEl) totalEl.textContent = formatCurrency(total);
+
+  if (lucroEl) {
+    const cor = lucro >= 0 ? 'var(--apple-green)' : 'var(--apple-red)';
+    lucroEl.innerHTML = '<span style="color:' + cor + ';font-weight:700">' +
+      (lucro >= 0 ? '+' : '') + formatCurrency(lucro) +
+      ' (' + (lucroPct >= 0 ? '+' : '') + lucroPct.toFixed(1) + '%)</span>';
+  }
+
+  // Habilita/desabilita botão de confirmar
+  const btn = document.getElementById('confirmSellBtn');
+  if (btn) {
+    const valido = q > 0 && p > 0 &&
+                   q <= state._sellingAsset.quantidade_disponivel;
+    btn.disabled = !valido;
+    btn.textContent = valido ? 'Confirmar Venda' : 'Verifique os dados';
+  }
+};
+
+window.adjustSellQuantity = function (delta) {
+  const field = document.getElementById('sellQuantityField');
+  if (!field) return;
+  const novo = Math.max(1, parseInt(field.value) + delta);
+  const max = state._sellingAsset ? state._sellingAsset.quantidade_disponivel : 1;
+  field.value = Math.min(novo, max);
+  updateSellTotal();
+};
+
+window.setSellPrice = function (tipo) {
+  const field = document.getElementById('sellPriceField');
+  if (!field || !state._sellingAsset) return;
+
+  const base = state._sellingAsset.preco_medio;
+  let preco = base;
+
+  if (tipo === 'market') preco = base;
+  else if (tipo === 'plus10') preco = base * 1.10;
+  else if (tipo === 'plus20') preco = base * 1.20;
+  else if (tipo === 'minus10') preco = base * 0.90;
+
+  field.value = (Math.round(preco * 100) / 100).toFixed(2);
+  updateSellTotal();
+};
+
+// ============================================================
+// 🆕 CONFIRMAR VENDA — chama create_trade
+// ============================================================
+window.confirmSell = async function () {
+  if (!state.currentUser || !state._sellingAsset) return;
+
+  const q = parseInt(document.getElementById('sellQuantityField').value) || 0;
+  const p = parseFloat(document.getElementById('sellPriceField').value) || 0;
+  const total = q * p;
+
+  if (q <= 0 || p <= 0) {
+    showToast('Preencha quantidade e preço', 'error');
+    return;
+  }
+
+  if (q > state._sellingAsset.quantidade_disponivel) {
+    showToast('Quantidade maior que o disponível', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('confirmSellBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processando...';
+  }
+
+  try {
+    // 1. Tenta venda direta ao mercado (se o backend suportar)
+    let r = await callAPI('sell_to_market', {
+      music_id: state._sellingAsset.music_id,
+      quantidade: q,
+      preco_unitario: p,
+      valor_total: total
+    });
+
+    // 2. Se a action não existe, cai no create_trade (oferta)
+    if (!r || !r.success) {
+      console.log('⚠️ sell_to_market não disponível, usando create_trade');
+      r = await callAPI('create_trade', {
+        seller_id: state.currentUser.id,
+        buyer_email: 'mercado@playmy.com.br',  // oferta aberta ao mercado
+        music_id: state._sellingAsset.music_id,
+        quantity: q,
+        price: p,
+        total: total,
+        message: 'Venda automática via portfólio'
+      });
+    }
+
+    if (r && r.success) {
+      showToast('✅ Venda realizada! Você receberá ' + formatCurrency(total), 'success');
+      closeModal('sellModal');
+
+      // Recarrega portfólio e extrato
+      await loadPortfolio();
+      if (typeof loadLedger === 'function') await loadLedger();
+      if (typeof loadTradeOffers === 'function') await loadTradeOffers();
+
+      state._sellingAsset = null;
+    } else {
+      showToast((r && r.message) || 'Erro ao vender', 'error');
+    }
+  } catch (e) {
+    console.error('Erro na venda:', e);
+    showToast('Erro ao processar venda', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Venda';
+    }
+  }
 };
 
 // ============================================================
@@ -203,7 +419,7 @@ window.updatePortfolioValue = function () {
 };
 
 // ============================================================
-// MÉTRICAS DO PORTFÓLIO (ELO médio, valuation, ganho)
+// MÉTRICAS DO PORTFÓLIO
 // ============================================================
 window.updatePortfolioMetrics = function () {
   const c = document.getElementById('portfolioMetrics');
@@ -304,7 +520,7 @@ window.renderLedger = function () {
 };
 
 // ============================================================
-// CARREGAR DIVIDENDOS (ROYALTIES RECEBIDOS)
+// CARREGAR DIVIDENDOS
 // ============================================================
 window.loadDividends = async function () {
   const c = document.getElementById('dividendsContent');
@@ -432,7 +648,7 @@ window.renderArtistMusic = function (musics) {
 
     return '<div class="spotify-card">' +
       '<div class="spotify-cover">' +
-        '<img src="' + getCoverUrl(t, false) + '">' +
+        '<img src="' + getCoverUrl(t, false) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
         (eloInfo && eloInfo.elo >= 1400
           ? '<div style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
               'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
@@ -472,7 +688,6 @@ window.loadAdminData = async function () {
       const elSelo = document.getElementById('adminSeloCirculation');
       if (elSelo) elSelo.textContent = new Intl.NumberFormat('pt-BR').format(r.data.total_investido || 0);
 
-      // ELO count
       if (r.data.elo_count !== undefined) {
         const elElo = document.getElementById('adminEloCount');
         if (elElo) elElo.textContent = r.data.elo_count;
@@ -486,4 +701,4 @@ window.loadAdminData = async function () {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [portfolio.js] v9.2.0 carregado — portfólio, extrato, dividendos, ELO, valuation, artista e admin');
+console.log('✅ [portfolio.js] v9.3.0 carregado — portfólio, extrato, dividendos, ELO, valuation, artista, admin e VENDA');
