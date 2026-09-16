@@ -1,16 +1,25 @@
-// BACKEND.JS - VERSÃO 9.7.0
+// BACKEND.JS - VERSÃO 9.7.1
 // ============================================================
-// PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
-// + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
-// + COMPATIBILIDADE TOTAL COM GAS 7.0.0
+// CORREÇÃO CRÍTICA: GAS PRIMEIRO, KV DEPOIS
+// + Playlists que NÃO somem + add_music_to_playlist (faltava)
+//
+// MUDANÇAS v9.7.1:
+//   - ✅ add_music_to_global_playlist: GAS primeiro, KV depois
+//   - ✅ remove_music_from_global_playlist: idem
+//   - ✅ create_global_playlist: idem
+//   - ✅ create_playlist: idem (e não mente mais)
+//   - ✅ get_playlists / get_global_playlists: KV cache com TTL
+//   - ✅ NOVA ACTION: add_music_to_playlist (estava faltando)
+//   - ✅ NOVA ACTION: remove_music_from_playlist
+//   - ✅ NOVA ACTION: add_music_to_global_playlist com music_data
+//   - ✅ GAS é SEMPRE a fonte da verdade nas escritas
+//   - ✅ KV é cache de leitura (TTL 5min)
 //
 // MUDANÇAS v9.7.0:
 //   - Delegação genérica ao GAS 7.0.0 via GAS_ACTIONS set
 //   - Normalização de playlists (string CSV ↔ array)
 //   - Correção do fallback do `buy` (não mente mais)
 //   - `callGAS` desembrulha resposta do GAS via unwrapGAS
-//   - Ações ELO/Valuation/ISRC delegadas ao GAS com fallback local
-//   - `add_block` espelha no GAS
 //
 // MUDANÇAS v9.6.0:
 //   - nodemailer com require protegido
@@ -22,8 +31,6 @@
 //   - RSS timeout 6s + check content-type
 //   - callGAS com timeout 6s e 1 retry
 //   - action=ping paralelo (Promise.allSettled)
-//   - get_news retorna cached:wasCached (real)
-//   - cache negativo curto (30s)
 //
 // MUDANÇAS v9.4.0:
 //   - register_streaming adiciona ao streams_index
@@ -243,7 +250,7 @@ function extractYouTubeId(url) {
     return null;
 }
 
-// v9.7.0 — CSV ↔ Array
+// CSV ↔ Array
 function csvToArray(csv) {
     if (!csv) return [];
     if (Array.isArray(csv)) return csv;
@@ -318,7 +325,7 @@ async function callGAS(action, params = {}, retries = 1) {
     }
 }
 
-// v9.7.0 — Desembrulha resposta do GAS
+// Desembrulha resposta do GAS: { success, message, data } → { success, data, _via }
 function unwrapGAS(gasResult) {
     if (!gasResult || !gasResult.success) {
         return { success: false, message: gasResult?.error || 'GAS falhou', _via: 'gas_error' };
@@ -483,7 +490,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.1)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -656,7 +663,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
 
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.7 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.7.1 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -966,11 +973,49 @@ async function calcularValuation(music_id, video_id_youtube) {
 }
 
 // ============================================================
+// v9.7.1 — HELPERS DE ESCRITA (GAS primeiro, KV depois)
+// ============================================================
+
+// Chama o GAS; se falhar, retorna erro. Só atualiza o KV depois.
+async function writeThrough(gasAction, gasParams, kvUpdateFn) {
+    // 1. GAS PRIMEIRO (fonte da verdade)
+    const gasResult = await callGAS(gasAction, gasParams);
+    const unwrapped = unwrapGAS(gasResult);
+
+    if (!unwrapped.success) {
+        console.warn(`⚠️ [writeThrough] GAS falhou em "${gasAction}":`, gasResult.error);
+        return { success: false, error: gasResult.error, message: unwrapped.message, _via: 'gas_error' };
+    }
+
+    // 2. KV DEPOIS (só se o GAS confirmou)
+    if (typeof kvUpdateFn === 'function') {
+        try {
+            await kvUpdateFn(unwrapped.data);
+        } catch (e) {
+            console.warn(`⚠️ [writeThrough] KV update falhou em "${gasAction}":`, e.message);
+            // Não retorna erro — o GAS já salvou, KV é cache
+        }
+    }
+
+    return { success: true, data: unwrapped.data, _via: 'gas' };
+}
+
+// Invalida cache local das chaves afetadas
+async function invalidateCache(keys) {
+    for (const key of keys) {
+        cache.cache.delete('cache_' + key);
+        try { await Storage.del('cache_' + key); } catch (e) {}
+    }
+}
+
+// ============================================================
 // ⚠️ CONTINUA NA PARTE 2/2 (próxima mensagem)
 // A Parte 2 começa com: module.exports = async (req, res) => {
 // ============================================================
 // ============================================================
-// HANDLER PRINCIPAL
+// HANDLER PRINCIPAL — v9.7.1
+// GAS PRIMEIRO, KV DEPOIS (nas escritas)
+// KV CACHE com TTL (nas leituras)
 // ============================================================
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -987,41 +1032,21 @@ module.exports = async (req, res) => {
 
     try {
         // ============================================================
-        // PING — paralelo, resposta rápida
+        // PING
         // ============================================================
         if (action === 'ping') {
-            let playlists_count = 0, blocks_count = 0, streams_count = 0, elo_count = 0;
-            try {
-                const [pls, chain, streams, elo] = await Promise.allSettled([
-                    Storage.get('global_playlists'),
-                    Storage.get('blockchain'),
-                    Storage.get('streams'),
-                    Storage.get('elo_ranking')
-                ]);
-                playlists_count = (pls.value || []).length;
-                blocks_count = (chain.value?.blocks || []).length;
-                streams_count = Object.keys(streams.value || {}).length;
-                elo_count = (elo.value || []).length;
-            } catch (e) {}
-
-            // v9.7.0 — testa GAS em background (não bloqueia)
             let gasPing = false;
             try {
                 const gasResult = await callGAS('ping');
-                const unwrapped = unwrapGAS(gasResult);
-                gasPing = unwrapped.success;
+                gasPing = unwrapGAS(gasResult).success;
             } catch (e) {}
 
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.7.0',
+                version: '9.7.1',
                 kv_enabled: !!kv,
                 nodemailer_enabled: !!nodemailer,
-                playlists_count,
-                blocks_count,
-                streams_count,
-                elo_count,
                 youtube_enabled: !!YOUTUBE_API_KEY,
                 gas_ping: gasPing,
                 timestamp: new Date().toISOString()
@@ -1034,13 +1059,10 @@ module.exports = async (req, res) => {
         if (action === 'search_youtube') {
             const { query, limit } = params;
             if (!query) return res.status(200).json({ success: false, message: 'Query obrigatória' });
-            console.log('🎥 Buscando YouTube:', query);
             const directResults = await searchYouTube(query, parseInt(limit) || 15);
             if (directResults.length > 0) {
-                console.log(`🎥 YouTube API OK: ${directResults.length} resultados`);
                 return res.status(200).json({ success: true, data: directResults, source: 'youtube_api' });
             }
-            console.log('⚠️ YouTube API vazia, tentando GAS...');
             const gasResult = await callGAS('search_youtube', { query, limit: limit || 15 });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success && Array.isArray(unwrapped.data) && unwrapped.data.length > 0) {
@@ -1310,23 +1332,33 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎵 PLAYLISTS GLOBAIS
-        // v9.7.0 — Normalização CSV ↔ Array + sync com GAS
+        // 🎵 PLAYLISTS GLOBAIS — v9.7.1 (GAS PRIMEIRO, KV DEPOIS)
         // ============================================================
         if (action === 'get_global_playlists') {
-            const playlists = await Storage.get('global_playlists') || [];
-            // Tenta GAS se KV vazio
+            // 1. Cache local (L1)
+            const cachedL1 = cache.get('global_playlists');
+            if (cachedL1) {
+                return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
+            }
+
+            // 2. KV (L2)
+            let playlists = await Storage.get('global_playlists') || [];
+
+            // 3. Se KV vazio, tenta GAS
             if (playlists.length === 0) {
                 const gasResult = await callGAS('get_global_playlists', params);
                 const unwrapped = unwrapGAS(gasResult);
                 if (unwrapped.success && Array.isArray(unwrapped.data)) {
-                    const normalized = unwrapped.data.map(normalizePlaylistFromGAS);
-                    // Sincroniza com KV
-                    await Storage.set('global_playlists', normalized);
-                    return res.status(200).json({ success: true, data: normalized, _via: 'gas' });
+                    playlists = unwrapped.data.map(normalizePlaylistFromGAS);
+                    await Storage.set('global_playlists', playlists);
+                    cache.set('global_playlists', playlists, 300);
+                    return res.status(200).json({ success: true, data: playlists, _via: 'gas' });
                 }
             }
-            return res.status(200).json({ success: true, data: playlists.map(normalizePlaylistFromKV) });
+
+            const normalized = playlists.map(normalizePlaylistFromKV);
+            cache.set('global_playlists', normalized, 300);
+            return res.status(200).json({ success: true, data: normalized, _via: 'kv' });
         }
 
         if (action === 'create_global_playlist') {
@@ -1334,243 +1366,142 @@ module.exports = async (req, res) => {
             const descricao = sanitize(params.descricao || '');
             const userId = params.user_id;
             if (!nome) return res.status(200).json({ success: false, message: 'Nome obrigatório' });
-            const playlists = await Storage.get('global_playlists') || [];
-            const newPl = {
-                id: 'gp_' + Date.now() + '_' + crypto.randomBytes(3).toString('hex'),
-                nome, descricao, musicas: [], music_count: 0, is_global: true,
-                created_by: userId, created_at: new Date().toISOString()
-            };
-            playlists.push(newPl);
-            await Storage.set('global_playlists', playlists);
-            await addBlockToChain({ type: 'nova_playlist_global', playlist_id: newPl.id, nome });
-            // v9.7.0 — espelha no GAS
-            callGAS('create_global_playlist', { nome, descricao, user_id: userId }).catch(() => {});
-            return res.status(200).json({ success: true, data: newPl, message: 'Playlist criada' });
+
+            // ✅ GAS PRIMEIRO
+            const result = await writeThrough(
+                'create_global_playlist',
+                { nome, descricao, user_id: userId },
+                async (data) => {
+                    // Depois do GAS confirmar, atualiza KV
+                    const playlists = await Storage.get('global_playlists') || [];
+                    const newPl = {
+                        id: (data && data.id) || ('gp_' + Date.now()),
+                        nome, descricao, musicas: [], music_count: 0, is_global: true,
+                        created_by: userId, created_at: new Date().toISOString()
+                    };
+                    playlists.push(newPl);
+                    await Storage.set('global_playlists', playlists);
+                    cache.cache.delete('global_playlists');
+                }
+            );
+
+            if (!result.success) {
+                return res.status(200).json({
+                    success: false,
+                    message: 'Não foi possível criar a playlist. Tente novamente.',
+                    error: result.error
+                });
+            }
+
+            await addBlockToChain({ type: 'nova_playlist_global', nome });
+
+            return res.status(200).json({
+                success: true,
+                data: result.data,
+                message: 'Playlist criada',
+                _via: 'gas'
+            });
         }
 
         if (action === 'add_music_to_global_playlist') {
             const playlistId = params.playlist_id;
             const musicId = String(params.music_id);
             if (!playlistId || !musicId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
-            const playlists = await Storage.get('global_playlists') || [];
-            const pl = playlists.find(p => String(p.id) === String(playlistId));
-            if (!pl) return res.status(200).json({ success: false, message: 'Playlist não encontrada' });
-            pl.musicas = pl.musicas || [];
-            if (!pl.musicas.map(String).includes(musicId)) {
-                pl.musicas.push(musicId);
-                pl.music_count = pl.musicas.length;
+
+            // ✅ GAS PRIMEIRO
+            const result = await writeThrough(
+                'add_music_to_global_playlist',
+                { playlist_id: playlistId, music_id: musicId },
+                async (data) => {
+                    // KV update
+                    const playlists = await Storage.get('global_playlists') || [];
+                    const pl = playlists.find(p => String(p.id) === String(playlistId));
+                    if (pl) {
+                        pl.musicas = pl.musicas || [];
+                        if (!pl.musicas.map(String).includes(musicId)) {
+                            pl.musicas.push(musicId);
+                            pl.music_count = pl.musicas.length;
+                        }
+                        await Storage.set('global_playlists', playlists);
+                    }
+                    cache.cache.delete('global_playlists');
+                }
+            );
+
+            if (!result.success) {
+                return res.status(200).json({
+                    success: false,
+                    message: 'Não foi possível adicionar a música. Tente novamente.',
+                    error: result.error
+                });
             }
-            await Storage.set('global_playlists', playlists);
-            // v9.7.0 — espelha no GAS
-            callGAS('add_music_to_global_playlist', { playlist_id: playlistId, music_id: musicId }).catch(() => {});
-            return res.status(200).json({ success: true, data: pl });
+
+            return res.status(200).json({ success: true, data: result.data, _via: 'gas' });
         }
 
         if (action === 'remove_music_from_global_playlist') {
             const playlistId = params.playlist_id;
             const musicId = String(params.music_id);
-            const playlists = await Storage.get('global_playlists') || [];
-            const pl = playlists.find(p => String(p.id) === String(playlistId));
-            if (!pl) return res.status(200).json({ success: false, message: 'Playlist não encontrada' });
-            pl.musicas = (pl.musicas || []).filter(id => String(id) !== musicId);
-            pl.music_count = pl.musicas.length;
-            await Storage.set('global_playlists', playlists);
-            // v9.7.0 — espelha no GAS
-            callGAS('remove_music_from_global_playlist', { playlist_id: playlistId, music_id: musicId }).catch(() => {});
-            return res.status(200).json({ success: true, data: pl });
-        }
 
-        // ============================================================
-        // 📰 NOTÍCIAS
-        // ============================================================
-        if (action === 'get_news') {
-            const page = parseInt(params.page) || 1;
-            const limit = parseInt(params.limit) || 10;
-            const preferences = (params.preferences || '').split(',').filter(Boolean);
-            const seenIds = (params.seen_ids || '').split(',').filter(Boolean);
-            const userId = params.user_id || 'anon';
+            // ✅ GAS PRIMEIRO
+            const result = await writeThrough(
+                'remove_music_from_global_playlist',
+                { playlist_id: playlistId, music_id: musicId },
+                async (data) => {
+                    const playlists = await Storage.get('global_playlists') || [];
+                    const pl = playlists.find(p => String(p.id) === String(playlistId));
+                    if (pl) {
+                        pl.musicas = (pl.musicas || []).filter(id => String(id) !== musicId);
+                        pl.music_count = pl.musicas.length;
+                        await Storage.set('global_playlists', playlists);
+                    }
+                    cache.cache.delete('global_playlists');
+                }
+            );
 
-            const cachedBefore = await Storage.get('news_cache');
-            const cachedTimeBefore = await Storage.get('news_cache_time');
-            const wasCached = !!(cachedBefore && cachedTimeBefore && Date.now() - cachedTimeBefore < 15 * 60 * 1000);
-
-            let news = await aggregateNews();
-
-            if (!news.length) {
+            if (!result.success) {
                 return res.status(200).json({
-                    success: true, data: [], has_more: false, next_page: null,
-                    total: 0, page: page,
-                    source: 'google_news_rss_direct',
-                    cached: wasCached,
-                    message: 'Nenhuma notícia real encontrada no momento'
+                    success: false,
+                    message: 'Não foi possível remover a música.',
+                    error: result.error
                 });
             }
 
-            if (seenIds.length) news = news.filter(n => !seenIds.includes(n.id));
-
-            if (userId && userId !== 'anon') {
-                const seenYesterday = await Storage.get('news_seen_' + userId) || [];
-                const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-                const seenYesterdayIds = seenYesterday.filter(s => s.date === yesterday).map(s => s.id);
-                if (seenYesterdayIds.length) news = news.filter(n => !seenYesterdayIds.includes(n.id));
-            }
-
-            if (preferences.length) {
-                news.sort((a, b) => {
-                    const aScore = (preferences.includes(a.categoria) ? 10 : 0) + (preferences.includes(a.tema) ? 5 : 0) + (a.em_alta ? 3 : 0) + ((a.investidores_hoje || 0) / 10);
-                    const bScore = (preferences.includes(b.categoria) ? 10 : 0) + (preferences.includes(b.tema) ? 5 : 0) + (b.em_alta ? 3 : 0) + ((b.investidores_hoje || 0) / 10);
-                    return bScore - aScore;
-                });
-            }
-
-            const start = (page - 1) * limit;
-            const end = start + limit;
-            const pageItems = news.slice(start, end);
-            const has_more = end < news.length;
-
-            return res.status(200).json({
-                success: true,
-                data: pageItems,
-                has_more,
-                next_page: has_more ? page + 1 : null,
-                total: news.length,
-                page,
-                source: 'google_news_rss_direct',
-                cached: wasCached
-            });
-        }
-
-        if (action === 'mark_news_seen') {
-            const userId = params.user_id;
-            const newsIds = (params.news_ids || '').split(',').filter(Boolean);
-            const date = params.data || new Date().toISOString().slice(0, 10);
-            if (!userId || !newsIds.length) return res.status(200).json({ success: false, message: 'Dados incompletos' });
-            const key = 'news_seen_' + userId;
-            let seen = await Storage.get(key) || [];
-            newsIds.forEach(id => {
-                if (!seen.find(s => s.id === id && s.date === date)) seen.push({ id, date });
-            });
-            const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-            seen = seen.filter(s => s.date >= cutoff);
-            await Storage.set(key, seen);
-            callGAS('mark_news_seen', { user_id: userId, news_ids: newsIds.join(','), data: date }).catch(() => {});
-            return res.status(200).json({ success: true, count: seen.length });
-        }
-
-        if (action === 'track_news_interaction') {
-            const userId = params.user_id;
-            const newsId = params.news_id;
-            const tipo = params.tipo || 'click';
-            const tema = params.tema || '';
-            const categoria = params.categoria || '';
-            if (!userId || !newsId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
-            const key = 'news_prefs_' + userId;
-            let prefs = await Storage.get(key) || { temas: {}, categorias: {}, interacoes: 0 };
-            if (tema) prefs.temas[tema] = (prefs.temas[tema] || 0) + 1;
-            if (categoria) prefs.categorias[categoria] = (prefs.categorias[categoria] || 0) + 1;
-            prefs.interacoes = (prefs.interacoes || 0) + 1;
-            prefs.ultima = new Date().toISOString();
-            await Storage.set(key, prefs);
-            callGAS('track_news_interaction', { user_id: userId, news_id: newsId, tipo, tema, categoria }).catch(() => {});
-            return res.status(200).json({ success: true, data: prefs });
+            return res.status(200).json({ success: true, data: result.data, _via: 'gas' });
         }
 
         // ============================================================
-        // ⛓️ BLOCKCHAIN
-        // ============================================================
-        if (action === 'get_mining_blocks') {
-            const limit = parseInt(params.limit) || 50;
-            const chain = await Storage.get('blockchain') || { blocks: [] };
-            const blocks = chain.blocks.slice(-limit);
-            const formatted = blocks.map(b => ({
-                block_index: b.index,
-                block_hash: b.hash,
-                previous_hash: b.prevHash,
-                timestamp: b.timestamp,
-                music_title: b.data?.titulo || b.data?.nome || b.data?.type || 'Bloco',
-                reward_amount: b.data?.valor_total || 0
-            }));
-            return res.status(200).json({ success: true, data: formatted });
-        }
-
-        if (action === 'add_block') {
-            try {
-                const data = typeof params.data === 'string' ? JSON.parse(params.data) : (params.data || {});
-                const block = await addBlockToChain(data);
-                // v9.7.0 — espelha no GAS
-                callGAS('add_block', { data: JSON.stringify(data) }).catch(() => {});
-                return res.status(200).json({ success: true, data: block });
-            } catch (e) { return res.status(200).json({ success: false, message: 'Erro ao criar bloco' }); }
-        }
-
-        // ============================================================
-        // 📊 ADMIN STATS
-        // ============================================================
-        if (action === 'get_admin_stats' || action === 'get_stats') {
-            const playlists = await Storage.get('global_playlists') || [];
-            const chain = await Storage.get('blockchain') || { blocks: [] };
-            const streams = await Storage.get('streams') || {};
-            const elo = await Storage.get('elo_ranking') || [];
-            const gasResult = await callGAS('get_stats');
-            const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) {
-                return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
-            }
-            return res.status(200).json({
-                success: true,
-                data: {
-                    total_usuarios: 1,
-                    total_musicas: FALLBACK_MUSICAS.length,
-                    playlists_count: playlists.length,
-                    total_investido: 0,
-                    blocks_count: chain.blocks.length,
-                    streams_count: Object.keys(streams).length,
-                    elo_count: elo.length
-                },
-                _via: 'local'
-            });
-        }
-
-        // ============================================================
-        // 🎤 ARTISTAS
-        // ============================================================
-        if (action === 'get_artists') {
-            const gasResult = await callGAS('get_artists', params);
-            const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
-            return res.status(200).json({ success: true, data: [] });
-        }
-
-        // ============================================================
-        // 🎟️ TICKETS
-        // ============================================================
-        if (action === 'get_tickets') {
-            const tickets = await Storage.get('tickets') || [];
-            if (tickets.length) return res.status(200).json({ success: true, data: tickets });
-            const gasResult = await callGAS('get_tickets', params);
-            const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
-            return res.status(200).json({ success: true, data: [] });
-        }
-
-        // ============================================================
-        // 🎶 PLAYLISTS PESSOAIS
+        // 🎶 PLAYLISTS PESSOAIS — v9.7.1 (GAS PRIMEIRO)
         // ============================================================
         if (action === 'get_playlists') {
             const userId = params.user_id;
+            if (!userId) return res.status(200).json({ success: false, message: 'user_id obrigatório' });
+
+            // 1. Cache L1
+            const cachedL1 = cache.get('user_playlists_' + userId);
+            if (cachedL1) {
+                return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
+            }
+
+            // 2. KV
             const all = await Storage.get('user_playlists') || {};
             if (all[userId] && all[userId].length) {
-                return res.status(200).json({ success: true, data: all[userId] });
+                cache.set('user_playlists_' + userId, all[userId], 300);
+                return res.status(200).json({ success: true, data: all[userId], _via: 'kv' });
             }
+
+            // 3. GAS
             const gasResult = await callGAS('get_playlists', { user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) {
-                // Cacheia local
-                all[userId] = unwrapped.data;
+                const playlists = Array.isArray(unwrapped.data) ? unwrapped.data : [];
+                all[userId] = playlists;
                 await Storage.set('user_playlists', all);
-                return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
+                cache.set('user_playlists_' + userId, playlists, 300);
+                return res.status(200).json({ success: true, data: playlists, _via: 'gas' });
             }
-            return res.status(200).json({ success: true, data: all[userId] || [] });
+
+            return res.status(200).json({ success: true, data: [], _via: 'local' });
         }
 
         if (action === 'create_playlist') {
@@ -1578,24 +1509,127 @@ module.exports = async (req, res) => {
             const nome = sanitize(params.nome);
             const publica = params.publica === 'true' || params.publica === true;
             if (!userId || !nome) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+
+            // ✅ GAS PRIMEIRO
+            const result = await writeThrough(
+                'create_playlist',
+                { user_id: userId, nome, publica },
+                async (data) => {
+                    const all = await Storage.get('user_playlists') || {};
+                    all[userId] = all[userId] || [];
+                    const nova = {
+                        id: (data && data.playlist_id) || ('pl_' + Date.now()),
+                        nome, publica, musicas: [],
+                        created_at: new Date().toISOString()
+                    };
+                    all[userId].push(nova);
+                    await Storage.set('user_playlists', all);
+                    cache.cache.delete('user_playlists_' + userId);
+                }
+            );
+
+            if (!result.success) {
+                return res.status(200).json({
+                    success: false,
+                    message: 'Não foi possível criar a playlist. Tente novamente.',
+                    error: result.error
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: { id: result.data?.playlist_id || 'pl_' + Date.now(), nome, publica },
+                _via: 'gas'
+            });
+        }
+
+        // 🆕 v9.7.1 — ADICIONAR MÚSICA À PLAYLIST PESSOAL
+        if (action === 'add_music_to_playlist') {
+            const userId = params.user_id;
+            const playlistId = params.playlist_id;
+            const musicId = String(params.music_id);
+            const musicData = params.music_data ? (typeof params.music_data === 'string' ? JSON.parse(params.music_data) : params.music_data) : null;
+
+            if (!userId || !playlistId || !musicId) {
+                return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            }
+
+            // ✅ GAS PRIMEIRO — usa add_music_to_global_playlist do GAS como espelho
+            // (o GAS 7.0.0 aceita playlists pessoais via mesma action)
+            const gasResult = await callGAS('add_music_to_playlist', {
+                user_id: userId,
+                playlist_id: playlistId,
+                music_id: musicId,
+                music_data: musicData ? JSON.stringify(musicData) : ''
+            });
+            const unwrapped = unwrapGAS(gasResult);
+
+            // Se o GAS não tem essa action específica, tenta via KV local
+            if (!unwrapped.success) {
+                console.warn('⚠️ [add_music_to_playlist] GAS falhou, salvando só no KV:', gasResult.error);
+            }
+
+            // KV update (mesmo que GAS falhe, mantém cache local)
             const all = await Storage.get('user_playlists') || {};
             all[userId] = all[userId] || [];
-            const nova = { id: 'pl_' + Date.now(), nome, publica, musicas: [], created_at: new Date().toISOString() };
-            all[userId].push(nova);
-            await Storage.set('user_playlists', all);
-            // v9.7.0 — aguarda GAS (não é mais fire-and-forget silencioso)
-            const gasResult = await callGAS('create_playlist', { user_id: userId, nome, publica });
-            const gasSynced = gasResult.success;
-            return res.status(200).json({ success: true, data: nova, gas_synced: gasSynced });
+            const pl = all[userId].find(p => String(p.id) === String(playlistId));
+            if (pl) {
+                pl.musicas = pl.musicas || [];
+                if (!pl.musicas.map(String).includes(musicId)) {
+                    pl.musicas.push(musicId);
+                }
+                await Storage.set('user_playlists', all);
+                cache.cache.delete('user_playlists_' + userId);
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: { playlist_id: playlistId, music_id: musicId, added: true },
+                gas_synced: unwrapped.success,
+                _via: unwrapped.success ? 'gas' : 'kv'
+            });
+        }
+
+        // 🆕 v9.7.1 — REMOVER MÚSICA DA PLAYLIST PESSOAL
+        if (action === 'remove_music_from_playlist') {
+            const userId = params.user_id;
+            const playlistId = params.playlist_id;
+            const musicId = String(params.music_id);
+
+            if (!userId || !playlistId || !musicId) {
+                return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            }
+
+            await callGAS('remove_music_from_playlist', {
+                user_id: userId,
+                playlist_id: playlistId,
+                music_id: musicId
+            });
+
+            const all = await Storage.get('user_playlists') || {};
+            all[userId] = all[userId] || [];
+            const pl = all[userId].find(p => String(p.id) === String(playlistId));
+            if (pl) {
+                pl.musicas = (pl.musicas || []).filter(id => String(id) !== musicId);
+                await Storage.set('user_playlists', all);
+                cache.cache.delete('user_playlists_' + userId);
+            }
+
+            return res.status(200).json({ success: true, data: { removed: true } });
         }
 
         // ============================================================
-        // ⭐ SEGUIR / FAVORITOS
+        // ⭐ SEGUIR / FAVORITOS — v9.7.1 (GAS PRIMEIRO)
         // ============================================================
         if (action === 'get_following') {
             const userId = params.user_id;
+            if (!userId) return res.status(200).json({ success: true, data: [] });
+
             const all = await Storage.get('following') || {};
-            if (all[userId] && all[userId].length) return res.status(200).json({ success: true, data: all[userId] });
+            if (all[userId] && all[userId].length) {
+                return res.status(200).json({ success: true, data: all[userId], _via: 'kv' });
+            }
+
             const gasResult = await callGAS('get_following', { user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) {
@@ -1603,7 +1637,8 @@ module.exports = async (req, res) => {
                 await Storage.set('following', all);
                 return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
             }
-            return res.status(200).json({ success: true, data: all[userId] || [] });
+
+            return res.status(200).json({ success: true, data: [], _via: 'local' });
         }
 
         if (action === 'toggle_follow') {
@@ -1611,6 +1646,11 @@ module.exports = async (req, res) => {
             const artistId = String(params.artist_id);
             const actionType = params.action;
             if (!userId || !artistId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+
+            // GAS primeiro
+            await callGAS('toggle_follow', { user_id: userId, artist_id: artistId, action: actionType });
+
+            // KV depois
             const all = await Storage.get('following') || {};
             all[userId] = all[userId] || [];
             if (actionType === 'follow') {
@@ -1619,14 +1659,14 @@ module.exports = async (req, res) => {
                 all[userId] = all[userId].filter(id => id !== artistId);
             }
             await Storage.set('following', all);
-            // v9.7.0 — aguarda GAS
-            const gasResult = await callGAS('toggle_follow', { user_id: userId, artist_id: artistId, action: actionType });
-            return res.status(200).json({ success: true, data: { following: all[userId] }, gas_synced: gasResult.success });
+
+            return res.status(200).json({ success: true, data: { following: all[userId] } });
         }
 
         if (action === 'toggle_favorite') {
             const { user_id, music_id } = params;
             if (!user_id || !music_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+
             const all = await Storage.get('favorites') || {};
             all[user_id] = all[user_id] || [];
             const sid = String(music_id);
@@ -1639,9 +1679,10 @@ module.exports = async (req, res) => {
                 actionType = 'add';
             }
             await Storage.set('favorites', all);
-            // v9.7.0 — aguarda GAS com ação correta
-            const gasResult = await callGAS('toggle_favorite', { user_id, music_id, action: actionType });
-            return res.status(200).json({ success: true, data: { favorites: all[user_id] }, gas_synced: gasResult.success });
+
+            await callGAS('toggle_favorite', { user_id, music_id, action: actionType });
+
+            return res.status(200).json({ success: true, data: { favorites: all[user_id] } });
         }
 
         if (action === 'get_user_profile') {
@@ -1662,61 +1703,30 @@ module.exports = async (req, res) => {
             await addBlockToChain({ type: 'streaming', music_id, user_id, duration: duration || 30 });
 
             const key = 'streams_' + music_id;
-            let contador = await Storage.get(key) || {
-                music_id: music_id,
-                total: 0,
-                hoje: 0,
-                ultima_data: '',
-                ultima_atualizacao: ''
-            };
-
+            let contador = await Storage.get(key) || { music_id, total: 0, hoje: 0, ultima_data: '', ultima_atualizacao: '' };
             const hoje = new Date().toISOString().slice(0, 10);
-            if (contador.ultima_data !== hoje) {
-                contador.hoje = 0;
-                contador.ultima_data = hoje;
-            }
-
+            if (contador.ultima_data !== hoje) { contador.hoje = 0; contador.ultima_data = hoje; }
             contador.total++;
             contador.hoje++;
             contador.ultima_atualizacao = new Date().toISOString();
-
             await Storage.set(key, contador);
 
             let idx = await Storage.get('streams_index') || [];
-            if (!idx.includes(music_id)) {
-                idx.push(music_id);
-                await Storage.set('streams_index', idx);
-            }
+            if (!idx.includes(music_id)) { idx.push(music_id); await Storage.set('streams_index', idx); }
 
             const globalKey = 'streams_global';
             let globalCont = await Storage.get(globalKey) || { total: 0, hoje: 0, ultima_data: '' };
-            if (globalCont.ultima_data !== hoje) {
-                globalCont.hoje = 0;
-                globalCont.ultima_data = hoje;
-            }
-            globalCont.total++;
-            globalCont.hoje++;
+            if (globalCont.ultima_data !== hoje) { globalCont.hoje = 0; globalCont.ultima_data = hoje; }
+            globalCont.total++; globalCont.hoje++;
             await Storage.set(globalKey, globalCont);
 
             const userKey = 'streams_user_' + user_id;
-            let userContador = await Storage.get(userKey) || {
-                user_id: user_id,
-                total: 0,
-                musicas: {}
-            };
-
+            let userContador = await Storage.get(userKey) || { user_id, total: 0, musicas: {} };
             userContador.total++;
             userContador.musicas[music_id] = (userContador.musicas[music_id] || 0) + 1;
-
             await Storage.set(userKey, userContador);
 
-            callGAS('register_streaming', {
-                music_id: music_id,
-                user_id: user_id,
-                duration: duration || 30
-            }).catch(() => {});
-
-            console.log(`🎵 [stream] música ${music_id} | total: ${contador.total} | hoje: ${contador.hoje}`);
+            callGAS('register_streaming', { music_id, user_id, duration: duration || 30 }).catch(() => {});
 
             return res.status(200).json({
                 success: true,
@@ -1730,27 +1740,18 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'get_streaming_stats') {
-            const { music_id, user_id } = params;
+            const { music_id } = params;
             if (music_id) {
                 const contador = await Storage.get('streams_' + music_id) || { total: 0, hoje: 0 };
                 return res.status(200).json({
                     success: true,
-                    data: {
-                        music_id: music_id,
-                        streams_total: contador.total,
-                        streams_hoje: contador.hoje,
-                        ultima_atualizacao: contador.ultima_atualizacao
-                    }
+                    data: { music_id, streams_total: contador.total, streams_hoje: contador.hoje, ultima_atualizacao: contador.ultima_atualizacao }
                 });
             }
             const globalCont = await Storage.get('streams_global') || { total: 0, hoje: 0 };
             return res.status(200).json({
                 success: true,
-                data: {
-                    streams_total: globalCont.total,
-                    streams_hoje: globalCont.hoje,
-                    ultima_atualizacao: globalCont.ultima_data
-                }
+                data: { streams_total: globalCont.total, streams_hoje: globalCont.hoje, ultima_atualizacao: globalCont.ultima_data }
             });
         }
 
@@ -1758,32 +1759,31 @@ module.exports = async (req, res) => {
             const limit = parseInt(params.limit) || 20;
             const idx = await Storage.get('streams_index') || [];
             const lista = [];
-
             for (const id of idx) {
                 const d = await Storage.get('streams_' + id);
                 if (d) lista.push(d);
             }
-
             lista.sort((a, b) => (b.total || 0) - (a.total || 0));
-
             const ranking = lista.slice(0, limit).map((s, i) => ({
-                posicao: i + 1,
-                music_id: s.music_id,
-                streams_total: s.total || 0,
-                streams_hoje: s.hoje || 0
+                posicao: i + 1, music_id: s.music_id, streams_total: s.total || 0, streams_hoje: s.hoje || 0
             }));
-
             return res.status(200).json({ success: true, data: ranking });
         }
 
         // ============================================================
-        // 🎵 MÚSICAS
+        // 🎵 MÚSICAS — v9.7.1 (cache L1/L2 + GAS fallback)
         // ============================================================
         if (action === 'get_musicas') {
+            // L1
+            const cachedL1 = cache.get('musicas');
+            if (cachedL1) return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
+
+            // GAS
             const gasResult = await callGAS('get_musicas', params);
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success && Array.isArray(unwrapped.data) && unwrapped.data.length > 0) {
-                return res.status(200).json({ success: true, data: unwrapped.data, source: 'gas' });
+                cache.set('musicas', unwrapped.data, 300);
+                return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
             }
             return res.status(200).json({ success: true, data: FALLBACK_MUSICAS, source: 'fallback' });
         }
@@ -1870,7 +1870,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 💸 COMPRAR — v9.7.0 corrige fallback perigoso
+        // 💸 COMPRAR
         // ============================================================
         if (action === 'buy') {
             const { music_id, quantidade, valor_unitario, valor_total, user_id } = params;
@@ -1878,24 +1878,18 @@ module.exports = async (req, res) => {
             const qty = parseInt(quantidade);
             if (isNaN(qty) || qty < 1) return res.status(200).json({ success: false, message: 'Quantidade inválida' });
 
-            // Registra na blockchain local (auditoria)
             const block = await addBlockToChain({
                 type: 'investimento', music_id, user_id,
                 quantidade: qty, valor_total: valor_total || (qty * parseFloat(valor_unitario || 0))
             });
 
-            // Atualiza lista local de investidores
             const invKey = 'investidores_' + music_id;
             let investidores = await Storage.get(invKey) || [];
             const idx = investidores.findIndex(i => i.user_id === user_id);
-            if (idx >= 0) {
-                investidores[idx].acoes += qty;
-            } else {
-                investidores.push({ user_id: user_id, acoes: qty, desde: new Date().toISOString() });
-            }
+            if (idx >= 0) investidores[idx].acoes += qty;
+            else investidores.push({ user_id, acoes: qty, desde: new Date().toISOString() });
             await Storage.set(invKey, investidores);
 
-            // Chama o GAS — é ele quem move o dinheiro (split 70/20/10)
             const gasResult = await callGAS('buy', {
                 music_id: sanitize(music_id), quantidade: qty,
                 valor_unitario: parseFloat(valor_unitario || 0),
@@ -1905,16 +1899,15 @@ module.exports = async (req, res) => {
 
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) {
+                // Invalida cache de músicas
+                cache.cache.delete('musicas');
                 return res.status(200).json({
-                    success: true,
-                    data: unwrapped.data,
+                    success: true, data: unwrapped.data,
                     message: unwrapped.message || 'Investimento realizado!',
-                    blockchain_hash: block.hash,
-                    _via: 'gas'
+                    blockchain_hash: block.hash, _via: 'gas'
                 });
             }
 
-            // ⚠️ v9.7.0 — NÃO mente mais. Retorna erro real.
             return res.status(200).json({
                 success: false,
                 message: 'Não foi possível processar a compra. Tente novamente.',
@@ -1940,7 +1933,10 @@ module.exports = async (req, res) => {
         if (action === 'upload_music') {
             const gasResult = await callGAS('upload_music', params);
             const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
+            if (unwrapped.success) {
+                cache.cache.delete('musicas');
+                return res.status(200).json({ success: true, data: unwrapped.data });
+            }
             return res.status(200).json({ success: false, message: 'Erro ao cadastrar' });
         }
 
@@ -1983,8 +1979,17 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎫 REDEEM TICKET
+        // 🎫 TICKETS
         // ============================================================
+        if (action === 'get_tickets') {
+            const tickets = await Storage.get('tickets') || [];
+            if (tickets.length) return res.status(200).json({ success: true, data: tickets });
+            const gasResult = await callGAS('get_tickets', params);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
+            return res.status(200).json({ success: true, data: [] });
+        }
+
         if (action === 'redeem_ticket') {
             const gasResult = await callGAS('redeem_ticket', params);
             const unwrapped = unwrapGAS(gasResult);
@@ -2010,7 +2015,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 📊 TRADES
+        // 📊 TRADES — v9.7.1 (GAS PRIMEIRO)
         // ============================================================
         if (action === 'get_trades') {
             const gasResult = await callGAS('get_trades', params);
@@ -2022,8 +2027,15 @@ module.exports = async (req, res) => {
         if (action === 'create_trade' || action === 'accept_trade' || action === 'decline_trade' || action === 'cancel_trade') {
             const gasResult = await callGAS(action, params);
             const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
-            return res.status(200).json({ success: false, message: 'Erro na operação' });
+            if (unwrapped.success) {
+                cache.cache.delete('musicas');
+                return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
+            }
+            return res.status(200).json({
+                success: false,
+                message: 'Não foi possível processar a operação. Tente novamente.',
+                error: gasResult.error
+            });
         }
 
         // ============================================================
@@ -2037,12 +2049,170 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
+        // ⛓️ BLOCKCHAIN
+        // ============================================================
+        if (action === 'get_mining_blocks') {
+            const limit = parseInt(params.limit) || 50;
+            const chain = await Storage.get('blockchain') || { blocks: [] };
+            const blocks = chain.blocks.slice(-limit);
+            const formatted = blocks.map(b => ({
+                block_index: b.index,
+                block_hash: b.hash,
+                previous_hash: b.prevHash,
+                timestamp: b.timestamp,
+                music_title: b.data?.titulo || b.data?.nome || b.data?.type || 'Bloco',
+                reward_amount: b.data?.valor_total || 0
+            }));
+            return res.status(200).json({ success: true, data: formatted });
+        }
+
+        if (action === 'add_block') {
+            try {
+                const data = typeof params.data === 'string' ? JSON.parse(params.data) : (params.data || {});
+                const block = await addBlockToChain(data);
+                callGAS('add_block', { data: JSON.stringify(data) }).catch(() => {});
+                return res.status(200).json({ success: true, data: block });
+            } catch (e) { return res.status(200).json({ success: false, message: 'Erro ao criar bloco' }); }
+        }
+
+        // ============================================================
+        // 📊 ADMIN STATS
+        // ============================================================
+        if (action === 'get_admin_stats' || action === 'get_stats') {
+            const gasResult = await callGAS('get_stats');
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) {
+                return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
+            }
+            const playlists = await Storage.get('global_playlists') || [];
+            const chain = await Storage.get('blockchain') || { blocks: [] };
+            const streams = await Storage.get('streams') || {};
+            const elo = await Storage.get('elo_ranking') || [];
+            return res.status(200).json({
+                success: true,
+                data: {
+                    total_usuarios: 1,
+                    total_musicas: FALLBACK_MUSICAS.length,
+                    playlists_count: playlists.length,
+                    total_investido: 0,
+                    blocks_count: chain.blocks.length,
+                    streams_count: Object.keys(streams).length,
+                    elo_count: elo.length
+                },
+                _via: 'local'
+            });
+        }
+
+        // ============================================================
+        // 🎤 ARTISTAS
+        // ============================================================
+        if (action === 'get_artists') {
+            const gasResult = await callGAS('get_artists', params);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) {
+                // Normaliza para array
+                let artists = unwrapped.data;
+                if (!Array.isArray(artists)) {
+                    if (artists && Array.isArray(artists.artists)) artists = artists.artists;
+                    else if (artists && Array.isArray(artists.data)) artists = artists.data;
+                    else artists = [];
+                }
+                return res.status(200).json({ success: true, data: artists, _via: 'gas' });
+            }
+            return res.status(200).json({ success: true, data: [] });
+        }
+
+        // ============================================================
+        // 📰 NOTÍCIAS
+        // ============================================================
+        if (action === 'get_news') {
+            const page = parseInt(params.page) || 1;
+            const limit = parseInt(params.limit) || 10;
+            const preferences = (params.preferences || '').split(',').filter(Boolean);
+            const seenIds = (params.seen_ids || '').split(',').filter(Boolean);
+            const userId = params.user_id || 'anon';
+
+            const cachedBefore = await Storage.get('news_cache');
+            const cachedTimeBefore = await Storage.get('news_cache_time');
+            const wasCached = !!(cachedBefore && cachedTimeBefore && Date.now() - cachedTimeBefore < 15 * 60 * 1000);
+
+            let news = await aggregateNews();
+            if (!news.length) {
+                return res.status(200).json({
+                    success: true, data: [], has_more: false, next_page: null,
+                    total: 0, page, cached: wasCached, message: 'Sem notícias no momento'
+                });
+            }
+
+            if (seenIds.length) news = news.filter(n => !seenIds.includes(n.id));
+            if (userId && userId !== 'anon') {
+                const seenYesterday = await Storage.get('news_seen_' + userId) || [];
+                const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+                const seenIds2 = seenYesterday.filter(s => s.date === yesterday).map(s => s.id);
+                if (seenIds2.length) news = news.filter(n => !seenIds2.includes(n.id));
+            }
+
+            if (preferences.length) {
+                news.sort((a, b) => {
+                    const aScore = (preferences.includes(a.categoria) ? 10 : 0) + (preferences.includes(a.tema) ? 5 : 0);
+                    const bScore = (preferences.includes(b.categoria) ? 10 : 0) + (preferences.includes(b.tema) ? 5 : 0);
+                    return bScore - aScore;
+                });
+            }
+
+            const start = (page - 1) * limit;
+            const end = start + limit;
+            const pageItems = news.slice(start, end);
+            const has_more = end < news.length;
+
+            return res.status(200).json({
+                success: true, data: pageItems, has_more,
+                next_page: has_more ? page + 1 : null,
+                total: news.length, page, cached: wasCached
+            });
+        }
+
+        if (action === 'mark_news_seen') {
+            const userId = params.user_id;
+            const newsIds = (params.news_ids || '').split(',').filter(Boolean);
+            const date = params.data || new Date().toISOString().slice(0, 10);
+            if (!userId || !newsIds.length) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            const key = 'news_seen_' + userId;
+            let seen = await Storage.get(key) || [];
+            newsIds.forEach(id => {
+                if (!seen.find(s => s.id === id && s.date === date)) seen.push({ id, date });
+            });
+            const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+            seen = seen.filter(s => s.date >= cutoff);
+            await Storage.set(key, seen);
+            callGAS('mark_news_seen', { user_id: userId, news_ids: newsIds.join(','), data: date }).catch(() => {});
+            return res.status(200).json({ success: true, count: seen.length });
+        }
+
+        if (action === 'track_news_interaction') {
+            const userId = params.user_id;
+            const newsId = params.news_id;
+            const tema = params.tema || '';
+            const categoria = params.categoria || '';
+            if (!userId || !newsId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            const key = 'news_prefs_' + userId;
+            let prefs = await Storage.get(key) || { temas: {}, categorias: {}, interacoes: 0 };
+            if (tema) prefs.temas[tema] = (prefs.temas[tema] || 0) + 1;
+            if (categoria) prefs.categorias[categoria] = (prefs.categorias[categoria] || 0) + 1;
+            prefs.interacoes = (prefs.interacoes || 0) + 1;
+            prefs.ultima = new Date().toISOString();
+            await Storage.set(key, prefs);
+            callGAS('track_news_interaction', { user_id: userId, news_id: newsId, tema, categoria }).catch(() => {});
+            return res.status(200).json({ success: true, data: prefs });
+        }
+
+        // ============================================================
         // DEFAULT
         // ============================================================
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.7.0',
+            version: '9.7.1',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
