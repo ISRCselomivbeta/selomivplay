@@ -493,8 +493,12 @@ input[type="checkbox"]:checked {
 <li class="nav-item"><a href="#" class="nav-link" onclick="changeSection('trades')"><i class="bi bi-arrow-left-right text-info"></i> <span class="text-info">Negociações</span></a></li>
 <li class="nav-item"><a href="#" class="nav-link" onclick="openAddBalanceModal()"><i class="bi bi-plus-circle text-success"></i> <span class="text-success">Adicionar Saldo</span></a></li>
 <li class="nav-item"><a href="#" class="nav-link" onclick="openWithdrawalModal()"><i class="bi bi-cash-coin text-info"></i> <span class="text-info">Solicitar Saque</span></a></li>
-<li class="nav-item"><a href="#" class="nav-link" onclick="installApp()"><i class="bi bi-download text-success"></i> <span class="text-success">Baixar App</span></a></li>
-<li class="nav-item"><a href="#" class="nav-link text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> <span>Sair</span></a></li>
+<li class="nav-item" id="installNavItem">
+  <a href="#" class="nav-link" onclick="event.preventDefault(); installApp();">
+    <i class="bi bi-download text-success"></i>
+    <span class="text-success">Baixar App</span>
+  </a>
+</li><li class="nav-item"><a href="#" class="nav-link text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> <span>Sair</span></a></li>
 </ul>
 </div>
 
