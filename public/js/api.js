@@ -1,8 +1,13 @@
 // ============================================================
-// js/api.js — PLAY MY v8.6.0
+// js/api.js — PLAY MY v8.7.0
 // HealthCheck + callAPI (roteador Vercel → GAS → fallback local).
 // Depende de: config.js, utils.js, state.js
 // DEVE carregar DEPOIS de state.js e ANTES de auth.js.
+//
+// MUDANÇAS v8.7.0:
+//   - testGAS com timeout 12s (era 8s) — cold start do GAS 7.0.0
+//   - callGAS com timeout 30s (era 25s) — split 70/20/10 faz mais I/O
+//   - AbortError silenciado (é timeout intencional, não erro real)
 // ============================================================
 
 // ============ HEALTH CHECK ============
@@ -39,7 +44,6 @@ window.HealthCheck = {
         return false;
       }
 
-      // Aceita success:true OU pong:true OU ok:true OU qualquer JSON válido
       const ok = d.success === true || d.pong === true || d.ok === true || (d && typeof d === 'object');
       this.vercel.online = ok;
       console.log('✅ Vercel ping:', d, '→ online =', ok);
@@ -56,7 +60,7 @@ window.HealthCheck = {
     const url = CONFIG.GAS_URL + '?action=health';
     try {
       const c = new AbortController();
-      const t = setTimeout(() => c.abort(), 8000);
+      const t = setTimeout(() => c.abort(), 12000); // ← era 8000
 
       const r = await fetch(url, { signal: c.signal });
       clearTimeout(t);
@@ -79,13 +83,15 @@ window.HealthCheck = {
         return false;
       }
 
-      // Aceita qualquer JSON válido (não exige success:true)
       const ok = d && d.success !== false;
       this.gas.online = ok;
       console.log('✅ GAS health:', d, '→ online =', ok);
       return ok;
     } catch (e) {
-      console.warn('⚠️ GAS offline:', e.name, e.message);
+      // ✅ Silencia AbortError (timeout intencional)
+      if (e.name !== 'AbortError') {
+        console.warn('⚠️ GAS offline:', e.name, e.message);
+      }
     }
     this.gas.online = false;
     return false;
@@ -100,7 +106,6 @@ window.HealthCheck = {
     const vercelOk = await this.testVercel();
 
     if (vercelOk) {
-      // Testa GAS em background (não bloqueia)
       this.testGAS().catch(() => {});
       this.mode = 'vercel';
       console.log('✅ Vercel online — modo vercel');
@@ -150,12 +155,10 @@ window.callAPI = async function (action, data, _retry) {
   _retry = _retry || 0;
   data = data || {};
 
-  // Adiciona user_id automaticamente se estiver logado
   if (state && state.currentUser && state.currentUser.id && !data.user_id) {
     data.user_id = state.currentUser.id;
   }
 
-  // ---------- HELPERS ----------
   const buildUrl = (baseUrl) => {
     const url = new URL(baseUrl);
     url.searchParams.append('action', action);
@@ -202,7 +205,10 @@ window.callAPI = async function (action, data, _retry) {
       return null;
     } catch (e) {
       clearTimeout(timeout);
-      console.warn(`⚠️ [${action}] ${label} erro:`, e.name, e.message);
+      // ✅ Silencia AbortError do timeout intencional
+      if (e.name !== 'AbortError') {
+        console.warn(`⚠️ [${action}] ${label} erro:`, e.name, e.message);
+      }
       return null;
     }
   };
@@ -218,13 +224,11 @@ window.callAPI = async function (action, data, _retry) {
     return vercelJson;
   }
 
-  // Se falhou e é a 1ª tentativa, espera 800ms e tenta de novo
   if (_retry < 1) {
     await new Promise(r => setTimeout(r, 800));
     return callAPI(action, data, _retry + 1);
   }
 
-  // Marca Vercel como offline
   if (HealthCheck.vercel.online !== false) {
     HealthCheck.vercel.online = false;
     HealthCheck.mode = 'gas';
@@ -233,7 +237,8 @@ window.callAPI = async function (action, data, _retry) {
   }
 
   // ============ TENTATIVA 2: GAS ============
-  const gasJson = await tryFetch(CONFIG.GAS_URL, 25000, 'GAS');
+  // ✅ Timeout aumentado de 25s para 30s (split 70/20/10 faz mais I/O)
+  const gasJson = await tryFetch(CONFIG.GAS_URL, 30000, 'GAS');
   if (gasJson) {
     HealthCheck.gas.online = true;
     return gasJson;
@@ -265,4 +270,4 @@ window.getFallbackData = function (action) {
 };
 
 // ============ LOG DE CARREGAMENTO ============
-console.log('✅ [api.js] v8.6.0 carregado — HealthCheck + callAPI (Vercel → GAS → Local)');
+console.log('✅ [api.js] v8.7.0 carregado — HealthCheck + callAPI (Vercel → GAS → Local)');
