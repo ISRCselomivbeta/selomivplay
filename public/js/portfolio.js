@@ -1,8 +1,15 @@
 // ============================================================
-// js/portfolio.js — PLAY MY v9.3.0
+// js/portfolio.js — PLAY MY v9.4.0
 // Portfólio, extrato, dividendos, dados do artista, dados do admin.
 // Depende de: config.js, utils.js, state.js, api.js
 // DEVE carregar DEPOIS de marketplace.js e ANTES de trades.js.
+//
+// MUDANÇAS v9.4.0:
+//   - 🆕 Modal de venda com EMAIL DO COMPRADOR (venda P2P via create_trade)
+//   - 🆕 Validação de email (formato + bloqueio de auto-venda)
+//   - 🆕 Botão "Enviar Oferta" só habilita quando tudo está preenchido
+//   - 🆕 Após enviar, mostra o ID da oferta
+//   - Mantém fallback para sell_to_market (venda direta, sem email)
 //
 // MUDANÇAS v9.3.0:
 //   - 🆕 Botão "VENDER" em cada card do portfólio
@@ -37,7 +44,6 @@ window.loadPortfolio = async function () {
     console.warn('⚠️ loadPortfolio:', e.message);
   }
 
-  // Carrega ELOs e valuations para enriquecer o portfólio
   await carregarELOsEValuations();
 
   renderPortfolio();
@@ -70,7 +76,6 @@ window.carregarELOsEValuations = async function () {
   const ativos = state.portfolioAssets || [];
   if (!ativos.length) return;
 
-  // Mapa de ELOs (vem do ranking global)
   try {
     const r = await callAPI('get_elo_ranking');
     if (r && r.success && r.data && r.data.ranking) {
@@ -89,7 +94,6 @@ window.carregarELOsEValuations = async function () {
     console.warn('⚠️ carregarELOs (portfolio):', e.message);
   }
 
-  // Valuations por música (busca individual)
   state.valuationMap = state.valuationMap || {};
   for (const ativo of ativos.slice(0, 10)) {
     const mid = String(ativo.music_id);
@@ -110,7 +114,7 @@ window.carregarELOsEValuations = async function () {
 };
 
 // ============================================================
-// RENDERIZAR PORTFÓLIO — v9.3.0 (com botão VENDER)
+// RENDERIZAR PORTFÓLIO — v9.4.0 (com botão VENDER)
 // ============================================================
 window.renderPortfolio = function () {
   const c = document.getElementById('portfolioContent');
@@ -142,8 +146,6 @@ window.renderPortfolio = function () {
 
     const ganho = valorAtual - (x.valor_total || 0);
     const ganhoPct = x.valor_total > 0 ? (ganho / x.valor_total) * 100 : 0;
-
-    // Preço médio por ação
     const precoMedio = x.quantidade > 0 ? (x.valor_total || 0) / x.quantidade : 0;
 
     return '<div class="spotify-card">' +
@@ -157,7 +159,6 @@ window.renderPortfolio = function () {
       '<h3 class="spotify-title">' + (m.titulo || x.music_id || 'Música') + '</h3>' +
       '<p class="spotify-artist">' + (m.artista || '') + '</p>' +
 
-      // ELO + faixa
       (eloInfo
         ? '<div style="font-size:11px;margin-top:4px">' +
             '<span style="color:' + eloInfo.cor + ';font-weight:700">⚡ ' + eloInfo.elo + '</span>' +
@@ -165,7 +166,6 @@ window.renderPortfolio = function () {
           '</div>'
         : '') +
 
-      // Stats: ações + valor investido + preço médio
       '<div class="spotify-stats">' +
         '<span class="spotify-elo">' + (x.quantidade || 0) + ' ações</span>' +
         '<span class="spotify-price">' + formatCurrency(x.valor_total || 0) + '</span>' +
@@ -175,7 +175,6 @@ window.renderPortfolio = function () {
         'Preço médio: ' + formatCurrency(precoMedio) +
       '</div>' +
 
-      // Valor atual + ganho
       (valuationInfo && valuationInfo.valuation > 0
         ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--apple-separator)">' +
             '<div style="display:flex;justify-content:space-between;font-size:11px">' +
@@ -210,7 +209,7 @@ window.renderPortfolio = function () {
 };
 
 // ============================================================
-// 🆕 MODAL DE VENDA
+// 🆕 MODAL DE VENDA — v9.4.0 (com EMAIL DO COMPRADOR)
 // ============================================================
 window.openSellModal = function (musicId) {
   if (!state.currentUser) {
@@ -227,7 +226,6 @@ window.openSellModal = function (musicId) {
   const m = (state.playlist || []).find(y => String(y.id) === String(musicId)) || {};
   const eloInfo = (state.eloMap && state.eloMap[String(musicId)]) || null;
 
-  // Preço sugerido: valor atual da ação
   const precoMedio = ativo.quantidade > 0 ? (ativo.valor_total || 0) / ativo.quantidade : 0;
   const precoSugerido = Math.round(precoMedio * 100) / 100;
 
@@ -238,13 +236,13 @@ window.openSellModal = function (musicId) {
     preco_sugerido: precoSugerido
   };
 
-  // Preenche o modal
   const title = document.getElementById('sellMusicTitle');
   const artist = document.getElementById('sellMusicArtist');
   const qtyAvail = document.getElementById('sellQtyAvailable');
   const eloEl = document.getElementById('sellEloInfo');
   const qtyField = document.getElementById('sellQuantityField');
   const priceField = document.getElementById('sellPriceField');
+  const emailField = document.getElementById('sellBuyerEmail');
 
   if (title) title.textContent = m.titulo || 'Música';
   if (artist) artist.textContent = m.artista || '';
@@ -263,9 +261,8 @@ window.openSellModal = function (musicId) {
     qtyField.value = 1;
     qtyField.max = ativo.quantidade || 1;
   }
-  if (priceField) {
-    priceField.value = precoSugerido.toFixed(2);
-  }
+  if (priceField) priceField.value = precoSugerido.toFixed(2);
+  if (emailField) emailField.value = '';
 
   updateSellTotal();
   showModal('sellModal');
@@ -276,6 +273,7 @@ window.updateSellTotal = function () {
 
   const q = parseInt(document.getElementById('sellQuantityField').value) || 0;
   const p = parseFloat(document.getElementById('sellPriceField').value) || 0;
+  const email = (document.getElementById('sellBuyerEmail')?.value || '').trim();
 
   const total = q * p;
   const lucro = (p - state._sellingAsset.preco_medio) * q;
@@ -295,13 +293,19 @@ window.updateSellTotal = function () {
       ' (' + (lucroPct >= 0 ? '+' : '') + lucroPct.toFixed(1) + '%)</span>';
   }
 
-  // Habilita/desabilita botão de confirmar
   const btn = document.getElementById('confirmSellBtn');
   if (btn) {
-    const valido = q > 0 && p > 0 &&
+    const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const valido = q > 0 && p > 0 && emailValido &&
                    q <= state._sellingAsset.quantidade_disponivel;
     btn.disabled = !valido;
-    btn.textContent = valido ? 'Confirmar Venda' : 'Verifique os dados';
+    if (!valido) {
+      if (!email) btn.textContent = 'Informe o email do comprador';
+      else if (!emailValido) btn.textContent = 'Email inválido';
+      else btn.textContent = 'Verifique os dados';
+    } else {
+      btn.innerHTML = '<i class="bi bi-send me-1"></i>Enviar Oferta';
+    }
   }
 };
 
@@ -331,13 +335,14 @@ window.setSellPrice = function (tipo) {
 };
 
 // ============================================================
-// 🆕 CONFIRMAR VENDA — chama create_trade
+// 🆕 CONFIRMAR VENDA — v9.4.0 (P2P com email)
 // ============================================================
 window.confirmSell = async function () {
   if (!state.currentUser || !state._sellingAsset) return;
 
   const q = parseInt(document.getElementById('sellQuantityField').value) || 0;
   const p = parseFloat(document.getElementById('sellPriceField').value) || 0;
+  const email = (document.getElementById('sellBuyerEmail')?.value || '').trim();
   const total = q * p;
 
   if (q <= 0 || p <= 0) {
@@ -350,47 +355,49 @@ window.confirmSell = async function () {
     return;
   }
 
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast('Informe um email válido do comprador', 'error');
+    return;
+  }
+
+  if (email.toLowerCase() === (state.currentUser.email || '').toLowerCase()) {
+    showToast('Você não pode vender para si mesmo', 'error');
+    return;
+  }
+
   const btn = document.getElementById('confirmSellBtn');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processando...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
   }
 
   try {
-    // 1. Tenta venda direta ao mercado (se o backend suportar)
-    let r = await callAPI('sell_to_market', {
+    const r = await callAPI('create_trade', {
+      seller_id: state.currentUser.id,
+      buyer_email: email,
       music_id: state._sellingAsset.music_id,
-      quantidade: q,
-      preco_unitario: p,
-      valor_total: total
+      quantity: q,
+      price: p,
+      total: total,
+      message: 'Oferta enviada via portfólio'
     });
 
-    // 2. Se a action não existe, cai no create_trade (oferta)
-    if (!r || !r.success) {
-      console.log('⚠️ sell_to_market não disponível, usando create_trade');
-      r = await callAPI('create_trade', {
-        seller_id: state.currentUser.id,
-        buyer_email: 'mercado@playmy.com.br',  // oferta aberta ao mercado
-        music_id: state._sellingAsset.music_id,
-        quantity: q,
-        price: p,
-        total: total,
-        message: 'Venda automática via portfólio'
-      });
-    }
-
     if (r && r.success) {
-      showToast('✅ Venda realizada! Você receberá ' + formatCurrency(total), 'success');
+      showToast('✅ Oferta enviada para ' + email, 'success');
       closeModal('sellModal');
 
-      // Recarrega portfólio e extrato
       await loadPortfolio();
       if (typeof loadLedger === 'function') await loadLedger();
       if (typeof loadTradeOffers === 'function') await loadTradeOffers();
 
       state._sellingAsset = null;
+
+      setTimeout(() => {
+        const tradeId = (r.data && (r.data.trade_id || r.data.id)) || 'N/A';
+        showToast('📋 Oferta #' + String(tradeId).slice(-6) + ' aguardando aceite do comprador', 'info', 6000);
+      }, 500);
     } else {
-      showToast((r && r.message) || 'Erro ao vender', 'error');
+      showToast((r && r.message) || 'Erro ao enviar oferta', 'error');
     }
   } catch (e) {
     console.error('Erro na venda:', e);
@@ -398,7 +405,7 @@ window.confirmSell = async function () {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'Confirmar Venda';
+      btn.innerHTML = '<i class="bi bi-send me-1"></i>Enviar Oferta';
     }
   }
 };
@@ -701,4 +708,4 @@ window.loadAdminData = async function () {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [portfolio.js] v9.3.0 carregado — portfólio, extrato, dividendos, ELO, valuation, artista, admin e VENDA');
+console.log('✅ [portfolio.js] v9.4.0 carregado — portfólio, extrato, dividendos, ELO, valuation, artista, admin e VENDA P2P');
