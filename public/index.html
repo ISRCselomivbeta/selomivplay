@@ -53,33 +53,39 @@
   color: #000; z-index: 2;
 }
 </style>
-<style id="playmy-brand-colors-v1">
+<style id="playmy-rolex-v1">
 /* ============================================================
-   PALETA DA MARCA — v1 (roxo → magenta → laranja)
-   Mantém o aspecto Apple e adiciona identidade visual
+   PALETA ROLEX — v1
+   Verde Rolex + Ouro + Preto profundo
+   Mantém o aspecto Apple (dark, glass, tipografia)
    ============================================================ */
 
 :root {
-  /* ---------- GRADIENTE-ASSINATURA ---------- */
-  --brand-gradient: linear-gradient(90deg, #7C1ED9 0%, #D91A8C 50%, #F5A623 100%);
-  --brand-gradient-hover: linear-gradient(90deg, #8B2FE8 0%, #E82B9B 50%, #FFB733 100%);
-  --brand-gradient-vertical: linear-gradient(180deg, #7C1ED9 0%, #D91A8C 50%, #F5A623 100%);
-  --brand-gradient-diagonal: linear-gradient(135deg, #7C1ED9 0%, #D91A8C 50%, #F5A623 100%);
+  /* ---------- GRADIENTES-ASSINATURA ---------- */
+  --brand-gradient: linear-gradient(90deg, #006039 0%, #A37E2C 100%);
+  --brand-gradient-hover: linear-gradient(90deg, #00854D 0%, #C9A227 100%);
+  --brand-gradient-gold: linear-gradient(135deg, #7A5E1F 0%, #A37E2C 50%, #C9A227 100%);
+  --brand-gradient-vertical: linear-gradient(180deg, #006039 0%, #A37E2C 100%);
+  --brand-gradient-diagonal: linear-gradient(135deg, #006039 0%, #A37E2C 100%);
 
-  /* ---------- CORES SÓLIDAS DA MARCA ---------- */
-  --brand-purple: #7C1ED9;
-  --brand-magenta: #D91A8C;
-  --brand-coral: #F02860;
-  --brand-orange: #F5A623;
-  --brand-gold: #F5A623;
+  /* ---------- CORES SÓLIDAS ---------- */
+  --brand-green: #006039;
+  --brand-green-light: #00854D;
+  --brand-green-dark: #004D2E;
+  --brand-gold: #A37E2C;
+  --brand-gold-light: #C9A227;
+  --brand-gold-dark: #7A5E1F;
+  --brand-cream: #F5F5F0;
+  --brand-gray: #8A8A85;
 
   /* ---------- SOMBRAS E GLOWS ---------- */
-  --brand-glow: 0 4px 20px rgba(217, 26, 140, 0.3);
-  --brand-glow-strong: 0 4px 30px rgba(124, 30, 217, 0.4);
+  --brand-glow: 0 4px 20px rgba(0, 96, 57, 0.3);
+  --brand-glow-strong: 0 4px 30px rgba(0, 96, 57, 0.45);
+  --gold-glow: 0 4px 20px rgba(163, 126, 44, 0.35);
 }
 
 /* ============================================================
-   1. BOTÕES PRIMÁRIOS — gradiente da marca
+   1. BOTÕES PRIMÁRIOS — verde Rolex → ouro
    ============================================================ */
 .btn-miv,
 .btn-invest,
@@ -96,8 +102,9 @@
   background-size: 200% 100% !important;
   background-position: left center !important;
   border: none !important;
-  color: #ffffff !important;
+  color: #F5F5F0 !important;
   font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
   box-shadow: var(--brand-glow) !important;
   transition: background-position 0.4s ease, box-shadow 0.3s ease, transform 0.15s ease !important;
 }
@@ -119,53 +126,59 @@
 }
 
 /* ============================================================
-   2. BADGE DE ELO — gradiente da marca
+   2. BADGE DE ELO — ouro escovado
    ============================================================ */
 .elo-badge {
-  background: var(--brand-gradient) !important;
-  color: #ffffff !important;
+  background: var(--brand-gradient-gold) !important;
+  color: #000000 !important;
   font-weight: 800 !important;
-  box-shadow: 0 2px 8px rgba(124, 30, 217, 0.4) !important;
+  box-shadow: var(--gold-glow) !important;
+  letter-spacing: 0.03em;
 }
 
 /* ============================================================
-   3. HEADER DE SALDO — destaque premium
+   3. HEADER DE SALDO — ouro escovado no texto
    ============================================================ */
 #currentBalance {
-  background: var(--brand-gradient);
+  background: var(--brand-gradient-gold);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   font-weight: 800 !important;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 /* ============================================================
-   4. SELO COIN — dourado/âmbar
+   4. SELO COIN — ouro
    ============================================================ */
 .selo-badge {
-  background: linear-gradient(135deg, rgba(245, 166, 35, 0.15), rgba(124, 30, 217, 0.1)) !important;
-  border: 0.5px solid rgba(245, 166, 35, 0.4) !important;
-  color: #F5A623 !important;
+  background: linear-gradient(135deg, rgba(163, 126, 44, 0.18), rgba(0, 96, 57, 0.08)) !important;
+  border: 0.5px solid rgba(163, 126, 44, 0.5) !important;
+  color: #C9A227 !important;
   font-weight: 700 !important;
+  letter-spacing: 0.03em;
 }
 
 /* ============================================================
-   5. SIDEBAR — item ativo com gradiente lateral
+   5. SIDEBAR — verde Rolex
    ============================================================ */
 .nav-link.active {
-  background: linear-gradient(90deg, rgba(124, 30, 217, 0.2) 0%, rgba(217, 26, 140, 0.1) 50%, transparent 100%) !important;
-  border-left: 3px solid #D91A8C !important;
-  color: #ffffff !important;
+  background: linear-gradient(90deg, rgba(0, 96, 57, 0.3) 0%, rgba(163, 126, 44, 0.1) 60%, transparent 100%) !important;
+  border-left: 3px solid #A37E2C !important;
+  color: #F5F5F0 !important;
 }
 
 .nav-link:hover {
-  background: linear-gradient(90deg, rgba(124, 30, 217, 0.1) 0%, transparent 100%) !important;
-  color: #F5A623 !important;
+  background: linear-gradient(90deg, rgba(0, 96, 57, 0.15) 0%, transparent 100%) !important;
+  color: #C9A227 !important;
+}
+
+.nav-link.active i {
+  color: #C9A227 !important;
 }
 
 /* ============================================================
-   6. TÍTULOS DE SEÇÃO — underline com gradiente
+   6. TÍTULOS DE SEÇÃO — underline verde → ouro
    ============================================================ */
 .section-title {
   position: relative;
@@ -184,22 +197,20 @@
 }
 
 /* ============================================================
-   7. CARDS — borda sutil no hover
+   7. CARDS — borda dourada sutil no hover
    ============================================================ */
 .spotify-card:hover {
-  border-color: rgba(217, 26, 140, 0.4) !important;
-  box-shadow: 0 8px 24px rgba(124, 30, 217, 0.15) !important;
+  border-color: rgba(163, 126, 44, 0.4) !important;
+  box-shadow: 0 8px 24px rgba(0, 96, 57, 0.15) !important;
 }
 
 /* ============================================================
-   8. HEALTH BADGE — mantém Apple (sistema OK = verde)
+   8. HEALTH BADGE — mantém verde Apple (semântico)
    ============================================================ */
-#healthBadge {
-  /* mantém o comportamento atual — o verde Apple aqui é semântico */
-}
+/* Nada muda aqui — verde Apple segue como "sistema OK" */
 
 /* ============================================================
-   9. LOADING SCREEN — barra com gradiente da marca
+   9. LOADING SCREEN — barra verde → ouro
    ============================================================ */
 .progress-loading-bar {
   background: var(--brand-gradient) !important;
@@ -216,48 +227,50 @@
 /* ============================================================
    10. TOASTS — mantém Apple (semântico)
    ============================================================ */
-/* toasts de sucesso/erro/warning mantêm verde/vermelho/amarelo */
+/* toasts mantêm verde/vermelho/amarelo Apple */
 
 /* ============================================================
-   11. BOTÃO OUVRIR — roxo da marca
+   11. BOTÃO OUVRIR — verde Rolex sólido
    ============================================================ */
 .btn-ouvir {
-  background: linear-gradient(135deg, #7C1ED9 0%, #A020C0 100%) !important;
-  color: #ffffff !important;
+  background: linear-gradient(135deg, #006039 0%, #00854D 100%) !important;
+  color: #F5F5F0 !important;
 }
 
 .btn-ouvir:hover {
-  background: linear-gradient(135deg, #8B2FE8 0%, #B030D0 100%) !important;
+  background: linear-gradient(135deg, #00854D 0%, #00A860 100%) !important;
 }
 
 /* ============================================================
-   12. BOTÃO VENDER — coral do logo
+   12. BOTÃO VENDER — ouro
    ============================================================ */
 #confirmSellBtn,
 .btn-warning {
-  background: linear-gradient(135deg, #F02860 0%, #F5A623 100%) !important;
-  color: #ffffff !important;
+  background: var(--brand-gradient-gold) !important;
+  color: #000000 !important;
   border: none !important;
-  box-shadow: 0 4px 14px rgba(240, 40, 96, 0.3) !important;
+  font-weight: 700 !important;
+  box-shadow: var(--gold-glow) !important;
+  letter-spacing: 0.02em;
 }
 
 #confirmSellBtn:disabled {
-  opacity: 0.5;
-  background: var(--apple-gray-6) !important;
-  color: var(--apple-label-2) !important;
+  opacity: 0.4;
+  background: rgba(138, 138, 133, 0.2) !important;
+  color: rgba(245, 245, 240, 0.4) !important;
   box-shadow: none !important;
 }
 
 /* ============================================================
-   13. LOGO DA MARCA — mantém a imagem, adiciona glow sutil
+   13. LOGO DA MARCA — glow dourado sutil
    ============================================================ */
 .sidebar-header img,
 .logo-header img {
-  filter: drop-shadow(0 2px 8px rgba(124, 30, 217, 0.3));
+  filter: drop-shadow(0 2px 12px rgba(163, 126, 44, 0.3));
 }
 
 /* ============================================================
-   14. PLAYER EXPANDIDO — barra de progresso com gradiente
+   14. PLAYER EXPANDIDO — barra verde → ouro
    ============================================================ */
 .progress-fill,
 .expanded-progress-fill,
@@ -267,7 +280,7 @@
 }
 
 /* ============================================================
-   15. HEADER APP — linha superior com gradiente sutil
+   15. HEADER APP — linha verde → ouro
    ============================================================ */
 .app-header {
   position: relative;
@@ -282,82 +295,120 @@
   height: 1px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(124, 30, 217, 0.5) 30%,
-    rgba(217, 26, 140, 0.5) 50%,
-    rgba(245, 166, 35, 0.5) 70%,
+    rgba(0, 96, 57, 0.6) 30%,
+    rgba(163, 126, 44, 0.6) 70%,
     transparent 100%);
   pointer-events: none;
 }
 
 /* ============================================================
-   16. TABS / FILTROS — item ativo com gradiente
+   16. FILTROS DE NOTÍCIAS — ativo verde → ouro
    ============================================================ */
 .pm-filter-btn.active {
   background: var(--brand-gradient) !important;
-  color: #ffffff !important;
+  color: #F5F5F0 !important;
   border: none !important;
 }
 
 /* ============================================================
-   17. BOTÕES DE AÇÃO SECUNDÁRIA — borda gradiente
+   17. BOTÕES SECUNDÁRIOS — borda dourada
    ============================================================ */
 .btn-outline-warning {
-  border-color: rgba(245, 166, 35, 0.5) !important;
-  color: #F5A623 !important;
+  border-color: rgba(163, 126, 44, 0.5) !important;
+  color: #C9A227 !important;
 }
 
 .btn-outline-warning:hover {
-  background: linear-gradient(135deg, rgba(245, 166, 35, 0.15), rgba(217, 26, 140, 0.1)) !important;
-  border-color: #F5A623 !important;
+  background: linear-gradient(135deg, rgba(163, 126, 44, 0.15), rgba(0, 96, 57, 0.1)) !important;
+  border-color: #C9A227 !important;
 }
 
 /* ============================================================
-   18. BADGES ESPECIAIS — "🔥 Em alta" com gradiente
+   18. BADGE "EM ALTA" — ouro escovado
    ============================================================ */
 .em-alta-badge {
-  background: var(--brand-gradient) !important;
-  color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(217, 26, 140, 0.4) !important;
+  background: var(--brand-gradient-gold) !important;
+  color: #000000 !important;
+  font-weight: 800 !important;
+  box-shadow: var(--gold-glow) !important;
 }
 
 /* ============================================================
-   19. BARRA DE BUSCA — borda gradiente no focus
+   19. BARRA DE BUSCA — foco dourado
    ============================================================ */
 .search-input:focus {
-  border-color: rgba(217, 26, 140, 0.6) !important;
-  box-shadow: 0 0 0 3px rgba(124, 30, 217, 0.15) !important;
+  border-color: rgba(163, 126, 44, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(0, 96, 57, 0.2) !important;
 }
 
 /* ============================================================
-   20. LINKS DE AUTH — cor magenta
+   20. LINKS DE AUTH — ouro claro
    ============================================================ */
 .auth-link {
-  color: #D91A8C !important;
+  color: #C9A227 !important;
   font-weight: 600 !important;
 }
 
 .auth-link:hover {
-  color: #F5A623 !important;
+  color: #F5F5F0 !important;
 }
 
 /* ============================================================
-   21. TERMS CHECKBOX — cor de destaque no check
+   21. CHECKBOX — verde Rolex
    ============================================================ */
 input[type="checkbox"]:checked {
-  background: var(--brand-gradient) !important;
-  border-color: #D91A8C !important;
+  background: #006039 !important;
+  border-color: #006039 !important;
 }
 
 /* ============================================================
-   22. CONEXÃO PLAYER — cor da marca
+   22. CONEXÃO PLAYER — ouro
    ============================================================ */
 .connection-footer {
-  color: #F5A623 !important;
-  border-top: 1px solid rgba(245, 166, 35, 0.2) !important;
+  color: #C9A227 !important;
+  border-top: 1px solid rgba(163, 126, 44, 0.25) !important;
 }
 
 .connection-footer i {
-  color: #F5A623 !important;
+  color: #C9A227 !important;
+}
+
+/* ============================================================
+   23. ÍCONES DE NAVEGAÇÃO com cor temática
+   ============================================================ */
+.nav-link i.bi-newspaper {
+  color: #C9A227 !important;
+}
+
+.bi-globe {
+  color: #00854D !important;
+}
+
+.bi-ticket-perforated {
+  color: #C9A227 !important;
+}
+
+.bi-link-45deg {
+  color: #00854D !important;
+}
+
+/* ============================================================
+   24. BADGE DE USUÁRIO — verde Rolex
+   ============================================================ */
+.user-badge {
+  background: linear-gradient(135deg, rgba(0, 96, 57, 0.25), rgba(0, 96, 57, 0.1)) !important;
+  border: 0.5px solid rgba(0, 96, 57, 0.5) !important;
+  color: #C9A227 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em;
+}
+
+/* ============================================================
+   25. MENU HAMBURGER — verde Rolex
+   ============================================================ */
+.app-header button[onclick="toggleSidebar()"] {
+  background: linear-gradient(135deg, rgba(0, 96, 57, 0.2), rgba(163, 126, 44, 0.1)) !important;
+  border: 0.5px solid rgba(163, 126, 44, 0.3) !important;
 }
 </style>
 </head>
