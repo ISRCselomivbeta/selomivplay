@@ -53,7 +53,313 @@
   color: #000; z-index: 2;
 }
 </style>
+<style id="playmy-brand-colors-v1">
+/* ============================================================
+   PALETA DA MARCA — v1 (roxo → magenta → laranja)
+   Mantém o aspecto Apple e adiciona identidade visual
+   ============================================================ */
 
+:root {
+  /* ---------- GRADIENTE-ASSINATURA ---------- */
+  --brand-gradient: linear-gradient(90deg, #7C1ED9 0%, #D91A8C 50%, #F5A623 100%);
+  --brand-gradient-hover: linear-gradient(90deg, #8B2FE8 0%, #E82B9B 50%, #FFB733 100%);
+  --brand-gradient-vertical: linear-gradient(180deg, #7C1ED9 0%, #D91A8C 50%, #F5A623 100%);
+  --brand-gradient-diagonal: linear-gradient(135deg, #7C1ED9 0%, #D91A8C 50%, #F5A623 100%);
+
+  /* ---------- CORES SÓLIDAS DA MARCA ---------- */
+  --brand-purple: #7C1ED9;
+  --brand-magenta: #D91A8C;
+  --brand-coral: #F02860;
+  --brand-orange: #F5A623;
+  --brand-gold: #F5A623;
+
+  /* ---------- SOMBRAS E GLOWS ---------- */
+  --brand-glow: 0 4px 20px rgba(217, 26, 140, 0.3);
+  --brand-glow-strong: 0 4px 30px rgba(124, 30, 217, 0.4);
+}
+
+/* ============================================================
+   1. BOTÕES PRIMÁRIOS — gradiente da marca
+   ============================================================ */
+.btn-miv,
+.btn-invest,
+.btn-primary,
+#loginBtn,
+#registerBtn,
+#btnFinalizarCadastro,
+#createPlaylistBtn,
+#createGlobalPlaylistBtn,
+#createTicketBtn,
+#confirmInvestBtn,
+#confirmExternalInvestBtn {
+  background: var(--brand-gradient) !important;
+  background-size: 200% 100% !important;
+  background-position: left center !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: var(--brand-glow) !important;
+  transition: background-position 0.4s ease, box-shadow 0.3s ease, transform 0.15s ease !important;
+}
+
+.btn-miv:hover,
+.btn-invest:hover,
+.btn-primary:hover,
+#loginBtn:hover,
+#registerBtn:hover,
+#btnFinalizarCadastro:hover {
+  background-position: right center !important;
+  box-shadow: var(--brand-glow-strong) !important;
+  transform: translateY(-1px);
+}
+
+.btn-miv:active,
+.btn-invest:active {
+  transform: translateY(0);
+}
+
+/* ============================================================
+   2. BADGE DE ELO — gradiente da marca
+   ============================================================ */
+.elo-badge {
+  background: var(--brand-gradient) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 8px rgba(124, 30, 217, 0.4) !important;
+}
+
+/* ============================================================
+   3. HEADER DE SALDO — destaque premium
+   ============================================================ */
+#currentBalance {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+}
+
+/* ============================================================
+   4. SELO COIN — dourado/âmbar
+   ============================================================ */
+.selo-badge {
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.15), rgba(124, 30, 217, 0.1)) !important;
+  border: 0.5px solid rgba(245, 166, 35, 0.4) !important;
+  color: #F5A623 !important;
+  font-weight: 700 !important;
+}
+
+/* ============================================================
+   5. SIDEBAR — item ativo com gradiente lateral
+   ============================================================ */
+.nav-link.active {
+  background: linear-gradient(90deg, rgba(124, 30, 217, 0.2) 0%, rgba(217, 26, 140, 0.1) 50%, transparent 100%) !important;
+  border-left: 3px solid #D91A8C !important;
+  color: #ffffff !important;
+}
+
+.nav-link:hover {
+  background: linear-gradient(90deg, rgba(124, 30, 217, 0.1) 0%, transparent 100%) !important;
+  color: #F5A623 !important;
+}
+
+/* ============================================================
+   6. TÍTULOS DE SEÇÃO — underline com gradiente
+   ============================================================ */
+.section-title {
+  position: relative;
+  padding-bottom: 8px;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: var(--brand-gradient);
+  border-radius: 2px;
+}
+
+/* ============================================================
+   7. CARDS — borda sutil no hover
+   ============================================================ */
+.spotify-card:hover {
+  border-color: rgba(217, 26, 140, 0.4) !important;
+  box-shadow: 0 8px 24px rgba(124, 30, 217, 0.15) !important;
+}
+
+/* ============================================================
+   8. HEALTH BADGE — mantém Apple (sistema OK = verde)
+   ============================================================ */
+#healthBadge {
+  /* mantém o comportamento atual — o verde Apple aqui é semântico */
+}
+
+/* ============================================================
+   9. LOADING SCREEN — barra com gradiente da marca
+   ============================================================ */
+.progress-loading-bar {
+  background: var(--brand-gradient) !important;
+  background-size: 200% 100% !important;
+  animation: brand-shimmer 1.5s ease-in-out infinite !important;
+}
+
+@keyframes brand-shimmer {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ============================================================
+   10. TOASTS — mantém Apple (semântico)
+   ============================================================ */
+/* toasts de sucesso/erro/warning mantêm verde/vermelho/amarelo */
+
+/* ============================================================
+   11. BOTÃO OUVRIR — roxo da marca
+   ============================================================ */
+.btn-ouvir {
+  background: linear-gradient(135deg, #7C1ED9 0%, #A020C0 100%) !important;
+  color: #ffffff !important;
+}
+
+.btn-ouvir:hover {
+  background: linear-gradient(135deg, #8B2FE8 0%, #B030D0 100%) !important;
+}
+
+/* ============================================================
+   12. BOTÃO VENDER — coral do logo
+   ============================================================ */
+#confirmSellBtn,
+.btn-warning {
+  background: linear-gradient(135deg, #F02860 0%, #F5A623 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(240, 40, 96, 0.3) !important;
+}
+
+#confirmSellBtn:disabled {
+  opacity: 0.5;
+  background: var(--apple-gray-6) !important;
+  color: var(--apple-label-2) !important;
+  box-shadow: none !important;
+}
+
+/* ============================================================
+   13. LOGO DA MARCA — mantém a imagem, adiciona glow sutil
+   ============================================================ */
+.sidebar-header img,
+.logo-header img {
+  filter: drop-shadow(0 2px 8px rgba(124, 30, 217, 0.3));
+}
+
+/* ============================================================
+   14. PLAYER EXPANDIDO — barra de progresso com gradiente
+   ============================================================ */
+.progress-fill,
+.expanded-progress-fill,
+#playerProgressBar,
+#expandedProgressBar {
+  background: var(--brand-gradient) !important;
+}
+
+/* ============================================================
+   15. HEADER APP — linha superior com gradiente sutil
+   ============================================================ */
+.app-header {
+  position: relative;
+}
+
+.app-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(124, 30, 217, 0.5) 30%,
+    rgba(217, 26, 140, 0.5) 50%,
+    rgba(245, 166, 35, 0.5) 70%,
+    transparent 100%);
+  pointer-events: none;
+}
+
+/* ============================================================
+   16. TABS / FILTROS — item ativo com gradiente
+   ============================================================ */
+.pm-filter-btn.active {
+  background: var(--brand-gradient) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+/* ============================================================
+   17. BOTÕES DE AÇÃO SECUNDÁRIA — borda gradiente
+   ============================================================ */
+.btn-outline-warning {
+  border-color: rgba(245, 166, 35, 0.5) !important;
+  color: #F5A623 !important;
+}
+
+.btn-outline-warning:hover {
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.15), rgba(217, 26, 140, 0.1)) !important;
+  border-color: #F5A623 !important;
+}
+
+/* ============================================================
+   18. BADGES ESPECIAIS — "🔥 Em alta" com gradiente
+   ============================================================ */
+.em-alta-badge {
+  background: var(--brand-gradient) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(217, 26, 140, 0.4) !important;
+}
+
+/* ============================================================
+   19. BARRA DE BUSCA — borda gradiente no focus
+   ============================================================ */
+.search-input:focus {
+  border-color: rgba(217, 26, 140, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(124, 30, 217, 0.15) !important;
+}
+
+/* ============================================================
+   20. LINKS DE AUTH — cor magenta
+   ============================================================ */
+.auth-link {
+  color: #D91A8C !important;
+  font-weight: 600 !important;
+}
+
+.auth-link:hover {
+  color: #F5A623 !important;
+}
+
+/* ============================================================
+   21. TERMS CHECKBOX — cor de destaque no check
+   ============================================================ */
+input[type="checkbox"]:checked {
+  background: var(--brand-gradient) !important;
+  border-color: #D91A8C !important;
+}
+
+/* ============================================================
+   22. CONEXÃO PLAYER — cor da marca
+   ============================================================ */
+.connection-footer {
+  color: #F5A623 !important;
+  border-top: 1px solid rgba(245, 166, 35, 0.2) !important;
+}
+
+.connection-footer i {
+  color: #F5A623 !important;
+}
+</style>
 </head>
 <body>
 
