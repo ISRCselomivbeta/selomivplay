@@ -1,19 +1,22 @@
-// BACKEND.JS - VERSÃO 9.7.1
+// BACKEND.JS - VERSÃO 9.7.2
 // ============================================================
-// CORREÇÃO CRÍTICA: GAS PRIMEIRO, KV DEPOIS
-// + Playlists que NÃO somem + add_music_to_playlist (faltava)
+// PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
+// + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
+// + COMPATIBILIDADE TOTAL COM GAS 7.0.0
+// + VENDA DIRETA AO MERCADO (sell_to_market)
+// + VENDA P2P COM EMAIL (create_trade robusto)
+//
+// MUDANÇAS v9.7.2:
+//   - ✅ NOVA: processSellToMarket() — venda direta com split 70/20/10
+//   - ✅ NOVA ACTION: sell_to_market
+//   - ✅ create_trade com validação robusta (email, quantidade, preço)
+//   - ✅ create_trade espelha no KV + blockchain
+//   - ✅ get_trades normaliza arrays (received/sent/history)
 //
 // MUDANÇAS v9.7.1:
-//   - ✅ add_music_to_global_playlist: GAS primeiro, KV depois
-//   - ✅ remove_music_from_global_playlist: idem
-//   - ✅ create_global_playlist: idem
-//   - ✅ create_playlist: idem (e não mente mais)
-//   - ✅ get_playlists / get_global_playlists: KV cache com TTL
-//   - ✅ NOVA ACTION: add_music_to_playlist (estava faltando)
+//   - ✅ Playlists: GAS primeiro, KV depois
+//   - ✅ NOVA ACTION: add_music_to_playlist
 //   - ✅ NOVA ACTION: remove_music_from_playlist
-//   - ✅ NOVA ACTION: add_music_to_global_playlist com music_data
-//   - ✅ GAS é SEMPRE a fonte da verdade nas escritas
-//   - ✅ KV é cache de leitura (TTL 5min)
 //
 // MUDANÇAS v9.7.0:
 //   - Delegação genérica ao GAS 7.0.0 via GAS_ACTIONS set
@@ -30,7 +33,6 @@
 //   - aggregateNews com Promise.allSettled + timeout 8s
 //   - RSS timeout 6s + check content-type
 //   - callGAS com timeout 6s e 1 retry
-//   - action=ping paralelo (Promise.allSettled)
 //
 // MUDANÇAS v9.4.0:
 //   - register_streaming adiciona ao streams_index
@@ -144,7 +146,13 @@ const MEMORY_STORAGE = {
     streams_index: [],
     elo: {},
     valuation: {},
-    isrc: {}
+    isrc: {},
+    trades_all: [],
+    carteira: {},
+    extrato: {},
+    users_all: [],
+    musicas_all: [],
+    extrato_all: []
 };
 
 const Storage = {
@@ -490,7 +498,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.1)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.2)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -663,7 +671,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
 
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.7.1 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.7.2 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -975,10 +983,7 @@ async function calcularValuation(music_id, video_id_youtube) {
 // ============================================================
 // v9.7.1 — HELPERS DE ESCRITA (GAS primeiro, KV depois)
 // ============================================================
-
-// Chama o GAS; se falhar, retorna erro. Só atualiza o KV depois.
 async function writeThrough(gasAction, gasParams, kvUpdateFn) {
-    // 1. GAS PRIMEIRO (fonte da verdade)
     const gasResult = await callGAS(gasAction, gasParams);
     const unwrapped = unwrapGAS(gasResult);
 
@@ -987,20 +992,17 @@ async function writeThrough(gasAction, gasParams, kvUpdateFn) {
         return { success: false, error: gasResult.error, message: unwrapped.message, _via: 'gas_error' };
     }
 
-    // 2. KV DEPOIS (só se o GAS confirmou)
     if (typeof kvUpdateFn === 'function') {
         try {
             await kvUpdateFn(unwrapped.data);
         } catch (e) {
             console.warn(`⚠️ [writeThrough] KV update falhou em "${gasAction}":`, e.message);
-            // Não retorna erro — o GAS já salvou, KV é cache
         }
     }
 
     return { success: true, data: unwrapped.data, _via: 'gas' };
 }
 
-// Invalida cache local das chaves afetadas
 async function invalidateCache(keys) {
     for (const key of keys) {
         cache.cache.delete('cache_' + key);
@@ -1009,13 +1011,100 @@ async function invalidateCache(keys) {
 }
 
 // ============================================================
-// ⚠️ CONTINUA NA PARTE 2/2 (próxima mensagem)
-// A Parte 2 começa com: module.exports = async (req, res) => {
+// v9.7.2 — VENDA DIRETA AO MERCADO
+// Debita as ações do vendedor, credita o saldo imediatamente
+// e devolve as ações ao pool da música. Split 70/20/10.
 // ============================================================
+async function processSellToMarket(userId, musicId, quantidade, precoUnitario, valorTotal) {
+    const SPLIT = { artista: 0.70, plataforma: 0.20, fundo: 0.10 };
+
+    // 1. Verifica se o usuário tem as ações
+    const carteira = await Storage.get('carteira_' + userId) || [];
+    const ativo = carteira.find(a => String(a.music_id) === String(musicId) && a.status === 'ativo');
+    if (!ativo) {
+        return { success: false, message: 'Você não possui essa música' };
+    }
+    if (ativo.quantidade < quantidade) {
+        return { success: false, message: 'Quantidade maior que o disponível' };
+    }
+
+    // 2. Debita as ações
+    ativo.quantidade -= quantidade;
+    if (ativo.quantidade === 0) ativo.status = 'em_venda';
+    await Storage.set('carteira_' + userId, carteira);
+
+    // 3. Credita o saldo
+    const users = await Storage.get('users_all') || [];
+    const vendedor = users.find(u => u.id === userId);
+    if (vendedor) {
+        vendedor.saldo = (vendedor.saldo || 0) + valorTotal;
+        await Storage.set('users_all', users);
+    }
+
+    // 4. Registra no extrato
+    const extrato = await Storage.get('extrato_all') || [];
+    extrato.push({
+        id: 'ext_' + Date.now(),
+        user_id: userId,
+        tipo: 'VENDA',
+        categoria: 'VENDA_DE_ACAO',
+        descricao: `Venda de ${quantidade} ações ao mercado`,
+        valor: valorTotal,
+        saldo_antes: (vendedor?.saldo || 0) - valorTotal,
+        saldo_apos: vendedor?.saldo || 0,
+        status: 'concluido',
+        detalhes: { music_id: musicId, quantidade, preco_unitario: precoUnitario },
+        created_at: new Date().toISOString()
+    });
+    await Storage.set('extrato_all', extrato);
+
+    // 5. Devolve as ações pro pool da música
+    const musicas = await Storage.get('musicas_all') || [];
+    const musica = musicas.find(m => String(m.id) === String(musicId));
+    if (musica) {
+        musica.acoes_disponiveis = (musica.acoes_disponiveis || 0) + quantidade;
+        await Storage.set('musicas_all', musicas);
+    }
+
+    // 6. Blockchain
+    const block = await addBlockToChain({
+        type: 'venda_mercado',
+        music_id: musicId,
+        user_id: userId,
+        quantidade,
+        valor_total: valorTotal
+    });
+
+    // 7. Espelha no GAS
+    callGAS('add_transaction', {
+        user_id: userId,
+        tipo: 'VENDA',
+        valor: valorTotal,
+        descricao: `Venda ao mercado — ${quantidade} ações`,
+        referencia: block.hash
+    }).catch(() => {});
+
+    return {
+        success: true,
+        data: {
+            contrato_id: 'VD_' + Date.now(),
+            blockchain_hash: block.hash,
+            quantidade_vendida: quantidade,
+            valor_total: valorTotal,
+            novo_saldo: vendedor?.saldo || 0,
+            split: {
+                artista: Math.round(valorTotal * SPLIT.artista * 100) / 100,
+                plataforma: Math.round(valorTotal * SPLIT.plataforma * 100) / 100,
+                fundo: Math.round(valorTotal * SPLIT.fundo * 100) / 100
+            }
+        },
+        message: `Venda realizada! +R$ ${valorTotal.toFixed(2)} no saldo`,
+        _via: 'local'
+    };
+}
+
 // ============================================================
-// HANDLER PRINCIPAL — v9.7.1
-// GAS PRIMEIRO, KV DEPOIS (nas escritas)
-// KV CACHE com TTL (nas leituras)
+// HANDLER PRINCIPAL — v9.7.2
 // ============================================================
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1044,7 +1133,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.7.1',
+                version: '9.7.2',
                 kv_enabled: !!kv,
                 nodemailer_enabled: !!nodemailer,
                 youtube_enabled: !!YOUTUBE_API_KEY,
@@ -1332,19 +1421,16 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎵 PLAYLISTS GLOBAIS — v9.7.1 (GAS PRIMEIRO, KV DEPOIS)
+        // 🎵 PLAYLISTS GLOBAIS
         // ============================================================
         if (action === 'get_global_playlists') {
-            // 1. Cache local (L1)
             const cachedL1 = cache.get('global_playlists');
             if (cachedL1) {
                 return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
             }
 
-            // 2. KV (L2)
             let playlists = await Storage.get('global_playlists') || [];
 
-            // 3. Se KV vazio, tenta GAS
             if (playlists.length === 0) {
                 const gasResult = await callGAS('get_global_playlists', params);
                 const unwrapped = unwrapGAS(gasResult);
@@ -1367,12 +1453,10 @@ module.exports = async (req, res) => {
             const userId = params.user_id;
             if (!nome) return res.status(200).json({ success: false, message: 'Nome obrigatório' });
 
-            // ✅ GAS PRIMEIRO
             const result = await writeThrough(
                 'create_global_playlist',
                 { nome, descricao, user_id: userId },
                 async (data) => {
-                    // Depois do GAS confirmar, atualiza KV
                     const playlists = await Storage.get('global_playlists') || [];
                     const newPl = {
                         id: (data && data.id) || ('gp_' + Date.now()),
@@ -1408,12 +1492,10 @@ module.exports = async (req, res) => {
             const musicId = String(params.music_id);
             if (!playlistId || !musicId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-            // ✅ GAS PRIMEIRO
             const result = await writeThrough(
                 'add_music_to_global_playlist',
                 { playlist_id: playlistId, music_id: musicId },
                 async (data) => {
-                    // KV update
                     const playlists = await Storage.get('global_playlists') || [];
                     const pl = playlists.find(p => String(p.id) === String(playlistId));
                     if (pl) {
@@ -1443,7 +1525,6 @@ module.exports = async (req, res) => {
             const playlistId = params.playlist_id;
             const musicId = String(params.music_id);
 
-            // ✅ GAS PRIMEIRO
             const result = await writeThrough(
                 'remove_music_from_global_playlist',
                 { playlist_id: playlistId, music_id: musicId },
@@ -1471,26 +1552,23 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎶 PLAYLISTS PESSOAIS — v9.7.1 (GAS PRIMEIRO)
+        // 🎶 PLAYLISTS PESSOAIS
         // ============================================================
         if (action === 'get_playlists') {
             const userId = params.user_id;
             if (!userId) return res.status(200).json({ success: false, message: 'user_id obrigatório' });
 
-            // 1. Cache L1
             const cachedL1 = cache.get('user_playlists_' + userId);
             if (cachedL1) {
                 return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
             }
 
-            // 2. KV
             const all = await Storage.get('user_playlists') || {};
             if (all[userId] && all[userId].length) {
                 cache.set('user_playlists_' + userId, all[userId], 300);
                 return res.status(200).json({ success: true, data: all[userId], _via: 'kv' });
             }
 
-            // 3. GAS
             const gasResult = await callGAS('get_playlists', { user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) {
@@ -1510,7 +1588,6 @@ module.exports = async (req, res) => {
             const publica = params.publica === 'true' || params.publica === true;
             if (!userId || !nome) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-            // ✅ GAS PRIMEIRO
             const result = await writeThrough(
                 'create_playlist',
                 { user_id: userId, nome, publica },
@@ -1543,7 +1620,6 @@ module.exports = async (req, res) => {
             });
         }
 
-        // 🆕 v9.7.1 — ADICIONAR MÚSICA À PLAYLIST PESSOAL
         if (action === 'add_music_to_playlist') {
             const userId = params.user_id;
             const playlistId = params.playlist_id;
@@ -1554,8 +1630,6 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: false, message: 'Dados incompletos' });
             }
 
-            // ✅ GAS PRIMEIRO — usa add_music_to_global_playlist do GAS como espelho
-            // (o GAS 7.0.0 aceita playlists pessoais via mesma action)
             const gasResult = await callGAS('add_music_to_playlist', {
                 user_id: userId,
                 playlist_id: playlistId,
@@ -1564,12 +1638,10 @@ module.exports = async (req, res) => {
             });
             const unwrapped = unwrapGAS(gasResult);
 
-            // Se o GAS não tem essa action específica, tenta via KV local
             if (!unwrapped.success) {
                 console.warn('⚠️ [add_music_to_playlist] GAS falhou, salvando só no KV:', gasResult.error);
             }
 
-            // KV update (mesmo que GAS falhe, mantém cache local)
             const all = await Storage.get('user_playlists') || {};
             all[userId] = all[userId] || [];
             const pl = all[userId].find(p => String(p.id) === String(playlistId));
@@ -1590,7 +1662,6 @@ module.exports = async (req, res) => {
             });
         }
 
-        // 🆕 v9.7.1 — REMOVER MÚSICA DA PLAYLIST PESSOAL
         if (action === 'remove_music_from_playlist') {
             const userId = params.user_id;
             const playlistId = params.playlist_id;
@@ -1619,7 +1690,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // ⭐ SEGUIR / FAVORITOS — v9.7.1 (GAS PRIMEIRO)
+        // ⭐ SEGUIR / FAVORITOS
         // ============================================================
         if (action === 'get_following') {
             const userId = params.user_id;
@@ -1647,10 +1718,8 @@ module.exports = async (req, res) => {
             const actionType = params.action;
             if (!userId || !artistId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-            // GAS primeiro
             await callGAS('toggle_follow', { user_id: userId, artist_id: artistId, action: actionType });
 
-            // KV depois
             const all = await Storage.get('following') || {};
             all[userId] = all[userId] || [];
             if (actionType === 'follow') {
@@ -1771,14 +1840,12 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎵 MÚSICAS — v9.7.1 (cache L1/L2 + GAS fallback)
+        // 🎵 MÚSICAS
         // ============================================================
         if (action === 'get_musicas') {
-            // L1
             const cachedL1 = cache.get('musicas');
             if (cachedL1) return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
 
-            // GAS
             const gasResult = await callGAS('get_musicas', params);
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success && Array.isArray(unwrapped.data) && unwrapped.data.length > 0) {
@@ -1899,7 +1966,6 @@ module.exports = async (req, res) => {
 
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) {
-                // Invalida cache de músicas
                 cache.cache.delete('musicas');
                 return res.status(200).json({
                     success: true, data: unwrapped.data,
@@ -1914,6 +1980,34 @@ module.exports = async (req, res) => {
                 error: gasResult.error || 'backend indisponível',
                 _via: 'gas_error'
             });
+        }
+
+        // ============================================================
+        // 💸 VENDER AO MERCADO (v9.7.2)
+        // ============================================================
+        if (action === 'sell_to_market') {
+            const { music_id, quantidade, preco_unitario, valor_total, user_id } = params;
+            if (!music_id || !quantidade || !user_id) {
+                return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            }
+            const q = parseInt(quantidade);
+            const preco = parseFloat(preco_unitario || 0);
+            const total = parseFloat(valor_total || (q * preco));
+
+            if (q < 1 || preco < 0.01 || total < 0.01) {
+                return res.status(200).json({ success: false, message: 'Quantidade ou preço inválidos' });
+            }
+
+            try {
+                const result = await processSellToMarket(user_id, music_id, q, preco, total);
+                return res.status(200).json(result);
+            } catch (e) {
+                console.error('❌ Erro em sell_to_market:', e);
+                return res.status(200).json({
+                    success: false,
+                    message: 'Erro ao processar venda: ' + e.message
+                });
+            }
         }
 
         if (action === 'buy_external') {
@@ -2015,25 +2109,124 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 📊 TRADES — v9.7.1 (GAS PRIMEIRO)
+        // 📊 TRADES — v9.7.2 (com validações)
         // ============================================================
         if (action === 'get_trades') {
             const gasResult = await callGAS('get_trades', params);
             const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
+            if (unwrapped.success) {
+                const data = unwrapped.data || {};
+                return res.status(200).json({
+                    success: true,
+                    data: {
+                        received: Array.isArray(data.received) ? data.received : [],
+                        sent: Array.isArray(data.sent) ? data.sent : [],
+                        history: Array.isArray(data.history) ? data.history : []
+                    },
+                    _via: 'gas'
+                });
+            }
             return res.status(200).json({ success: true, data: { received: [], sent: [], history: [] } });
         }
 
-        if (action === 'create_trade' || action === 'accept_trade' || action === 'decline_trade' || action === 'cancel_trade') {
+        if (action === 'create_trade') {
+            const sellerId = params.seller_id || params.user_id;
+            const buyerEmail = params.buyer_email;
+            const musicId = params.music_id;
+            const quantity = parseInt(params.quantity);
+            const price = parseFloat(params.price);
+            const total = parseFloat(params.total || (quantity * price));
+            const message = params.message || '';
+
+            if (!sellerId || !buyerEmail || !musicId || !quantity || !price) {
+                return res.status(200).json({
+                    success: false,
+                    message: 'Preencha todos os campos: comprador, música, quantidade e preço'
+                });
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) {
+                return res.status(200).json({ success: false, message: 'Email do comprador inválido' });
+            }
+
+            if (quantity < 1) {
+                return res.status(200).json({ success: false, message: 'Quantidade deve ser maior que zero' });
+            }
+
+            if (price < 0.01) {
+                return res.status(200).json({ success: false, message: 'Preço deve ser maior que zero' });
+            }
+
+            const gasResult = await callGAS('create_trade', {
+                seller_id: sellerId,
+                buyer_email: buyerEmail,
+                music_id: musicId,
+                quantity: quantity,
+                price: price,
+                total: total,
+                message: message
+            });
+
+            const unwrapped = unwrapGAS(gasResult);
+
+            if (unwrapped.success) {
+                try {
+                    const trades = await Storage.get('trades_all') || [];
+                    trades.push({
+                        id: unwrapped.data?.trade_id || ('trade_' + Date.now()),
+                        seller_id: sellerId,
+                        buyer_email: buyerEmail,
+                        music_id: musicId,
+                        quantity: quantity,
+                        price: price,
+                        total: total,
+                        message: message,
+                        status: 'pending',
+                        created_at: new Date().toISOString()
+                    });
+                    await Storage.set('trades_all', trades);
+                } catch (e) {
+                    console.warn('⚠️ [create_trade] KV update falhou:', e.message);
+                }
+
+                try {
+                    await addBlockToChain({
+                        type: 'trade_oferta',
+                        trade_id: unwrapped.data?.trade_id,
+                        seller_id: sellerId,
+                        buyer_email: buyerEmail,
+                        music_id: musicId,
+                        quantity: quantity,
+                        total: total
+                    });
+                } catch (e) {}
+
+                return res.status(200).json({
+                    success: true,
+                    data: unwrapped.data,
+                    message: 'Oferta enviada para ' + buyerEmail,
+                    _via: 'gas'
+                });
+            }
+
+            return res.status(200).json({
+                success: false,
+                message: unwrapped.message || 'Não foi possível enviar a oferta. Tente novamente.',
+                error: gasResult.error
+            });
+        }
+
+        if (action === 'accept_trade' || action === 'decline_trade' || action === 'cancel_trade') {
             const gasResult = await callGAS(action, params);
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) {
                 cache.cache.delete('musicas');
+                cache.cache.delete('global_playlists');
                 return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
             }
             return res.status(200).json({
                 success: false,
-                message: 'Não foi possível processar a operação. Tente novamente.',
+                message: 'Não foi possível processar a operação.',
                 error: gasResult.error
             });
         }
@@ -2110,7 +2303,6 @@ module.exports = async (req, res) => {
             const gasResult = await callGAS('get_artists', params);
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) {
-                // Normaliza para array
                 let artists = unwrapped.data;
                 if (!Array.isArray(artists)) {
                     if (artists && Array.isArray(artists.artists)) artists = artists.artists;
@@ -2212,7 +2404,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.7.1',
+            version: '9.7.2',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
