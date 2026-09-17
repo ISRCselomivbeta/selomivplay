@@ -1,22 +1,24 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v9.2.0
+// js/marketplace.js — PLAY MY v9.3.0
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
 //
+// MUDANÇAS v9.3.0:
+//   - 🆕 Botões "Editar", "Pausar", "Excluir" nos cards (dono ou admin)
+//   - 🆕 Modal de edição de música (editMusicModal)
+//   - 🆕 Badge de status (ativo/pausado) nos cards
+//   - 🆕 Confirmação de exclusão
+//   - 🆕 Atualiza a lista automaticamente após editar/excluir
+//
 // MUDANÇAS v9.2.0:
 //   - Normalização de arrays em TODOS os loaders
-//     (get_artists, get_musicas, get_playlists, etc. podem vir
-//      como objeto; agora sempre viram array antes do state)
 //   - renderFeaturedArtists blindado com Array.isArray
-//   - renderArtists blindado
-//   - onerror nas imagens do YouTube (evita 404 quebrando card)
+//   - onerror nas imagens do YouTube
 //
 // MUDANÇAS v9.1.0:
-//   - Badge de ELO nos cards (⚡ 1520)
-//   - Ordenação por ELO (opcional)
-//   - ELO carregado junto com os streams
-//   - Mantém: "🔥 Em alta", "▶ Ouvir", streams no card
+//   - Badge de ELO nos cards
+//   - Ordenação por ELO
 // ============================================================
 
 // ============================================================
@@ -25,7 +27,6 @@
 function ensureArray(data) {
   if (Array.isArray(data)) return data;
   if (!data || typeof data !== 'object') return [];
-  // Tenta os campos mais comuns
   if (Array.isArray(data.data)) return data.data;
   if (Array.isArray(data.artists)) return data.artists;
   if (Array.isArray(data.musicas)) return data.musicas;
@@ -64,6 +65,7 @@ window.changeSection = function (section) {
     if (typeof loadValuationPanel === 'function') loadValuationPanel();
     if (typeof loadEloPanel === 'function') loadEloPanel();
     if (typeof loadStreamsPanel === 'function') loadStreamsPanel();
+    if (typeof loadRoyaltiesPanel === 'function') loadRoyaltiesPanel();
   }
 };
 
@@ -98,7 +100,6 @@ window.loadExternalMarketplace = async function () {
       state.externalPlaylist = ensureArray(r.data);
     }
   } catch (e) {
-    console.warn('⚠️ loadExternalMarketplace:', e.message);
     state.externalPlaylist = [];
   }
   renderExternalMarketplace();
@@ -149,17 +150,12 @@ window.loadArtists = async function () {
   try {
     const r = await callAPI('get_artists');
     if (r && r.success) {
-      // ✅ Blindagem: força array, aconteça o que acontecer
       state.artists = ensureArray(r.data);
     }
   } catch (e) {
-    console.warn('⚠️ loadArtists:', e.message);
     state.artists = [];
   }
-  // ✅ Segurança extra: se por algum motivo state.artists não for array
-  if (!Array.isArray(state.artists)) {
-    state.artists = [];
-  }
+  if (!Array.isArray(state.artists)) state.artists = [];
   renderArtists();
   renderFeaturedArtists();
 };
@@ -195,7 +191,11 @@ window.carregarStreamsDasMusicas = async function () {
   if (!state.playlist || !state.playlist.length) return;
 
   try {
-    const r = await callAPI('get_streaming_ranking', { limit: 50 });
+    // Tentar API nova primeiro
+    let r = await callAPI('streams_ranking');
+    if (!r || !r.success) {
+      r = await callAPI('get_streaming_ranking', { limit: 50 });
+    }
     if (r && r.success) {
       const lista = ensureArray(r.data);
       const mapa = {};
@@ -220,7 +220,6 @@ window.carregarELOsDasMusicas = async function () {
   try {
     const r = await callAPI('get_elo_ranking');
     if (r && r.success) {
-      // Aceita tanto {data: {ranking: []}} quanto {data: []}
       const ranking = ensureArray(
         (r.data && r.data.ranking) ? r.data.ranking : r.data
       );
@@ -242,12 +241,19 @@ window.carregarELOsDasMusicas = async function () {
   }
 };
 
-// ============================================================
-// OBTER ELO DE UMA MÚSICA
-// ============================================================
 function getEloMusica(musicId) {
   if (!state.eloMap) return null;
   return state.eloMap[String(musicId)] || null;
+}
+
+// ============================================================
+// VERIFICAR SE O USUÁRIO PODE EDITAR A MÚSICA
+// ============================================================
+function podeEditarMusica(musica) {
+  if (!state.currentUser) return false;
+  if (state.currentUser.tipo === 'admin') return true;
+  if (String(musica.user_id) === String(state.currentUser.id)) return true;
+  return false;
 }
 
 // ============================================================
@@ -279,10 +285,17 @@ window.renderMarketplace = function () {
     const emAlta = streams > 100;
     const eloInfo = getEloMusica(t.id);
     const idx = playlist.findIndex(x => String(x.id) === String(t.id));
+    const podeEditar = podeEditarMusica(t);
+    const isPausada = t.status === 'paused';
+    const isDeleted = t.status === 'deleted';
 
-    return '<div class="spotify-card">' +
+    // Se está deletada, não mostra
+    if (isDeleted) return '';
+
+    return '<div class="spotify-card" style="' + (isPausada ? 'opacity:0.5;' : '') + '">' +
       '<div class="spotify-cover">' +
         '<img src="' + cover + '" loading="lazy" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+        (isPausada ? '<div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:5"><i class="bi bi-pause-circle" style="font-size:48px;color:#fff"></i></div>' : '') +
         '<div class="play-overlay" onclick="playTrack(' + idx + ')"><i class="bi bi-play-fill"></i></div>' +
         (emAlta ? '<div class="em-alta-badge" title="Em alta">🔥</div>' : '') +
         (eloInfo && eloInfo.elo >= 1400
@@ -310,6 +323,31 @@ window.renderMarketplace = function () {
         : (streams > 0
             ? '<div style="font-size:11px;color:var(--apple-label-2);margin-top:4px"><i class="bi bi-play-circle"></i> ' + formatNumber(streams) + ' streams</div>'
             : '')) +
+      (isPausada
+        ? '<div style="font-size:11px;color:var(--apple-yellow);margin-top:4px"><i class="bi bi-pause-circle"></i> PAUSADA</div>'
+        : '') +
+
+      // ============================================================
+      // BOTÕES DE AÇÃO (só para dono ou admin)
+      // ============================================================
+      '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">' +
+        (podeEditar
+          ? '<button class="btn btn-sm btn-outline-warning" style="flex:1;font-size:11px" onclick="event.stopPropagation(); openEditMusicModal(\'' + t.id + '\')" title="Editar">' +
+              '<i class="bi bi-pencil"></i>' +
+            '</button>' +
+            (isPausada
+              ? '<button class="btn btn-sm btn-outline-success" style="flex:1;font-size:11px" onclick="event.stopPropagation(); resumeMusic(\'' + t.id + '\')" title="Reativar">' +
+                  '<i class="bi bi-play-circle"></i>' +
+                '</button>'
+              : '<button class="btn btn-sm btn-outline-warning" style="flex:1;font-size:11px" onclick="event.stopPropagation(); pauseMusic(\'' + t.id + '\')" title="Pausar">' +
+                  '<i class="bi bi-pause-circle"></i>' +
+                '</button>') +
+            '<button class="btn btn-sm btn-outline-danger" style="flex:1;font-size:11px" onclick="event.stopPropagation(); deleteMusic(\'' + t.id + '\')" title="Excluir">' +
+              '<i class="bi bi-trash"></i>' +
+            '</button>'
+          : '') +
+      '</div>' +
+
       '<div style="display:flex;gap:6px;margin-top:8px">' +
         '<button class="btn-invest" style="flex:1" onclick="openInvestModal(' + idx + ')">' +
           '<i class="bi bi-currency-dollar"></i> INVESTIR' +
@@ -319,9 +357,221 @@ window.renderMarketplace = function () {
               '<i class="bi bi-play-fill"></i>' +
             '</button>'
           : '') +
+        '<button class="btn-ouvir" title="Compartilhar" onclick="event.stopPropagation(); shareMusic(\'' + t.id + '\')" style="background:var(--apple-gray-5)">' +
+          '<i class="bi bi-share-fill"></i>' +
+        '</button>' +
       '</div>' +
     '</div>';
   }).join('');
+};
+
+// ============================================================
+// 🆕 EDITAR MÚSICA
+// ============================================================
+window.openEditMusicModal = function (musicId) {
+  const musica = (state.playlist || []).find(m => String(m.id) === String(musicId));
+  if (!musica) {
+    showToast('Música não encontrada', 'error');
+    return;
+  }
+  
+  if (!podeEditarMusica(musica)) {
+    showToast('Você não tem permissão para editar esta música', 'error');
+    return;
+  }
+  
+  // Preencher campos
+  const elId = document.getElementById('editMusicId');
+  const elTitulo = document.getElementById('editMusicTitle');
+  const elArtista = document.getElementById('editMusicArtist');
+  const elGenero = document.getElementById('editMusicGenre');
+  const elPreco = document.getElementById('editMusicPrice');
+  const elPercentual = document.getElementById('editMusicPercent');
+  const elCapa = document.getElementById('editMusicCover');
+  
+  if (elId) elId.value = musicId;
+  if (elTitulo) elTitulo.value = musica.titulo || '';
+  if (elArtista) elArtista.value = musica.artista || '';
+  if (elGenero) elGenero.value = musica.genero || '';
+  if (elPreco) elPreco.value = musica.valor_acao || 0;
+  if (elPercentual) elPercentual.value = musica.percentual_disponivel || 0;
+  if (elCapa) elCapa.value = musica.link_capa || '';
+  
+  showModal('editMusicModal');
+};
+
+window.saveMusicEdit = async function () {
+  const musicId = document.getElementById('editMusicId').value;
+  const titulo = document.getElementById('editMusicTitle').value.trim();
+  const artista = document.getElementById('editMusicArtist').value.trim();
+  const genero = document.getElementById('editMusicGenre').value;
+  const preco = parseFloat(document.getElementById('editMusicPrice').value);
+  const percentual = parseFloat(document.getElementById('editMusicPercent').value);
+  const capa = document.getElementById('editMusicCover')?.value || '';
+  
+  if (!titulo || !artista) {
+    showToast('Preencha título e artista', 'error');
+    return;
+  }
+  
+  if (preco < 1) {
+    showToast('Preço mínimo R$ 1,00', 'error');
+    return;
+  }
+  
+  const btn = document.getElementById('saveEditMusicBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvando...'; }
+  
+  try {
+    const r = await callAPI('update_music', {
+      music_id: musicId,
+      titulo: titulo,
+      artista: artista,
+      genero: genero,
+      valor_acao: preco,
+      percentual_disponivel: percentual,
+      link_capa: capa
+    });
+    
+    if (r && r.success) {
+      showToast('✅ Música atualizada!', 'success');
+      closeModal('editMusicModal');
+      await loadMarketplace();
+      if (typeof loadArtistData === 'function') await loadArtistData();
+    } else {
+      showToast(r.message || 'Erro ao atualizar', 'error');
+    }
+  } catch (e) {
+    console.error('Erro:', e);
+    showToast('Erro ao atualizar', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle"></i> Salvar'; }
+  }
+};
+
+// ============================================================
+// 🆕 PAUSAR MÚSICA
+// ============================================================
+window.pauseMusic = async function (musicId) {
+  const musica = (state.playlist || []).find(m => String(m.id) === String(musicId));
+  if (!musica) return;
+  
+  if (!podeEditarMusica(musica)) {
+    showToast('Sem permissão', 'error');
+    return;
+  }
+  
+  if (!confirm('⏸️ Pausar "' + musica.titulo + '"?\n\nEla não aparecerá mais no marketplace, mas continuará no seu painel.')) return;
+  
+  try {
+    const r = await callAPI('pause_music', {
+      music_id: musicId,
+      action_type: 'pause'
+    });
+    
+    if (r && r.success) {
+      showToast('⏸️ Música pausada', 'success');
+      await loadMarketplace();
+    } else {
+      showToast(r.message || 'Erro ao pausar', 'error');
+    }
+  } catch (e) {
+    showToast('Erro ao pausar', 'error');
+  }
+};
+
+// ============================================================
+// 🆕 REATIVAR MÚSICA
+// ============================================================
+window.resumeMusic = async function (musicId) {
+  const musica = (state.playlist || []).find(m => String(m.id) === String(musicId));
+  if (!musica) return;
+  
+  if (!podeEditarMusica(musica)) {
+    showToast('Sem permissão', 'error');
+    return;
+  }
+  
+  try {
+    const r = await callAPI('pause_music', {
+      music_id: musicId,
+      action_type: 'resume'
+    });
+    
+    if (r && r.success) {
+      showToast('▶️ Música reativada', 'success');
+      await loadMarketplace();
+    } else {
+      showToast(r.message || 'Erro ao reativar', 'error');
+    }
+  } catch (e) {
+    showToast('Erro ao reativar', 'error');
+  }
+};
+
+// ============================================================
+// 🆕 EXCLUIR MÚSICA
+// ============================================================
+window.deleteMusic = async function (musicId) {
+  const musica = (state.playlist || []).find(m => String(m.id) === String(musicId));
+  if (!musica) return;
+  
+  if (!podeEditarMusica(musica)) {
+    showToast('Sem permissão', 'error');
+    return;
+  }
+  
+  if (!confirm('⚠️ EXCLUIR "' + musica.titulo + '"?\n\nEsta ação NÃO pode ser desfeita.\n\nTodos os investidores perderão acesso à música.')) return;
+  
+  if (!confirm('🚨 TEM CERTEZA? Esta é a última confirmação.')) return;
+  
+  try {
+    const r = await callAPI('delete_music', { music_id: musicId });
+    
+    if (r && r.success) {
+      showToast('🗑️ Música excluída', 'success');
+      await loadMarketplace();
+      if (typeof loadArtistData === 'function') await loadArtistData();
+    } else {
+      showToast(r.message || 'Erro ao excluir', 'error');
+    }
+  } catch (e) {
+    showToast('Erro ao excluir', 'error');
+  }
+};
+
+// ============================================================
+// 🆕 COMPARTILHAR MÚSICA PELO CARD
+// ============================================================
+window.shareMusic = function (musicId) {
+  const musica = (state.playlist || []).find(m => String(m.id) === String(musicId));
+  if (!musica) return;
+  
+  // Define a track atual para o share
+  window.currentShareTrack = {
+    id: musica.id,
+    titulo: musica.titulo,
+    artista: musica.artista || 'Artista',
+    capa: musica.link_capa || '/images/logo.png',
+    link: window.location.origin + '/?music=' + musica.id
+  };
+  
+  // Abrir modal de compartilhamento
+  if (typeof openShareModal === 'function') {
+    // O openShareModal usa currentTrack; vamos forçar
+    const cover = document.getElementById('sharePreviewCover');
+    const title = document.getElementById('sharePreviewTitle');
+    const artist = document.getElementById('sharePreviewArtist');
+    
+    if (cover) cover.src = window.currentShareTrack.capa;
+    if (title) title.textContent = window.currentShareTrack.titulo;
+    if (artist) artist.textContent = window.currentShareTrack.artista;
+    
+    const nativeBtn = document.getElementById('shareNativeBtn');
+    if (nativeBtn) nativeBtn.style.display = navigator.share ? 'flex' : 'none';
+    
+    if (typeof showModal === 'function') showModal('shareModal');
+  }
 };
 
 // ============================================================
@@ -456,7 +706,6 @@ window.renderArtists = function () {
   const c = document.getElementById('artistsContent');
   if (!c) return;
 
-  // ✅ Blindagem
   const artists = Array.isArray(state.artists) ? state.artists : [];
 
   if (!artists.length) {
@@ -482,7 +731,6 @@ window.renderFeaturedArtists = function () {
   const c = document.getElementById('featuredArtistsGrid');
   if (!c) return;
 
-  // ✅ Blindagem dupla
   const artists = Array.isArray(state.artists) ? state.artists : [];
   const items = artists.slice(0, 6);
 
@@ -760,9 +1008,8 @@ window.displaySearchResults = function (all) {
 };
 
 // ============================================================
-// (Resto do arquivo continua igual — playlists, investimentos, etc.)
+// (Playlists, investimentos, tickets — mantidos)
 // ============================================================
-
 window.addYouTubeToPlaylistUI = function (videoId, titulo, artista) {
   const track = {
     id: 'yt_' + videoId,
@@ -1376,4 +1623,4 @@ window.toggleFavoriteMusic = async function (musicId) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.2.0 carregado — ELO + streams + badge "Em alta" + Ouvir + array-safe');
+console.log('✅ [marketplace.js] v9.3.0 carregado — ELO + streams + EDITAR/PAUSAR/EXCLUIR + array-safe');
