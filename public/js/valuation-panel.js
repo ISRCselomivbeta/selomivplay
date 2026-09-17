@@ -1,7 +1,11 @@
 // ============================================================
-// js/valuation-panel.js — PLAY MY v1.0.0
+// js/valuation-panel.js — PLAY MY v1.0.1
 // Painel visual de valuation artístico.
 // Mostra: valuation do catálogo, por música, ELO, receita projetada.
+//
+// MUDANÇAS v1.0.1:
+//   - CORRIGIDO: proteção contra data undefined em valuation_catalogo
+//   - CORRIGIDO: Array.isArray() em musicas
 // ============================================================
 
 (function () {
@@ -21,7 +25,6 @@
             '</div>';
 
         try {
-            // Tenta buscar o último valuation salvo
             var r = await callAPI('valuation_catalogo');
 
             if (!r || !r.success) {
@@ -29,8 +32,12 @@
                 return;
             }
 
-            var d = r.data;
-            var musicas = d.musicas || [];
+            // ✅ PROTEÇÃO: data pode ser undefined ou não ter musicas
+            var d = (r && r.data) ? r.data : {};
+            var musicas = Array.isArray(d.musicas) ? d.musicas : [];
+            var valuationTotal = d.valuation_total || 0;
+            var quantidadeMusicas = d.quantidade_musicas || 0;
+            var receitaAnualTotal = d.receita_anual_total || 0;
 
             // ============================================================
             // CABEÇALHO — Valuation Total
@@ -41,11 +48,11 @@
                     '<h6 style="color:var(--apple-label-2);text-transform:uppercase;font-size:11px;' +
                         'font-weight:600;margin-bottom:8px;letter-spacing:1px">VALUATION DO CATÁLOGO</h6>' +
                     '<div style="font-size:42px;font-weight:800;color:var(--apple-green);line-height:1.1">' +
-                        formatarMoeda(d.valuation_total || 0) +
+                        formatarMoeda(valuationTotal) +
                     '</div>' +
                     '<div style="color:var(--apple-label-2);font-size:13px;margin-top:12px">' +
-                        '<i class="bi bi-music-note-beamed"></i> ' + d.quantidade_musicas + ' músicas' +
-                        ' • <i class="bi bi-graph-up"></i> Receita anual: ' + formatarMoeda(d.receita_anual_total || 0) +
+                        '<i class="bi bi-music-note-beamed"></i> ' + quantidadeMusicas + ' músicas' +
+                        ' • <i class="bi bi-graph-up"></i> Receita anual: ' + formatarMoeda(receitaAnualTotal) +
                     '</div>' +
                 '</div>';
 
@@ -206,5 +213,5 @@
     // ============================================================
     // LOG
     // ============================================================
-    console.log('✅ [valuation-panel.js] v1.0.0 carregado');
+    console.log('✅ [valuation-panel.js] v1.0.1 carregado');
 })();
