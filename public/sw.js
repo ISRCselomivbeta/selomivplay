@@ -1,11 +1,14 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.6.0
+// SERVICE WORKER — PLAY MY v9.7.0
 // Cache inteligente por tipo de recurso + PWA
+//
+// MUDANÇAS v9.7.0:
+//   - Adicionados share.js e royalties-panel.js ao pré-cache
+//   - SW_VERSION atualizado para forçar limpeza de cache antigo
+//   - Mantém NAVIGATE_HOME, JS pré-cache, stale-while-revalidate
 //
 // MUDANÇAS v9.6.0:
 //   - Adicionados os 4 ícones novos ao pré-cache
-//   - SW_VERSION atualizado para forçar limpeza de cache antigo
-//   - Mantém NAVIGATE_HOME, JS pré-cache, stale-while-revalidate
 //
 // MUDANÇAS v9.1.0:
 //   - Adicionado NAVIGATE_HOME (usado pelo offline.html)
@@ -16,7 +19,7 @@
 //   - Fallback para offline.html quando index.html não está em cache
 // ============================================================
 
-const SW_VERSION = '9.6.0';
+const SW_VERSION = '9.7.0';
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
@@ -30,7 +33,7 @@ const STATIC_ASSETS = [
   '/offline.html',
   '/manifest.json',
 
-  // ÍCONES PWA (v9.6.0)
+  // ÍCONES PWA
   '/images/logo.png',
   '/images/icon-192.png',
   '/images/icon-512.png',
@@ -47,7 +50,7 @@ const STATIC_ASSETS = [
   '/css/news.css',
   '/css/responsive.css',
 
-  // JS (ordem importa para o router; mas cache não depende de ordem)
+  // JS
   '/js/config.js',
   '/js/utils.js',
   '/js/state.js',
@@ -61,6 +64,8 @@ const STATIC_ASSETS = [
   '/js/trades.js',
   '/js/blockchain.js',
   '/js/modals.js',
+  '/js/share.js',
+  '/js/royalties-panel.js',
   '/js/news.js',
   '/js/news-unified.js',
   '/js/stream-tracker.js',
@@ -125,7 +130,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_STATIC)
       .then((cache) => {
-        // Cacheia um por um para não falhar tudo se um faltar
         return Promise.all(
           STATIC_ASSETS.map((url) =>
             cache.add(url).catch((err) => {
@@ -164,22 +168,15 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Ignorar requisições que não são GET
   if (request.method !== 'GET') return;
-
-  // Ignorar extensões de navegador e devtools
   if (url.protocol === 'chrome-extension:' || url.protocol === 'moz-extension:') return;
 
-  // ============================================================
-  // 1. Hosts conhecidos como "tempo real" → network-only
-  // ============================================================
+  // 1. Hosts "tempo real" → network-only
   if (NO_CACHE_HOSTS.some((host) => url.hostname.includes(host))) {
     return;
   }
 
-  // ============================================================
-  // 1.1. API do próprio domínio (/api/...) → network-only
-  // ============================================================
+  // 1.1. API do próprio domínio → network-only
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request).catch(() =>
@@ -192,9 +189,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ============================================================
-  // 2. CDN (jsDelivr, cdnjs) → cache-first
-  // ============================================================
+  // 2. CDN → cache-first
   if (
     url.hostname.includes('cdn.jsdelivr.net') ||
     url.hostname.includes('cdnjs.cloudflare.com')
@@ -221,9 +216,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ============================================================
   // 3. Imagens → stale-while-revalidate
-  // ============================================================
   if (isImage(request, url)) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -243,9 +236,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ============================================================
-  // 4. HTML/navegação → network-first com timeout + fallback
-  // ============================================================
+  // 4. HTML/navegação → network-first com timeout
   if (
     request.mode === 'navigate' ||
     (request.headers.get('accept') || '').includes('text/html')
@@ -278,9 +269,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ============================================================
-  // 5. JS/CSS e demais estáticos → cache-first + revalidate
-  // ============================================================
+  // 5. JS/CSS → cache-first + revalidate
   if (isStaticAsset(url)) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -300,9 +289,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ============================================================
-  // 6. Outros recursos → cache-first com revalidate
-  // ============================================================
+  // 6. Outros → cache-first com revalidate
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request)
