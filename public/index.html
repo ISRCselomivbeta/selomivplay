@@ -432,7 +432,10 @@ input[type="checkbox"]:checked {
 <h2 class="text-white mb-2">PLAY MY</h2>
 <p class="text-muted">Música sem limites</p>
 </div>
+
+<!-- LOGIN -->
 <div id="loginForm">
+<form onsubmit="event.preventDefault(); handleLogin();">
 <div class="form-group"><label class="text-muted mb-2">E-mail</label><input type="email" id="loginEmailField" class="form-control-custom" placeholder="Digite seu e-mail" autocomplete="email"></div>
 <div class="form-group">
   <label class="text-muted mb-2">Senha</label>
@@ -441,11 +444,15 @@ input[type="checkbox"]:checked {
     <i class="bi bi-eye playmy-password-toggle" onclick="togglePassword('loginPasswordField', this)" title="Mostrar/ocultar senha"></i>
   </div>
 </div>
-<button class="btn-miv mb-3" onclick="handleLogin()" id="loginBtn"><i class="bi bi-box-arrow-in-right"></i> Entrar</button>
+<button class="btn-miv mb-3" type="submit" id="loginBtn"><i class="bi bi-box-arrow-in-right"></i> Entrar</button>
 <p class="text-center mb-3"><a href="#" class="auth-link small" onclick="event.preventDefault(); openResetPasswordModal();"><i class="bi bi-question-circle"></i> Esqueceu sua senha?</a></p>
 <p class="text-center text-muted">Novo por aqui? <a href="#" class="auth-link" onclick="showRegisterForm()">Criar conta</a></p>
+</form>
 </div>
+
+<!-- REGISTRO -->
 <div id="registerForm" style="display:none">
+<form onsubmit="event.preventDefault(); handleRegister();">
 <div class="form-group"><label class="text-muted mb-2">Nome completo</label><input type="text" id="registerNameField" class="form-control-custom" placeholder="Digite seu nome completo"></div>
 <div class="form-group"><label class="text-muted mb-2">E-mail</label><input type="email" id="registerEmailField" class="form-control-custom" placeholder="Digite seu e-mail"></div>
 <div class="form-group">
@@ -461,9 +468,11 @@ input[type="checkbox"]:checked {
 <label class="terms-label"><input type="checkbox" id="acceptTermsField"><span><strong class="text-white">Li e concordo</strong> com os Termos de Uso</span></label>
 <label class="terms-label" style="margin-top:15px"><input type="checkbox" id="acceptMarketingField"><span class="text-muted">Aceito receber comunicações (opcional)</span></label>
 </div>
-<button class="btn-miv mb-3" onclick="handleRegister()" id="registerBtn"><i class="bi bi-person-plus"></i> Solicitar Cadastro</button>
+<button class="btn-miv mb-3" type="submit" id="registerBtn"><i class="bi bi-person-plus"></i> Solicitar Cadastro</button>
 <p class="text-center text-muted">Já tem conta? <a href="#" class="auth-link" onclick="showLoginForm()">Fazer login</a></p>
+</form>
 </div>
+
 </div>
 </div>
 
