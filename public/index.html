@@ -675,6 +675,13 @@ input[type="checkbox"]:checked {
 </div>
 <div id="streamsPanelContent"></div>
 
+<!-- 🆕 PAINEL DE ROYALTIES (ROC NATION) -->
+<div class="section-header" style="margin-top:40px">
+  <h2 class="section-title"><i class="bi bi-cash-stack me-2" style="color:var(--apple-green)"></i>Royalties (ROC Nation)</h2>
+  <button class="btn btn-sm btn-outline-success" onclick="loadRoyaltiesPanel()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+</div>
+<div id="royaltiesPanelContent"></div>
+
 <div id="adminGlobalPlaylistsContent"></div>
 </section>
 
@@ -727,7 +734,7 @@ input[type="checkbox"]:checked {
 <button class="btn btn-outline-success" onclick="toggleShuffle()"><i class="bi bi-shuffle me-2"></i>Aleatório</button>
 <button class="btn btn-outline-success" onclick="toggleRepeat()"><i class="bi bi-repeat me-2"></i>Repetir</button>
 <button class="btn btn-outline-success" onclick="toggleFavorite()"><i class="bi bi-star" id="expandedFavoriteIcon"></i></button>
-</div>
+<button class="btn btn-outline-success" onclick="openShareModal()"><i class="bi bi-share-fill me-2"></i>Compartilhar</button>
 </div>
 <div class="mt-4">
 <div class="info-grid">
@@ -779,7 +786,7 @@ input[type="checkbox"]:checked {
 <div class="volume-container">
 <button class="player-btn" onclick="toggleMute()"><i class="bi bi-volume-up" id="volumeIcon"></i></button>
 <div class="volume-slider-container"><div class="volume-slider" onclick="handleVolumeClick(event)" id="volumeSlider"><div class="volume-slider-fill" id="volumeSliderBar"></div></div></div>
-</div>
+</div><button class="player-btn" onclick="openShareModal()" title="Compartilhar" style="color:var(--apple-green)"><i class="bi bi-share-fill"></i></button>
 <button class="player-btn" onclick="openPlayerExpanded()"><i class="bi bi-arrows-angle-expand"></i></button>
 </div>
 </div>
@@ -1097,6 +1104,123 @@ input[type="checkbox"]:checked {
 </div>
 </div>
 </div>
+<!-- ============================================================ -->
+<!-- MODAL DE COMPARTILHAMENTO                                    -->
+<!-- ============================================================ -->
+<div id="shareModal" class="modal-overlay">
+  <div class="modal-content" style="max-width:480px">
+    <div class="modal-header">
+      <h5 class="modal-title">
+        <i class="bi bi-share-fill me-2"></i> Compartilhar
+      </h5>
+      <button class="modal-close" onclick="closeModal('shareModal')">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="sharePreview" style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--apple-gray-6); border-radius:var(--radius-md); margin-bottom:20px;">
+        <img id="sharePreviewCover" src="/images/logo.png" alt="Capa" style="width:56px;height:56px;border-radius:var(--radius-sm);object-fit:cover">
+        <div style="flex:1;min-width:0">
+          <div id="sharePreviewTitle" style="color:#fff;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Música</div>
+          <div id="sharePreviewArtist" style="color:var(--apple-label-2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Artista</div>
+        </div>
+      </div>
+      <button id="shareNativeBtn" onclick="shareNative()" style="width:100%; background:var(--apple-green); color:#fff; border:none; border-radius:var(--radius-md); padding:14px; font-weight:600; font-size:15px; cursor:pointer; margin-bottom:16px; display:none; align-items:center; justify-content:center; gap:8px;">
+        <i class="bi bi-phone"></i> Compartilhar via app
+      </button>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(70px, 1fr)); gap:12px;">
+        <button onclick="shareWhatsApp()" style="background:#25D366; color:#fff; border:none; border-radius:var(--radius-md); padding:14px 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; font-weight:600;">
+          <i class="bi bi-whatsapp" style="font-size:24px"></i> WhatsApp
+        </button>
+        <button onclick="shareInstagram()" style="background:linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color:#fff; border:none; border-radius:var(--radius-md); padding:14px 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; font-weight:600;">
+          <i class="bi bi-instagram" style="font-size:24px"></i> Instagram
+        </button>
+        <button onclick="shareTwitter()" style="background:#000; color:#fff; border:none; border-radius:var(--radius-md); padding:14px 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; font-weight:600;">
+          <i class="bi bi-twitter-x" style="font-size:24px"></i> X / Twitter
+        </button>
+        <button onclick="shareFacebook()" style="background:#1877F2; color:#fff; border:none; border-radius:var(--radius-md); padding:14px 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; font-weight:600;">
+          <i class="bi bi-facebook" style="font-size:24px"></i> Facebook
+        </button>
+        <button onclick="shareTelegram()" style="background:#0088cc; color:#fff; border:none; border-radius:var(--radius-md); padding:14px 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; font-weight:600;">
+          <i class="bi bi-telegram" style="font-size:24px"></i> Telegram
+        </button>
+        <button onclick="shareCopyLink()" style="background:var(--apple-gray-5); color:#fff; border:none; border-radius:var(--radius-md); padding:14px 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; font-weight:600;">
+          <i class="bi bi-link-45deg" style="font-size:24px"></i> Copiar Link
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL DE EDIÇÃO DE MÚSICA                                    -->
+<!-- ============================================================ -->
+<div id="editMusicModal" class="modal-overlay">
+  <div class="modal-content" style="max-width:600px">
+    <div class="modal-header">
+      <h5 class="modal-title">
+        <i class="bi bi-pencil me-2" style="color:var(--apple-yellow)"></i> Editar Música
+      </h5>
+      <button class="modal-close" onclick="closeModal('editMusicModal')">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editMusicId">
+      
+      <div class="form-group">
+        <label class="text-muted mb-2">Título</label>
+        <input type="text" id="editMusicTitle" class="form-control-custom">
+      </div>
+      
+      <div class="form-group">
+        <label class="text-muted mb-2">Artista</label>
+        <input type="text" id="editMusicArtist" class="form-control-custom">
+      </div>
+      
+      <div class="form-group">
+        <label class="text-muted mb-2">Gênero</label>
+        <select id="editMusicGenre" class="form-control-custom">
+          <option value="">Selecione...</option>
+          <option value="POP">POP</option>
+          <option value="HIPHOP">HIP HOP</option>
+          <option value="ROCK">ROCK</option>
+          <option value="ELETRONICA">ELETRÔNICA</option>
+          <option value="MPB">MPB</option>
+          <option value="SERTANEJO">SERTANEJO</option>
+          <option value="FUNK">FUNK</option>
+          <option value="URBAN">URBAN</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label class="text-muted mb-2">Valor por Ação (R$)</label>
+        <input type="number" id="editMusicPrice" class="form-control-custom" min="1" step="0.01">
+      </div>
+      
+      <div class="form-group">
+        <label class="text-muted mb-2">Percentual Disponível (%)</label>
+        <input type="number" id="editMusicPercent" class="form-control-custom" min="1" max="100">
+      </div>
+      
+      <div class="form-group">
+        <label class="text-muted mb-2">Link da Capa</label>
+        <input type="url" id="editMusicCover" class="form-control-custom" placeholder="https://...">
+      </div>
+      
+      <div class="alert" style="background:rgba(255,149,0,0.1);border:0.5px solid rgba(255,149,0,0.3);border-radius:var(--radius-md);padding:12px;font-size:13px">
+        <i class="bi bi-info-circle me-1"></i>
+        Alterações são aplicadas imediatamente. Investidores verão os novos dados.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('editMusicModal')">Cancelar</button>
+      <button class="btn btn-warning" onclick="saveMusicEdit()" id="saveEditMusicBtn" style="font-weight:700">
+        <i class="bi bi-check-circle"></i> Salvar
+      </button>
+    </div>
+  </div>
+</div>
 
 <script>
 window.togglePassword = function(fieldId, icon) {
@@ -1117,6 +1241,7 @@ window.togglePassword = function(fieldId, icon) {
 <script src="/js/config.js"></script>
 <script src="/js/utils.js"></script>
 <script src="/js/state.js"></script>
+<script src="/js/router.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/auth.js"></script>
 <script src="/js/youtube.js"></script>
@@ -1126,6 +1251,7 @@ window.togglePassword = function(fieldId, icon) {
 <script src="/js/trades.js"></script>
 <script src="/js/blockchain.js"></script>
 <script src="/js/modals.js"></script>
+<script src="/js/share.js"></script>
 <script src="/js/app.js"></script>
 <script src="/js/news-unified.js"></script>
 <script src="/js/brand-info.js"></script>
@@ -1135,6 +1261,7 @@ window.togglePassword = function(fieldId, icon) {
 <script src="/js/valuation-panel.js"></script>
 <script src="/js/elo-panel.js"></script>
 <script src="/js/streams-panel.js"></script>
+<script src="/js/royalties-panel.js"></script>
 
 </body>
 </html>
