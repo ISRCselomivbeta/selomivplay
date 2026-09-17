@@ -1,8 +1,14 @@
 // ============================================================
-// js/api.js — PLAY MY v8.7.0
+// js/api.js — PLAY MY v8.8.0
 // HealthCheck + callAPI (roteador Vercel → GAS → fallback local).
 // Depende de: config.js, utils.js, state.js
 // DEVE carregar DEPOIS de state.js e ANTES de auth.js.
+//
+// MUDANÇAS v8.8.0:
+//   - CORRIGIDO: getFallbackData não retorna mais success:true para login/register/reset
+//   - CORRIGIDO: callAPI não retenta em ações críticas (login, register, reset, withdrawal)
+//   - Mantém timeouts: Vercel 20s, GAS 30s, testGAS 12s
+//   - Mantém AbortError silenciado
 //
 // MUDANÇAS v8.7.0:
 //   - testGAS com timeout 12s (era 8s) — cold start do GAS 7.0.0
@@ -49,7 +55,10 @@ window.HealthCheck = {
       console.log('✅ Vercel ping:', d, '→ online =', ok);
       return ok;
     } catch (e) {
-      console.warn('⚠️ Vercel offline:', e.name, e.message, '| url:', url);
+      // ✅ Silencia AbortError (timeout intencional)
+      if (e.name !== 'AbortError') {
+        console.warn('⚠️ Vercel offline:', e.name, e.message, '| url:', url);
+      }
     }
     this.vercel.online = false;
     return false;
@@ -60,7 +69,7 @@ window.HealthCheck = {
     const url = CONFIG.GAS_URL + '?action=health';
     try {
       const c = new AbortController();
-      const t = setTimeout(() => c.abort(), 12000); // ← era 8000
+      const t = setTimeout(() => c.abort(), 12000);
 
       const r = await fetch(url, { signal: c.signal });
       clearTimeout(t);
@@ -88,7 +97,6 @@ window.HealthCheck = {
       console.log('✅ GAS health:', d, '→ online =', ok);
       return ok;
     } catch (e) {
-      // ✅ Silencia AbortError (timeout intencional)
       if (e.name !== 'AbortError') {
         console.warn('⚠️ GAS offline:', e.name, e.message);
       }
@@ -150,6 +158,19 @@ window.HealthCheck = {
   }
 };
 
+// ============ AÇÕES CRÍTICAS (não retentar) ============
+const ACOES_CRITICAS = [
+  'login',
+  'register',
+  'reset_password',
+  'request_withdrawal',
+  'confirm_investment',
+  'confirm_external_investment',
+  'create_trade_offer',
+  'accept_trade_offer',
+  'confirm_sell'
+];
+
 // ============ CALL API (roteador Vercel → GAS → fallback) ============
 window.callAPI = async function (action, data, _retry) {
   _retry = _retry || 0;
@@ -205,7 +226,6 @@ window.callAPI = async function (action, data, _retry) {
       return null;
     } catch (e) {
       clearTimeout(timeout);
-      // ✅ Silencia AbortError do timeout intencional
       if (e.name !== 'AbortError') {
         console.warn(`⚠️ [${action}] ${label} erro:`, e.name, e.message);
       }
@@ -224,7 +244,10 @@ window.callAPI = async function (action, data, _retry) {
     return vercelJson;
   }
 
-  if (_retry < 1) {
+  // ✅ NÃO retentar em ações críticas — vai direto para o GAS
+  const isCritica = ACOES_CRITICAS.includes(action);
+
+  if (!isCritica && _retry < 1) {
     await new Promise(r => setTimeout(r, 800));
     return callAPI(action, data, _retry + 1);
   }
@@ -237,7 +260,6 @@ window.callAPI = async function (action, data, _retry) {
   }
 
   // ============ TENTATIVA 2: GAS ============
-  // ✅ Timeout aumentado de 25s para 30s (split 70/20/10 faz mais I/O)
   const gasJson = await tryFetch(CONFIG.GAS_URL, 30000, 'GAS');
   if (gasJson) {
     HealthCheck.gas.online = true;
@@ -250,7 +272,95 @@ window.callAPI = async function (action, data, _retry) {
 };
 
 // ============ FALLBACK LOCAL ============
+// ✅ CORRIGIDO: NÃO retorna success:true para ações críticas
 window.getFallbackData = function (action) {
+  // ============================================================
+  // ❌ AÇÕES CRÍTICAS — NUNCA retornar sucesso falso
+  // ============================================================
+  if (action === 'login') {
+    return {
+      success: false,
+      message: 'Não foi possível conectar. Verifique sua internet e tente novamente.',
+      _via: 'local',
+      _offline: true
+    };
+  }
+
+  if (action === 'register') {
+    return {
+      success: false,
+      message: 'Cadastro indisponível offline. Tente novamente.',
+      _via: 'local',
+      _offline: true
+    };
+  }
+
+  if (action === 'reset_password') {
+    return {
+      success: false,
+      message: 'Recuperação indisponível offline. Tente novamente.',
+      _via: 'local',
+      _offline: true
+    };
+  }
+
+  if (action === 'request_withdrawal') {
+    return {
+      success: false,
+      message: 'Saque indisponível offline. Tente novamente.',
+      _via: 'local',
+      _offline: true
+    };
+  }
+
+  if (action === 'confirm_investment') {
+    return {
+      success: false,
+      message: 'Investimento indisponível offline.',
+      _via: 'local',
+      _offline: true
+    };
+  }
+
+  if (action === 'confirm_external_investment') {
+    return {
+      success: false,
+      message: 'Investimento externo indisponível offline.',
+      _via: 'local',
+      _offline: true
+    };
+  }
+
+  if (action === 'create_trade_offer') {
+    return {
+      success: false,
+      message: 'Negociação indisponível offline.',
+      _via: 'local',
+      _offline: true
+    };
+  }
+
+  if (action === 'accept_trade_offer') {
+    return {
+      success: false,
+      message: 'Aceitar negociação indisponível offline.',
+      _via: 'local',
+      _offline: true
+    };
+  }
+
+  if (action === 'confirm_sell') {
+    return {
+      success: false,
+      message: 'Venda indisponível offline.',
+      _via: 'local',
+      _offline: true
+    };
+  }
+
+  // ============================================================
+  // ✅ AÇÕES DE LEITURA — podem ter fallback com dados vazios
+  // ============================================================
   if (action === 'get_musicas') return { success: true, data: [], _via: 'local' };
   if (action === 'get_external_musicas') return { success: true, data: [], _via: 'local' };
   if (action === 'get_artists') return { success: true, data: [], _via: 'local' };
@@ -266,8 +376,17 @@ window.getFallbackData = function (action) {
   if (action === 'get_mining_blocks') return { success: true, data: [], _via: 'local' };
   if (action === 'get_trades') return { success: true, data: { received: [], sent: [], history: [] }, _via: 'local' };
   if (action === 'get_top_investments') return { success: true, data: [], _via: 'local' };
-  return { success: true, data: [], _via: 'local' };
+
+  // ============================================================
+  // ⚠️ PADRÃO: retornar erro (não sucesso falso)
+  // ============================================================
+  return {
+    success: false,
+    message: 'Ação indisponível offline',
+    _via: 'local',
+    _offline: true
+  };
 };
 
 // ============ LOG DE CARREGAMENTO ============
-console.log('✅ [api.js] v8.7.0 carregado — HealthCheck + callAPI (Vercel → GAS → Local)');
+console.log('✅ [api.js] v8.8.0 carregado — HealthCheck + callAPI (Vercel → GAS → Local)');
