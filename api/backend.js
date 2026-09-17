@@ -1,4 +1,4 @@
-// BACKEND.JS - VERSÃO 9.7.2
+// BACKEND.JS - VERSÃO 9.7.3
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -6,12 +6,17 @@
 // + VENDA DIRETA AO MERCADO (sell_to_market)
 // + VENDA P2P COM EMAIL (create_trade robusto)
 //
+// MUDANÇAS v9.7.3:
+//   - ✅ CORRIGIDO: resetTokens agora persiste no KV (não em memória)
+//   - ✅ CORRIGIDO: action reset_password implementada no backend
+//   - ✅ CORRIGIDO: login agora sincroniza usuário do GAS para o KV
+//   - ✅ CORRIGIDO: login busca no KV primeiro (rápido), GAS depois
+//   - ✅ CORRIGIDO: verify_reset_token e request_password_reset usam KV
+//
 // MUDANÇAS v9.7.2:
 //   - ✅ NOVA: processSellToMarket() — venda direta com split 70/20/10
 //   - ✅ NOVA ACTION: sell_to_market
 //   - ✅ create_trade com validação robusta (email, quantidade, preço)
-//   - ✅ create_trade espelha no KV + blockchain
-//   - ✅ get_trades normaliza arrays (received/sent/history)
 //
 // MUDANÇAS v9.7.1:
 //   - ✅ Playlists: GAS primeiro, KV depois
@@ -22,21 +27,10 @@
 //   - Delegação genérica ao GAS 7.0.0 via GAS_ACTIONS set
 //   - Normalização de playlists (string CSV ↔ array)
 //   - Correção do fallback do `buy` (não mente mais)
-//   - `callGAS` desembrulha resposta do GAS via unwrapGAS
 //
 // MUDANÇAS v9.6.0:
 //   - nodemailer com require protegido
-//   - sendEmail trata nodemailer === null
 //   - req.body / req.query protegidos
-//
-// MUDANÇAS v9.5.0:
-//   - aggregateNews com Promise.allSettled + timeout 8s
-//   - RSS timeout 6s + check content-type
-//   - callGAS com timeout 6s e 1 retry
-//
-// MUDANÇAS v9.4.0:
-//   - register_streaming adiciona ao streams_index
-//   - get_streaming_ranking varre o streams_index
 // ============================================================
 
 // ============================================================
@@ -135,6 +129,7 @@ const MEMORY_STORAGE = {
     following: {},
     favorites: {},
     users: [],
+    users_all: [],
     tickets: [],
     artists: [],
     ledger: {},
@@ -150,7 +145,6 @@ const MEMORY_STORAGE = {
     trades_all: [],
     carteira: {},
     extrato: {},
-    users_all: [],
     musicas_all: [],
     extrato_all: []
 };
@@ -258,7 +252,6 @@ function extractYouTubeId(url) {
     return null;
 }
 
-// CSV ↔ Array
 function csvToArray(csv) {
     if (!csv) return [];
     if (Array.isArray(csv)) return csv;
@@ -333,7 +326,6 @@ async function callGAS(action, params = {}, retries = 1) {
     }
 }
 
-// Desembrulha resposta do GAS: { success, message, data } → { success, data, _via }
 function unwrapGAS(gasResult) {
     if (!gasResult || !gasResult.success) {
         return { success: false, message: gasResult?.error || 'GAS falhou', _via: 'gas_error' };
@@ -430,7 +422,7 @@ async function getYouTubeVideoInfo(videoId) {
 }
 
 // ============================================================
-// FALLBACK DE MÚSICAS (playlist interna)
+// FALLBACK DE MÚSICAS
 // ============================================================
 const FALLBACK_MUSICAS = [
     { id: '1', titulo: 'RIO DE JANEIRO', artista: 'Elzo Henschell',
@@ -441,21 +433,26 @@ const FALLBACK_MUSICAS = [
 ];
 
 // ============================================================
-// TOKENS DE RESET
+// v9.7.3 — TOKENS DE RESET (agora persistem no KV)
 // ============================================================
-const resetTokens = new Map();
-function generateResetToken(email) {
+async function generateResetToken(email) {
     const token = crypto.randomBytes(32).toString('hex');
-    resetTokens.set(token, { email, createdAt: Date.now(), expiresAt: Date.now() + 3600000 });
-    for (const [key, value] of resetTokens) {
-        if (Date.now() > value.expiresAt) resetTokens.delete(key);
-    }
+    const record = {
+        email,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 3600000 // 1 hora
+    };
+    await Storage.set('reset_token_' + token, record);
     return token;
 }
-function validateResetToken(token) {
-    const record = resetTokens.get(token);
+
+async function validateResetToken(token) {
+    const record = await Storage.get('reset_token_' + token);
     if (!record) return null;
-    if (Date.now() > record.expiresAt) { resetTokens.delete(token); return null; }
+    if (Date.now() > record.expiresAt) {
+        await Storage.del('reset_token_' + token);
+        return null;
+    }
     return record;
 }
 
@@ -488,7 +485,7 @@ async function addBlockToChain(data) {
 }
 
 // ============================================================
-// NOTÍCIAS REAIS — Google News RSS
+// NOTÍCIAS REAIS
 // ============================================================
 async function fetchNewsFromGoogleRSS(query, categoria) {
     try {
@@ -498,28 +495,18 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.2)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.3)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
         clearTimeout(timeout);
 
-        if (!response.ok) {
-            console.log(`⚠️ Google News HTTP ${response.status} para "${query}"`);
-            return [];
-        }
-
+        if (!response.ok) return [];
         const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('xml') && !contentType.includes('rss') && !contentType.includes('html')) {
-            console.log(`⚠️ Google News content-type inesperado: ${contentType}`);
-            return [];
-        }
+        if (!contentType.includes('xml') && !contentType.includes('rss') && !contentType.includes('html')) return [];
 
         const xml = await response.text();
-        if (!xml.includes('<item>')) {
-            console.log(`⚠️ Google News sem <item> para "${query}"`);
-            return [];
-        }
+        if (!xml.includes('<item>')) return [];
 
         const items = [];
         const itemRegex = /<item>([\s\S]*?)<\/item>/g;
@@ -555,22 +542,16 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
                 count++;
             }
         }
-        console.log(`📰 [${categoria}] ${items.length} notícias de "${query}"`);
         return items;
     } catch (e) {
-        console.error(`Erro RSS "${query}":`, e.message);
         return [];
     }
 }
 
-// ============================================================
-// AGGREGATE NEWS — allSettled + timeout global 8s
-// ============================================================
 async function aggregateNews() {
     const cached = await Storage.get('news_cache');
     const cachedTime = await Storage.get('news_cache_time');
     if (cached && cachedTime && Date.now() - cachedTime < 15 * 60 * 1000) {
-        console.log(`📰 Cache KV: ${cached.length} notícias`);
         return cached;
     }
 
@@ -583,17 +564,12 @@ async function aggregateNews() {
         { q: 'edital cultural música', cat: 'editais' }
     ];
 
-    console.log('📰 Buscando notícias reais (allSettled + 8s global)...');
-
     const batchesPromise = Promise.allSettled(
         queries.map(nq => fetchNewsFromGoogleRSS(nq.q, nq.cat))
     );
 
     const timeoutPromise = new Promise(resolve =>
-        setTimeout(() => {
-            console.warn('📰 aggregateNews timeout global (8s) — usando cache antigo');
-            resolve('__timeout__');
-        }, 8000)
+        setTimeout(() => resolve('__timeout__'), 8000)
     );
 
     const result = await Promise.race([batchesPromise, timeoutPromise]);
@@ -606,15 +582,10 @@ async function aggregateNews() {
     let all = [];
     for (const b of result) {
         if (b.status === 'fulfilled' && Array.isArray(b.value)) all.push(...b.value);
-        else if (b.status === 'rejected') console.warn('📰 query falhou:', b.reason?.message);
     }
 
-    console.log(`📰 Total bruto: ${all.length} notícias`);
-
     if (all.length === 0) {
-        console.log('📰 Nenhuma notícia real — cache negativo 30s');
         await Storage.set('news_cache', []);
-        await Storage.set('news_cache_time', Date.now() - (15 * 60 * 1000) + (30 * 1000));
         return [];
     }
 
@@ -630,26 +601,22 @@ async function aggregateNews() {
 
     await Storage.set('news_cache', unique);
     await Storage.set('news_cache_time', Date.now());
-    console.log(`📰 ${unique.length} notícias reais cacheadas no KV`);
     return unique;
 }
 
 // ============================================================
-// VALIDAR ISRC
+// ISRC
 // ============================================================
 function validarISRC(isrc) {
     if (!isrc || typeof isrc !== 'string') return false;
     const limpo = isrc.replace(/[-\s]/g, '').toUpperCase();
     if (limpo.length !== 12) return false;
-    const regex = /^[A-Z]{2}[A-Z0-9]{3}[0-9]{2}[0-9]{5}$/;
-    return regex.test(limpo);
+    return /^[A-Z]{2}[A-Z0-9]{3}[0-9]{2}[0-9]{5}$/.test(limpo);
 }
-
 function normalizarISRC(isrc) {
     if (!isrc) return null;
     return isrc.replace(/[-\s]/g, '').toUpperCase();
 }
-
 function formatarISRC(isrc) {
     if (!isrc) return '';
     const limpo = normalizarISRC(isrc);
@@ -657,32 +624,21 @@ function formatarISRC(isrc) {
     return `${limpo.slice(0, 2)}-${limpo.slice(2, 5)}-${limpo.slice(5, 7)}-${limpo.slice(7)}`;
 }
 
-// ============================================================
-// BUSCAR ISRC NO MUSICBRAINZ
-// ============================================================
 async function buscarIsrcMusicBrainz(titulo, artista) {
     const resultados = [];
     try {
         const query = artista
             ? `recording:"${titulo}" AND artist:"${artista}"`
             : `recording:"${titulo}"`;
-
         const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
-
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.7.2 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.7.3 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
-
-        if (!r.ok) {
-            console.warn('[isrc] MusicBrainz HTTP', r.status);
-            return resultados;
-        }
-
+        if (!r.ok) return resultados;
         const data = await r.json();
-
         if (data.recordings) {
             for (const rec of data.recordings) {
                 if (rec.isrcs && rec.isrcs.length) {
@@ -691,7 +647,6 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
                             .map(a => a.name || (a.artist && a.artist.name) || '')
                             .filter(Boolean)
                             .join(', ');
-
                         resultados.push({
                             isrc: normalizarISRC(isrc),
                             isrc_formatado: formatarISRC(isrc),
@@ -704,35 +659,18 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
                 }
             }
         }
-    } catch (e) {
-        console.warn('[isrc] MusicBrainz erro:', e.message);
-    }
+    } catch (e) {}
     return resultados;
 }
 
 // ============================================================
-// CALCULAR ELO
+// ELO + VALUATION
 // ============================================================
 const ELO_CONFIG = {
     base: 1000,
     k_fator: 32,
-    ganhos: {
-        stream_play_my: 2,
-        view_youtube: 1,
-        stream_spotify: 3,
-        stream_deezer: 3,
-        stream_apple: 3,
-        investimento: 5,
-        trade_aceito: 10,
-        curtida: 1,
-        compartilhamento: 2
-    },
-    limites: {
-        play_my_max: 300,
-        externos_max: 400,
-        consistencia_max: 100,
-        tendencia_max: 150
-    },
+    ganhos: { stream_play_my: 2, view_youtube: 1, stream_spotify: 3, stream_deezer: 3, stream_apple: 3, investimento: 5, trade_aceito: 10, curtida: 1, compartilhamento: 2 },
+    limites: { play_my_max: 300, externos_max: 400, consistencia_max: 100, tendencia_max: 150 },
     faixas: {
         'lendario': { min: 1600, cor: '#FFD700', label: 'Lendário' },
         'excelente': { min: 1400, cor: '#34c759', label: 'Excelente' },
@@ -827,30 +765,16 @@ async function calcularELO(music_id) {
     }
 
     return {
-        music_id,
-        elo,
-        faixa,
+        music_id, elo, faixa,
         faixa_label: ELO_CONFIG.faixas[faixa].label,
         cor: ELO_CONFIG.faixas[faixa].cor,
-        breakdown,
-        streams_por_plataforma: streamsPorPlataforma,
+        breakdown, streams_por_plataforma: streamsPorPlataforma,
         atualizado_em: new Date().toISOString()
     };
 }
 
-// ============================================================
-// CALCULAR VALUATION
-// ============================================================
 const MERCADO = {
-    valor_por_stream: {
-        play_my: 0.015,
-        youtube: 0.002,
-        spotify: 0.004,
-        deezer: 0.003,
-        apple_music: 0.007,
-        amazon_music: 0.005,
-        outros: 0.003
-    },
+    valor_por_stream: { play_my: 0.015, youtube: 0.002, spotify: 0.004, deezer: 0.003, apple_music: 0.007, amazon_music: 0.005, outros: 0.003 },
     multiplo_base: 10,
     meses_projecao: 12,
     elo_ajuste_max: 0.5
@@ -859,7 +783,6 @@ const MERCADO = {
 function projetarReceita(streamsPorMes, plataforma) {
     const valores = Object.values(streamsPorMes || {}).sort((a, b) => a - b);
     if (valores.length === 0) return { projecao_streams: 0, projecao_receita: 0, tendencia: 0, confianca: 0 };
-
     const media = valores.reduce((a, b) => a + b, 0) / valores.length;
     let tendencia = 0;
     if (valores.length >= 2) {
@@ -867,7 +790,6 @@ function projetarReceita(streamsPorMes, plataforma) {
         const penultimo = valores[valores.length - 2];
         tendencia = penultimo > 0 ? (ultimo - penultimo) / penultimo : 0;
     }
-
     const tendenciaLimitada = Math.max(-0.3, Math.min(0.3, tendencia));
     let projecaoTotal = 0;
     let streamAtual = media;
@@ -875,7 +797,6 @@ function projetarReceita(streamsPorMes, plataforma) {
         streamAtual = streamAtual * (1 + tendenciaLimitada);
         projecaoTotal += streamAtual;
     }
-
     const valorStream = MERCADO.valor_por_stream[plataforma] || MERCADO.valor_por_stream.outros;
     return {
         projecao_streams: Math.round(projecaoTotal),
@@ -887,18 +808,11 @@ function projetarReceita(streamsPorMes, plataforma) {
 
 async function calcularValuation(music_id, video_id_youtube) {
     const dados = {
-        music_id,
-        fontes: {},
-        projecoes: {},
-        receita_anual_projetada: 0,
-        valuation: 0,
-        elo: 1000,
-        elo_faixa: 'neutro',
-        elo_cor: '#8E8E93',
-        multiplo_base: MERCADO.multiplo_base,
-        multiplo_final: MERCADO.multiplo_base,
-        ajuste_elo: 0,
-        atualizado_em: new Date().toISOString()
+        music_id, fontes: {}, projecoes: {},
+        receita_anual_projetada: 0, valuation: 0,
+        elo: 1000, elo_faixa: 'neutro', elo_cor: '#8E8E93',
+        multiplo_base: MERCADO.multiplo_base, multiplo_final: MERCADO.multiplo_base,
+        ajuste_elo: 0, atualizado_em: new Date().toISOString()
     };
 
     const playmy = await Storage.get('streams_' + music_id) || { total: 0, por_dia: {} };
@@ -981,7 +895,7 @@ async function calcularValuation(music_id, video_id_youtube) {
 }
 
 // ============================================================
-// v9.7.1 — HELPERS DE ESCRITA (GAS primeiro, KV depois)
+// HELPERS DE ESCRITA
 // ============================================================
 async function writeThrough(gasAction, gasParams, kvUpdateFn) {
     const gasResult = await callGAS(gasAction, gasParams);
@@ -1011,29 +925,20 @@ async function invalidateCache(keys) {
 }
 
 // ============================================================
-// v9.7.2 — VENDA DIRETA AO MERCADO
-// Debita as ações do vendedor, credita o saldo imediatamente
-// e devolve as ações ao pool da música. Split 70/20/10.
+// VENDA DIRETA AO MERCADO
 // ============================================================
 async function processSellToMarket(userId, musicId, quantidade, precoUnitario, valorTotal) {
     const SPLIT = { artista: 0.70, plataforma: 0.20, fundo: 0.10 };
 
-    // 1. Verifica se o usuário tem as ações
     const carteira = await Storage.get('carteira_' + userId) || [];
     const ativo = carteira.find(a => String(a.music_id) === String(musicId) && a.status === 'ativo');
-    if (!ativo) {
-        return { success: false, message: 'Você não possui essa música' };
-    }
-    if (ativo.quantidade < quantidade) {
-        return { success: false, message: 'Quantidade maior que o disponível' };
-    }
+    if (!ativo) return { success: false, message: 'Você não possui essa música' };
+    if (ativo.quantidade < quantidade) return { success: false, message: 'Quantidade maior que o disponível' };
 
-    // 2. Debita as ações
     ativo.quantidade -= quantidade;
     if (ativo.quantidade === 0) ativo.status = 'em_venda';
     await Storage.set('carteira_' + userId, carteira);
 
-    // 3. Credita o saldo
     const users = await Storage.get('users_all') || [];
     const vendedor = users.find(u => u.id === userId);
     if (vendedor) {
@@ -1041,13 +946,10 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
         await Storage.set('users_all', users);
     }
 
-    // 4. Registra no extrato
     const extrato = await Storage.get('extrato_all') || [];
     extrato.push({
         id: 'ext_' + Date.now(),
-        user_id: userId,
-        tipo: 'VENDA',
-        categoria: 'VENDA_DE_ACAO',
+        user_id: userId, tipo: 'VENDA', categoria: 'VENDA_DE_ACAO',
         descricao: `Venda de ${quantidade} ações ao mercado`,
         valor: valorTotal,
         saldo_antes: (vendedor?.saldo || 0) - valorTotal,
@@ -1058,7 +960,6 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
     });
     await Storage.set('extrato_all', extrato);
 
-    // 5. Devolve as ações pro pool da música
     const musicas = await Storage.get('musicas_all') || [];
     const musica = musicas.find(m => String(m.id) === String(musicId));
     if (musica) {
@@ -1066,20 +967,13 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
         await Storage.set('musicas_all', musicas);
     }
 
-    // 6. Blockchain
     const block = await addBlockToChain({
-        type: 'venda_mercado',
-        music_id: musicId,
-        user_id: userId,
-        quantidade,
-        valor_total: valorTotal
+        type: 'venda_mercado', music_id: musicId, user_id: userId,
+        quantidade, valor_total: valorTotal
     });
 
-    // 7. Espelha no GAS
     callGAS('add_transaction', {
-        user_id: userId,
-        tipo: 'VENDA',
-        valor: valorTotal,
+        user_id: userId, tipo: 'VENDA', valor: valorTotal,
         descricao: `Venda ao mercado — ${quantidade} ações`,
         referencia: block.hash
     }).catch(() => {});
@@ -1104,7 +998,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 }
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.7.2
+// HANDLER PRINCIPAL — v9.7.3
 // ============================================================
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1112,9 +1006,7 @@ module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    const params = req.method === 'POST'
-        ? (req.body || {})
-        : (req.query || {});
+    const params = req.method === 'POST' ? (req.body || {}) : (req.query || {});
     const { action } = params;
 
     console.log(`🚀 [${action}]`);
@@ -1133,7 +1025,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.7.2',
+                version: '9.7.3',
                 kv_enabled: !!kv,
                 nodemailer_enabled: !!nodemailer,
                 youtube_enabled: !!YOUTUBE_API_KEY,
@@ -1143,7 +1035,186 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🔍 BUSCA NO YOUTUBE
+        // 🔐 LOGIN (v9.7.3 — com sync automático GAS → KV)
+        // ============================================================
+        if (action === 'login') {
+            const email = sanitize(params.email);
+            const password = params.password;
+            if (!email || !password) return res.status(200).json({ success: false, message: 'Email e senha obrigatórios' });
+            if (!validateEmail(email)) return res.status(200).json({ success: false, message: 'Email inválido' });
+
+            const clientIP = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+            const rateCheck = rateLimiter.check(clientIP);
+            if (!rateCheck.allowed) return res.status(200).json({ success: false, message: rateCheck.message });
+
+            // Admin master
+            if (email === 'admin@selomiv.com' && password === 'admin123') {
+                rateLimiter.reset(clientIP);
+                return res.status(200).json({
+                    success: true,
+                    data: {
+                        id: 'admin_master', nome: 'Administrador', email: 'admin@selomiv.com',
+                        tipo: 'admin', saldo: 1000000, selo_coin: 50000,
+                        favorite_music_ids: [], email_confirmado: true
+                    }
+                });
+            }
+
+            // 1. Tenta KV primeiro (rápido)
+            const users = await Storage.get('users_all') || [];
+            let user = users.find(u => u.email === email);
+
+            if (user && user.senha === password) {
+                rateLimiter.reset(clientIP);
+                console.log('✅ [login] via KV (cache)');
+                return res.status(200).json({ success: true, data: user, _via: 'kv' });
+            }
+
+            // 2. Busca no GAS
+            const gasResult = await callGAS('login', { email, password });
+            const unwrapped = unwrapGAS(gasResult);
+
+            if (unwrapped.success && unwrapped.data) {
+                rateLimiter.reset(clientIP);
+
+                // 3. SYNC: salva no KV
+                const gasUser = unwrapped.data;
+                const existingIdx = users.findIndex(u => u.email === email);
+                if (existingIdx >= 0) {
+                    users[existingIdx] = { ...users[existingIdx], ...gasUser, senha: password };
+                } else {
+                    users.push({ ...gasUser, senha: password });
+                }
+                await Storage.set('users_all', users);
+                console.log('🔄 [login] usuário sincronizado do GAS para o KV:', email);
+
+                return res.status(200).json({
+                    success: true, data: gasUser, _via: 'gas', _synced: true
+                });
+            }
+
+            return res.status(200).json({ success: false, message: 'Credenciais inválidas' });
+        }
+
+        // ============================================================
+        // 💳 RESET PASSWORD (v9.7.3)
+        // ============================================================
+        if (action === 'request_password_reset') {
+            const { email } = params;
+            if (!email || !validateEmail(email)) {
+                return res.status(200).json({ success: false, message: 'Email inválido' });
+            }
+
+            const resetToken = await generateResetToken(email);
+            const resetLink = `https://playmy.com.br/reset-password.html?token=${resetToken}`;
+            const html = `
+                <div style="font-family:Arial;max-width:600px;margin:0 auto;background:#111418;padding:40px;border:1px solid #00ff88;border-radius:16px;">
+                    <h1 style="color:#00ff88;text-align:center;">🎵 PLAY MY</h1>
+                    <p style="color:#fff;">Olá,</p>
+                    <p style="color:#b3b3b3;">Clique no botão para redefinir sua senha:</p>
+                    <div style="text-align:center;margin:30px 0;">
+                        <a href="${resetLink}" style="background:#00ff88;color:#000;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;">🔑 Redefinir Senha</a>
+                    </div>
+                    <p style="color:#6c757d;font-size:14px;">Link válido por 1 hora</p>
+                </div>
+            `;
+
+            const result = await sendEmail(email, '🔐 Recuperação de Senha - PLAY MY', html);
+            if (result.success) {
+                return res.status(200).json({ success: true, message: 'Email enviado!' });
+            }
+
+            // Fallback GAS
+            const gasResult = await callGAS('request_password_reset', { email });
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
+            return res.status(200).json({ success: false, message: 'Erro ao enviar email' });
+        }
+
+        if (action === 'verify_reset_token') {
+            const { token } = params;
+            if (!token) return res.status(200).json({ success: false, message: 'Token obrigatório' });
+
+            const record = await validateResetToken(token);
+            if (record) {
+                return res.status(200).json({ success: true, message: 'Token válido', data: { email: record.email } });
+            }
+
+            const gasResult = await callGAS('verify_reset_token', { token });
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
+            return res.status(200).json({ success: false, message: 'Token inválido ou expirado' });
+        }
+
+        if (action === 'reset_password') {
+            const { token, new_password, confirm_password } = params;
+
+            if (!token || !new_password) {
+                return res.status(200).json({ success: false, message: 'Token e nova senha obrigatórios' });
+            }
+
+            if (new_password.length < 6) {
+                return res.status(200).json({ success: false, message: 'Senha deve ter no mínimo 6 caracteres' });
+            }
+
+            if (new_password !== confirm_password) {
+                return res.status(200).json({ success: false, message: 'Senhas não coincidem' });
+            }
+
+            const record = await validateResetToken(token);
+            if (!record) {
+                return res.status(200).json({ success: false, message: 'Token inválido ou expirado' });
+            }
+
+            // 1. Atualiza no GAS
+            const gasResult = await callGAS('reset_password', {
+                email: record.email,
+                new_password: new_password
+            });
+            const unwrapped = unwrapGAS(gasResult);
+
+            if (!unwrapped.success) {
+                return res.status(200).json({
+                    success: false,
+                    message: 'Erro ao atualizar senha. Tente novamente.',
+                    error: gasResult.error
+                });
+            }
+
+            // 2. Atualiza no KV
+            try {
+                const users = await Storage.get('users_all') || [];
+                const user = users.find(u => u.email === record.email);
+                if (user) {
+                    user.senha = new_password;
+                    user.updated_at = new Date().toISOString();
+                    await Storage.set('users_all', users);
+                }
+            } catch (e) {
+                console.warn('⚠️ [reset_password] KV update falhou:', e.message);
+            }
+
+            // 3. Invalida token
+            await Storage.del('reset_token_' + token);
+
+            // 4. Blockchain
+            try {
+                await addBlockToChain({
+                    type: 'password_reset',
+                    email: record.email,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (e) {}
+
+            return res.status(200).json({
+                success: true,
+                message: 'Senha atualizada com sucesso!',
+                _via: 'gas'
+            });
+        }
+
+        // ============================================================
+        // 🔍 SEARCH YOUTUBE
         // ============================================================
         if (action === 'search_youtube') {
             const { query, limit } = params;
@@ -1160,9 +1231,6 @@ module.exports = async (req, res) => {
             return res.status(200).json({ success: true, data: [], message: 'Nenhum resultado' });
         }
 
-        // ============================================================
-        // 🎬 YOUTUBE VIDEO INFO / ISRC
-        // ============================================================
         if (action === 'search_isrc') {
             const { youtube_url } = params;
             if (!youtube_url) return res.status(200).json({ success: false, message: 'URL obrigatória' });
@@ -1174,18 +1242,15 @@ module.exports = async (req, res) => {
                     success: true,
                     data: {
                         title: info.title, artist: info.artist,
-                        isrc: 'ISRC_' + Date.now(),
-                        source: 'youtube', video_id: videoId,
-                        views: info.views, likes: info.likes, thumbnail: info.thumbnail
+                        isrc: 'ISRC_' + Date.now(), source: 'youtube',
+                        video_id: videoId, views: info.views, likes: info.likes,
+                        thumbnail: info.thumbnail
                     }
                 });
             }
             return res.status(200).json({ success: true, data: { title: 'Música', artist: 'Artista', isrc: 'ISRC_' + Date.now(), source: 'fallback' } });
         }
 
-        // ============================================================
-        // 📊 YOUTUBE STATS
-        // ============================================================
         if (action === 'get_youtube_stats') {
             const { video_id } = params;
             if (!video_id) return res.status(200).json({ success: false, message: 'video_id obrigatório' });
@@ -1308,10 +1373,8 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 data: {
-                    isrc_original: isrc,
-                    isrc_normalizado: normalizado,
-                    isrc_formatado: formatarISRC(normalizado),
-                    valido,
+                    isrc_original: isrc, isrc_normalizado: normalizado,
+                    isrc_formatado: formatarISRC(normalizado), valido,
                     formato_esperado: 'CC-XXX-YY-NNNNN'
                 }
             });
@@ -1347,7 +1410,6 @@ module.exports = async (req, res) => {
                 .trim();
 
             const isrcs = await buscarIsrcMusicBrainz(tituloBusca, artistaBusca);
-
             const unicos = {};
             for (const item of isrcs) {
                 if (!unicos[item.isrc] || (item.score || 0) > (unicos[item.isrc].score || 0)) {
@@ -1382,11 +1444,9 @@ module.exports = async (req, res) => {
             if (link_youtube) vid = extractYouTubeId(link_youtube);
 
             const vinculo = {
-                music_id,
-                isrc: isrcNormalizado,
+                music_id, isrc: isrcNormalizado,
                 isrc_formatado: formatarISRC(isrcNormalizado),
-                video_id: vid,
-                vinculado_em: new Date().toISOString()
+                video_id: vid, vinculado_em: new Date().toISOString()
             };
             await Storage.set(isrcKey, vinculo);
 
@@ -1421,13 +1481,11 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎵 PLAYLISTS GLOBAIS
+        // PLAYLISTS GLOBAIS
         // ============================================================
         if (action === 'get_global_playlists') {
             const cachedL1 = cache.get('global_playlists');
-            if (cachedL1) {
-                return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
-            }
+            if (cachedL1) return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
 
             let playlists = await Storage.get('global_playlists') || [];
 
@@ -1453,21 +1511,17 @@ module.exports = async (req, res) => {
             const userId = params.user_id;
             if (!nome) return res.status(200).json({ success: false, message: 'Nome obrigatório' });
 
-            const result = await writeThrough(
-                'create_global_playlist',
-                { nome, descricao, user_id: userId },
-                async (data) => {
-                    const playlists = await Storage.get('global_playlists') || [];
-                    const newPl = {
-                        id: (data && data.id) || ('gp_' + Date.now()),
-                        nome, descricao, musicas: [], music_count: 0, is_global: true,
-                        created_by: userId, created_at: new Date().toISOString()
-                    };
-                    playlists.push(newPl);
-                    await Storage.set('global_playlists', playlists);
-                    cache.cache.delete('global_playlists');
-                }
-            );
+            const result = await writeThrough('create_global_playlist', { nome, descricao, user_id: userId }, async (data) => {
+                const playlists = await Storage.get('global_playlists') || [];
+                const newPl = {
+                    id: (data && data.id) || ('gp_' + Date.now()),
+                    nome, descricao, musicas: [], music_count: 0, is_global: true,
+                    created_by: userId, created_at: new Date().toISOString()
+                };
+                playlists.push(newPl);
+                await Storage.set('global_playlists', playlists);
+                cache.cache.delete('global_playlists');
+            });
 
             if (!result.success) {
                 return res.status(200).json({
@@ -1478,13 +1532,7 @@ module.exports = async (req, res) => {
             }
 
             await addBlockToChain({ type: 'nova_playlist_global', nome });
-
-            return res.status(200).json({
-                success: true,
-                data: result.data,
-                message: 'Playlist criada',
-                _via: 'gas'
-            });
+            return res.status(200).json({ success: true, data: result.data, message: 'Playlist criada', _via: 'gas' });
         }
 
         if (action === 'add_music_to_global_playlist') {
@@ -1492,32 +1540,25 @@ module.exports = async (req, res) => {
             const musicId = String(params.music_id);
             if (!playlistId || !musicId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-            const result = await writeThrough(
-                'add_music_to_global_playlist',
-                { playlist_id: playlistId, music_id: musicId },
-                async (data) => {
-                    const playlists = await Storage.get('global_playlists') || [];
-                    const pl = playlists.find(p => String(p.id) === String(playlistId));
-                    if (pl) {
-                        pl.musicas = pl.musicas || [];
-                        if (!pl.musicas.map(String).includes(musicId)) {
-                            pl.musicas.push(musicId);
-                            pl.music_count = pl.musicas.length;
-                        }
-                        await Storage.set('global_playlists', playlists);
+            const result = await writeThrough('add_music_to_global_playlist', { playlist_id: playlistId, music_id: musicId }, async (data) => {
+                const playlists = await Storage.get('global_playlists') || [];
+                const pl = playlists.find(p => String(p.id) === String(playlistId));
+                if (pl) {
+                    pl.musicas = pl.musicas || [];
+                    if (!pl.musicas.map(String).includes(musicId)) {
+                        pl.musicas.push(musicId);
+                        pl.music_count = pl.musicas.length;
                     }
-                    cache.cache.delete('global_playlists');
+                    await Storage.set('global_playlists', playlists);
                 }
-            );
+                cache.cache.delete('global_playlists');
+            });
 
             if (!result.success) {
                 return res.status(200).json({
-                    success: false,
-                    message: 'Não foi possível adicionar a música. Tente novamente.',
-                    error: result.error
+                    success: false, message: 'Não foi possível adicionar a música. Tente novamente.', error: result.error
                 });
             }
-
             return res.status(200).json({ success: true, data: result.data, _via: 'gas' });
         }
 
@@ -1525,43 +1566,32 @@ module.exports = async (req, res) => {
             const playlistId = params.playlist_id;
             const musicId = String(params.music_id);
 
-            const result = await writeThrough(
-                'remove_music_from_global_playlist',
-                { playlist_id: playlistId, music_id: musicId },
-                async (data) => {
-                    const playlists = await Storage.get('global_playlists') || [];
-                    const pl = playlists.find(p => String(p.id) === String(playlistId));
-                    if (pl) {
-                        pl.musicas = (pl.musicas || []).filter(id => String(id) !== musicId);
-                        pl.music_count = pl.musicas.length;
-                        await Storage.set('global_playlists', playlists);
-                    }
-                    cache.cache.delete('global_playlists');
+            const result = await writeThrough('remove_music_from_global_playlist', { playlist_id: playlistId, music_id: musicId }, async (data) => {
+                const playlists = await Storage.get('global_playlists') || [];
+                const pl = playlists.find(p => String(p.id) === String(playlistId));
+                if (pl) {
+                    pl.musicas = (pl.musicas || []).filter(id => String(id) !== musicId);
+                    pl.music_count = pl.musicas.length;
+                    await Storage.set('global_playlists', playlists);
                 }
-            );
+                cache.cache.delete('global_playlists');
+            });
 
             if (!result.success) {
-                return res.status(200).json({
-                    success: false,
-                    message: 'Não foi possível remover a música.',
-                    error: result.error
-                });
+                return res.status(200).json({ success: false, message: 'Não foi possível remover a música.', error: result.error });
             }
-
             return res.status(200).json({ success: true, data: result.data, _via: 'gas' });
         }
 
         // ============================================================
-        // 🎶 PLAYLISTS PESSOAIS
+        // PLAYLISTS PESSOAIS
         // ============================================================
         if (action === 'get_playlists') {
             const userId = params.user_id;
             if (!userId) return res.status(200).json({ success: false, message: 'user_id obrigatório' });
 
             const cachedL1 = cache.get('user_playlists_' + userId);
-            if (cachedL1) {
-                return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
-            }
+            if (cachedL1) return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
 
             const all = await Storage.get('user_playlists') || {};
             if (all[userId] && all[userId].length) {
@@ -1588,31 +1618,22 @@ module.exports = async (req, res) => {
             const publica = params.publica === 'true' || params.publica === true;
             if (!userId || !nome) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-            const result = await writeThrough(
-                'create_playlist',
-                { user_id: userId, nome, publica },
-                async (data) => {
-                    const all = await Storage.get('user_playlists') || {};
-                    all[userId] = all[userId] || [];
-                    const nova = {
-                        id: (data && data.playlist_id) || ('pl_' + Date.now()),
-                        nome, publica, musicas: [],
-                        created_at: new Date().toISOString()
-                    };
-                    all[userId].push(nova);
-                    await Storage.set('user_playlists', all);
-                    cache.cache.delete('user_playlists_' + userId);
-                }
-            );
+            const result = await writeThrough('create_playlist', { user_id: userId, nome, publica }, async (data) => {
+                const all = await Storage.get('user_playlists') || {};
+                all[userId] = all[userId] || [];
+                const nova = {
+                    id: (data && data.playlist_id) || ('pl_' + Date.now()),
+                    nome, publica, musicas: [],
+                    created_at: new Date().toISOString()
+                };
+                all[userId].push(nova);
+                await Storage.set('user_playlists', all);
+                cache.cache.delete('user_playlists_' + userId);
+            });
 
             if (!result.success) {
-                return res.status(200).json({
-                    success: false,
-                    message: 'Não foi possível criar a playlist. Tente novamente.',
-                    error: result.error
-                });
+                return res.status(200).json({ success: false, message: 'Não foi possível criar a playlist. Tente novamente.', error: result.error });
             }
-
             return res.status(200).json({
                 success: true,
                 data: { id: result.data?.playlist_id || 'pl_' + Date.now(), nome, publica },
@@ -1631,9 +1652,7 @@ module.exports = async (req, res) => {
             }
 
             const gasResult = await callGAS('add_music_to_playlist', {
-                user_id: userId,
-                playlist_id: playlistId,
-                music_id: musicId,
+                user_id: userId, playlist_id: playlistId, music_id: musicId,
                 music_data: musicData ? JSON.stringify(musicData) : ''
             });
             const unwrapped = unwrapGAS(gasResult);
@@ -1671,11 +1690,7 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: false, message: 'Dados incompletos' });
             }
 
-            await callGAS('remove_music_from_playlist', {
-                user_id: userId,
-                playlist_id: playlistId,
-                music_id: musicId
-            });
+            await callGAS('remove_music_from_playlist', { user_id: userId, playlist_id: playlistId, music_id: musicId });
 
             const all = await Storage.get('user_playlists') || {};
             all[userId] = all[userId] || [];
@@ -1690,7 +1705,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // ⭐ SEGUIR / FAVORITOS
+        // SEGUIR / FAVORITOS
         // ============================================================
         if (action === 'get_following') {
             const userId = params.user_id;
@@ -1761,13 +1776,11 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎵 STREAMING
+        // STREAMING
         // ============================================================
         if (action === 'register_streaming') {
             const { music_id, user_id, duration } = params;
-            if (!music_id || !user_id) {
-                return res.status(200).json({ success: false, message: 'Dados incompletos' });
-            }
+            if (!music_id || !user_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
             await addBlockToChain({ type: 'streaming', music_id, user_id, duration: duration || 30 });
 
@@ -1799,12 +1812,7 @@ module.exports = async (req, res) => {
 
             return res.status(200).json({
                 success: true,
-                data: {
-                    reward: 1,
-                    streams_total: contador.total,
-                    streams_hoje: contador.hoje,
-                    streams_global: globalCont.total
-                }
+                data: { reward: 1, streams_total: contador.total, streams_hoje: contador.hoje, streams_global: globalCont.total }
             });
         }
 
@@ -1840,7 +1848,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎵 MÚSICAS
+        // MÚSICAS
         // ============================================================
         if (action === 'get_musicas') {
             const cachedL1 = cache.get('musicas');
@@ -1870,36 +1878,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🔐 LOGIN
-        // ============================================================
-        if (action === 'login') {
-            const email = sanitize(params.email);
-            const password = params.password;
-            if (!email || !password) return res.status(200).json({ success: false, message: 'Email e senha obrigatórios' });
-            if (!validateEmail(email)) return res.status(200).json({ success: false, message: 'Email inválido' });
-            const clientIP = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
-            const rateCheck = rateLimiter.check(clientIP);
-            if (!rateCheck.allowed) return res.status(200).json({ success: false, message: rateCheck.message });
-
-            if (email === 'admin@selomiv.com' && password === 'admin123') {
-                rateLimiter.reset(clientIP);
-                return res.status(200).json({
-                    success: true,
-                    data: { id: 'admin_master', nome: 'Administrador', email: 'admin@selomiv.com', tipo: 'admin', saldo: 1000000, selo_coin: 50000, favorite_music_ids: [], email_confirmado: true }
-                });
-            }
-
-            const gasResult = await callGAS('login', { email, password });
-            const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) {
-                rateLimiter.reset(clientIP);
-                return res.status(200).json({ success: true, data: unwrapped.data });
-            }
-            return res.status(200).json({ success: false, message: 'Credenciais inválidas' });
-        }
-
-        // ============================================================
-        // 💰 SALDO / CARTEIRA / EXTRATO
+        // SALDO / CARTEIRA / EXTRATO
         // ============================================================
         if (action === 'get_saldo') {
             const userId = params.user_id || params.userId;
@@ -1937,7 +1916,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 💸 COMPRAR
+        // COMPRAR
         // ============================================================
         if (action === 'buy') {
             const { music_id, quantidade, valor_unitario, valor_total, user_id } = params;
@@ -1983,7 +1962,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 💸 VENDER AO MERCADO (v9.7.2)
+        // VENDER AO MERCADO
         // ============================================================
         if (action === 'sell_to_market') {
             const { music_id, quantidade, preco_unitario, valor_total, user_id } = params;
@@ -2003,10 +1982,7 @@ module.exports = async (req, res) => {
                 return res.status(200).json(result);
             } catch (e) {
                 console.error('❌ Erro em sell_to_market:', e);
-                return res.status(200).json({
-                    success: false,
-                    message: 'Erro ao processar venda: ' + e.message
-                });
+                return res.status(200).json({ success: false, message: 'Erro ao processar venda: ' + e.message });
             }
         }
 
@@ -2035,45 +2011,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 💳 RESET PASSWORD
-        // ============================================================
-        if (action === 'request_password_reset') {
-            const { email } = params;
-            if (!email || !validateEmail(email)) return res.status(200).json({ success: false, message: 'Email inválido' });
-            const resetToken = generateResetToken(email);
-            const resetLink = `https://playmy.com.br/reset-password.html?token=${resetToken}`;
-            const html = `
-                <div style="font-family:Arial;max-width:600px;margin:0 auto;background:#111418;padding:40px;border:1px solid #00ff88;border-radius:16px;">
-                    <h1 style="color:#00ff88;text-align:center;">🎵 PLAY MY</h1>
-                    <p style="color:#fff;">Olá,</p>
-                    <p style="color:#b3b3b3;">Clique no botão para redefinir sua senha:</p>
-                    <div style="text-align:center;margin:30px 0;">
-                        <a href="${resetLink}" style="background:#00ff88;color:#000;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;">🔑 Redefinir Senha</a>
-                    </div>
-                    <p style="color:#6c757d;font-size:14px;">Link válido por 1 hora</p>
-                </div>
-            `;
-            const result = await sendEmail(email, '🔐 Recuperação de Senha - PLAY MY', html);
-            if (result.success) return res.status(200).json({ success: true, message: 'Email enviado!', data: { token: resetToken } });
-            const gasResult = await callGAS('request_password_reset', { email, reset_url: 'https://playmy.com.br/reset-password.html' });
-            const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
-            return res.status(200).json({ success: false, message: 'Erro ao enviar email' });
-        }
-
-        if (action === 'verify_reset_token') {
-            const { token } = params;
-            if (!token) return res.status(200).json({ success: false, message: 'Token obrigatório' });
-            const record = validateResetToken(token);
-            if (record) return res.status(200).json({ success: true, message: 'Token válido', data: { email: record.email } });
-            const gasResult = await callGAS('verify_reset_token', { token });
-            const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
-            return res.status(200).json({ success: false, message: 'Token inválido' });
-        }
-
-        // ============================================================
-        // 🎫 TICKETS
+        // TICKETS
         // ============================================================
         if (action === 'get_tickets') {
             const tickets = await Storage.get('tickets') || [];
@@ -2099,7 +2037,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 💸 SAQUE
+        // SAQUE
         // ============================================================
         if (action === 'request_withdrawal') {
             const gasResult = await callGAS('request_withdrawal', params);
@@ -2109,7 +2047,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 📊 TRADES — v9.7.2 (com validações)
+        // TRADES
         // ============================================================
         if (action === 'get_trades') {
             const gasResult = await callGAS('get_trades', params);
@@ -2139,32 +2077,21 @@ module.exports = async (req, res) => {
             const message = params.message || '';
 
             if (!sellerId || !buyerEmail || !musicId || !quantity || !price) {
-                return res.status(200).json({
-                    success: false,
-                    message: 'Preencha todos os campos: comprador, música, quantidade e preço'
-                });
+                return res.status(200).json({ success: false, message: 'Preencha todos os campos: comprador, música, quantidade e preço' });
             }
-
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) {
                 return res.status(200).json({ success: false, message: 'Email do comprador inválido' });
             }
-
             if (quantity < 1) {
                 return res.status(200).json({ success: false, message: 'Quantidade deve ser maior que zero' });
             }
-
             if (price < 0.01) {
                 return res.status(200).json({ success: false, message: 'Preço deve ser maior que zero' });
             }
 
             const gasResult = await callGAS('create_trade', {
-                seller_id: sellerId,
-                buyer_email: buyerEmail,
-                music_id: musicId,
-                quantity: quantity,
-                price: price,
-                total: total,
-                message: message
+                seller_id: sellerId, buyer_email: buyerEmail, music_id: musicId,
+                quantity: quantity, price: price, total: total, message: message
             });
 
             const unwrapped = unwrapGAS(gasResult);
@@ -2174,15 +2101,9 @@ module.exports = async (req, res) => {
                     const trades = await Storage.get('trades_all') || [];
                     trades.push({
                         id: unwrapped.data?.trade_id || ('trade_' + Date.now()),
-                        seller_id: sellerId,
-                        buyer_email: buyerEmail,
-                        music_id: musicId,
-                        quantity: quantity,
-                        price: price,
-                        total: total,
-                        message: message,
-                        status: 'pending',
-                        created_at: new Date().toISOString()
+                        seller_id: sellerId, buyer_email: buyerEmail, music_id: musicId,
+                        quantity: quantity, price: price, total: total, message: message,
+                        status: 'pending', created_at: new Date().toISOString()
                     });
                     await Storage.set('trades_all', trades);
                 } catch (e) {
@@ -2191,21 +2112,15 @@ module.exports = async (req, res) => {
 
                 try {
                     await addBlockToChain({
-                        type: 'trade_oferta',
-                        trade_id: unwrapped.data?.trade_id,
-                        seller_id: sellerId,
-                        buyer_email: buyerEmail,
-                        music_id: musicId,
-                        quantity: quantity,
-                        total: total
+                        type: 'trade_oferta', trade_id: unwrapped.data?.trade_id,
+                        seller_id: sellerId, buyer_email: buyerEmail, music_id: musicId,
+                        quantity: quantity, total: total
                     });
                 } catch (e) {}
 
                 return res.status(200).json({
-                    success: true,
-                    data: unwrapped.data,
-                    message: 'Oferta enviada para ' + buyerEmail,
-                    _via: 'gas'
+                    success: true, data: unwrapped.data,
+                    message: 'Oferta enviada para ' + buyerEmail, _via: 'gas'
                 });
             }
 
@@ -2225,14 +2140,12 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
             }
             return res.status(200).json({
-                success: false,
-                message: 'Não foi possível processar a operação.',
-                error: gasResult.error
+                success: false, message: 'Não foi possível processar a operação.', error: gasResult.error
             });
         }
 
         // ============================================================
-        // 🎤 REGISTER / CONFIRM EMAIL
+        // REGISTER / CONFIRM EMAIL
         // ============================================================
         if (action === 'register' || action === 'confirm_email' || action === 'resend_confirmation') {
             const gasResult = await callGAS(action, params);
@@ -2242,16 +2155,14 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // ⛓️ BLOCKCHAIN
+        // BLOCKCHAIN
         // ============================================================
         if (action === 'get_mining_blocks') {
             const limit = parseInt(params.limit) || 50;
             const chain = await Storage.get('blockchain') || { blocks: [] };
             const blocks = chain.blocks.slice(-limit);
             const formatted = blocks.map(b => ({
-                block_index: b.index,
-                block_hash: b.hash,
-                previous_hash: b.prevHash,
+                block_index: b.index, block_hash: b.hash, previous_hash: b.prevHash,
                 timestamp: b.timestamp,
                 music_title: b.data?.titulo || b.data?.nome || b.data?.type || 'Bloco',
                 reward_amount: b.data?.valor_total || 0
@@ -2269,14 +2180,13 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 📊 ADMIN STATS
+        // ADMIN STATS
         // ============================================================
         if (action === 'get_admin_stats' || action === 'get_stats') {
             const gasResult = await callGAS('get_stats');
             const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) {
-                return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
-            }
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
+
             const playlists = await Storage.get('global_playlists') || [];
             const chain = await Storage.get('blockchain') || { blocks: [] };
             const streams = await Storage.get('streams') || {};
@@ -2284,10 +2194,8 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 data: {
-                    total_usuarios: 1,
-                    total_musicas: FALLBACK_MUSICAS.length,
-                    playlists_count: playlists.length,
-                    total_investido: 0,
+                    total_usuarios: 1, total_musicas: FALLBACK_MUSICAS.length,
+                    playlists_count: playlists.length, total_investido: 0,
                     blocks_count: chain.blocks.length,
                     streams_count: Object.keys(streams).length,
                     elo_count: elo.length
@@ -2297,7 +2205,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🎤 ARTISTAS
+        // ARTISTAS
         // ============================================================
         if (action === 'get_artists') {
             const gasResult = await callGAS('get_artists', params);
@@ -2315,7 +2223,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 📰 NOTÍCIAS
+        // NOTÍCIAS
         // ============================================================
         if (action === 'get_news') {
             const page = parseInt(params.page) || 1;
@@ -2404,7 +2312,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.7.2',
+            version: '9.7.3',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
