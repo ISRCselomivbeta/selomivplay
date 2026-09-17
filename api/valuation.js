@@ -1,11 +1,16 @@
 // ============================================================
-// api/valuation.js — PLAY MY v1.0.0
+// api/valuation.js — PLAY MY v1.0.1
 // Motor de valuation artístico.
 // Transforma streams + ELO em previsão de receita futura.
 //
 // Fórmula:
 //   Receita Projetada = Streams/mês × valor por stream × 12
 //   Valuation = Receita Projetada × Múltiplo (ajustado pelo ELO)
+//
+// MUDANÇAS v1.0.1:
+//   - 🆕 ALIASES: aceita "valuation_catalogo", "valuation_ver", etc.
+//   - 🔧 DEFAULT agora retorna success:false (não mente mais "sucesso")
+//   - 🔧 Logs mostram action original + resolvida
 // ============================================================
 
 let kv = null;
@@ -17,6 +22,17 @@ try {
 }
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
+
+// ============================================================
+// ALIASES — compatibilidade com o front (api.js usa prefixo "valuation_")
+// ============================================================
+const ALIASES = {
+    'valuation_catalogo':  'catalogo',
+    'valuation_ver':       'ver',
+    'valuation_calcular':  'calcular',
+    'valuation_mercado':   'mercado',
+    'calcular_valuation':  'calcular'
+};
 
 // ============================================================
 // STORAGE FALLBACK
@@ -45,32 +61,23 @@ async function setKV(key, value) {
 // CONFIGURAÇÕES DE MERCADO
 // ============================================================
 const MERCADO = {
-    // Valor por stream em R$ (base setembro 2026)
     valor_por_stream: {
-        play_my: 0.015,        // PLAY MY paga mais (incentivo)
-        youtube: 0.002,        // YouTube é baixo
-        spotify: 0.004,        // Spotify ~R$ 0,004/stream
+        play_my: 0.015,
+        youtube: 0.002,
+        spotify: 0.004,
         deezer: 0.003,
-        apple_music: 0.007,    // Apple paga mais
+        apple_music: 0.007,
         amazon_music: 0.005,
         tidal: 0.010,
         outros: 0.003
     },
-
-    // Múltiplo base do setor musical (quantas vezes a receita anual)
     multiplo_base: 10,
-
-    // Faixas de múltiplo
     multiplo: {
         conservador: 8,
         realista: 10,
         otimista: 15
     },
-
-    // Meses de projeção
     meses_projecao: 12,
-
-    // Ajuste máximo do ELO no múltiplo (±50%)
     elo_ajuste_max: 0.5
 };
 
@@ -128,11 +135,8 @@ function projetarReceita(streamsPorMes, plataforma) {
 
     const media = valores.reduce((a, b) => a + b, 0) / valores.length;
     const tendencia = calcularTendencia(valores);
-
-    // Limita tendência para não explodir (máx ±30%/mês)
     const tendenciaLimitada = Math.max(-0.3, Math.min(0.3, tendencia));
 
-    // Projeta 12 meses aplicando tendência
     let projecaoTotal = 0;
     let streamAtual = media;
     for (let mes = 0; mes < MERCADO.meses_projecao; mes++) {
@@ -143,8 +147,6 @@ function projetarReceita(streamsPorMes, plataforma) {
     const valorStream = MERCADO.valor_por_stream[plataforma] ||
                         MERCADO.valor_por_stream.outros;
     const receitaProjetada = projecaoTotal * valorStream;
-
-    // Confiança: quantos meses + variância
     const confianca = Math.min(100, valores.length * 20);
 
     return {
@@ -176,22 +178,15 @@ async function calcularValuation(music_id, video_id_youtube) {
         atualizado_em: new Date().toISOString()
     };
 
-    // ============================================================
     // 1. PLAY MY
-    // ============================================================
     const playmy = await getKV('stream_' + music_id) || { total: 0, por_dia: {} };
     if (playmy.por_dia) {
         const porMes = agruparPorMes(playmy.por_dia);
-        dados.fontes.play_my = {
-            total: playmy.total,
-            por_mes: porMes
-        };
+        dados.fontes.play_my = { total: playmy.total, por_mes: porMes };
         dados.projecoes.play_my = projetarReceita(porMes, 'play_my');
     }
 
-    // ============================================================
     // 2. YOUTUBE
-    // ============================================================
     if (video_id_youtube) {
         try {
             const url = `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${video_id_youtube}&key=${YOUTUBE_API_KEY}`;
@@ -220,9 +215,7 @@ async function calcularValuation(music_id, video_id_youtube) {
         }
     }
 
-    // ============================================================
     // 3. ROC NATION (Spotify, Deezer, Apple, etc.)
-    // ============================================================
     const periodos = await getKV('royalties_periodos') || [];
     const porPlataforma = {};
 
@@ -247,22 +240,17 @@ async function calcularValuation(music_id, video_id_youtube) {
         dados.projecoes[plataforma] = projetarReceita(dadosPlat, plataforma);
     }
 
-    // ============================================================
     // 4. SOMA RECEITA ANUAL PROJETADA
-    // ============================================================
     let receitaAnual = 0;
     for (const proj of Object.values(dados.projecoes)) {
         receitaAnual += proj.projecao_receita || 0;
     }
     dados.receita_anual_projetada = Math.round(receitaAnual * 100) / 100;
 
-    // ============================================================
     // 5. BUSCA ELO
-    // ============================================================
     try {
         let eloData = await getKV('elo_' + music_id);
         if (!eloData) {
-            // Tenta calcular
             const baseUrl = process.env.VERCEL_URL
                 ? `https://${process.env.VERCEL_URL}`
                 : 'https://playmy.com.br';
@@ -284,26 +272,16 @@ async function calcularValuation(music_id, video_id_youtube) {
         console.warn('[valuation] ELO não disponível:', e.message);
     }
 
-    // ============================================================
     // 6. AJUSTE DO MÚLTIPLO PELO ELO
-    // ============================================================
-    // ELO 1000 = neutro (múltiplo base)
-    // ELO 1500 = +50% no múltiplo
-    // ELO 500  = -50% no múltiplo
     const ajusteBruto = (dados.elo - 1000) / 1000;
     const ajusteELO = ajusteBruto * MERCADO.elo_ajuste_max;
-
     const multiploFinal = MERCADO.multiplo_base * (1 + ajusteELO);
 
-    dados.ajuste_elo = Math.round(ajusteELO * 1000) / 10; // em %
+    dados.ajuste_elo = Math.round(ajusteELO * 1000) / 10;
     dados.multiplo_final = Math.round(multiploFinal * 100) / 100;
 
-    // ============================================================
     // 7. VALUATION FINAL
-    // ============================================================
     dados.valuation = Math.round(receitaAnual * multiploFinal * 100) / 100;
-
-    // Faixa de valuation (cenários)
     dados.valuation_faixa = {
         conservador: Math.round(receitaAnual * (multiploFinal * 0.8) * 100) / 100,
         realista: dados.valuation,
@@ -322,7 +300,6 @@ async function calcularValuationCatalogo() {
 
     for (const id of idx) {
         try {
-            // Busca video_id do YouTube se existir
             const musica = await getKV('musica_' + id) || {};
             const videoId = musica.youtube_video_id || null;
             const v = await calcularValuation(id, videoId);
@@ -332,7 +309,6 @@ async function calcularValuationCatalogo() {
         }
     }
 
-    // Ordena por valuation
     valuations.sort((a, b) => b.valuation - a.valuation);
 
     const total = valuations.reduce((s, v) => s + (v.valuation || 0), 0);
@@ -357,9 +333,12 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     const params = req.method === 'POST' ? req.body : req.query;
-    const { action, music_id, video_id } = params;
+    const { action: _actionOriginal, music_id, video_id } = params;
 
-    console.log(`💰 [valuation] ${action}`);
+    // ✅ Resolve alias — "valuation_catalogo" → "catalogo"
+    const action = ALIASES[_actionOriginal] || _actionOriginal;
+
+    console.log(`💰 [valuation] ${_actionOriginal}${action !== _actionOriginal ? ' → ' + action : ''}`);
 
     try {
         // ============================================================
@@ -384,7 +363,6 @@ module.exports = async (req, res) => {
         if (action === 'catalogo') {
             const resultado = await calcularValuationCatalogo();
             await setKV('valuation_catalogo', resultado);
-
             return res.status(200).json({ success: true, data: resultado });
         }
 
@@ -424,19 +402,15 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // DEFAULT
+        // DEFAULT — action desconhecida
+        // ✅ success:false (era true) — quebra o loop do front
         // ============================================================
+        console.warn(`⚠️ [valuation] action desconhecida: ${_actionOriginal}`);
         return res.status(200).json({
-            success: true,
-            message: '💰 PLAY MY Valuation API',
-            version: '1.0.0',
-            acoes: [
-                '?action=calcular&music_id=X&video_id=Y',
-                '?action=catalogo',
-                '?action=ver&music_id=X',
-                '?action=ultimo_catalogo',
-                '?action=mercado'
-            ]
+            success: false,
+            message: `Action desconhecida: ${_actionOriginal}`,
+            version: '1.0.1',
+            acoes: ['calcular', 'catalogo', 'ver', 'ultimo_catalogo', 'mercado']
         });
 
     } catch (e) {
