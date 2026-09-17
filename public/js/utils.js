@@ -1,9 +1,17 @@
 // ============================================================
-// js/utils.js — PLAY MY v8.5.0
+// js/utils.js — PLAY MY v8.5.1
 // Funções utilitárias: formatação, helpers de UI, placeholders.
 // Depende de: config.js
 // DEVE carregar DEPOIS de config.js.
+//
+// MUDANÇAS v8.5.1:
+//   - 🆕 debounce / throttle / once / debounceAsync
+//   - 🆕 showToast com sanitização defensiva
+//   - 🆕 marcar utils.__version para debug
 // ============================================================
+
+window.utils = window.utils || {};
+window.utils.__version = '8.5.1';
 
 // ============ FORMATAÇÃO DE MOEDA E NÚMEROS ============
 window.formatCurrency = function (v) {
@@ -95,9 +103,15 @@ window.showToast = function (message, type, duration) {
     type === 'warning' ? 'bi-exclamation-triangle' :
     'bi-info-circle';
 
+  // ✅ v8.5.1 — escapa HTML no message (defensivo, evita XSS por toast)
+  const safeMsg = String(message == null ? '' : message)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
   t.innerHTML =
     '<i class="bi ' + icon + ' toast-icon"></i>' +
-    '<div class="toast-message">' + message + '</div>';
+    '<div class="toast-message">' + safeMsg + '</div>';
 
   c.appendChild(t);
   setTimeout(() => t.classList.add('show'), 10);
@@ -159,5 +173,104 @@ window.sanitizeText = function (str) {
     .slice(0, 500);
 };
 
+// ============================================================
+// 🆕 v8.5.1 — DEBOUNCE / THROTTLE / ONCE
+// ============================================================
+
+/**
+ * Debounce — espera o usuário parar de disparar.
+ * Uso: input.addEventListener('input', debounce(fn, 300))
+ * Retorna wrapper com .cancel() e .flush()
+ */
+window.debounce = function (fn, delay = 300) {
+  if (typeof fn !== 'function') {
+    console.warn('[debounce] fn precisa ser function');
+    return () => {};
+  }
+  let timer = null;
+  const wrapped = function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      try { fn.apply(this, args); }
+      catch (e) { console.error('[debounce] erro:', e); }
+    }, delay);
+  };
+  wrapped.cancel = () => { clearTimeout(timer); timer = null; };
+  wrapped.flush = function (...args) {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+      try { fn.apply(this, args); }
+      catch (e) { console.error('[debounce.flush] erro:', e); }
+    }
+  };
+  return wrapped;
+};
+
+/**
+ * Throttle — limita frequência (scroll/resize).
+ * Uso: window.addEventListener('scroll', throttle(fn, 150))
+ */
+window.throttle = function (fn, limit = 150) {
+  if (typeof fn !== 'function') {
+    console.warn('[throttle] fn precisa ser function');
+    return () => {};
+  }
+  let inThrottle = false;
+  return function (...args) {
+    if (inThrottle) return;
+    try { fn.apply(this, args); }
+    catch (e) { console.error('[throttle] erro:', e); }
+    inThrottle = true;
+    setTimeout(() => (inThrottle = false), limit);
+  };
+};
+
+/**
+ * Once — executa no máximo 1x por janela de TTL (ms).
+ * Blindagem contra re-render em cascata.
+ * Uso: once('render:portfolio', () => render(), 800)
+ */
+window.once = function (key, fn, ttl = 500) {
+  window.__onceCache = window.__onceCache || {};
+  const now = Date.now();
+  const hit = window.__onceCache[key];
+  if (hit && now - hit.at < ttl) {
+    return hit.result;
+  }
+  const result = fn();
+  window.__onceCache[key] = { at: now, result };
+  return result;
+};
+
+/**
+ * Debounce assíncrono — retorna Promise; resolve quando parar.
+ * Uso: const buscar = debounceAsync(async (q) => {...}, 300)
+ */
+window.debounceAsync = function (fn, delay = 300) {
+  if (typeof fn !== 'function') {
+    return () => Promise.reject(new Error('fn precisa ser function'));
+  }
+  let timer = null;
+  let pendingResolvers = [];
+  return function (...args) {
+    return new Promise((resolve, reject) => {
+      clearTimeout(timer);
+      pendingResolvers.push({ resolve, reject });
+      timer = setTimeout(async () => {
+        const resolvers = pendingResolvers;
+        pendingResolvers = [];
+        try {
+          const r = await fn.apply(this, args);
+          resolvers.forEach(p => p.resolve(r));
+        } catch (e) {
+          resolvers.forEach(p => p.reject(e));
+        }
+      }, delay);
+    });
+  };
+};
+
 // ============ LOG DE CARREGAMENTO ============
-console.log('✅ [utils.js] carregado');
+console.log('✅ [utils.js] v8.5.1 carregado — formatação + debounce/throttle/once');
