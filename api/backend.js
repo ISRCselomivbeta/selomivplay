@@ -1,10 +1,15 @@
-// BACKEND.JS - VERSÃO 9.7.3
+// BACKEND.JS - VERSÃO 9.7.4
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
-// + COMPATIBILIDADE TOTAL COM GAS 7.0.0
+// + COMPATIBILIDADE TOTAL COM GAS 7.0.1
 // + VENDA DIRETA AO MERCADO (sell_to_market)
 // + VENDA P2P COM EMAIL (create_trade robusto)
+//
+// MUDANÇAS v9.7.4:
+//   - ✅ NOVA ACTION no GAS_ACTIONS: 'reset_password_by_email'
+//   - ✅ reset_password agora chama 'reset_password_by_email' no GAS
+//   - ✅ Compatível com Code.gs v7.0.1
 //
 // MUDANÇAS v9.7.3:
 //   - ✅ CORRIGIDO: resetTokens agora persiste no KV (não em memória)
@@ -27,10 +32,6 @@
 //   - Delegação genérica ao GAS 7.0.0 via GAS_ACTIONS set
 //   - Normalização de playlists (string CSV ↔ array)
 //   - Correção do fallback do `buy` (não mente mais)
-//
-// MUDANÇAS v9.6.0:
-//   - nodemailer com require protegido
-//   - req.body / req.query protegidos
 // ============================================================
 
 // ============================================================
@@ -60,7 +61,7 @@ const EMAIL_FROM = 'selomivplay@gmail.com';
 const EMAIL_NAME = 'PLAY MY';
 
 // ============================================================
-// AÇÕES QUE EXISTEM NO GAS 7.0.0
+// AÇÕES QUE EXISTEM NO GAS 7.0.1
 // ============================================================
 const GAS_ACTIONS = new Set([
     'health', 'ping', 'login', 'register', 'confirm_email', 'resend_confirmation',
@@ -76,6 +77,7 @@ const GAS_ACTIONS = new Set([
     'get_youtube_stats', 'register_streaming', 'get_streaming_stats', 'get_mining_blocks',
     'get_mining_stats', 'get_mining_ranking',
     'request_password_reset', 'verify_reset_token', 'reset_password',
+    'reset_password_by_email',
     'create_trade', 'get_trades', 'accept_trade', 'decline_trade', 'cancel_trade',
     'process_trade', 'get_trade_details',
     'create_pix_payment', 'check_pix_payment', 'get_user_pix_payments',
@@ -495,7 +497,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.3)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.4)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -633,7 +635,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
         const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.7.3 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.7.4 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -998,7 +1000,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 }
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.7.3
+// HANDLER PRINCIPAL — v9.7.4
 // ============================================================
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1025,7 +1027,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.7.3',
+                version: '9.7.4',
                 kv_enabled: !!kv,
                 nodemailer_enabled: !!nodemailer,
                 youtube_enabled: !!YOUTUBE_API_KEY,
@@ -1097,7 +1099,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 💳 RESET PASSWORD (v9.7.3)
+        // 💳 RESET PASSWORD (v9.7.4 — usa reset_password_by_email)
         // ============================================================
         if (action === 'request_password_reset') {
             const { email } = params;
@@ -1166,14 +1168,16 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: false, message: 'Token inválido ou expirado' });
             }
 
-            // 1. Atualiza no GAS
-            const gasResult = await callGAS('reset_password', {
+            // 1. Atualiza no GAS (v9.7.4 — usa reset_password_by_email)
+            console.log('🔐 [reset_password] Chamando GAS reset_password_by_email para:', record.email);
+            const gasResult = await callGAS('reset_password_by_email', {
                 email: record.email,
                 new_password: new_password
             });
             const unwrapped = unwrapGAS(gasResult);
 
             if (!unwrapped.success) {
+                console.error('❌ [reset_password] GAS falhou:', gasResult.error);
                 return res.status(200).json({
                     success: false,
                     message: 'Erro ao atualizar senha. Tente novamente.',
@@ -1189,6 +1193,7 @@ module.exports = async (req, res) => {
                     user.senha = new_password;
                     user.updated_at = new Date().toISOString();
                     await Storage.set('users_all', users);
+                    console.log('✅ [reset_password] KV atualizado para:', record.email);
                 }
             } catch (e) {
                 console.warn('⚠️ [reset_password] KV update falhou:', e.message);
@@ -1196,6 +1201,7 @@ module.exports = async (req, res) => {
 
             // 3. Invalida token
             await Storage.del('reset_token_' + token);
+            console.log('🗑️ [reset_password] Token invalidado');
 
             // 4. Blockchain
             try {
@@ -2312,7 +2318,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.7.3',
+            version: '9.7.4',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
