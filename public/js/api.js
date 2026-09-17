@@ -1,46 +1,41 @@
 // ============================================================
-// js/api.js — PLAY MY v8.9.0
+// js/api.js — PLAY MY v8.9.1
 // HealthCheck + callAPI (roteador multi-API + Vercel → GAS → Local).
 // Depende de: config.js, utils.js, state.js
 // DEVE carregar DEPOIS de state.js e ANTES de auth.js.
 //
+// MUDANÇAS v8.9.1:
+//   - 🆕 DEDUP: chamadas idênticas simultâneas compartilham a mesma promise
+//   - 🆕 CACHE curto (5s) para ações de leitura (evita re-fetch em cascata)
+//   - 🆕 VALIDAÇÃO: success:true sem "data" em ações que exigem data → inválido
+//   - 🆕 debug: window.callAPI.clearCache() limpa dedup + cache
+//
 // MUDANÇAS v8.9.0:
-//   - 🆕 Suporte a MÚLTIPLAS APIs do Vercel:
-//     /api/backend, /api/streams, /api/valuation, /api/royalties, /api/elo, /api/isrc
+//   - 🆕 Suporte a MÚLTIPLAS APIs do Vercel
 //   - 🆕 API_ENDPOINTS mapeia cada action para o endpoint correto
 //   - 🆕 callAPI detecta automaticamente qual endpoint usar
 //   - Mantém fallback GAS para actions que ele conhece
-//
-// MUDANÇAS v8.8.0:
-//   - CORRIGIDO: getFallbackData não retorna mais success:true para login/register/reset
-//   - CORRIGIDO: callAPI não retenta em ações críticas
 // ============================================================
 
 // ============================================================
 // MAPEAMENTO DE APIS — qual endpoint usar para cada action
 // ============================================================
 const API_ENDPOINTS = {
-    // ============================================================
     // STREAMS (/api/streams)
-    // ============================================================
     'registrar_stream':     'streams',
     'ver_stream':           'streams',
     'streams_total':        'streams',
     'streams_ranking':      'streams',
     'streaming_total':      'streams',
-    
-    // ============================================================
+
     // VALUATION (/api/valuation)
-    // ============================================================
     'calcular_valuation':   'valuation',
     'valuation_catalogo':   'valuation',
     'ver_valuation':        'valuation',
     'valuation_mercado':    'valuation',
     'ultimo_catalogo':      'valuation',
-    
-    // ============================================================
+
     // ROYALTIES (/api/royalties)
-    // ============================================================
     'importar_royalties':   'royalties',
     'royalties_periodos':   'royalties',
     'royalties_status':     'royalties',
@@ -49,18 +44,14 @@ const API_ENDPOINTS = {
     'extrato_usuario':      'royalties',
     'royalties_resumo':     'royalties',
     'royalties_extrato':    'royalties',
-    
-    // ============================================================
+
     // ELO (/api/elo)
-    // ============================================================
     'calcular_elo':         'elo',
     'ver_elo':              'elo',
     'get_elo_ranking':      'elo',
     'atualizar_todos_elos': 'elo',
-    
-    // ============================================================
+
     // ISRC (/api/isrc)
-    // ============================================================
     'validar_isrc':         'isrc',
     'buscar_isrc':          'isrc',
     'vincular_isrc':        'isrc',
@@ -81,6 +72,34 @@ const ENDPOINT_URLS = {
 };
 
 // ============================================================
+// 🆕 AÇÕES QUE EXIGEM "data" NA RESPOSTA
+// Se vierem com success:true mas SEM data → considerar inválido
+// ============================================================
+const ACOES_EXIGEM_DATA = [
+    'valuation_catalogo', 'ver_valuation', 'calcular_valuation', 'ultimo_catalogo',
+    'ver_stream', 'streams_total', 'streams_ranking',
+    'get_elo_ranking', 'ver_elo', 'calcular_elo',
+    'royalties_resumo', 'royalties_periodos', 'extrato_usuario',
+    'get_saldo', 'get_carteira', 'get_extrato', 'get_musicas', 'get_artists'
+];
+
+// ============================================================
+// 🆕 AÇÕES DE LEITURA (elegíveis a cache curto)
+// Não inclui mutações nem ações críticas
+// ============================================================
+const ACOES_CACHEAVEIS = [
+    'valuation_catalogo', 'ver_valuation', 'ultimo_catalogo', 'valuation_mercado',
+    'ver_stream', 'streams_total', 'streams_ranking',
+    'get_elo_ranking', 'ver_elo',
+    'royalties_resumo', 'royalties_periodos',
+    'get_musicas', 'get_artists', 'get_extrato', 'get_carteira',
+    'get_playlists', 'get_global_playlists', 'get_top_investments',
+    'get_news', 'get_mining_blocks'
+];
+
+const CACHE_TTL_MS = 5000; // 5 segundos
+
+// ============================================================
 // HEALTH CHECK
 // ============================================================
 window.HealthCheck = {
@@ -88,7 +107,6 @@ window.HealthCheck = {
   gas: { online: null },
   mode: 'checking',
 
-  // ---------- VERCEL ----------
   async testVercel() {
     const url = CONFIG.VERCEL_URL + '?action=ping';
     try {
@@ -129,7 +147,6 @@ window.HealthCheck = {
     return false;
   },
 
-  // ---------- GAS ----------
   async testGAS() {
     const url = CONFIG.GAS_URL + '?action=health';
     try {
@@ -170,7 +187,6 @@ window.HealthCheck = {
     return false;
   },
 
-  // ---------- RUN ALL ----------
   async runAll() {
     console.log('🔍 Health Check...');
     this.mode = 'checking';
@@ -203,7 +219,6 @@ window.HealthCheck = {
     return this.mode;
   },
 
-  // ---------- BADGE ----------
   updateBadge() {
     const b = document.getElementById('healthBadge');
     if (!b) return;
@@ -239,15 +254,61 @@ const ACOES_CRITICAS = [
 ];
 
 // ============================================================
+// 🆕 DEDUP + CACHE (v8.9.1)
+// ============================================================
+const _inFlight = new Map();   // chave → Promise em andamento
+const _cache    = new Map();   // chave → { at, json }
+
+function _keyFor(action, data) {
+    // Chave estável (ordem de chaves não importa)
+    const keys = Object.keys(data || {}).sort();
+    const parts = keys.map(k => k + '=' + String(data[k]));
+    return action + '|' + parts.join('&');
+}
+
+function _getCached(action, data) {
+    if (!ACOES_CACHEAVEIS.includes(action)) return null;
+    const k = _keyFor(action, data);
+    const hit = _cache.get(k);
+    if (!hit) return null;
+    if (Date.now() - hit.at > CACHE_TTL_MS) {
+        _cache.delete(k);
+        return null;
+    }
+    return hit.json;
+}
+
+function _setCached(action, data, json) {
+    if (!ACOES_CACHEAVEIS.includes(action)) return;
+    if (!json || json.success === false) return;
+    const k = _keyFor(action, data);
+    _cache.set(k, { at: Date.now(), json });
+}
+
+// ============================================================
+// VALIDAÇÃO DE RESPOSTA
+// ============================================================
+function _isValidResponse(action, json) {
+    if (!json || typeof json !== 'object') return false;
+    if (json.success === false) return false;
+    // success:true mas sem data em ação que exige data → inválido
+    if (ACOES_EXIGEM_DATA.includes(action)) {
+        if (json.data === undefined || json.data === null) {
+            console.warn(`⚠️ [${action}] respondeu success:true SEM data — tratando como inválido`);
+            return false;
+        }
+    }
+    return true;
+}
+
+// ============================================================
 // OBTER ENDPOINT PARA UMA ACTION
 // ============================================================
 function getEndpointForAction(action) {
-    // Se a action está no mapa, usa o endpoint específico
     const endpointKey = API_ENDPOINTS[action];
     if (endpointKey && ENDPOINT_URLS[endpointKey]) {
         return ENDPOINT_URLS[endpointKey];
     }
-    // Padrão: backend
     return ENDPOINT_URLS.backend;
 }
 
@@ -278,148 +339,191 @@ window.callAPI = async function (action, data, _retry) {
   }
 
   // ============================================================
-  // TENTATIVA 1: API ESPECÍFICA (streams, valuation, royalties, elo, isrc)
+  // 🆕 v8.9.1 — DEDUP: mesma chamada em andamento → mesma promise
   // ============================================================
-  const specificEndpoint = getEndpointForAction(action);
-  
-  if (specificEndpoint !== ENDPOINT_URLS.backend) {
-      // É uma API específica — tentar direto
-      const ctrl = new AbortController();
-      const timeout = setTimeout(() => ctrl.abort(), 20000);
-      
-      try {
-          const url = buildUrl(specificEndpoint, action, data);
-          console.log(`🔍 [${action}] chamando ${specificEndpoint}`);
-          
+  if (_retry === 0) {
+      const inFlightKey = _keyFor(action, data);
+      if (_inFlight.has(inFlightKey)) {
+          console.log(`♻️ [${action}] dedup — reutilizando promise em andamento`);
+          return _inFlight.get(inFlightKey);
+      }
+
+      // 🆕 CACHE: resposta recente (5s)
+      const cached = _getCached(action, data);
+      if (cached) {
+          console.log(`📦 [${action}] cache hit (${CACHE_TTL_MS}ms)`);
+          return cached;
+      }
+  }
+
+  const _run = async () => {
+      // ============================================================
+      // TENTATIVA 1: API ESPECÍFICA (streams, valuation, royalties, elo, isrc)
+      // ============================================================
+      const specificEndpoint = getEndpointForAction(action);
+
+      if (specificEndpoint !== ENDPOINT_URLS.backend) {
+          const ctrl = new AbortController();
+          const timeout = setTimeout(() => ctrl.abort(), 20000);
+
+          try {
+              const url = buildUrl(specificEndpoint, action, data);
+              console.log(`🔍 [${action}] chamando ${specificEndpoint}`);
+
+              const r = await fetch(url, {
+                  signal: ctrl.signal,
+                  headers: { 'Accept': 'application/json' }
+              });
+              clearTimeout(timeout);
+
+              if (r.ok) {
+                  const text = await r.text();
+                  let json = null;
+                  try {
+                      json = JSON.parse(text);
+                  } catch (_) {
+                      const m = text.match(/\{[\s\S]*\}/);
+                      if (m) {
+                          try { json = JSON.parse(m[0]); } catch (_) {}
+                      }
+                  }
+
+                  if (_isValidResponse(action, json)) {
+                      console.log(`✅ [${action}] via ${specificEndpoint}`);
+                      _setCached(action, data, json);
+                      return json;
+                  }
+
+                  console.warn(`⚠️ [${action}] ${specificEndpoint} resposta inválida`, json);
+              }
+          } catch (e) {
+              clearTimeout(timeout);
+              if (e.name !== 'AbortError') {
+                  console.warn(`⚠️ [${action}] ${specificEndpoint} erro:`, e.name, e.message);
+              }
+          }
+      }
+
+      // ============================================================
+      // TENTATIVA 2: BACKEND PRINCIPAL (Vercel)
+      // ============================================================
+      const tryFetch = async (baseUrl, timeoutMs, label) => {
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
+        try {
+          const url = buildUrl(baseUrl, action, data);
           const r = await fetch(url, {
-              signal: ctrl.signal,
-              headers: { 'Accept': 'application/json' }
+            signal: ctrl.signal,
+            headers: { 'Accept': 'application/json' }
           });
           clearTimeout(timeout);
-          
-          if (r.ok) {
-              const text = await r.text();
-              let json = null;
-              try {
-                  json = JSON.parse(text);
-              } catch (_) {
-                  const m = text.match(/\{[\s\S]*\}/);
-                  if (m) {
-                      try { json = JSON.parse(m[0]); } catch (_) {}
-                  }
-              }
-              
-              if (json && json.success !== false) {
-                  console.log(`✅ [${action}] via ${specificEndpoint}`);
-                  return json;
-              }
-              
-              console.warn(`⚠️ [${action}] ${specificEndpoint} respondeu success:false`, json);
-              // Se falhou na API específica, tenta o backend (fallback)
+
+          if (!r.ok) {
+            console.warn(`⚠️ [${action}] ${label} HTTP ${r.status}`);
+            return null;
           }
-      } catch (e) {
+
+          const text = await r.text();
+          let json = null;
+          try {
+            json = JSON.parse(text);
+          } catch (_) {
+            const m = text.match(/\{[\s\S]*\}/);
+            if (m) {
+              try { json = JSON.parse(m[0]); } catch (_) {}
+            }
+          }
+
+          if (_isValidResponse(action, json)) {
+            console.log(`✅ [${action}] via ${label}`);
+            return json;
+          }
+
+          console.warn(`⚠️ [${action}] ${label} resposta inválida`, json);
+          return null;
+        } catch (e) {
           clearTimeout(timeout);
           if (e.name !== 'AbortError') {
-              console.warn(`⚠️ [${action}] ${specificEndpoint} erro:`, e.name, e.message);
+            console.warn(`⚠️ [${action}] ${label} erro:`, e.name, e.message);
           }
-      }
-  }
-
-  // ============================================================
-  // TENTATIVA 2: BACKEND PRINCIPAL (Vercel)
-  // ============================================================
-  const tryFetch = async (baseUrl, timeoutMs, label) => {
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
-    try {
-      const url = buildUrl(baseUrl, action, data);
-      const r = await fetch(url, {
-        signal: ctrl.signal,
-        headers: { 'Accept': 'application/json' }
-      });
-      clearTimeout(timeout);
-
-      if (!r.ok) {
-        console.warn(`⚠️ [${action}] ${label} HTTP ${r.status}`);
-        return null;
-      }
-
-      const text = await r.text();
-      let json = null;
-      try {
-        json = JSON.parse(text);
-      } catch (_) {
-        const m = text.match(/\{[\s\S]*\}/);
-        if (m) {
-          try { json = JSON.parse(m[0]); } catch (_) {}
+          return null;
         }
+      };
+
+      // Tentar backend
+      const vercelJson = await tryFetch(CONFIG.VERCEL_URL, 20000, 'Vercel');
+      if (vercelJson) {
+        HealthCheck.vercel.online = true;
+        if (HealthCheck.mode !== 'vercel') {
+          HealthCheck.mode = 'vercel';
+          HealthCheck.updateBadge();
+        }
+        _setCached(action, data, vercelJson);
+        return vercelJson;
       }
 
-      if (json && json.success !== false) {
-        console.log(`✅ [${action}] via ${label}`);
-        return json;
+      const isCritica = ACOES_CRITICAS.includes(action);
+
+      if (!isCritica && _retry < 1) {
+        await new Promise(r => setTimeout(r, 800));
+        return callAPI(action, data, _retry + 1);
       }
 
-      console.warn(`⚠️ [${action}] ${label} respondeu success:false`, json);
-      return null;
-    } catch (e) {
-      clearTimeout(timeout);
-      if (e.name !== 'AbortError') {
-        console.warn(`⚠️ [${action}] ${label} erro:`, e.name, e.message);
+      if (HealthCheck.vercel.online !== false) {
+        HealthCheck.vercel.online = false;
+        HealthCheck.mode = 'gas';
+        HealthCheck.updateBadge();
+        console.warn('⚠️ Vercel marcada offline — tentando GAS');
       }
-      return null;
-    }
+
+      // ============================================================
+      // TENTATIVA 3: GAS
+      // ============================================================
+      const gasJson = await tryFetch(CONFIG.GAS_URL, 30000, 'GAS');
+      if (gasJson) {
+        HealthCheck.gas.online = true;
+        _setCached(action, data, gasJson);
+        return gasJson;
+      }
+
+      // ============================================================
+      // TENTATIVA 4: FALLBACK LOCAL
+      // ============================================================
+      console.warn(`📦 [${action}] fallback local`);
+      return getFallbackData(action);
   };
 
-  // Tentar backend
-  const vercelJson = await tryFetch(CONFIG.VERCEL_URL, 20000, 'Vercel');
-  if (vercelJson) {
-    HealthCheck.vercel.online = true;
-    if (HealthCheck.mode !== 'vercel') {
-      HealthCheck.mode = 'vercel';
-      HealthCheck.updateBadge();
-    }
-    return vercelJson;
+  // 🆕 Envolve em promise deduplicada (só para _retry === 0)
+  if (_retry === 0) {
+      const inFlightKey = _keyFor(action, data);
+      const p = (async () => {
+          try {
+              return await _run();
+          } finally {
+              _inFlight.delete(inFlightKey);
+          }
+      })();
+      _inFlight.set(inFlightKey, p);
+      return p;
   }
 
-  // ✅ NÃO retentar em ações críticas — vai direto para o GAS
-  const isCritica = ACOES_CRITICAS.includes(action);
+  return _run();
+};
 
-  if (!isCritica && _retry < 1) {
-    await new Promise(r => setTimeout(r, 800));
-    return callAPI(action, data, _retry + 1);
-  }
-
-  if (HealthCheck.vercel.online !== false) {
-    HealthCheck.vercel.online = false;
-    HealthCheck.mode = 'gas';
-    HealthCheck.updateBadge();
-    console.warn('⚠️ Vercel marcada offline — tentando GAS');
-  }
-
-  // ============================================================
-  // TENTATIVA 3: GAS
-  // ============================================================
-  const gasJson = await tryFetch(CONFIG.GAS_URL, 30000, 'GAS');
-  if (gasJson) {
-    HealthCheck.gas.online = true;
-    return gasJson;
-  }
-
-  // ============================================================
-  // TENTATIVA 4: FALLBACK LOCAL
-  // ============================================================
-  console.warn(`📦 [${action}] fallback local`);
-  return getFallbackData(action);
+// ============================================================
+// 🆕 DEBUG — limpar caches
+// ============================================================
+window.callAPI.clearCache = function () {
+    _inFlight.clear();
+    _cache.clear();
+    console.log('🧹 [api] caches limpos (dedup + TTL)');
 };
 
 // ============================================================
 // FALLBACK LOCAL
 // ============================================================
 window.getFallbackData = function (action) {
-  // ============================================================
   // ❌ AÇÕES CRÍTICAS — NUNCA retornar sucesso falso
-  // ============================================================
   if (action === 'login') {
     return { success: false, message: 'Não foi possível conectar. Verifique sua internet e tente novamente.', _via: 'local', _offline: true };
   }
@@ -448,9 +552,7 @@ window.getFallbackData = function (action) {
     return { success: false, message: 'Venda indisponível offline.', _via: 'local', _offline: true };
   }
 
-  // ============================================================
-  // ✅ AÇÕES DE LEITURA — podem ter fallback com dados vazios
-  // ============================================================
+  // ✅ AÇÕES DE LEITURA
   if (action === 'get_musicas') return { success: true, data: [], _via: 'local' };
   if (action === 'get_external_musicas') return { success: true, data: [], _via: 'local' };
   if (action === 'get_artists') return { success: true, data: [], _via: 'local' };
@@ -467,25 +569,21 @@ window.getFallbackData = function (action) {
   if (action === 'get_trades') return { success: true, data: { received: [], sent: [], history: [] }, _via: 'local' };
   if (action === 'get_top_investments') return { success: true, data: [], _via: 'local' };
 
-  // ============================================================
-  // ✅ AÇÕES DAS NOVAS APIs — fallback vazio
-  // ============================================================
+  // ✅ AÇÕES DAS NOVAS APIs
   if (action === 'streams_total') return { success: true, data: { streams_total: 0, streams_hoje: 0, total_musicas: 0 }, _via: 'local' };
   if (action === 'streams_ranking') return { success: true, data: [], _via: 'local' };
   if (action === 'ver_stream') return { success: true, data: { total: 0, hoje: 0 }, _via: 'local' };
   if (action === 'valuation_catalogo') return { success: true, data: { valuation_total: 0, quantidade_musicas: 0, musicas: [] }, _via: 'local' };
+  if (action === 'ultimo_catalogo') return { success: true, data: { valuation_total: 0, quantidade_musicas: 0, musicas: [] }, _via: 'local' };
   if (action === 'royalties_resumo') return { success: true, data: [], _via: 'local' };
   if (action === 'royalties_periodos') return { success: true, data: [], _via: 'local' };
   if (action === 'extrato_usuario') return { success: true, data: { total_recebido: 0, quantidade: 0, ultimos: [] }, _via: 'local' };
   if (action === 'get_elo_ranking') return { success: true, data: { total: 0, ranking: [] }, _via: 'local' };
 
-  // ============================================================
-  // ⚠️ PADRÃO: retornar erro (não sucesso falso)
-  // ============================================================
   return { success: false, message: 'Ação indisponível offline', _via: 'local', _offline: true };
 };
 
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [api.js] v8.9.0 carregado — HealthCheck + callAPI multi-API (Vercel → GAS → Local)');
+console.log('✅ [api.js] v8.9.1 carregado — dedup + cache TTL + validação de resposta');
