@@ -1,7 +1,11 @@
 // ============================================================
-// js/elo-panel.js — PLAY MY v1.0.0
+// js/elo-panel.js — PLAY MY v1.0.1
 // Painel visual de ELO musical.
 // Mostra: ranking, faixas, breakdown, distribuição.
+//
+// MUDANÇAS v1.0.1:
+//   - CORRIGIDO: proteção contra data undefined em get_elo_ranking
+//   - CORRIGIDO: Array.isArray() em ranking
 // ============================================================
 
 (function () {
@@ -28,20 +32,21 @@
                 return;
             }
 
-            var d = r.data;
-            var ranking = d.ranking || [];
-            var ultima = d.ultima_atualizacao;
+            // ✅ PROTEÇÃO: data pode ser undefined ou não ter ranking
+            var d = (r && r.data) ? r.data : {};
+            var ranking = Array.isArray(d.ranking) ? d.ranking : [];
+            var ultima = d.ultima_atualizacao || null;
 
             // ============================================================
             // RESUMO — Distribuição por faixa
             // ============================================================
             var faixas = {
-                'lendario': { min: 1600, cor: '#FFD700', label: 'Lendário', count: 0 },
+                'lendario':  { min: 1600, cor: '#FFD700', label: 'Lendário',  count: 0 },
                 'excelente': { min: 1400, cor: '#34c759', label: 'Excelente', count: 0 },
-                'bom': { min: 1200, cor: '#5AC8FA', label: 'Bom', count: 0 },
-                'neutro': { min: 1000, cor: '#8E8E93', label: 'Neutro', count: 0 },
-                'atencao': { min: 800, cor: '#FF9500', label: 'Atenção', count: 0 },
-                'baixa': { min: 0, cor: '#FF3B30', label: 'Baixa', count: 0 }
+                'bom':       { min: 1200, cor: '#5AC8FA', label: 'Bom',       count: 0 },
+                'neutro':    { min: 1000, cor: '#8E8E93', label: 'Neutro',    count: 0 },
+                'atencao':   { min: 800,  cor: '#FF9500', label: 'Atenção',   count: 0 },
+                'baixa':     { min: 0,    cor: '#FF3B30', label: 'Baixa',     count: 0 }
             };
 
             ranking.forEach(function (m) {
@@ -52,7 +57,9 @@
             var total = ranking.length;
             var eloMedio = 0;
             if (total > 0) {
-                eloMedio = Math.round(ranking.reduce(function (s, m) { return s + (m.elo || 0); }, 0) / total);
+                eloMedio = Math.round(
+                    ranking.reduce(function (s, m) { return s + (m.elo || 0); }, 0) / total
+                );
             }
 
             // ============================================================
@@ -131,7 +138,9 @@
 
                     var tendencia = bd.tendencia || 0;
                     var trendIcon = tendencia > 5 ? '📈' : tendencia < -5 ? '📉' : '➡️';
-                    var trendCor = tendencia > 5 ? 'var(--apple-green)' : tendencia < -5 ? 'var(--apple-red)' : 'var(--apple-label-2)';
+                    var trendCor = tendencia > 5
+                        ? 'var(--apple-green)'
+                        : tendencia < -5 ? 'var(--apple-red)' : 'var(--apple-label-2)';
 
                     var pctBarra = Math.min(100, (elo / 2000) * 100);
 
@@ -237,7 +246,7 @@
             var r = await callAPI('atualizar_todos_elos');
             if (r && r.success) {
                 if (typeof showToast === 'function') {
-                    showToast('✅ ELOs atualizados: ' + (r.data.total || 0) + ' músicas', 'success');
+                    showToast('✅ ELOs atualizados: ' + ((r.data && r.data.total) || 0) + ' músicas', 'success');
                 }
                 loadEloPanel();
             } else {
@@ -256,5 +265,5 @@
     // ============================================================
     // LOG
     // ============================================================
-    console.log('✅ [elo-panel.js] v1.0.0 carregado');
+    console.log('✅ [elo-panel.js] v1.0.1 carregado');
 })();
