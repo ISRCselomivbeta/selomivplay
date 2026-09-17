@@ -1149,75 +1149,99 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'reset_password') {
-            const { token, new_password, confirm_password } = params;
+    const { token, new_password, confirm_password } = params;
 
-            if (!token || !new_password) {
-                return res.status(200).json({ success: false, message: 'Token e nova senha obrigatórios' });
-            }
+    if (!token || !new_password) {
+        return res.status(200).json({ success: false, message: 'Token e nova senha obrigatórios' });
+    }
 
-            if (new_password.length < 6) {
-                return res.status(200).json({ success: false, message: 'Senha deve ter no mínimo 6 caracteres' });
-            }
+    if (new_password.length < 6) {
+        return res.status(200).json({ success: false, message: 'Senha deve ter no mínimo 6 caracteres' });
+    }
 
-            if (new_password !== confirm_password) {
-                return res.status(200).json({ success: false, message: 'Senhas não coincidem' });
-            }
+    if (new_password !== confirm_password) {
+        return res.status(200).json({ success: false, message: 'Senhas não coincidem' });
+    }
 
-            const record = await validateResetToken(token);
-            if (!record) {
-                return res.status(200).json({ success: false, message: 'Token inválido ou expirado' });
-            }
+    // ✅ 1. Tenta validar no KV
+    let record = await validateResetToken(token);
 
-            // 1. Atualiza no GAS (v9.7.4 — usa reset_password_by_email)
-            console.log('🔐 [reset_password] Chamando GAS reset_password_by_email para:', record.email);
-            const gasResult = await callGAS('reset_password_by_email', {
-                email: record.email,
-                new_password: new_password
-            });
-            const unwrapped = unwrapGAS(gasResult);
+    // ✅ 2. Se NÃO tem no KV, tenta o GAS
+    if (!record) {
+        console.log('🔐 [reset_password] Token não está no KV — tentando GAS...');
+        const gasVerify = await callGAS('verify_reset_token', { token });
+        const gasUnwrapped = unwrapGAS(gasVerify);
 
-            if (!unwrapped.success) {
-                console.error('❌ [reset_password] GAS falhou:', gasResult.error);
-                return res.status(200).json({
-                    success: false,
-                    message: 'Erro ao atualizar senha. Tente novamente.',
-                    error: gasResult.error
-                });
-            }
-
-            // 2. Atualiza no KV
-            try {
-                const users = await Storage.get('users_all') || [];
-                const user = users.find(u => u.email === record.email);
-                if (user) {
-                    user.senha = new_password;
-                    user.updated_at = new Date().toISOString();
-                    await Storage.set('users_all', users);
-                    console.log('✅ [reset_password] KV atualizado para:', record.email);
-                }
-            } catch (e) {
-                console.warn('⚠️ [reset_password] KV update falhou:', e.message);
-            }
-
-            // 3. Invalida token
-            await Storage.del('reset_token_' + token);
-            console.log('🗑️ [reset_password] Token invalidado');
-
-            // 4. Blockchain
-            try {
-                await addBlockToChain({
-                    type: 'password_reset',
-                    email: record.email,
-                    timestamp: new Date().toISOString()
-                });
-            } catch (e) {}
-
-            return res.status(200).json({
-                success: true,
-                message: 'Senha atualizada com sucesso!',
-                _via: 'gas'
-            });
+        if (gasUnwrapped.success && gasUnwrapped.data) {
+            console.log('✅ [reset_password] Token válido no GAS:', gasUnwrapped.data.email);
+            record = {
+                email: gasUnwrapped.data.email,
+                _via_gas: true
+            };
         }
+    }
+
+    if (!record) {
+        console.warn('❌ [reset_password] Token inválido em ambos (KV e GAS)');
+        return res.status(200).json({ success: false, message: 'Token inválido ou expirado' });
+    }
+
+    // ✅ 3. Atualiza no GAS
+    console.log('🔐 [reset_password] Chamando GAS reset_password_by_email para:', record.email);
+    const gasResult = await callGAS('reset_password_by_email', {
+        email: record.email,
+        new_password: new_password
+    });
+    const unwrapped = unwrapGAS(gasResult);
+
+    if (!unwrapped.success) {
+        console.error('❌ [reset_password] GAS falhou:', gasResult.error);
+        return res.status(200).json({
+            success: false,
+            message: 'Erro ao atualizar senha. Tente novamente.',
+            error: gasResult.error
+        });
+    }
+
+    // ✅ 4. Atualiza no KV
+    try {
+        const users = await Storage.get('users_all') || [];
+        const user = users.find(u => u.email === record.email);
+        if (user) {
+            user.senha = new_password;
+            user.updated_at = new Date().toISOString();
+            await Storage.set('users_all', users);
+            console.log('✅ [reset_password] KV atualizado');
+        }
+    } catch (e) {
+        console.warn('⚠️ [reset_password] KV update falhou:', e.message);
+    }
+
+    // ✅ 5. Invalida token no KV
+    if (!record._via_gas) {
+        await Storage.del('reset_token_' + token);
+    }
+
+    // ✅ 6. Invalida token no GAS
+    try {
+        await callGAS('reset_password', { token, new_password, confirm_password });
+    } catch (e) {}
+
+    // ✅ 7. Blockchain
+    try {
+        await addBlockToChain({
+            type: 'password_reset',
+            email: record.email,
+            timestamp: new Date().toISOString()
+        });
+    } catch (e) {}
+
+    return res.status(200).json({
+        success: true,
+        message: 'Senha atualizada com sucesso!',
+        _via: 'gas'
+    });
+}
 
         // ============================================================
         // 🔍 SEARCH YOUTUBE
