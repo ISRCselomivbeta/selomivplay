@@ -19,7 +19,8 @@
 //   - Fallback para offline.html quando index.html não está em cache
 // ============================================================
 
-const SW_VERSION = '9.7.0';
+// ✅ Auto-versão: muda a cada deploy (o SW detecta "novo" sempre)
+const SW_VERSION = '9.8.0-' + Date.now();
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
