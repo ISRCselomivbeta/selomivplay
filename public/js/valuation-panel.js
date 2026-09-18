@@ -1,7 +1,12 @@
 // ============================================================
-// js/valuation-panel.js — PLAY MY v1.0.1
+// js/valuation-panel.js — PLAY MY v1.0.2
 // Painel visual de valuation artístico.
 // Mostra: valuation do catálogo, por música, ELO, receita projetada.
+//
+// MUDANÇAS v1.0.2:
+//   - 🆕 Usa ultimo_catalogo (cache) primeiro; calcula só se vazio
+//   - 🆕 Botão "🔄 Recalcular catálogo" no cabeçalho
+//   - 🆕 Função recalcularValuation() + integração com callAPI.clearCache
 //
 // MUDANÇAS v1.0.1:
 //   - CORRIGIDO: proteção contra data undefined em valuation_catalogo
@@ -21,11 +26,17 @@
         c.innerHTML =
             '<div style="text-align:center;padding:40px">' +
                 '<div class="spinner-border text-warning"></div>' +
-                '<p class="text-muted mt-2">Calculando valuation do catálogo...</p>' +
+                '<p class="text-muted mt-2">Carregando valuation do catálogo...</p>' +
             '</div>';
 
         try {
-            var r = await callAPI('valuation_catalogo');
+            // ✅ Tenta primeiro o cache (ultimo_catalogo). Se vazio, calcula.
+            var r = await callAPI('ultimo_catalogo');
+
+            if (!r || !r.success || !r.data || !Array.isArray(r.data.musicas) || !r.data.musicas.length) {
+                console.log('📦 [valuation-panel] catálogo vazio, calculando...');
+                r = await callAPI('valuation_catalogo');
+            }
 
             if (!r || !r.success) {
                 c.innerHTML = '<div class="text-muted text-center p-4">Erro ao calcular valuation</div>';
@@ -54,6 +65,11 @@
                         '<i class="bi bi-music-note-beamed"></i> ' + quantidadeMusicas + ' músicas' +
                         ' • <i class="bi bi-graph-up"></i> Receita anual: ' + formatarMoeda(receitaAnualTotal) +
                     '</div>' +
+                    '<button onclick="recalcularValuation()" ' +
+                        'style="margin-top:12px;background:rgba(52,199,89,0.2);color:#34c759;border:1px solid #34c759;' +
+                        'padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">' +
+                        '🔄 Recalcular catálogo' +
+                    '</button>' +
                 '</div>';
 
             // ============================================================
@@ -201,6 +217,41 @@
     };
 
     // ============================================================
+    // FORÇAR RECÁLCULO DO CATÁLOGO
+    // ============================================================
+    window.recalcularValuation = async function () {
+        if (typeof showToast === 'function') {
+            showToast('🔄 Recalculando catálogo...', 'info', 2000);
+        }
+
+        // Limpa caches (se api.js v8.9.1 estiver no ar)
+        if (typeof callAPI.clearCache === 'function') callAPI.clearCache();
+
+        var c = document.getElementById('valuationPanelContent');
+        if (c) {
+            c.innerHTML =
+                '<div style="text-align:center;padding:40px">' +
+                    '<div class="spinner-border text-warning"></div>' +
+                    '<p class="text-muted mt-2">Recalculando catálogo...</p>' +
+                '</div>';
+        }
+
+        try {
+            var r = await callAPI('valuation_catalogo');
+            if (!r || !r.success) {
+                if (typeof showToast === 'function') showToast('Erro ao recalcular', 'error');
+                return;
+            }
+            // Re-renderiza o painel (agora já estará populado)
+            await loadValuationPanel();
+            if (typeof showToast === 'function') showToast('✅ Catálogo recalculado', 'success');
+        } catch (e) {
+            console.error('Erro recalcularValuation:', e);
+            if (typeof showToast === 'function') showToast('Erro ao recalcular', 'error');
+        }
+    };
+
+    // ============================================================
     // FORMATAR MOEDA (compacto)
     // ============================================================
     function formatarMoeda(valor) {
@@ -213,5 +264,5 @@
     // ============================================================
     // LOG
     // ============================================================
-    console.log('✅ [valuation-panel.js] v1.0.1 carregado');
+    console.log('✅ [valuation-panel.js] v1.0.2 carregado — cache + recálculo manual');
 })();
