@@ -27,6 +27,11 @@ const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'AIzaSyAPaYGY_MrrNgKdEqTs
 // ALIASES — compatibilidade com o front (api.js usa prefixo "valuation_")
 // ============================================================
 const ALIASES = {
+    // ✅ ADICIONAR ESTAS DUAS — o front chama exatamente "ver_valuation"
+    'ver_valuation':       'ver',
+    'ver_catalogo':        'catalogo',
+
+    // Já existentes (aceitam variações antigas)
     'valuation_catalogo':  'catalogo',
     'valuation_ver':       'ver',
     'valuation_calcular':  'calcular',
