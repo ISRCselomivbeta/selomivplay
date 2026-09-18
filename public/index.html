@@ -1272,5 +1272,80 @@ window.togglePassword = function(fieldId, icon) {
 <script src="/js/streams-panel.js"></script>
 <script src="/js/royalties-panel.js"></script>
 
+<!-- ============================================================ -->
+<!-- SERVICE WORKER — REGISTRO + AUTO-UPDATE                     -->
+<!-- ============================================================ -->
+<script>
+(function () {
+  'use strict';
+
+  if (!('serviceWorker' in navigator)) {
+    console.warn('⚠️ [SW] serviceWorker não suportado');
+    return;
+  }
+
+  // Detecta se é a 1ª instalação (sem controller = primeira vez)
+  var primeiraVez = !navigator.serviceWorker.controller;
+
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then(function (reg) {
+        console.log('✅ [SW] registrado. Scope:', reg.scope, '| 1ª vez:', primeiraVez);
+
+        // ✅ Detecta SW novo na fila
+        reg.addEventListener('updatefound', function () {
+          var novo = reg.installing;
+          if (!novo) return;
+          console.log('🔄 [SW] nova versão encontrada, instalando...');
+
+          novo.addEventListener('statechange', function () {
+            console.log('🔄 [SW] state:', novo.state);
+
+            if (novo.state === 'installed' && navigator.serviceWorker.controller) {
+              // Nova versão pronta E já existe um SW controlando → avisa e recarrega
+              console.log('✨ [SW] nova versão pronta — notificando usuário');
+
+              if (typeof showToast === 'function') {
+                showToast('✨ Nova versão disponível — atualizando...', 'info', 4000);
+              }
+
+              setTimeout(function () {
+                window.location.reload();
+              }, 2500);
+            }
+          });
+        });
+
+        // ✅ Checa atualização a cada 30 min (caso o app fique aberto muito tempo)
+        setInterval(function () {
+          reg.update().catch(function () {});
+        }, 30 * 60 * 1000);
+
+        // ✅ Checa atualização toda vez que a aba volta ao foco
+        document.addEventListener('visibilitychange', function () {
+          if (document.visibilityState === 'visible') {
+            reg.update().catch(function () {});
+          }
+        });
+      })
+      .catch(function (err) {
+        console.warn('⚠️ [SW] falha ao registrar:', err.message);
+      });
+
+    // ✅ Recarrega quando um SW NOVO assume o controle
+    var refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (refreshing) return;
+      refreshing = true;
+      console.log('🔁 [SW] novo controller ativo — recarregando');
+      // Só recarrega se não for a primeira vez (evita loop no 1º load)
+      if (!primeiraVez) {
+        window.location.reload();
+      }
+    });
+  });
+})();
+</script>
+
 </body>
 </html>
