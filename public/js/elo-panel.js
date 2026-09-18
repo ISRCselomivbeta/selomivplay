@@ -164,11 +164,11 @@
                             '</span>' +
                         '</td>' +
                         '<td class="text-end" style="color:var(--apple-label-2)">' +
-                            (bd.play_my || 0) +
-                        '</td>' +
-                        '<td class="text-end" style="color:var(--apple-label-2)">' +
-                            (bd.externos || 0) +
-                        '</td>' +
+    (bd.play_my_streams || 0) +
+'</td>' +
+'<td class="text-end" style="color:var(--apple-label-2)">' +
+    (bd.externos_streams || 0) +
+'</td>' +
                         '<td class="text-end" style="color:' + trendCor + ';font-weight:600">' +
                             trendIcon + ' ' + (tendencia > 0 ? '+' : '') + tendencia + '%' +
                         '</td>' +
