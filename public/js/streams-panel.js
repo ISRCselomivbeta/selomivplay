@@ -22,7 +22,7 @@
 
         try {
             // Busca resumo geral
-            var r = await callAPI('get_streaming_stats');
+var r = await callAPI('streams_total');
 
             if (!r || !r.success) {
                 c.innerHTML = '<div class="text-muted text-center p-4">Erro ao carregar streams</div>';
@@ -34,7 +34,7 @@
             var hoje = d.streams_hoje || 0;
 
             // Busca ranking das top músicas
-            var rRanking = await callAPI('get_streaming_ranking', { limit: 20 });
+var rRanking = await callAPI('streams_ranking', { limit: 20 });
             var ranking = (rRanking && rRanking.success && rRanking.data) ? rRanking.data : [];
 
             // ============================================================
@@ -144,7 +144,7 @@
         c.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner-border spinner-border-sm text-success"></div></div>';
 
         try {
-            var r = await callAPI('get_streaming_ranking', { limit: 50 });
+var r = await callAPI('streams_ranking', { limit: 50 });
             var ranking = (r && r.success && r.data) ? r.data : [];
 
             if (!ranking.length) {
@@ -283,7 +283,7 @@
         resultado.innerHTML = '<div style="text-align:center;padding:12px"><div class="spinner-border spinner-border-sm text-danger"></div></div>';
 
         try {
-            var r = await callAPI('get_youtube_stats', { video_id: videoId });
+var r = await callAPI('ver_stream', { music_id: 'yt_' + videoId });
 
             if (!r || !r.success || !r.data) {
                 resultado.innerHTML = '<div class="text-danger">Vídeo não encontrado</div>';
@@ -344,7 +344,7 @@
         c.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
 
         try {
-            var r = await callAPI('get_royalties_resumo');
+var r = await callAPI('royalties_resumo');
 
             if (!r || !r.success || !r.data || !r.data.length) {
                 c.innerHTML =
@@ -434,7 +434,7 @@
         c.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner-border spinner-border-sm text-warning"></div></div>';
 
         try {
-            var r = await callAPI('get_streaming_ranking', { limit: 50 });
+var r = await callAPI('streams_ranking', { limit: 50 });
             var ranking = (r && r.success && r.data) ? r.data : [];
 
             if (!ranking.length) {
