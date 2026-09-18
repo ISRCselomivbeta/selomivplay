@@ -22,6 +22,25 @@
 // ============================================================
 
 // ============================================================
+// CACHE MANUAL — ELO e Streams (30s)
+// Evita refetch ao trocar de aba várias vezes
+// ============================================================
+const _cacheMark = { elo: 0, streams: 0 };
+const CACHE_MS = 30000;
+
+function _cacheFresh(chave) {
+  return (Date.now() - _cacheMark[chave]) < CACHE_MS;
+}
+
+function _cacheTouch(chave) {
+  _cacheMark[chave] = Date.now();
+}
+
+function _cacheInvalidate(chave) {
+  _cacheMark[chave] = 0;
+}
+
+// ============================================================
 // NORMALIZADOR UNIVERSAL DE ARRAYS
 // ============================================================
 function ensureArray(data) {
@@ -190,6 +209,13 @@ window.loadTickets = async function () {
 window.carregarStreamsDasMusicas = async function () {
   if (!state.playlist || !state.playlist.length) return;
 
+  // ✅ Cache de 30s
+  if (state.streamsMap && _cacheFresh('streams')) {
+    console.log('📦 [marketplace] streams do cache (30s)');
+    return;
+  }
+  _cacheTouch('streams');
+
   try {
     // Tentar API nova primeiro
     let r = await callAPI('streams_ranking');
@@ -216,6 +242,13 @@ window.carregarStreamsDasMusicas = async function () {
 // ============================================================
 window.carregarELOsDasMusicas = async function () {
   if (!state.playlist || !state.playlist.length) return;
+
+  // ✅ Cache de 30s
+  if (state.eloMap && _cacheFresh('elo')) {
+    console.log('📦 [marketplace] ELO do cache (30s)');
+    return;
+  }
+  _cacheTouch('elo');
 
   try {
     const r = await callAPI('get_elo_ranking');
@@ -1623,4 +1656,4 @@ window.toggleFavoriteMusic = async function (musicId) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.3.0 carregado — ELO + streams + EDITAR/PAUSAR/EXCLUIR + array-safe');
+console.log('✅ [marketplace.js] v9.3.1 carregado — ELO + streams + cache 30s + EDITAR/PAUSAR/EXCLUIR');
