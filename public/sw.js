@@ -1,6 +1,12 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.7.0
+// SERVICE WORKER — PLAY MY v9.8.0
 // Cache inteligente por tipo de recurso + PWA
+//
+// MUDANÇAS v9.8.0:
+//   - skipWaiting() REMOVIDO do install (SW fica em "waiting")
+//   - App detecta update e mostra toast "Nova versão"
+//   - SKIP_WAITING agora avisa clients via SW_ACTIVATED
+//   - FORCE_UPDATE também avisa clients
 //
 // MUDANÇAS v9.7.0:
 //   - Adicionados share.js e royalties-panel.js ao pré-cache
@@ -125,6 +131,8 @@ function isImage(request, url) {
 
 // ============================================================
 // INSTALL — pré-cache dos assets essenciais
+// ⚠️ NÃO chamamos skipWaiting() aqui: deixamos o SW em "waiting"
+//    para o app detectar via updatefound e avisar o usuário.
 // ============================================================
 self.addEventListener('install', (event) => {
   console.log('[SW] Instalando v' + SW_VERSION);
@@ -139,7 +147,7 @@ self.addEventListener('install', (event) => {
           )
         );
       })
-      .then(() => self.skipWaiting())
+    // ❌ Sem self.skipWaiting() — o app controla quando ativar
   );
 });
 
@@ -317,7 +325,14 @@ self.addEventListener('message', (event) => {
 
   switch (data.type) {
     case 'SKIP_WAITING':
-      self.skipWaiting();
+      self.skipWaiting().then(() => {
+        // Avisa todos os clients que o SW novo ativou
+        self.clients.matchAll({ type: 'window' }).then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({ type: 'SW_ACTIVATED' });
+          });
+        });
+      });
       break;
 
     case 'CLEAR_CACHE':
@@ -353,7 +368,13 @@ self.addEventListener('message', (event) => {
       break;
 
     case 'FORCE_UPDATE':
-      self.skipWaiting();
+      self.skipWaiting().then(() => {
+        self.clients.matchAll({ type: 'window' }).then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({ type: 'SW_ACTIVATED' });
+          });
+        });
+      });
       break;
   }
 });
