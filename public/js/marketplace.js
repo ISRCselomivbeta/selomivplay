@@ -1662,4 +1662,4 @@ window.toggleFavoriteMusic = async function (musicId) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.3.1 carregado — ELO + streams + cache 30s + EDITAR/PAUSAR/EXCLUIR');
+console.log('✅ [marketplace.js] v9.3.2 carregado — ELO + streams + cache 30s + playlist fix');
