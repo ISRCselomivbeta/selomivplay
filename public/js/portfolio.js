@@ -76,9 +76,15 @@ window.carregarELOsEValuations = async function () {
   const ativos = state.portfolioAssets || [];
   if (!ativos.length) return;
 
+  // ✅ DEDUP: cada music_id processado uma única vez
+  const musicIdsUnicos = [...new Set(
+    ativos.map(a => String(a.music_id)).filter(Boolean)
+  )];
+
+  // ---- ELO ----
   try {
     const r = await callAPI('get_elo_ranking');
-    if (r && r.success && r.data && r.data.ranking) {
+    if (r && r.success && r.data && Array.isArray(r.data.ranking)) {
       const mapa = {};
       r.data.ranking.forEach(x => {
         mapa[String(x.music_id)] = {
@@ -94,25 +100,33 @@ window.carregarELOsEValuations = async function () {
     console.warn('⚠️ carregarELOs (portfolio):', e.message);
   }
 
+  // ---- VALUATION ----
   state.valuationMap = state.valuationMap || {};
-  for (const ativo of ativos.slice(0, 10)) {
-    const mid = String(ativo.music_id);
-    if (state.valuationMap[mid]) continue;
 
+  // ✅ DEDUP + só os que ainda não estão no cache, limite 10
+  const faltantes = musicIdsUnicos
+    .filter(mid => !state.valuationMap[mid])
+    .slice(0, 10);
+
+  for (const mid of faltantes) {
     try {
       const r = await callAPI('ver_valuation', { music_id: mid });
-      if (r && r.success && r.data) {
+      if (r && r.success && r.data && r.data.valuation !== undefined) {
         state.valuationMap[mid] = {
           valuation: r.data.valuation || 0,
           receita_anual_projetada: r.data.receita_anual_projetada || 0,
           multiplo_final: r.data.multiplo_final || 10,
           ajuste_elo: r.data.ajuste_elo || 0
         };
+      } else {
+        // ✅ Marca como tentado mesmo em erro (evita retentar)
+        state.valuationMap[mid] = { valuation: 0, _tentado: true };
       }
-    } catch (e) {}
+    } catch (e) {
+      state.valuationMap[mid] = { valuation: 0, _tentado: true };
+    }
   }
 };
-
 // ============================================================
 // RENDERIZAR PORTFÓLIO — v9.4.0 (com botão VENDER)
 // ============================================================
