@@ -40,6 +40,19 @@ async function setKV(key, value) {
 }
 
 // ============================================================
+// ALIASES — compatibilidade com o front (api.js usa prefixo)
+// ============================================================
+const ALIASES = {
+    'streams_ranking':   'ranking',
+    'stream_ranking':    'ranking',
+    'streams_total':     'total',
+    'stream_total':      'total',
+    'streaming_total':   'total',
+    'ver_stream':        'ver',
+    'registrar_stream':  'registrar'
+};
+
+// ============================================================
 // HANDLER
 // ============================================================
 module.exports = async (req, res) => {
@@ -49,9 +62,12 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     const params = req.method === 'POST' ? req.body : req.query;
-    const { action, music_id, user_id, titulo, duration } = params;
+    const { action: _actionOriginal, music_id, user_id, titulo, duration } = params;
 
-    console.log(`🎵 [streams] ${action}`);
+    // ✅ Resolve alias
+    const action = ALIASES[_actionOriginal] || _actionOriginal;
+
+    console.log(`🎵 [streams] ${_actionOriginal}${action !== _actionOriginal ? ' → ' + action : ''}`);
 
     try {
         // ============================================================
@@ -180,25 +196,20 @@ module.exports = async (req, res) => {
                 kv_enabled: !!kv
             });
         }
+      // ============================================================
+      // DEFAULT — action desconhecida
+      // ✅ success:false (era true) — quebra loop do front
+      // ============================================================
+      console.warn(`⚠️ [streams] action desconhecida: ${_actionOriginal}`);
+      return res.status(200).json({
+          success: false,
+          message: `Action desconhecida: ${_actionOriginal}`,
+          version: '1.0.1',
+          acoes: ['registrar', 'ver', 'total', 'ranking', 'ping']
+      });
 
-        // ============================================================
-        // DEFAULT
-        // ============================================================
-        return res.status(200).json({
-            success: true,
-            message: '🎵 PLAY MY Streams API',
-            version: '1.0.0',
-            acoes: [
-                '?action=registrar&music_id=X&user_id=Y&titulo=Z',
-                '?action=ver&music_id=X',
-                '?action=total',
-                '?action=ranking',
-                '?action=ping'
-            ]
-        });
-
-    } catch (e) {
-        console.error('❌ [streams] Erro:', e);
-        return res.status(200).json({ success: false, message: e.message });
-    }
+  } catch (e) {
+      console.error('❌ [streams] Erro:', e);
+      return res.status(200).json({ success: false, message: e.message });
+  }
 };
