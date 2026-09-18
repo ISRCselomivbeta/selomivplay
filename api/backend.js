@@ -1,10 +1,15 @@
-// BACKEND.JS - VERSÃO 9.7.4
+// BACKEND.JS - VERSÃO 9.7.5
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
 // + COMPATIBILIDADE TOTAL COM GAS 7.0.1
 // + VENDA DIRETA AO MERCADO (sell_to_market)
 // + VENDA P2P COM EMAIL (create_trade robusto)
+//
+// MUDANÇAS v9.7.5:
+//   - ✅ FIX: add_music_to_playlist salva KV ANTES do GAS (não perde mais)
+//   - ✅ FIX: remove_music_from_global_playlist salva KV ANTES do GAS
+//   - ✅ FIX: add_music_to_global_playlist mantém metadata de YouTube
 //
 // MUDANÇAS v9.7.4:
 //   - ✅ NOVA ACTION no GAS_ACTIONS: 'reset_password_by_email'
@@ -497,7 +502,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.4)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.5)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -635,7 +640,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
         const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.7.4 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.7.5 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -1000,7 +1005,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 }
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.7.4
+// HANDLER PRINCIPAL — v9.7.5
 // ============================================================
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1027,7 +1032,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.7.4',
+                version: '9.7.5',
                 kv_enabled: !!kv,
                 nodemailer_enabled: !!nodemailer,
                 youtube_enabled: !!YOUTUBE_API_KEY,
@@ -1541,76 +1546,121 @@ module.exports = async (req, res) => {
             const userId = params.user_id;
             if (!nome) return res.status(200).json({ success: false, message: 'Nome obrigatório' });
 
-            const result = await writeThrough('create_global_playlist', { nome, descricao, user_id: userId }, async (data) => {
-                const playlists = await Storage.get('global_playlists') || [];
-                const newPl = {
-                    id: (data && data.id) || ('gp_' + Date.now()),
-                    nome, descricao, musicas: [], music_count: 0, is_global: true,
-                    created_by: userId, created_at: new Date().toISOString()
-                };
-                playlists.push(newPl);
-                await Storage.set('global_playlists', playlists);
-                cache.cache.delete('global_playlists');
+            // ✅ 1. Salva no KV PRIMEIRO (nunca perde)
+            const newId = 'gp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+            const playlists = await Storage.get('global_playlists') || [];
+            const newPl = {
+                id: newId,
+                nome, descricao,
+                musicas: [], music_count: 0,
+                is_global: true,
+                created_by: userId,
+                created_at: new Date().toISOString()
+            };
+            playlists.push(newPl);
+            await Storage.set('global_playlists', playlists);
+            cache.cache.delete('global_playlists');
+
+            // ✅ 2. Best-effort no GAS (não bloqueia se falhar)
+            callGAS('create_global_playlist', { nome, descricao, user_id: userId })
+                .then(gasResult => {
+                    const unwrapped = unwrapGAS(gasResult);
+                    if (unwrapped.success && unwrapped.data && unwrapped.data.id) {
+                        Storage.get('global_playlists').then(list => {
+                            const pl = list.find(p => p.id === newId);
+                            if (pl) {
+                                pl.id = unwrapped.data.id;
+                                Storage.set('global_playlists', list);
+                            }
+                        });
+                    }
+                })
+                .catch(() => {});
+
+            addBlockToChain({ type: 'nova_playlist_global', nome }).catch(() => {});
+
+            return res.status(200).json({
+                success: true,
+                data: { id: newId, nome, descricao, musicas: [], music_count: 0 },
+                message: 'Playlist criada',
+                _via: 'kv'
             });
-
-            if (!result.success) {
-                return res.status(200).json({
-                    success: false,
-                    message: 'Não foi possível criar a playlist. Tente novamente.',
-                    error: result.error
-                });
-            }
-
-            await addBlockToChain({ type: 'nova_playlist_global', nome });
-            return res.status(200).json({ success: true, data: result.data, message: 'Playlist criada', _via: 'gas' });
         }
 
         if (action === 'add_music_to_global_playlist') {
             const playlistId = params.playlist_id;
             const musicId = String(params.music_id);
+            const musicData = params.music_data
+                ? (typeof params.music_data === 'string' ? JSON.parse(params.music_data) : params.music_data)
+                : null;
             if (!playlistId || !musicId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-            const result = await writeThrough('add_music_to_global_playlist', { playlist_id: playlistId, music_id: musicId }, async (data) => {
-                const playlists = await Storage.get('global_playlists') || [];
-                const pl = playlists.find(p => String(p.id) === String(playlistId));
-                if (pl) {
-                    pl.musicas = pl.musicas || [];
-                    if (!pl.musicas.map(String).includes(musicId)) {
-                        pl.musicas.push(musicId);
-                        pl.music_count = pl.musicas.length;
-                    }
-                    await Storage.set('global_playlists', playlists);
-                }
-                cache.cache.delete('global_playlists');
-            });
-
-            if (!result.success) {
-                return res.status(200).json({
-                    success: false, message: 'Não foi possível adicionar a música. Tente novamente.', error: result.error
-                });
+            // ✅ 1. Salva no KV PRIMEIRO (nunca perde)
+            const playlists = await Storage.get('global_playlists') || [];
+            const pl = playlists.find(p => String(p.id) === String(playlistId));
+            if (!pl) {
+                return res.status(200).json({ success: false, message: 'Playlist não encontrada' });
             }
-            return res.status(200).json({ success: true, data: result.data, _via: 'gas' });
+            pl.musicas = pl.musicas || [];
+            if (!pl.musicas.map(String).includes(musicId)) {
+                pl.musicas.push(musicId);
+            }
+            pl.music_count = pl.musicas.length;
+
+            // Guarda music_data no KV (persistência de metadados do YouTube)
+            if (musicData) {
+                pl.music_metadata = pl.music_metadata || {};
+                pl.music_metadata[musicId] = musicData;
+            }
+
+            await Storage.set('global_playlists', playlists);
+            cache.cache.delete('global_playlists');
+
+            // ✅ 2. Best-effort no GAS
+            callGAS('add_music_to_global_playlist', {
+                playlist_id: playlistId,
+                music_id: musicId,
+                music_data: musicData ? JSON.stringify(musicData) : ''
+            }).catch(() => {});
+
+            return res.status(200).json({
+                success: true,
+                data: { playlist_id: playlistId, music_id: musicId, musicas: pl.musicas },
+                _via: 'kv'
+            });
         }
 
         if (action === 'remove_music_from_global_playlist') {
             const playlistId = params.playlist_id;
             const musicId = String(params.music_id);
-
-            const result = await writeThrough('remove_music_from_global_playlist', { playlist_id: playlistId, music_id: musicId }, async (data) => {
-                const playlists = await Storage.get('global_playlists') || [];
-                const pl = playlists.find(p => String(p.id) === String(playlistId));
-                if (pl) {
-                    pl.musicas = (pl.musicas || []).filter(id => String(id) !== musicId);
-                    pl.music_count = pl.musicas.length;
-                    await Storage.set('global_playlists', playlists);
-                }
-                cache.cache.delete('global_playlists');
-            });
-
-            if (!result.success) {
-                return res.status(200).json({ success: false, message: 'Não foi possível remover a música.', error: result.error });
+            if (!playlistId || !musicId) {
+                return res.status(200).json({ success: false, message: 'Dados incompletos' });
             }
-            return res.status(200).json({ success: true, data: result.data, _via: 'gas' });
+
+            // ✅ 1. Salva no KV PRIMEIRO
+            const playlists = await Storage.get('global_playlists') || [];
+            const pl = playlists.find(p => String(p.id) === String(playlistId));
+            if (pl) {
+                pl.musicas = (pl.musicas || []).filter(id => String(id) !== musicId);
+                pl.music_count = pl.musicas.length;
+                if (pl.music_metadata && pl.music_metadata[musicId]) {
+                    delete pl.music_metadata[musicId];
+                }
+                await Storage.set('global_playlists', playlists);
+                cache.cache.delete('global_playlists');
+            }
+
+            // ✅ 2. Best-effort no GAS
+            callGAS('remove_music_from_global_playlist', {
+                playlist_id: playlistId,
+                music_id: musicId
+            }).catch(() => {});
+
+            return res.status(200).json({
+                success: true,
+                data: { playlist_id: playlistId, music_id: musicId, removed: true },
+                _via: 'kv'
+            });
         }
 
         // ============================================================
@@ -1648,26 +1698,27 @@ module.exports = async (req, res) => {
             const publica = params.publica === 'true' || params.publica === true;
             if (!userId || !nome) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-            const result = await writeThrough('create_playlist', { user_id: userId, nome, publica }, async (data) => {
-                const all = await Storage.get('user_playlists') || {};
-                all[userId] = all[userId] || [];
-                const nova = {
-                    id: (data && data.playlist_id) || ('pl_' + Date.now()),
-                    nome, publica, musicas: [],
-                    created_at: new Date().toISOString()
-                };
-                all[userId].push(nova);
-                await Storage.set('user_playlists', all);
-                cache.cache.delete('user_playlists_' + userId);
-            });
+            // ✅ 1. Salva no KV PRIMEIRO
+            const newId = 'pl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+            const all = await Storage.get('user_playlists') || {};
+            all[userId] = all[userId] || [];
+            const nova = {
+                id: newId,
+                nome, publica,
+                musicas: [],
+                created_at: new Date().toISOString()
+            };
+            all[userId].push(nova);
+            await Storage.set('user_playlists', all);
+            cache.cache.delete('user_playlists_' + userId);
 
-            if (!result.success) {
-                return res.status(200).json({ success: false, message: 'Não foi possível criar a playlist. Tente novamente.', error: result.error });
-            }
+            // ✅ 2. Best-effort no GAS
+            callGAS('create_playlist', { user_id: userId, nome, publica }).catch(() => {});
+
             return res.status(200).json({
                 success: true,
-                data: { id: result.data?.playlist_id || 'pl_' + Date.now(), nome, publica },
-                _via: 'gas'
+                data: { id: newId, nome, publica, musicas: [] },
+                _via: 'kv'
             });
         }
 
@@ -1681,33 +1732,34 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: false, message: 'Dados incompletos' });
             }
 
-            const gasResult = await callGAS('add_music_to_playlist', {
-                user_id: userId, playlist_id: playlistId, music_id: musicId,
-                music_data: musicData ? JSON.stringify(musicData) : ''
-            });
-            const unwrapped = unwrapGAS(gasResult);
-
-            if (!unwrapped.success) {
-                console.warn('⚠️ [add_music_to_playlist] GAS falhou, salvando só no KV:', gasResult.error);
-            }
-
+            // ✅ 1. Salva no KV PRIMEIRO
             const all = await Storage.get('user_playlists') || {};
             all[userId] = all[userId] || [];
             const pl = all[userId].find(p => String(p.id) === String(playlistId));
-            if (pl) {
-                pl.musicas = pl.musicas || [];
-                if (!pl.musicas.map(String).includes(musicId)) {
-                    pl.musicas.push(musicId);
-                }
-                await Storage.set('user_playlists', all);
-                cache.cache.delete('user_playlists_' + userId);
+            if (!pl) {
+                return res.status(200).json({ success: false, message: 'Playlist não encontrada' });
             }
+            pl.musicas = pl.musicas || [];
+            if (!pl.musicas.map(String).includes(musicId)) {
+                pl.musicas.push(musicId);
+            }
+            if (musicData) {
+                pl.music_metadata = pl.music_metadata || {};
+                pl.music_metadata[musicId] = musicData;
+            }
+            await Storage.set('user_playlists', all);
+            cache.cache.delete('user_playlists_' + userId);
+
+            // ✅ 2. Best-effort no GAS (não bloqueia)
+            callGAS('add_music_to_playlist', {
+                user_id: userId, playlist_id: playlistId, music_id: musicId,
+                music_data: musicData ? JSON.stringify(musicData) : ''
+            }).catch(() => {});
 
             return res.status(200).json({
                 success: true,
-                data: { playlist_id: playlistId, music_id: musicId, added: true },
-                gas_synced: unwrapped.success,
-                _via: unwrapped.success ? 'gas' : 'kv'
+                data: { playlist_id: playlistId, music_id: musicId, musicas: pl.musicas },
+                _via: 'kv'
             });
         }
 
@@ -2342,7 +2394,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.7.4',
+            version: '9.7.5',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
