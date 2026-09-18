@@ -1,5 +1,5 @@
 // ============================================================
-// js/app.js — PLAY MY v9.6.0
+// js/app.js — PLAY MY v9.7.0
 // Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
 // + Detecção de app nativo (Capacitor/TWA)
 // + Safe areas (iPhone notch)
@@ -9,6 +9,11 @@
 // + INSTALAÇÃO INTELIGENTE via SIDEBAR (sem balão flutuante)
 // Depende de TODOS os módulos anteriores.
 // DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
+//
+// MUDANÇAS v9.7.0:
+//   - SERVICE WORKER: detecção de update + toast "Nova versão"
+//   - controllerchange → reload automático após ativação
+//   - Registro do SW centralizado (registerServiceWorker)
 //
 // MUDANÇAS v9.6.0:
 //   - REMOVIDO: balão flutuante do canto inferior direito
@@ -210,6 +215,86 @@ function handleDeepLink() {
 }
 
 // ============================================================
+// 🆕 SERVICE WORKER — registro + detecção de update (v9.7.0)
+// ============================================================
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker.register('/sw.js').then((reg) => {
+    console.log('✅ [SW] registrado. Scope:', reg.scope);
+
+    // --------------------------------------------------------
+    // Toast de "nova versão disponível"
+    // --------------------------------------------------------
+    function showUpdateToast() {
+      if (typeof showToast !== 'function') {
+        console.log('🔄 [SW] Nova versão disponível (toast indisponível)');
+        return;
+      }
+
+      showToast(
+        '🔄 Nova versão! <a href="#" id="sw-reload-link" style="color:#fff;text-decoration:underline;">Recarregar</a>',
+        'info',
+        15000
+      );
+
+      // Bind do clique no link "Recarregar"
+      setTimeout(() => {
+        const link = document.getElementById('sw-reload-link');
+        if (!link) return;
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          console.log('🔄 [SW] Usuário pediu reload — enviando SKIP_WAITING');
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          } else {
+            // Fallback: se não há waiting, recarrega direto
+            window.location.reload();
+          }
+        });
+      }, 50);
+    }
+
+    // --------------------------------------------------------
+    // Caso 1: já existe um SW esperando (update pendente)
+    // --------------------------------------------------------
+    if (reg.waiting && navigator.serviceWorker.controller) {
+      console.log('🔄 [SW] Update já aguardando ativação.');
+      showUpdateToast();
+    }
+
+    // --------------------------------------------------------
+    // Caso 2: novo SW sendo instalado agora
+    // --------------------------------------------------------
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      if (!newWorker) return;
+
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          console.log('🔄 [SW] Nova versão disponível!');
+          showUpdateToast();
+        }
+      });
+    });
+
+  }).catch((err) => {
+    console.warn('⚠️ [SW] erro no registro:', err);
+  });
+
+  // ----------------------------------------------------------
+  // Quando o SW novo ativar → recarrega a página (uma vez só)
+  // ----------------------------------------------------------
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    console.log('🔁 [SW] Novo SW ativou — recarregando...');
+    window.location.reload();
+  });
+}
+
+// ============================================================
 // INICIALIZAÇÃO DA APLICAÇÃO (após login)
 // ============================================================
 window.initializeApp = async function () {
@@ -221,9 +306,8 @@ window.initializeApp = async function () {
 
   loadYouTubeAPI();
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  }
+  // 🆕 SW com detecção de update
+  registerServiceWorker();
 
   setTimeout(hideSplashScreen, 300);
 };
@@ -278,9 +362,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupStatusBar();
   blockNativeGestures();
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  }
+  // 🆕 SW com detecção de update
+  registerServiceWorker();
 
   // 1. Health check inicial
   HealthCheck.runAll().catch(() => {});
@@ -652,7 +735,7 @@ window.addEventListener('load', () => {
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.6.0 carregado — aplicação inicializada');
+console.log('✅ [app.js] v9.7.0 carregado — aplicação inicializada');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
 console.log('📲 Instalação via sidebar ativa — v9.6.0');
