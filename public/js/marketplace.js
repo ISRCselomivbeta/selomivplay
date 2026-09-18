@@ -1143,8 +1143,14 @@ window.selectPlaylistForYouTube = async function (playlistId, isGlobal) {
   showToast('Adicionando...', 'info');
   try {
     const action = isGlobal ? 'add_music_to_global_playlist' : 'add_music_to_playlist';
-    const params = { playlist_id: playlistId, music_id: track.id, music_data: JSON.stringify(track) };
-    const r = await callAPI(action, params);
+const params = { playlist_id: playlistId, music_id: track.id, music_data: JSON.stringify(track) };
+
+// ✅ Playlist PESSOAL precisa do user_id (global não precisa)
+if (!isGlobal && state.currentUser && state.currentUser.id) {
+    params.user_id = state.currentUser.id;
+}
+
+const r = await callAPI(action, params);
     if (r && r.success) {
       showToast('✅ Música adicionada!', 'success');
       closeModal('playlistSelectorModal');
