@@ -551,22 +551,44 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // DEFAULT
+        // DEFAULT — resumo (compatível com api.js)
+        // ⚠️ Envolvido em `data` para o api.js aceitar.
         // ============================================================
+        const periodosDefault = await Storage.get('royalties_periodos') || [];
+        const resumoDefault = [];
+
+        for (const p of periodosDefault) {
+            const dados = await Storage.get('royalties_' + p);
+            if (!dados) continue;
+            const musicas = Object.values(dados.musicas);
+            resumoDefault.push({
+                periodo: p,
+                importado_em: dados.importado_em,
+                total_musicas: dados.total_musicas,
+                total_receita: Math.round(musicas.reduce((s, m) => s + m.receita_total, 0) * 100) / 100,
+                total_streams: musicas.reduce((s, m) => s + m.streams_total, 0)
+            });
+        }
+
         return res.status(200).json({
             success: true,
-            message: '💰 PLAY MY ROYALTIES API ONLINE',
-            version: '1.0.0',
-            acoes_disponiveis: [
-                'ping',
-                'importar (POST csv)',
-                'periodos',
-                'status?periodo=YYYY-MM',
-                'distribuir?periodo=YYYY-MM&musica_chave=XXX&percentual=20',
-                'distribuir_tudo?periodo=YYYY-MM&percentual=20',
-                'extrato_usuario?user_id=XXX',
-                'resumo'
-            ]
+            data: {
+                message: '💰 PLAY MY ROYALTIES API ONLINE',
+                version: '1.0.0',
+                kv_enabled: !!kv,
+                periodos_importados: periodosDefault.length,
+                resumo: resumoDefault,
+                acoes_disponiveis: [
+                    'ping',
+                    'importar (POST csv)',
+                    'periodos',
+                    'status?periodo=YYYY-MM',
+                    'distribuir?periodo=YYYY-MM&musica_chave=XXX&percentual=20',
+                    'distribuir_tudo?periodo=YYYY-MM&percentual=20',
+                    'extrato_usuario?user_id=XXX',
+                    'resumo'
+                ]
+            }
         });
 
     } catch (error) {
