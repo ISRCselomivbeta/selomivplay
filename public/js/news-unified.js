@@ -1,8 +1,8 @@
 // ============================================================
-// js/news-unified.js — PLAY MY v10.0.0
+// js/news-unified.js — PLAY MY v10.1.0
 // Feed de notícias unificado: backend + fallback RSS direto
-// Não depende de news.js, state.js ou api.js.
-// Basta carregar este script e ele se vira sozinho.
+// + imagens reais (RSS) + SVG fallback (inline)
+// + link sempre para Google News
 // ============================================================
 
 (function () {
@@ -33,32 +33,52 @@
   ];
 
   // Proxies CORS em cascata
-var PROXIES = [
-  function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
-  function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u); },
-  function (u) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); }
-];
+  var PROXIES = [
+    function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
+    function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u); },
+    function (u) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); }
+  ];
 
-// 🆕 ETAPA NOVA: placeholders temáticos por categoria
-var PLACEHOLDERS = {
-  musica:      'https://source.unsplash.com/400x300/?music,concert',
-  lancamentos: 'https://source.unsplash.com/400x300/?new,album',
-  shows:       'https://source.unsplash.com/400x300/?live,concert',
-  negocios:    'https://source.unsplash.com/400x300/?business,music',
-  artistas:    'https://source.unsplash.com/400x300/?singer,artist',
-  editais:     'https://source.unsplash.com/400x300/?document,music'
-};
+  // ============================================================
+  // PLACEHOLDERS SVG INLINE (sem dependência externa)
+  // ============================================================
+  var PLACEHOLDER_META = {
+    musica:      { emoji: '🎵', cor1: '#ff2d55', cor2: '#ff6b35' },
+    lancamentos: { emoji: '🚀', cor1: '#5ac8fa', cor2: '#007aff' },
+    shows:       { emoji: '🎤', cor1: '#af52de', cor2: '#5856d6' },
+    negocios:    { emoji: '💰', cor1: '#34c759', cor2: '#00c7be' },
+    artistas:    { emoji: '⭐', cor1: '#ffcc00', cor2: '#ff9500' },
+    editais:     { emoji: '📜', cor1: '#8e8e93', cor2: '#48484a' }
+  };
 
-// 🆕 ETAPA NOVA: força o link a ser do Google News
-function toGoogleNewsLink(titulo, linkOriginal) {
-  // Se já é do Google News, mantém
-  if (linkOriginal && linkOriginal.indexOf('news.google.com') !== -1) {
-    return linkOriginal;
+  function gerarPlaceholder(cat) {
+    var meta = PLACEHOLDER_META[cat] || PLACEHOLDER_META.musica;
+    var svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300">' +
+        '<defs>' +
+          '<linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+            '<stop offset="0%" stop-color="' + meta.cor1 + '"/>' +
+            '<stop offset="100%" stop-color="' + meta.cor2 + '"/>' +
+          '</linearGradient>' +
+        '</defs>' +
+        '<rect width="400" height="300" fill="url(#g)"/>' +
+        '<text x="200" y="175" font-size="90" text-anchor="middle" fill="rgba(255,255,255,0.95)">' + meta.emoji + '</text>' +
+      '</svg>';
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
-  // Caso contrário, cria busca do Google News
-  var query = encodeURIComponent((titulo || '').substring(0, 100));
-  return 'https://news.google.com/search?q=' + query + '&hl=pt-BR&gl=BR&ceid=BR:pt-419';
-}
+
+  // ============================================================
+  // FORÇA O LINK A SER DO GOOGLE NEWS
+  // ============================================================
+  function toGoogleNewsLink(titulo, linkOriginal) {
+    // Se já é do Google News, mantém
+    if (linkOriginal && linkOriginal.indexOf('news.google.com') !== -1) {
+      return linkOriginal;
+    }
+    // Caso contrário, cria busca do Google News
+    var query = encodeURIComponent((titulo || '').substring(0, 100));
+    return 'https://news.google.com/search?q=' + query + '&hl=pt-BR&gl=BR&ceid=BR:pt-419';
+  }
 
   // ============================================================
   // ESTADO
@@ -70,7 +90,7 @@ function toGoogleNewsLink(titulo, linkOriginal) {
     page: 1,
     loading: false,
     hasMore: true,
-    source: null // 'backend' | 'rss' | null
+    source: null
   };
 
   // ============================================================
@@ -192,24 +212,30 @@ function toGoogleNewsLink(titulo, linkOriginal) {
 
       var id = 'news_' + hashStr(title);
 
+      // 🆕 Tenta extrair imagem real do RSS
+      var enc = x.match(/<enclosure[^>]*url="([^"]+)"/);
+      var media = x.match(/<media:content[^>]*url="([^"]+)"/);
+      var imgInDesc = x.match(/<img[^>]*src="([^"]+)"/);
+      var imagemReal = (enc && enc[1]) || (media && media[1]) || (imgInDesc && imgInDesc[1]) || null;
+
       var linkOriginal = l ? l[1].trim() : '#';
 
-items.push({
-  id: id,
-  categoria: cat,
-  fonte: src || fonte,
-  autor: src || fonte,
-  fonte_logo: null,
-  titulo: title,
-  texto: texto || 'Clique para ler a notícia completa.',
-  imagem: PLACEHOLDERS[cat] || PLACEHOLDERS.musica,  // 🆕 placeholder
-  link: toGoogleNewsLink(title, linkOriginal),         // 🆕 link do Google News
-  timestamp: d ? new Date(d[1]).toISOString() : new Date().toISOString(),
-  tema: cat,
-  prazo: null,
-  investidores_hoje: 0,
-  em_alta: false
-});
+      items.push({
+        id: id,
+        categoria: cat,
+        fonte: src || fonte,
+        autor: src || fonte,
+        fonte_logo: null,
+        titulo: title,
+        texto: texto || 'Clique para ler a notícia completa.',
+        imagem: imagemReal || gerarPlaceholder(cat),  // 🆕 imagem real ou SVG
+        link: toGoogleNewsLink(title, linkOriginal),
+        timestamp: d ? new Date(d[1]).toISOString() : new Date().toISOString(),
+        tema: cat,
+        prazo: null,
+        investidores_hoje: 0,
+        em_alta: false
+      });
       count++;
     }
     return items;
@@ -263,7 +289,6 @@ items.push({
       try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
     }
 
-    // Tenta cache primeiro (só se não for force)
     if (!force) {
       var cached = loadCache();
       if (cached && cached.length) {
@@ -285,12 +310,10 @@ items.push({
         '</div>';
     }
 
-    // 1. Tenta backend
     tryBackend().then(function (backendItems) {
       if (backendItems && backendItems.length) {
         return backendItems;
       }
-      // 2. Se backend vazio, tenta RSS direto
       return tryRSS();
     }).then(function (items) {
       state.loading = false;
@@ -335,7 +358,6 @@ items.push({
     var slice = state.items.slice(start, start + PAGE_SIZE);
     if (!slice.length) { state.hasMore = false; return; }
 
-    // Aplica filtro
     if (state.filter !== 'all') {
       slice = slice.filter(function (n) { return n.categoria === state.filter; });
       if (!slice.length) {
@@ -365,47 +387,47 @@ items.push({
   }
 
   function renderCard(n) {
-  var catLabel = {
-    musica: '🎵 Música',
-    lancamentos: '🚀 Lançamento',
-    shows: '🎤 Shows',
-    negocios: '💰 Negócios',
-    artistas: '⭐ Artistas',
-    editais: '📜 Edital'
-  }[n.categoria] || '📰';
+    var catLabel = {
+      musica: '🎵 Música',
+      lancamentos: '🚀 Lançamento',
+      shows: '🎤 Shows',
+      negocios: '💰 Negócios',
+      artistas: '⭐ Artistas',
+      editais: '📜 Edital'
+    }[n.categoria] || '📰';
 
-  var inicial = (n.fonte || n.autor || 'N').charAt(0).toUpperCase();
-  var tempo = formatRelativeTime(n.timestamp);
+    var inicial = (n.fonte || n.autor || 'N').charAt(0).toUpperCase();
+    var tempo = formatRelativeTime(n.timestamp);
 
-  // 🆕 imagem (placeholder se não tiver)
-  var imgUrl = n.imagem || PLACEHOLDERS[n.categoria] || PLACEHOLDERS.musica;
-  var imgHtml = '<img src="' + esc(imgUrl) + '" ' +
-    'style="width:100%;height:180px;object-fit:cover;display:block;background:#2c2c2e" ' +
-    'loading="lazy" ' +
-    'onerror="this.src=\'' + PLACEHOLDERS.musica + '\';this.onerror=null">';
+    // 🆕 imagem (real ou SVG fallback)
+    var imgUrl = n.imagem || gerarPlaceholder(n.categoria);
+    var fallback = gerarPlaceholder(n.categoria);
+    var imgHtml = '<img src="' + imgUrl + '" ' +
+      'style="width:100%;height:180px;object-fit:cover;display:block;background:#2c2c2e" ' +
+      'loading="lazy" ' +
+      'onerror="this.src=\'' + fallback + '\';this.onerror=null">';
 
-  return '<article style="background:#1c1c1e;border:0.5px solid #38383a;border-radius:16px;margin-bottom:16px;overflow:hidden;animation:pmFadeIn 0.4s ease">' +
-    // 🆕 IMAGEM NO TOPO
-    imgHtml +
-    '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px">' +
-      '<div style="width:28px;height:28px;border-radius:50%;background:#ffcc00;color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">' + esc(inicial) + '</div>' +
-      '<div style="flex:1;min-width:0">' +
-        '<div style="color:#fff;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(n.fonte || n.autor || 'PLAY MY') + '</div>' +
-        '<div style="color:#8e8e93;font-size:12px">' + tempo + '</div>' +
+    return '<article style="background:#1c1c1e;border:0.5px solid #38383a;border-radius:16px;margin-bottom:16px;overflow:hidden;animation:pmFadeIn 0.4s ease">' +
+      imgHtml +
+      '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px">' +
+        '<div style="width:28px;height:28px;border-radius:50%;background:#ffcc00;color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">' + esc(inicial) + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="color:#fff;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(n.fonte || n.autor || 'PLAY MY') + '</div>' +
+          '<div style="color:#8e8e93;font-size:12px">' + tempo + '</div>' +
+        '</div>' +
+        '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(255,204,0,0.15);color:#ffcc00;white-space:nowrap;flex-shrink:0">' + catLabel + '</span>' +
       '</div>' +
-      '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(255,204,0,0.15);color:#ffcc00;white-space:nowrap;flex-shrink:0">' + catLabel + '</span>' +
-    '</div>' +
-    '<div style="padding:12px 14px">' +
-      '<div style="color:#fff;font-weight:700;font-size:16px;margin-bottom:6px;line-height:1.3">' + esc(n.titulo) + '</div>' +
-      '<div style="color:#8e8e93;font-size:14px;line-height:1.5">' + esc(n.texto) + '</div>' +
-    '</div>' +
-    '<div style="padding:10px 14px 14px;border-top:0.5px solid #38383a">' +
-      '<a href="' + esc(n.link) + '" target="_blank" rel="noopener" style="display:inline-block;background:#ffcc00;color:#000;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none">' +
-        'Ler no Google News →' +
-      '</a>' +
-    '</div>' +
-  '</article>';
-}
+      '<div style="padding:12px 14px">' +
+        '<div style="color:#fff;font-weight:700;font-size:16px;margin-bottom:6px;line-height:1.3">' + esc(n.titulo) + '</div>' +
+        '<div style="color:#8e8e93;font-size:14px;line-height:1.5">' + esc(n.texto) + '</div>' +
+      '</div>' +
+      '<div style="padding:10px 14px 14px;border-top:0.5px solid #38383a">' +
+        '<a href="' + esc(n.link) + '" target="_blank" rel="noopener" style="display:inline-block;background:#ffcc00;color:#000;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none">' +
+          'Ler no Google News →' +
+        '</a>' +
+      '</div>' +
+    '</article>';
+  }
 
   // ============================================================
   // HELPERS
@@ -475,7 +497,7 @@ items.push({
   }
 
   // ============================================================
-  // ESTILO GLOBAL (injetado uma vez)
+  // ESTILO GLOBAL
   // ============================================================
   function injectStyles() {
     if (document.getElementById('pm-news-styles')) return;
@@ -506,7 +528,6 @@ items.push({
   // INICIALIZAÇÃO
   // ============================================================
   function init() {
-    // Só inicializa se a seção de notícias existir
     if (!document.getElementById('pm-news-root')) return;
 
     injectStyles();
@@ -521,5 +542,5 @@ items.push({
     init();
   }
 
-  console.log('✅ [news-unified.js] v10.0.0 carregado');
+  console.log('✅ [news-unified.js] v10.1.0 carregado');
 })();
