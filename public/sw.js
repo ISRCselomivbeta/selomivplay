@@ -147,7 +147,7 @@ self.addEventListener('install', (event) => {
           )
         );
       })
-    // ❌ Sem self.skipWaiting() — o app controla quando ativar
+      .then(() => self.skipWaiting())   // ✅ ATIVA AUTOMATICAMENTE
   );
 });
 
