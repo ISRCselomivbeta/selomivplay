@@ -1,24 +1,20 @@
 // ============================================================
-// js/news-unified.js — PLAY MY v10.1.0
-// Feed de notícias unificado: backend + fallback RSS direto
-// + imagens reais (RSS) + SVG fallback (inline)
+// js/news-unified.js — PLAY MY v10.2.0
+// Feed de notícias unificado: RSS primeiro (imagens reais) + backend fallback
+// + SVG fallback (inline)
 // + link sempre para Google News
 // ============================================================
 
 (function () {
   'use strict';
 
-  // ============================================================
-  // CONFIGURAÇÃO
-  // ============================================================
   var BACKEND_URL = '/api/backend';
   var PAGE_SIZE = 8;
   var CACHE_KEY = 'pm_news_cache_v10';
   var SEEN_KEY = 'pm_news_seen_v10';
   var SEEN_DATE_KEY = 'pm_news_seen_date_v10';
-  var CACHE_TTL = 10 * 60 * 1000; // 10 min
+  var CACHE_TTL = 10 * 60 * 1000;
 
-  // Fontes RSS reais (fallback se backend falhar)
   var RSS_SOURCES = [
     { url: 'https://news.google.com/rss/search?q=m%C3%BAsica+brasileira&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'musica', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=lan%C3%A7amento+musical&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'lancamentos', fonte: 'Google News' },
@@ -32,16 +28,12 @@
     { url: 'https://tenhomaisdiscosqueamigos.com/feed/', cat: 'musica', fonte: 'Tenho Mais Discos' }
   ];
 
-  // Proxies CORS em cascata
   var PROXIES = [
     function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
     function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u); },
     function (u) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); }
   ];
 
-  // ============================================================
-  // PLACEHOLDERS SVG INLINE (sem dependência externa)
-  // ============================================================
   var PLACEHOLDER_META = {
     musica:      { emoji: '🎵', cor1: '#ff2d55', cor2: '#ff6b35' },
     lancamentos: { emoji: '🚀', cor1: '#5ac8fa', cor2: '#007aff' },
@@ -55,34 +47,24 @@
     var meta = PLACEHOLDER_META[cat] || PLACEHOLDER_META.musica;
     var svg =
       '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300">' +
-        '<defs>' +
-          '<linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
-            '<stop offset="0%" stop-color="' + meta.cor1 + '"/>' +
-            '<stop offset="100%" stop-color="' + meta.cor2 + '"/>' +
-          '</linearGradient>' +
-        '</defs>' +
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+          '<stop offset="0%" stop-color="' + meta.cor1 + '"/>' +
+          '<stop offset="100%" stop-color="' + meta.cor2 + '"/>' +
+        '</linearGradient></defs>' +
         '<rect width="400" height="300" fill="url(#g)"/>' +
         '<text x="200" y="175" font-size="90" text-anchor="middle" fill="rgba(255,255,255,0.95)">' + meta.emoji + '</text>' +
       '</svg>';
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
 
-  // ============================================================
-  // FORÇA O LINK A SER DO GOOGLE NEWS
-  // ============================================================
   function toGoogleNewsLink(titulo, linkOriginal) {
-    // Se já é do Google News, mantém
     if (linkOriginal && linkOriginal.indexOf('news.google.com') !== -1) {
       return linkOriginal;
     }
-    // Caso contrário, cria busca do Google News
     var query = encodeURIComponent((titulo || '').substring(0, 100));
     return 'https://news.google.com/search?q=' + query + '&hl=pt-BR&gl=BR&ceid=BR:pt-419';
   }
 
-  // ============================================================
-  // ESTADO
-  // ============================================================
   var state = {
     items: [],
     seen: {},
@@ -93,9 +75,6 @@
     source: null
   };
 
-  // ============================================================
-  // RESET DIÁRIO
-  // ============================================================
   function resetDailySeen() {
     try {
       var today = new Date().toISOString().slice(0, 10);
@@ -107,9 +86,7 @@
       } else {
         state.seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '{}');
       }
-    } catch (e) {
-      state.seen = {};
-    }
+    } catch (e) { state.seen = {}; }
   }
 
   function saveSeen() {
@@ -131,9 +108,6 @@
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), items: items })); } catch (e) {}
   }
 
-  // ============================================================
-  // FONTE 1 — BACKEND
-  // ============================================================
   function tryBackend() {
     return new Promise(function (resolve) {
       var ctrl = new AbortController();
@@ -149,7 +123,7 @@
             state.source = 'backend';
             resolve(json.data);
           } else {
-            console.log('[news] ⚠️ backend vazio, usando RSS direto');
+            console.log('[news] ⚠️ backend vazio');
             resolve(null);
           }
         })
@@ -161,9 +135,6 @@
     });
   }
 
-  // ============================================================
-  // FONTE 2 — RSS DIRETO (fallback)
-  // ============================================================
   function fetchWithProxy(url, timeoutMs) {
     timeoutMs = timeoutMs || 8000;
     return new Promise(function (resolve) {
@@ -212,11 +183,18 @@
 
       var id = 'news_' + hashStr(title);
 
-      // 🆕 Tenta extrair imagem real do RSS
+      // 🆕 Tenta extrair imagem real do RSS (5 formatos)
       var enc = x.match(/<enclosure[^>]*url="([^"]+)"/);
-      var media = x.match(/<media:content[^>]*url="([^"]+)"/);
+      var mediaContent = x.match(/<media:content[^>]*url="([^"]+)"/);
+      var mediaThumb = x.match(/<media:thumbnail[^>]*url="([^"]+)"/);
       var imgInDesc = x.match(/<img[^>]*src="([^"]+)"/);
-      var imagemReal = (enc && enc[1]) || (media && media[1]) || (imgInDesc && imgInDesc[1]) || null;
+      var imgInContent = x.match(/<content:encoded[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"/);
+      var imagemReal = (enc && enc[1]) ||
+                       (mediaContent && mediaContent[1]) ||
+                       (mediaThumb && mediaThumb[1]) ||
+                       (imgInDesc && imgInDesc[1]) ||
+                       (imgInContent && imgInContent[1]) ||
+                       null;
 
       var linkOriginal = l ? l[1].trim() : '#';
 
@@ -228,7 +206,7 @@
         fonte_logo: null,
         titulo: title,
         texto: texto || 'Clique para ler a notícia completa.',
-        imagem: imagemReal || gerarPlaceholder(cat),  // 🆕 imagem real ou SVG
+        imagem: imagemReal || gerarPlaceholder(cat),
         link: toGoogleNewsLink(title, linkOriginal),
         timestamp: d ? new Date(d[1]).toISOString() : new Date().toISOString(),
         tema: cat,
@@ -269,14 +247,11 @@
         return new Date(b.timestamp) - new Date(a.timestamp);
       });
 
-      console.log('[news] ✅ RSS direto OK: ' + unique.length + ' notícias');
+      console.log('[news] ✅ RSS OK: ' + unique.length + ' notícias');
       return unique;
     });
   }
 
-  // ============================================================
-  // CARREGAMENTO PRINCIPAL
-  // ============================================================
   function loadAllNews(force) {
     if (state.loading) return;
     state.loading = true;
@@ -292,7 +267,7 @@
     if (!force) {
       var cached = loadCache();
       if (cached && cached.length) {
-        console.log('[news] 📦 cache local: ' + cached.length + ' notícias');
+        console.log('[news] 📦 cache local: ' + cached.length);
         state.items = cached;
         state.page = 1;
         state.hasMore = cached.length > PAGE_SIZE;
@@ -310,11 +285,12 @@
         '</div>';
     }
 
-    tryBackend().then(function (backendItems) {
-      if (backendItems && backendItems.length) {
-        return backendItems;
+    // 🆕 RSS PRIMEIRO, backend depois
+    tryRSS().then(function (rssItems) {
+      if (rssItems && rssItems.length) {
+        return rssItems;
       }
-      return tryRSS();
+      return tryBackend();
     }).then(function (items) {
       state.loading = false;
       state.items = items || [];
@@ -326,7 +302,6 @@
           '<div style="text-align:center;padding:40px;color:#8e8e93">' +
             '<div style="font-size:48px;opacity:0.5;margin-bottom:12px">📰</div>' +
             '<p>Nenhuma notícia disponível no momento.</p>' +
-            '<p style="font-size:12px;margin-top:8px">Tente novamente em alguns minutos.</p>' +
           '</div>';
         return;
       }
@@ -340,9 +315,6 @@
     });
   }
 
-  // ============================================================
-  // RENDERIZAÇÃO
-  // ============================================================
   function renderFresh() {
     var feed = document.getElementById('pm-feed');
     if (!feed) return;
@@ -399,7 +371,6 @@
     var inicial = (n.fonte || n.autor || 'N').charAt(0).toUpperCase();
     var tempo = formatRelativeTime(n.timestamp);
 
-    // 🆕 imagem (real ou SVG fallback)
     var imgUrl = n.imagem || gerarPlaceholder(n.categoria);
     var fallback = gerarPlaceholder(n.categoria);
     var imgHtml = '<img src="' + imgUrl + '" ' +
@@ -429,9 +400,6 @@
     '</article>';
   }
 
-  // ============================================================
-  // HELPERS
-  // ============================================================
   function esc(s) {
     if (!s) return '';
     return String(s)
@@ -463,9 +431,6 @@
     } catch (e) { return ''; }
   }
 
-  // ============================================================
-  // FILTROS
-  // ============================================================
   function initFilters() {
     var btns = document.querySelectorAll('#pm-filters .pm-filter-btn');
     if (!btns.length) return;
@@ -479,9 +444,6 @@
     });
   }
 
-  // ============================================================
-  // SCROLL INFINITO
-  // ============================================================
   function initInfinite() {
     var sentinel = document.getElementById('pm-sentinel');
     if (!sentinel) return;
@@ -496,9 +458,6 @@
     window.__pmNewsObserver.observe(sentinel);
   }
 
-  // ============================================================
-  // ESTILO GLOBAL
-  // ============================================================
   function injectStyles() {
     if (document.getElementById('pm-news-styles')) return;
     var style = document.createElement('style');
@@ -513,23 +472,13 @@
     document.head.appendChild(style);
   }
 
-  // ============================================================
-  // API PÚBLICA
-  // ============================================================
-  window.pmNewsReload = function () {
-    loadAllNews(true);
-  };
-
+  window.pmNewsReload = function () { loadAllNews(true); };
   window.pmNewsLoadMore = function () {
     if (state.hasMore && !state.loading) renderPage();
   };
 
-  // ============================================================
-  // INICIALIZAÇÃO
-  // ============================================================
   function init() {
     if (!document.getElementById('pm-news-root')) return;
-
     injectStyles();
     initFilters();
     initInfinite();
@@ -542,5 +491,5 @@
     init();
   }
 
-  console.log('✅ [news-unified.js] v10.1.0 carregado');
+  console.log('✅ [news-unified.js] v10.2.0 carregado');
 })();
