@@ -29,7 +29,7 @@
         { "key": "X-XSS-Protection", "value": "1; mode=block" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.youtube.com https://s.ytimg.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' https: https://script.google.com https://script.googleusercontent.com https://*.vercel.app https://www.googleapis.com https://www.youtube.com; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; media-src 'self' blob: https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.youtube.com https://s.ytimg.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: blob: https: https://picsum.photos https://fastly.picsum.photos https://images.unsplash.com https://source.unsplash.com; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' https: https://script.google.com https://script.googleusercontent.com https://*.vercel.app https://www.googleapis.com https://www.youtube.com; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; media-src 'self' blob: https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
         }
       ]
     },
