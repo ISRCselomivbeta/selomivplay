@@ -33,11 +33,32 @@
   ];
 
   // Proxies CORS em cascata
-  var PROXIES = [
-    function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
-    function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u); },
-    function (u) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); }
-  ];
+var PROXIES = [
+  function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
+  function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u); },
+  function (u) { return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); }
+];
+
+// 🆕 ETAPA NOVA: placeholders temáticos por categoria
+var PLACEHOLDERS = {
+  musica:      'https://source.unsplash.com/400x300/?music,concert',
+  lancamentos: 'https://source.unsplash.com/400x300/?new,album',
+  shows:       'https://source.unsplash.com/400x300/?live,concert',
+  negocios:    'https://source.unsplash.com/400x300/?business,music',
+  artistas:    'https://source.unsplash.com/400x300/?singer,artist',
+  editais:     'https://source.unsplash.com/400x300/?document,music'
+};
+
+// 🆕 ETAPA NOVA: força o link a ser do Google News
+function toGoogleNewsLink(titulo, linkOriginal) {
+  // Se já é do Google News, mantém
+  if (linkOriginal && linkOriginal.indexOf('news.google.com') !== -1) {
+    return linkOriginal;
+  }
+  // Caso contrário, cria busca do Google News
+  var query = encodeURIComponent((titulo || '').substring(0, 100));
+  return 'https://news.google.com/search?q=' + query + '&hl=pt-BR&gl=BR&ceid=BR:pt-419';
+}
 
   // ============================================================
   // ESTADO
@@ -171,22 +192,24 @@
 
       var id = 'news_' + hashStr(title);
 
-      items.push({
-        id: id,
-        categoria: cat,
-        fonte: src || fonte,
-        autor: src || fonte,
-        fonte_logo: null,
-        titulo: title,
-        texto: texto || 'Clique para ler a notícia completa.',
-        imagem: null,
-        link: l ? l[1].trim() : '#',
-        timestamp: d ? new Date(d[1]).toISOString() : new Date().toISOString(),
-        tema: cat,
-        prazo: null,
-        investidores_hoje: 0,
-        em_alta: false
-      });
+      var linkOriginal = l ? l[1].trim() : '#';
+
+items.push({
+  id: id,
+  categoria: cat,
+  fonte: src || fonte,
+  autor: src || fonte,
+  fonte_logo: null,
+  titulo: title,
+  texto: texto || 'Clique para ler a notícia completa.',
+  imagem: PLACEHOLDERS[cat] || PLACEHOLDERS.musica,  // 🆕 placeholder
+  link: toGoogleNewsLink(title, linkOriginal),         // 🆕 link do Google News
+  timestamp: d ? new Date(d[1]).toISOString() : new Date().toISOString(),
+  tema: cat,
+  prazo: null,
+  investidores_hoje: 0,
+  em_alta: false
+});
       count++;
     }
     return items;
@@ -342,38 +365,47 @@
   }
 
   function renderCard(n) {
-    var catLabel = {
-      musica: '🎵 Música',
-      lancamentos: '🚀 Lançamento',
-      shows: '🎤 Shows',
-      negocios: '💰 Negócios',
-      artistas: '⭐ Artistas',
-      editais: '📜 Edital'
-    }[n.categoria] || '📰';
+  var catLabel = {
+    musica: '🎵 Música',
+    lancamentos: '🚀 Lançamento',
+    shows: '🎤 Shows',
+    negocios: '💰 Negócios',
+    artistas: '⭐ Artistas',
+    editais: '📜 Edital'
+  }[n.categoria] || '📰';
 
-    var inicial = (n.fonte || n.autor || 'N').charAt(0).toUpperCase();
-    var tempo = formatRelativeTime(n.timestamp);
+  var inicial = (n.fonte || n.autor || 'N').charAt(0).toUpperCase();
+  var tempo = formatRelativeTime(n.timestamp);
 
-    return '<article style="background:#1c1c1e;border:0.5px solid #38383a;border-radius:16px;margin-bottom:16px;overflow:hidden;animation:pmFadeIn 0.4s ease">' +
-      '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px">' +
-        '<div style="width:28px;height:28px;border-radius:50%;background:#ffcc00;color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">' + esc(inicial) + '</div>' +
-        '<div style="flex:1;min-width:0">' +
-          '<div style="color:#fff;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(n.fonte || n.autor || 'PLAY MY') + '</div>' +
-          '<div style="color:#8e8e93;font-size:12px">' + tempo + '</div>' +
-        '</div>' +
-        '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(255,204,0,0.15);color:#ffcc00;white-space:nowrap;flex-shrink:0">' + catLabel + '</span>' +
+  // 🆕 imagem (placeholder se não tiver)
+  var imgUrl = n.imagem || PLACEHOLDERS[n.categoria] || PLACEHOLDERS.musica;
+  var imgHtml = '<img src="' + esc(imgUrl) + '" ' +
+    'style="width:100%;height:180px;object-fit:cover;display:block;background:#2c2c2e" ' +
+    'loading="lazy" ' +
+    'onerror="this.src=\'' + PLACEHOLDERS.musica + '\';this.onerror=null">';
+
+  return '<article style="background:#1c1c1e;border:0.5px solid #38383a;border-radius:16px;margin-bottom:16px;overflow:hidden;animation:pmFadeIn 0.4s ease">' +
+    // 🆕 IMAGEM NO TOPO
+    imgHtml +
+    '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px">' +
+      '<div style="width:28px;height:28px;border-radius:50%;background:#ffcc00;color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">' + esc(inicial) + '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="color:#fff;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(n.fonte || n.autor || 'PLAY MY') + '</div>' +
+        '<div style="color:#8e8e93;font-size:12px">' + tempo + '</div>' +
       '</div>' +
-      '<div style="padding:12px 14px">' +
-        '<div style="color:#fff;font-weight:700;font-size:16px;margin-bottom:6px;line-height:1.3">' + esc(n.titulo) + '</div>' +
-        '<div style="color:#8e8e93;font-size:14px;line-height:1.5">' + esc(n.texto) + '</div>' +
-      '</div>' +
-      '<div style="padding:10px 14px 14px;border-top:0.5px solid #38383a">' +
-        '<a href="' + esc(n.link) + '" target="_blank" rel="noopener" style="display:inline-block;background:#ffcc00;color:#000;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none">' +
-          'Ler notícia completa →' +
-        '</a>' +
-      '</div>' +
-    '</article>';
-  }
+      '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(255,204,0,0.15);color:#ffcc00;white-space:nowrap;flex-shrink:0">' + catLabel + '</span>' +
+    '</div>' +
+    '<div style="padding:12px 14px">' +
+      '<div style="color:#fff;font-weight:700;font-size:16px;margin-bottom:6px;line-height:1.3">' + esc(n.titulo) + '</div>' +
+      '<div style="color:#8e8e93;font-size:14px;line-height:1.5">' + esc(n.texto) + '</div>' +
+    '</div>' +
+    '<div style="padding:10px 14px 14px;border-top:0.5px solid #38383a">' +
+      '<a href="' + esc(n.link) + '" target="_blank" rel="noopener" style="display:inline-block;background:#ffcc00;color:#000;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none">' +
+        'Ler no Google News →' +
+      '</a>' +
+    '</div>' +
+  '</article>';
+}
 
   // ============================================================
   // HELPERS
