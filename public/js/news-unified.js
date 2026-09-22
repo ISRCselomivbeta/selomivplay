@@ -285,13 +285,13 @@
         '</div>';
     }
 
-    // 🆕 RSS PRIMEIRO, backend depois
-    tryRSS().then(function (rssItems) {
-      if (rssItems && rssItems.length) {
-        return rssItems;
-      }
-      return tryBackend();
-    }).then(function (items) {
+   // ✅ BACKEND PRIMEIRO, RSS depois (elimina erros do corsproxy.io)
+tryBackend().then(function (backendItems) {
+  if (backendItems && backendItems.length) {
+    return backendItems;
+  }
+  return tryRSS();
+}).then(function (items) {
       state.loading = false;
       state.items = items || [];
       state.page = 1;
