@@ -51,12 +51,22 @@ const API_ENDPOINTS = {
     'get_elo_ranking':      'elo',
     'atualizar_todos_elos': 'elo',
 
-    // ISRC (/api/isrc)
+       // ISRC (/api/isrc)
     'validar_isrc':         'isrc',
     'buscar_isrc':          'isrc',
     'vincular_isrc':        'isrc',
     'ver_isrc':             'isrc',
-    'listar_isrcs':         'isrc'
+    'listar_isrcs':         'isrc',
+
+    // 🆕 PLAYLISTS (backend principal /api/backend)
+    'get_playlists':                        'backend',
+    'create_playlist':                      'backend',
+    'add_music_to_playlist':                'backend',
+    'remove_music_from_playlist':           'backend',
+    'get_global_playlists':                 'backend',
+    'create_global_playlist':               'backend',
+    'add_music_to_global_playlist':         'backend',
+    'remove_music_from_global_playlist':    'backend'
 };
 
 // ============================================================
@@ -80,7 +90,12 @@ const ACOES_EXIGEM_DATA = [
     'ver_stream', 'streams_total', 'streams_ranking',
     'get_elo_ranking', 'ver_elo', 'calcular_elo',
     'royalties_resumo', 'royalties_periodos', 'extrato_usuario',
-    'get_saldo', 'get_carteira', 'get_extrato', 'get_musicas', 'get_artists'
+    'get_saldo', 'get_carteira', 'get_extrato', 'get_musicas', 'get_artists',
+    // 🆕 Playlists — exigem data na resposta
+    'get_playlists', 'create_playlist',
+    'get_global_playlists', 'create_global_playlist',
+    'add_music_to_playlist', 'remove_music_from_playlist',
+    'add_music_to_global_playlist', 'remove_music_from_global_playlist'
 ];
 
 // ============================================================
@@ -93,7 +108,7 @@ const ACOES_CACHEAVEIS = [
     'get_elo_ranking', 'ver_elo',
     'royalties_resumo', 'royalties_periodos',
     'get_musicas', 'get_artists', 'get_extrato', 'get_carteira',
-    'get_playlists', 'get_global_playlists', 'get_top_investments',
+    'get_top_investments',
     'get_news', 'get_mining_blocks'
 ];
 
