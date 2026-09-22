@@ -1140,28 +1140,54 @@ window.createPlaylistSelectorModal = function () {
 window.selectPlaylistForYouTube = async function (playlistId, isGlobal) {
   const track = state._pendingYouTubeTrack;
   if (!track) { showToast('Erro: música não encontrada', 'error'); return; }
+
+  if (!isGlobal && (!state.currentUser || !state.currentUser.id)) {
+    showToast('Faça login para adicionar músicas', 'error');
+    return;
+  }
+
   showToast('Adicionando...', 'info');
+
   try {
     const action = isGlobal ? 'add_music_to_global_playlist' : 'add_music_to_playlist';
-const params = { playlist_id: playlistId, music_id: track.id, music_data: JSON.stringify(track) };
+    const params = {
+      playlist_id: playlistId,
+      music_id: track.id,
+      music_data: JSON.stringify(track)
+    };
+    if (!isGlobal) {
+      params.user_id = state.currentUser.id;   // ✅ explícito
+    }
 
-// ✅ Playlist PESSOAL precisa do user_id (global não precisa)
-if (!isGlobal && state.currentUser && state.currentUser.id) {
-    params.user_id = state.currentUser.id;
-}
+    const r = await callAPI(action, params);
 
-const r = await callAPI(action, params);
     if (r && r.success) {
       showToast('✅ Música adicionada!', 'success');
       closeModal('playlistSelectorModal');
-      if (isGlobal) await loadGlobalPlaylists();
-      else await loadUserPlaylists();
+
+      const listKey = isGlobal ? 'globalPlaylists' : 'userPlaylists';
+      const pl = (state[listKey] || []).find(p => String(p.id) === String(playlistId));
+      if (pl) {
+        pl.musicas = (r.data && r.data.musicas) || pl.musicas || [];
+        if (!pl.musicas.map(String).includes(String(track.id))) {
+          pl.musicas.push(String(track.id));
+        }
+      }
+
+      if (isGlobal) {
+        renderGlobalPlaylists();
+        renderAdminGlobalPlaylists();
+        await loadGlobalPlaylists();
+      } else {
+        renderPlaylists();
+        await loadUserPlaylists();
+      }
       state._pendingYouTubeTrack = null;
     } else {
-      showToast(r.message || 'Erro ao adicionar', 'error');
+      showToast((r && r.message) || 'Erro ao adicionar', 'error');
     }
   } catch (e) {
-    console.error('Erro:', e);
+    console.error('❌ selectPlaylistForYouTube:', e);
     showToast('Erro ao adicionar', 'error');
   }
 };
@@ -1396,20 +1422,42 @@ window.openCreatePlaylistModal = function () { showModal('createPlaylistModal');
 
 window.createPlaylist = async function () {
   const name = document.getElementById('playlistNameField').value.trim();
-  if (!name || !state.currentUser) return;
+  if (!name || !state.currentUser || !state.currentUser.id) {
+    showToast('Faça login para criar playlists', 'error');
+    return;
+  }
+
+  const btn = document.querySelector('#createPlaylistModal .btn-success');
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Criando...'; }
+
   try {
     const r = await callAPI('create_playlist', {
+      user_id: state.currentUser.id,   // ✅ explícito
       nome: name,
       publica: document.getElementById('playlistPublicField').checked
     });
+
     if (r && r.success) {
       showToast('✅ Playlist criada!', 'success');
       closeModal('createPlaylistModal');
+      document.getElementById('playlistNameField').value = '';
+      document.getElementById('playlistPublicField').checked = false;
+
+      if (r.data && r.data.id) {
+        if (!Array.isArray(state.userPlaylists)) state.userPlaylists = [];
+        state.userPlaylists.push(r.data);
+        renderPlaylists();
+      }
       await loadUserPlaylists();
     } else {
-      showToast((r && r.message) || 'Erro', 'error');
+      showToast((r && r.message) || 'Erro ao criar playlist', 'error');
     }
-  } catch (e) { showToast('Erro', 'error'); }
+  } catch (e) {
+    console.error('❌ createPlaylist:', e);
+    showToast('Erro ao criar playlist', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Criar'; }
+  }
 };
 
 window.playUserPlaylist = function (id) {
