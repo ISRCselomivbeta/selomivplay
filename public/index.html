@@ -454,7 +454,9 @@ input[type="checkbox"]:checked {
 <div id="registerForm" style="display:none">
 <form onsubmit="event.preventDefault(); handleRegister();">
 <div class="form-group"><label class="text-muted mb-2">Nome completo</label><input type="text" id="registerNameField" class="form-control-custom" placeholder="Digite seu nome completo"></div>
-<div class="form-group"><label class="text-muted mb-2">E-mail</label><input type="email" id="registerEmailField" class="form-control-custom" placeholder="Digite seu e-mail"></div>
+<div class="form-group"><label class="text-muted mb-2">E-mail</label>
+<input type="email" id="registerEmailField" class="form-control-custom" placeholder="Digite seu e-mail" autocomplete="username">
+</div>
 <div class="form-group">
   <label class="text-muted mb-2">Senha (mínimo 6 caracteres)</label>
   <div class="playmy-password-wrap">
