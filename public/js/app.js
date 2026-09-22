@@ -738,4 +738,4 @@ window.addEventListener('load', () => {
 console.log('✅ [app.js] v9.7.0 carregado — aplicação inicializada');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
-console.log('📲 Instalação via sidebar ativa — v9.6.0');
+console.log('📲 Instalação via sidebar ativa — v9.7.0');
