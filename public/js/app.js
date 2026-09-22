@@ -1,5 +1,5 @@
 // ============================================================
-// js/app.js — PLAY MY v9.7.0
+// js/app.js — PLAY MY v9.8.0
 // Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
 // + Detecção de app nativo (Capacitor/TWA)
 // + Safe areas (iPhone notch)
@@ -9,6 +9,11 @@
 // + INSTALAÇÃO INTELIGENTE via SIDEBAR (sem balão flutuante)
 // Depende de TODOS os módulos anteriores.
 // DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
+//
+// MUDANÇAS v9.8.0:
+//   - ETAPA 7: verificação periódica de update (30 min)
+//   - ETAPA 7: verificação ao voltar o foco para a aba
+//   - SW detecta nova versão automaticamente
 //
 // MUDANÇAS v9.7.0:
 //   - SERVICE WORKER: detecção de update + toast "Nova versão"
@@ -215,7 +220,7 @@ function handleDeepLink() {
 }
 
 // ============================================================
-// 🆕 SERVICE WORKER — registro + detecção de update (v9.7.0)
+// SERVICE WORKER — registro + detecção de update (v9.8.0)
 // ============================================================
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -278,6 +283,22 @@ function registerServiceWorker() {
       });
     });
 
+    // --------------------------------------------------------
+    // 🆕 ETAPA 7: Verificação periódica de update (30 min)
+    // --------------------------------------------------------
+    setInterval(() => {
+      reg.update().catch(() => {});
+    }, 30 * 60 * 1000);
+
+    // --------------------------------------------------------
+    // 🆕 ETAPA 7: Verificação ao voltar o foco para a aba
+    // --------------------------------------------------------
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        reg.update().catch(() => {});
+      }
+    });
+
   }).catch((err) => {
     console.warn('⚠️ [SW] erro no registro:', err);
   });
@@ -306,7 +327,7 @@ window.initializeApp = async function () {
 
   loadYouTubeAPI();
 
-  // 🆕 SW com detecção de update
+  // SW com detecção de update
   registerServiceWorker();
 
   setTimeout(hideSplashScreen, 300);
@@ -362,7 +383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupStatusBar();
   blockNativeGestures();
 
-  // 🆕 SW com detecção de update
+  // SW com detecção de update
   registerServiceWorker();
 
   // 1. Health check inicial
@@ -672,7 +693,7 @@ window.renderArtistMusic = window.renderArtistMusic || renderArtistMusic;
 window.loadDividends = window.loadDividends || loadDividends;
 window.carregarELOsEValuations = window.carregarELOsEValuations || carregarELOsEValuations;
 
-// 🆕 Sell modal (portfolio.js v9.4.0)
+// Sell modal (portfolio.js v9.4.0)
 window.openSellModal = window.openSellModal || openSellModal;
 window.updateSellTotal = window.updateSellTotal || updateSellTotal;
 window.adjustSellQuantity = window.adjustSellQuantity || adjustSellQuantity;
@@ -735,7 +756,7 @@ window.addEventListener('load', () => {
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.7.0 carregado — aplicação inicializada');
+console.log('✅ [app.js] v9.8.0 carregado — aplicação inicializada');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
-console.log('📲 Instalação via sidebar ativa — v9.7.0');
+console.log('📲 Instalação via sidebar ativa — v9.8.0');
