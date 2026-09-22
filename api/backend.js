@@ -1629,9 +1629,14 @@ module.exports = async (req, res) => {
         if (action === 'add_music_to_global_playlist') {
             const playlistId = params.playlist_id;
             const musicId = String(params.music_id);
-            const musicData = params.music_data
-                ? (typeof params.music_data === 'string' ? JSON.parse(params.music_data) : params.music_data)
-                : null;
+            let musicData = null;
+            try {
+                musicData = params.music_data
+                    ? (typeof params.music_data === 'string' ? JSON.parse(params.music_data) : params.music_data)
+                    : null;
+            } catch (e) {
+                musicData = null;
+            }
             if (!playlistId || !musicId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
             const playlists = await Storage.get('global_playlists') || [];
@@ -1697,19 +1702,15 @@ module.exports = async (req, res) => {
             });
         }
 
-        // ============================================================
+               // ============================================================
         // PLAYLISTS PESSOAIS
         // ============================================================
         if (action === 'get_playlists') {
             const userId = params.user_id;
             if (!userId) return res.status(200).json({ success: false, message: 'user_id obrigatório' });
 
-            const cachedL1 = cache.get('user_playlists_' + userId);
-            if (cachedL1) return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
-
             const all = await Storage.get('user_playlists') || {};
             if (all[userId] && all[userId].length) {
-                cache.set('user_playlists_' + userId, all[userId], 300);
                 return res.status(200).json({ success: true, data: all[userId], _via: 'kv' });
             }
 
@@ -1719,7 +1720,6 @@ module.exports = async (req, res) => {
                 const playlists = Array.isArray(unwrapped.data) ? unwrapped.data : [];
                 all[userId] = playlists;
                 await Storage.set('user_playlists', all);
-                cache.set('user_playlists_' + userId, playlists, 300);
                 return res.status(200).json({ success: true, data: playlists, _via: 'gas' });
             }
 
@@ -1743,7 +1743,6 @@ module.exports = async (req, res) => {
             };
             all[userId].push(nova);
             await Storage.set('user_playlists', all);
-            cache.cache.delete('user_playlists_' + userId);
 
             callGAS('create_playlist', { user_id: userId, nome, publica }).catch(() => {});
 
@@ -1754,11 +1753,19 @@ module.exports = async (req, res) => {
             });
         }
 
+        // 🆕 FIX: handler que faltava
         if (action === 'add_music_to_playlist') {
             const userId = params.user_id;
             const playlistId = params.playlist_id;
             const musicId = String(params.music_id);
-            const musicData = params.music_data ? (typeof params.music_data === 'string' ? JSON.parse(params.music_data) : params.music_data) : null;
+            let musicData = null;
+            try {
+                musicData = params.music_data
+                    ? (typeof params.music_data === 'string' ? JSON.parse(params.music_data) : params.music_data)
+                    : null;
+            } catch (e) {
+                musicData = null;
+            }
 
             if (!userId || !playlistId || !musicId) {
                 return res.status(200).json({ success: false, message: 'Dados incompletos' });
@@ -1779,7 +1786,6 @@ module.exports = async (req, res) => {
                 pl.music_metadata[musicId] = musicData;
             }
             await Storage.set('user_playlists', all);
-            cache.cache.delete('user_playlists_' + userId);
 
             callGAS('add_music_to_playlist', {
                 user_id: userId, playlist_id: playlistId, music_id: musicId,
@@ -1793,6 +1799,7 @@ module.exports = async (req, res) => {
             });
         }
 
+        // 🆕 FIX: handler que faltava
         if (action === 'remove_music_from_playlist') {
             const userId = params.user_id;
             const playlistId = params.playlist_id;
@@ -1802,18 +1809,22 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: false, message: 'Dados incompletos' });
             }
 
-            await callGAS('remove_music_from_playlist', { user_id: userId, playlist_id: playlistId, music_id: musicId });
-
             const all = await Storage.get('user_playlists') || {};
             all[userId] = all[userId] || [];
             const pl = all[userId].find(p => String(p.id) === String(playlistId));
             if (pl) {
                 pl.musicas = (pl.musicas || []).filter(id => String(id) !== musicId);
+                if (pl.music_metadata && pl.music_metadata[musicId]) {
+                    delete pl.music_metadata[musicId];
+                }
                 await Storage.set('user_playlists', all);
-                cache.cache.delete('user_playlists_' + userId);
             }
 
-            return res.status(200).json({ success: true, data: { removed: true } });
+            callGAS('remove_music_from_playlist', {
+                user_id: userId, playlist_id: playlistId, music_id: musicId
+            }).catch(() => {});
+
+            return res.status(200).json({ success: true, data: { removed: true }, _via: 'kv' });
         }
 
         // ============================================================
