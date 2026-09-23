@@ -349,7 +349,7 @@ async function callGAS(action, params = {}, retries = 1) {
                 }
             });
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 6000);
+            const timeout = setTimeout(() => controller.abort(), 15000);   // 🆕 15s
             const response = await fetch(gasUrl.toString(), {
                 method: 'GET',
                 headers: { 'Cache-Control': 'no-cache', 'Accept': 'application/json' },
@@ -376,15 +376,34 @@ function unwrapGAS(gasResult) {
     if (inner.success === false) {
         return { success: false, message: inner.message || 'GAS retornou erro', _via: 'gas_error' };
     }
+    
+    // 🆕 Extrai o array de QUALQUER formato possível
+    let payload;
+    if (inner.data !== undefined) {
+        payload = inner.data;
+    } else if (Array.isArray(inner)) {
+        payload = inner;
+    } else {
+        // Tenta achar um array dentro do objeto
+        const possibleKeys = ['musicas', 'items', 'list', 'result', 'data'];
+        for (const key of possibleKeys) {
+            if (Array.isArray(inner[key])) {
+                payload = inner[key];
+                break;
+            }
+        }
+        if (payload === undefined) payload = inner;
+    }
+    
     return {
         success: true,
-        data: inner.data !== undefined ? inner.data : inner,
+        data: payload,
+        pagination: inner.pagination,
         message: inner.message,
         _via: 'gas',
         _raw: inner
     };
 }
-
 // ============================================================
 // ENVIO DE EMAIL
 // ============================================================
@@ -2038,25 +2057,30 @@ module.exports = async (req, res) => {
 
             const gasResult = await callGAS('get_musicas', params);
             const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success && Array.isArray(unwrapped.data) && unwrapped.data.length > 0) {
-                cache.set('musicas', unwrapped.data, 300);
-                return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
+
+            // 🆕 Tenta extrair array de QUALQUER formato possível
+            let musicas = null;
+
+            if (unwrapped.success) {
+                if (Array.isArray(unwrapped.data)) {
+                    musicas = unwrapped.data;
+                } else if (unwrapped.data && Array.isArray(unwrapped.data.data)) {
+                    musicas = unwrapped.data.data;
+                } else if (unwrapped._raw && Array.isArray(unwrapped._raw.data)) {
+                    musicas = unwrapped._raw.data;
+                } else if (unwrapped._raw && Array.isArray(unwrapped._raw.musicas)) {
+                    musicas = unwrapped._raw.musicas;
+                }
             }
+
+            if (musicas && musicas.length > 0) {
+                cache.set('musicas', musicas, 300);
+                console.log(`✅ [get_musicas] ${musicas.length} músicas via GAS`);
+                return res.status(200).json({ success: true, data: musicas, _via: 'gas', total: musicas.length });
+            }
+
+            console.warn('⚠️ [get_musicas] GAS não retornou array válido:', JSON.stringify(gasResult).substring(0, 200));
             return res.status(200).json({ success: true, data: FALLBACK_MUSICAS, source: 'fallback' });
-        }
-
-        if (action === 'get_external_musicas') {
-            const gasResult = await callGAS('get_external_musicas', params);
-            const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
-            return res.status(200).json({ success: true, data: [] });
-        }
-
-        if (action === 'get_top_investments') {
-            const gasResult = await callGAS('get_top_investments', params);
-            const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
-            return res.status(200).json({ success: true, data: FALLBACK_MUSICAS });
         }
 
         // ============================================================
