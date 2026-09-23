@@ -1,5 +1,5 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.8.3
+// SERVICE WORKER — PLAY MY v9.8.7
 // Cache inteligente por tipo de recurso + PWA
 //
 // MUDANÇAS v9.8.3:
