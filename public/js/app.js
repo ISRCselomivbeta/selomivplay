@@ -263,13 +263,9 @@ function registerServiceWorker() {
       console.error('❌ [SW] falha no registro:', err);
     });
 
-  // Quando um SW novo ativa → recarrega a página uma vez
-  let refreshing = false;
+  // 🚨 REMOVIDO: o location.reload() causava flash de versão antiga
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshing) return;
-    refreshing = true;
-    console.log('🔄 [SW] controllerchange — recarregando');
-    window.location.reload();
+    console.log('🔄 [SW] Novo SW assumiu o controle (sem reload)');
   });
 }
 
