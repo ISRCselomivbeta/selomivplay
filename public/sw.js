@@ -8,7 +8,7 @@
 //   - NO_CACHE_HOSTS: limpo (sem domínios antigos)
 // ============================================================
 
-const SW_VERSION = '9.8.9';  // 👈 BUMP manual a cada deploy relevante
+const SW_VERSION = '9.9.0';  // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
@@ -18,10 +18,10 @@ const NETWORK_TIMEOUT_MS = 6000;
 // Recursos essenciais (instalação imediata)
 const STATIC_ASSETS = [
   '/',
-  '/index.html',
+  // '/index.html',   // ← REMOVIDO: nunca cachear HTML
   '/offline.html',
   '/manifest.json',
-
+  
   // ÍCONES PWA
   '/images/logo.png',
   '/images/icon-192.png',
@@ -246,38 +246,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 5. HTML/navegação → network-first com timeout
-  if (
-    request.mode === 'navigate' ||
-    (request.headers.get('accept') || '').includes('text/html')
-  ) {
-    event.respondWith(
-      fetchWithTimeout(request, NETWORK_TIMEOUT_MS)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => {
-          return caches.match(request).then((cached) => {
-            if (cached) return cached;
-            return caches.match('/index.html').then((idx) => {
-              if (idx) return idx;
-              return caches.match('/offline.html').then((off) => {
-                if (off) return off;
-                return new Response(
-                  '<!DOCTYPE html><html><body style="background:#000;color:#fff;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h1>📴 Offline</h1><p>Sem conexão e sem cache disponível.</p></div></body></html>',
-                  { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-                );
-              });
-            });
-          });
-        })
-    );
-    return;
-  }
+  // 5. HTML/navegação → NETWORK-ONLY (nunca cacheia HTML!)
+if (
+  request.mode === 'navigate' ||
+  (request.headers.get('accept') || '').includes('text/html')
+) {
+  event.respondWith(
+    fetchWithTimeout(request, NETWORK_TIMEOUT_MS)
+      .then((response) => {
+        // ✅ NÃO cacheia HTML — apenas retorna
+        return response;
+      })
+      .catch(() => {
+        // Só cai aqui se a rede falhar TOTALMENTE (offline real)
+        return caches.match('/offline.html').then((off) => {
+          if (off) return off;
+          return new Response(
+            '<!DOCTYPE html><html><body style="background:#000;color:#fff;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h1>📴 Offline</h1><p>Sem conexão.</p><p><button onclick="location.reload()" style="padding:12px 24px;font-size:16px;background:#34c759;color:#fff;border:none;border-radius:8px;cursor:pointer">Tentar de novo</button></p></div></body></html>',
+            { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+          );
+        });
+      })
+  );
+  return;
+}
 
   // 6. JS/CSS → network-first com fallback para cache
   if (isStaticAsset(url)) {
