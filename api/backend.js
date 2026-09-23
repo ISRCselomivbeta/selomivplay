@@ -27,12 +27,56 @@ try {
 
 const crypto = require('crypto');
 
-let kv = null;
-try {
-    kv = require('@vercel/kv').kv;
-    console.log('✅ Vercel KV carregado');
-} catch (e) {
-    console.warn('⚠️ @vercel/kv não instalado — usando fallback em memória');
+// ============================================================
+// KV — suporta REDIS_URL (node-redis) OU @vercel/kv
+// ============================================================
+let kv = null;          // cliente Redis (node-redis) ou wrapper do @vercel/kv
+let kvReady = null;     // Promise que resolve quando a conexão estiver pronta
+let kvMode = 'none';    // 'redis' | 'vercel-kv' | 'none'
+
+// Tentativa 1: REDIS_URL (Vercel Redis / Upstash)
+if (process.env.REDIS_URL) {
+    try {
+        const { createClient } = require('redis');
+        kv = createClient({ url: process.env.REDIS_URL });
+        kv.on('error', (err) => console.warn('⚠️ Redis error:', err.message));
+        kvReady = kv.connect()
+            .then(() => {
+                kvMode = 'redis';
+                console.log('✅ Redis (REDIS_URL) conectado');
+            })
+            .catch((e) => {
+                console.warn('⚠️ Redis connect falhou:', e.message);
+                kv = null;
+                kvMode = 'none';
+            });
+    } catch (e) {
+        console.warn('⚠️ node-redis não instalado:', e.message);
+        kv = null;
+    }
+}
+
+// Tentativa 2: @vercel/kv (caso REDIS_URL não exista)
+if (!kv) {
+    try {
+        const vk = require('@vercel/kv').kv;
+        if (vk) {
+            kv = {
+                get: (k) => vk.get(k),
+                set: (k, v) => vk.set(k, v),
+                del: (k) => vk.del(k)
+            };
+            kvReady = Promise.resolve();
+            kvMode = 'vercel-kv';
+            console.log('✅ @vercel/kv carregado');
+        }
+    } catch (e) {
+        // silencioso
+    }
+}
+
+if (!kv) {
+    console.warn('⚠️ Nenhum KV disponível — usando fallback em memória');
 }
 
 const GAS_URL = process.env.GAS_URL || 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
@@ -132,23 +176,39 @@ const MEMORY_STORAGE = {
 };
 
 const Storage = {
+    async _ensure() {
+        if (kvReady) { try { await kvReady; } catch (e) {} }
+    },
     async get(key) {
+        await this._ensure();
         if (kv) {
             try {
-                const value = await kv.get('playmy:' + key);
-                if (value !== null && value !== undefined) return value;
+                const raw = await kv.get('playmy:' + key);
+                if (raw !== null && raw !== undefined) {
+                    // node-redis devolve string; @vercel/kv devolve objeto já parseado
+                    if (typeof raw === 'string') {
+                        try { return JSON.parse(raw); } catch (_) { return raw; }
+                    }
+                    return raw;
+                }
             } catch (e) { console.warn('KV get error:', e.message); }
         }
         return MEMORY_STORAGE[key] !== undefined ? MEMORY_STORAGE[key] : null;
     },
     async set(key, value) {
+        await this._ensure();
         if (kv) {
-            try { await kv.set('playmy:' + key, value); return true; } catch (e) { console.warn('KV set error:', e.message); }
+            try {
+                const payload = (typeof value === 'string') ? value : JSON.stringify(value);
+                await kv.set('playmy:' + key, payload);
+                return true;
+            } catch (e) { console.warn('KV set error:', e.message); }
         }
         MEMORY_STORAGE[key] = value;
         return true;
     },
     async del(key) {
+        await this._ensure();
         if (kv) { try { await kv.del('playmy:' + key); } catch (e) {} }
         delete MEMORY_STORAGE[key];
     }
@@ -1096,17 +1156,18 @@ module.exports = async (req, res) => {
                 gasPing = unwrapGAS(gasResult).success;
             } catch (e) {}
 
-            return res.status(200).json({
+                       return res.status(200).json({
                 success: true,
                 message: 'pong',
                 version: '9.7.6',
                 kv_enabled: !!kv,
+                kv_mode: kvMode,
+                redis_url_set: !!process.env.REDIS_URL,
                 nodemailer_enabled: !!nodemailer,
                 youtube_enabled: !!YOUTUBE_API_KEY,
                 gas_ping: gasPing,
                 timestamp: new Date().toISOString()
             });
-        }
 
         // ============================================================
         // LOGIN
