@@ -343,7 +343,7 @@ async function callGAS(action, params = {}, retries = 1) {
                 }
             });
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 15000);   // 🆕 15s
+const timeout = setTimeout(() => controller.abort(), 7000);
             const response = await fetch(gasUrl.toString(), {
                 method: 'GET',
                 headers: { 'Cache-Control': 'no-cache', 'Accept': 'application/json' },
