@@ -147,7 +147,7 @@ self.addEventListener('install', (event) => {
           )
         );
       })
-      .then(() => self.skipWaiting())   // ✅ ATIVA AUTOMATICAMENTE
+      .then(() => self.skipWaiting())   // 🆕 MANTÉM para forçar update
   );
 });
 
