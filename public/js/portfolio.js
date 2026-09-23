@@ -76,12 +76,13 @@ window.carregarELOsEValuations = async function () {
   const ativos = state.portfolioAssets || [];
   if (!ativos.length) return;
 
-  // ✅ DEDUP: cada music_id processado uma única vez
-  const musicIdsUnicos = [...new Set(
-    ativos.map(a => String(a.music_id)).filter(Boolean)
-  )];
+  // 🆕 Cache global de 60s — evita re-chamar a cada navegação
+  if (state._valuationCache && (Date.now() - state._valuationCacheAt) < 60000) {
+    console.log('📦 [valuation] cache hit (60s)');
+    return;
+  }
 
-  // ---- ELO ----
+  // ---- ELO (1 chamada) ----
   try {
     const r = await callAPI('get_elo_ranking');
     if (r && r.success && r.data && Array.isArray(r.data.ranking)) {
@@ -95,36 +96,32 @@ window.carregarELOsEValuations = async function () {
         };
       });
       state.eloMap = mapa;
+      console.log('✅ [ELO] carregado via 1 chamada');
     }
   } catch (e) {
     console.warn('⚠️ carregarELOs (portfolio):', e.message);
   }
 
-  // ---- VALUATION ----
+  // ---- VALUATION (1 chamada só — catálogo inteiro) ----
   state.valuationMap = state.valuationMap || {};
-
-  // ✅ DEDUP + só os que ainda não estão no cache, limite 10
-  const faltantes = musicIdsUnicos
-    .filter(mid => !state.valuationMap[mid])
-    .slice(0, 10);
-
-  for (const mid of faltantes) {
-    try {
-      const r = await callAPI('ver_valuation', { music_id: mid });
-      if (r && r.success && r.data && r.data.valuation !== undefined) {
+  try {
+    const r = await callAPI('valuation_catalogo');
+    if (r && r.success && r.data && Array.isArray(r.data.musicas)) {
+      r.data.musicas.forEach(v => {
+        const mid = String(v.music_id);
         state.valuationMap[mid] = {
-          valuation: r.data.valuation || 0,
-          receita_anual_projetada: r.data.receita_anual_projetada || 0,
-          multiplo_final: r.data.multiplo_final || 10,
-          ajuste_elo: r.data.ajuste_elo || 0
+          valuation: v.valuation || 0,
+          receita_anual_projetada: v.receita_anual_projetada || 0,
+          multiplo_final: v.multiplo_final || 10,
+          ajuste_elo: v.ajuste_elo || 0
         };
-      } else {
-        // ✅ Marca como tentado mesmo em erro (evita retentar)
-        state.valuationMap[mid] = { valuation: 0, _tentado: true };
-      }
-    } catch (e) {
-      state.valuationMap[mid] = { valuation: 0, _tentado: true };
+      });
+      state._valuationCache = r.data;
+      state._valuationCacheAt = Date.now();
+      console.log(`✅ [valuation] ${r.data.musicas.length} músicas em 1 chamada`);
     }
+  } catch (e) {
+    console.warn('⚠️ carregarValuations (portfolio):', e.message);
   }
 };
 // ============================================================
