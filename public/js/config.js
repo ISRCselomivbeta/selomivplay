@@ -6,7 +6,7 @@
 
 // ============ CONFIGURAÇÕES PRINCIPAIS ============
 window.CONFIG = {
-  VERCEL_URL: 'https://selomivplay-seyv.vercel.app/api/backend',
+VERCEL_URL: '/api/backend',
   GAS_URL: 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
   VERSION: '8.5.0',
   MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
