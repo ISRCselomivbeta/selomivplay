@@ -8,7 +8,7 @@
 //   - NO_CACHE_HOSTS: limpo (sem domínios antigos)
 // ============================================================
 
-const SW_VERSION = '9.8.8';  // 👈 BUMP manual a cada deploy relevante
+const SW_VERSION = '9.8.9';  // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
@@ -28,7 +28,12 @@ const STATIC_ASSETS = [
   '/images/icon-512.png',
   '/images/icon-maskable-192.png',
   '/images/icon-maskable-512.png',
-
+  
+   // 🆕 BOOTSTRAP ICONS — CDN
+  'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css',
+  'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/fonts/bootstrap-icons.woff2',
+  'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/fonts/bootstrap-icons.woff',
+  
   // CSS
   '/css/main.css',
   '/css/auth.css',
@@ -176,10 +181,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. CDN → cache-first
+  // 3. CDN → cache-first (aceita cors, inclui unpkg)
   if (
     url.hostname.includes('cdn.jsdelivr.net') ||
-    url.hostname.includes('cdnjs.cloudflare.com')
+    url.hostname.includes('cdnjs.cloudflare.com') ||
+    url.hostname.includes('unpkg.com')
   ) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -197,7 +203,24 @@ self.addEventListener('fetch', (event) => {
             caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
           }
           return response;
-        }).catch(() => cached);
+        }).catch(() => new Response('', { status: 504 }));
+      })
+    );
+    return;
+  }
+
+  // 3.5. FONTES (woff, woff2, ttf, otf, eot) → cache-first permanente
+  if (/\.(woff2?|ttf|otf|eot)$/i.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        }).catch(() => new Response('', { status: 404 }));
       })
     );
     return;
@@ -256,7 +279,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 6. JS/CSS → network-first com fallback para cache ✅ MUDOU
+  // 6. JS/CSS → network-first com fallback para cache
   if (isStaticAsset(url)) {
     event.respondWith(
       fetch(request)
@@ -272,12 +295,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 7. Outros → cache-first com revalidate
+  // 7. Outros → cache-first com revalidate (ACEITA cors também)
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request)
         .then((response) => {
-          if (response && response.status === 200 && response.type === 'basic') {
+          // ✅ CORRIGIDO: aceita 'basic' E 'cors'
+          if (response && response.status === 200 &&
+              (response.type === 'basic' || response.type === 'cors')) {
             const clone = response.clone();
             caches.open(CACHE_RUNTIME).then((cache) => cache.put(request, clone));
           }
