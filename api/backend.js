@@ -1156,7 +1156,7 @@ module.exports = async (req, res) => {
                 gasPing = unwrapGAS(gasResult).success;
             } catch (e) {}
 
-                       return res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 message: 'pong',
                 version: '9.7.6',
@@ -1168,6 +1168,7 @@ module.exports = async (req, res) => {
                 gas_ping: gasPing,
                 timestamp: new Date().toISOString()
             });
+        }   // 👈 ESTA CHAVE ESTAVA FALTANDO
 
         // ============================================================
         // LOGIN
