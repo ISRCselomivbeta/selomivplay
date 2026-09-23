@@ -225,92 +225,50 @@ function handleDeepLink() {
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
 
-  navigator.serviceWorker.register('/sw.js').then((reg) => {
-    console.log('✅ [SW] registrado. Scope:', reg.scope);
+  navigator.serviceWorker.register('/sw.js', {
+    scope: '/',
+    updateViaCache: 'none'
+  })
+    .then((registration) => {
+      console.log('✅ [SW] registrado. Scope:', registration.scope);
 
-    // --------------------------------------------------------
-    // Toast de "nova versão disponível"
-    // --------------------------------------------------------
-    function showUpdateToast() {
-      if (typeof showToast !== 'function') {
-        console.log('🔄 [SW] Nova versão disponível (toast indisponível)');
-        return;
-      }
+      // Checa update a cada 30s
+      setInterval(() => {
+        registration.update().catch(() => {});
+      }, 30000);
 
-      showToast(
-        '🔄 Nova versão! <a href="#" id="sw-reload-link" style="color:#fff;text-decoration:underline;">Recarregar</a>',
-        'info',
-        15000
-      );
+      // Detecta novo SW sendo instalado
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
 
-      // Bind do clique no link "Recarregar"
-      setTimeout(() => {
-        const link = document.getElementById('sw-reload-link');
-        if (!link) return;
-        link.addEventListener('click', (e) => {
-          e.preventDefault();
-          console.log('🔄 [SW] Usuário pediu reload — enviando SKIP_WAITING');
-          if (reg.waiting) {
-            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-          } else {
-            // Fallback: se não há waiting, recarrega direto
-            window.location.reload();
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            console.log('🆕 [SW] Nova versão disponível');
+            if (typeof showToast === 'function') {
+              showToast('🆕 Nova versão disponível — recarregue', 'info', 6000);
+            }
           }
         });
-      }, 50);
-    }
+      });
 
-    // --------------------------------------------------------
-    // Caso 1: já existe um SW esperando (update pendente)
-    // --------------------------------------------------------
-    if (reg.waiting && navigator.serviceWorker.controller) {
-      console.log('🔄 [SW] Update já aguardando ativação.');
-      showUpdateToast();
-    }
-
-    // --------------------------------------------------------
-    // Caso 2: novo SW sendo instalado agora
-    // --------------------------------------------------------
-    reg.addEventListener('updatefound', () => {
-      const newWorker = reg.installing;
-      if (!newWorker) return;
-
-      newWorker.addEventListener('statechange', () => {
-        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          console.log('🔄 [SW] Nova versão disponível!');
-          showUpdateToast();
+      // Verificação ao voltar o foco para a aba
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          registration.update().catch(() => {});
         }
       });
+    })
+    .catch((err) => {
+      console.error('❌ [SW] falha no registro:', err);
     });
 
-    // --------------------------------------------------------
-    // 🆕 ETAPA 7: Verificação periódica de update (30 min)
-    // --------------------------------------------------------
-    setInterval(() => {
-      reg.update().catch(() => {});
-    }, 30 * 60 * 1000);
-
-    // --------------------------------------------------------
-    // 🆕 ETAPA 7: Verificação ao voltar o foco para a aba
-    // --------------------------------------------------------
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        reg.update().catch(() => {});
-      }
-    });
-
-  }).catch((err) => {
-    console.warn('⚠️ [SW] erro no registro:', err);
-  });
-
-  // ----------------------------------------------------------
-  // Quando o SW novo ativar → recarrega a página (uma vez só)
-  // ----------------------------------------------------------
+  // Quando um SW novo ativa → recarrega a página uma vez
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (refreshing) return;
     refreshing = true;
-    console.log('🔁 [SW] Novo SW ativou — recarregando...');
+    console.log('🔄 [SW] controllerchange — recarregando');
     window.location.reload();
   });
 }
