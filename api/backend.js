@@ -1,4 +1,4 @@
-// BACKEND.JS - VERSÃO 9.7.6
+// BACKEND.JS - VERSÃO 9.7.7
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -7,11 +7,10 @@
 // + VENDA P2P COM EMAIL (create_trade robusto)
 // + IMAGENS REAIS NOS FEEDS (G1, UOL, Rolling Stone)
 //
-// MUDANÇAS v9.7.6:
-//   - ✅ FIX: fetchNewsFromDirectRSS adicionada (estava faltando)
-//   - ✅ FIX: aggregateNews duplicada removida
-//   - ✅ FIX: extração de imagem do RSS (enclosure, media:content,
-//            media:thumbnail, img)
+// MUDANÇAS v9.7.7:
+//   - ✅ FIX: callGAS timeout 6s → 15s (GAS demora mais que 6s)
+//   - ✅ FIX: unwrapGAS aceita múltiplos formatos (data, data.data, musicas)
+//   - ✅ FIX: get_musicas robusto com fallback multi-formato
 // ============================================================
 
 // ============================================================
@@ -30,11 +29,10 @@ const crypto = require('crypto');
 // ============================================================
 // KV — suporta REDIS_URL (node-redis) OU @vercel/kv
 // ============================================================
-let kv = null;          // cliente Redis (node-redis) ou wrapper do @vercel/kv
-let kvReady = null;     // Promise que resolve quando a conexão estiver pronta
-let kvMode = 'none';    // 'redis' | 'vercel-kv' | 'none'
+let kv = null;
+let kvReady = null;
+let kvMode = 'none';
 
-// Tentativa 1: REDIS_URL (Vercel Redis / Upstash)
 if (process.env.REDIS_URL) {
     try {
         const { createClient } = require('redis');
@@ -56,7 +54,6 @@ if (process.env.REDIS_URL) {
     }
 }
 
-// Tentativa 2: @vercel/kv (caso REDIS_URL não exista)
 if (!kv) {
     try {
         const vk = require('@vercel/kv').kv;
@@ -70,9 +67,7 @@ if (!kv) {
             kvMode = 'vercel-kv';
             console.log('✅ @vercel/kv carregado');
         }
-    } catch (e) {
-        // silencioso
-    }
+    } catch (e) {}
 }
 
 if (!kv) {
@@ -185,7 +180,6 @@ const Storage = {
             try {
                 const raw = await kv.get('playmy:' + key);
                 if (raw !== null && raw !== undefined) {
-                    // node-redis devolve string; @vercel/kv devolve objeto já parseado
                     if (typeof raw === 'string') {
                         try { return JSON.parse(raw); } catch (_) { return raw; }
                     }
@@ -334,7 +328,7 @@ function normalizePlaylistFromKV(pl) {
 }
 
 // ============================================================
-// CHAMAR GAS — timeout 6s + 1 retry
+// CHAMAR GAS — timeout 15s + 1 retry (🆕 era 6s)
 // ============================================================
 async function callGAS(action, params = {}, retries = 1) {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -376,7 +370,7 @@ function unwrapGAS(gasResult) {
     if (inner.success === false) {
         return { success: false, message: inner.message || 'GAS retornou erro', _via: 'gas_error' };
     }
-    
+
     // 🆕 Extrai o array de QUALQUER formato possível
     let payload;
     if (inner.data !== undefined) {
@@ -384,7 +378,6 @@ function unwrapGAS(gasResult) {
     } else if (Array.isArray(inner)) {
         payload = inner;
     } else {
-        // Tenta achar um array dentro do objeto
         const possibleKeys = ['musicas', 'items', 'list', 'result', 'data'];
         for (const key of possibleKeys) {
             if (Array.isArray(inner[key])) {
@@ -394,7 +387,7 @@ function unwrapGAS(gasResult) {
         }
         if (payload === undefined) payload = inner;
     }
-    
+
     return {
         success: true,
         data: payload,
@@ -404,6 +397,7 @@ function unwrapGAS(gasResult) {
         _raw: inner
     };
 }
+
 // ============================================================
 // ENVIO DE EMAIL
 // ============================================================
@@ -556,7 +550,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.6)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.7)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -621,8 +615,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
 }
 
 // ============================================================
-// NOTÍCIAS — FEEDS DIRETOS (G1, UOL, Rolling Stone, Tenho Mais Discos)
-// ✅ FUNÇÃO QUE FALTAVA
+// NOTÍCIAS — FEEDS DIRETOS
 // ============================================================
 async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
     try {
@@ -631,7 +624,7 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.6)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.7)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -786,7 +779,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
         const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.7.6 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.7.7 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -1151,7 +1144,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 }
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.7.6
+// HANDLER PRINCIPAL — v9.7.7
 // ============================================================
 module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1175,7 +1168,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.7.6',
+                version: '9.7.7',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -1184,7 +1177,7 @@ module.exports = async (req, res) => {
                 gas_ping: gasPing,
                 timestamp: new Date().toISOString()
             });
-        }   // 👈 ESTA CHAVE ESTAVA FALTANDO
+        }
 
         // ============================================================
         // LOGIN
@@ -1780,7 +1773,7 @@ module.exports = async (req, res) => {
             });
         }
 
-               // ============================================================
+        // ============================================================
         // PLAYLISTS PESSOAIS
         // ============================================================
         if (action === 'get_playlists') {
@@ -1831,7 +1824,6 @@ module.exports = async (req, res) => {
             });
         }
 
-        // 🆕 FIX: handler que faltava
         if (action === 'add_music_to_playlist') {
             const userId = params.user_id;
             const playlistId = params.playlist_id;
@@ -1877,7 +1869,6 @@ module.exports = async (req, res) => {
             });
         }
 
-        // 🆕 FIX: handler que faltava
         if (action === 'remove_music_from_playlist') {
             const userId = params.user_id;
             const playlistId = params.playlist_id;
@@ -2049,7 +2040,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // MÚSICAS
+        // MÚSICAS — 🆕 ROBUSTO
         // ============================================================
         if (action === 'get_musicas') {
             const cachedL1 = cache.get('musicas');
@@ -2081,6 +2072,20 @@ module.exports = async (req, res) => {
 
             console.warn('⚠️ [get_musicas] GAS não retornou array válido:', JSON.stringify(gasResult).substring(0, 200));
             return res.status(200).json({ success: true, data: FALLBACK_MUSICAS, source: 'fallback' });
+        }
+
+        if (action === 'get_external_musicas') {
+            const gasResult = await callGAS('get_external_musicas', params);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
+            return res.status(200).json({ success: true, data: [] });
+        }
+
+        if (action === 'get_top_investments') {
+            const gasResult = await callGAS('get_top_investments', params);
+            const unwrapped = unwrapGAS(gasResult);
+            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
+            return res.status(200).json({ success: true, data: FALLBACK_MUSICAS });
         }
 
         // ============================================================
@@ -2518,7 +2523,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.7.6',
+            version: '9.7.7',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
