@@ -1,5 +1,5 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.8.7
+// SERVICE WORKER — PLAY MY v9.8.8
 // Cache inteligente por tipo de recurso + PWA
 //
 // MUDANÇAS v9.8.3:
@@ -8,7 +8,7 @@
 //   - NO_CACHE_HOSTS: limpo (sem domínios antigos)
 // ============================================================
 
-const SW_VERSION = '9.8.6';  // 👈 BUMP manual a cada deploy relevante
+const SW_VERSION = '9.8.8';  // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
