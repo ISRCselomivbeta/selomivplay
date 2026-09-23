@@ -17,7 +17,7 @@ const NETWORK_TIMEOUT_MS = 6000;
 
 // Recursos essenciais (instalação imediata)
 const STATIC_ASSETS = [
-  '/',
+    // '/',                 // ← 🚨 COMENTADO: nunca cachear HTML
   // '/index.html',   // ← REMOVIDO: nunca cachear HTML
   '/offline.html',
   '/manifest.json',
