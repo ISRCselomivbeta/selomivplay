@@ -350,9 +350,39 @@ function _setCached(action, data, json) {
 // ============================================================
 // VALIDAÇÃO DE RESPOSTA
 // ============================================================
+// 🆕 Ações que aceitam success:false como resposta VÁLIDA
+// (não é erro de rede, é resposta de negócio: senha errada, email duplicado, etc)
+const ACOES_ACEITAM_FALSE = [
+    'login',
+    'register',
+    'reset_password',
+    'request_password_reset',
+    'verify_reset_token',
+    'buy',
+    'buy_external',
+    'sell_to_market',
+    'create_trade',
+    'accept_trade',
+    'decline_trade',
+    'cancel_trade',
+    'request_withdrawal',
+    'redeem_ticket'
+];
+
 function _isValidResponse(action, json) {
     if (!json || typeof json !== 'object') return false;
+
+    // 🆕 Ações de negócio: success:false é resposta válida
+    if (ACOES_ACEITAM_FALSE.includes(action)) {
+        // Se tem message ou data, é resposta válida
+        if (json.message !== undefined || json.data !== undefined) {
+            return true;
+        }
+        return false;
+    }
+
     if (json.success === false) return false;
+
     // success:true mas sem data em ação que exige data → inválido
     if (ACOES_EXIGEM_DATA.includes(action)) {
         if (json.data === undefined || json.data === null) {
@@ -470,47 +500,56 @@ window.callAPI = async function (action, data, _retry) {
       // TENTATIVA 2: BACKEND PRINCIPAL (Vercel)
       // ============================================================
       const tryFetch = async (baseUrl, timeoutMs, label) => {
-        const ctrl = new AbortController();
-        const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
-        try {
-          const url = buildUrl(baseUrl, action, data);
-          const r = await fetch(url, {
-            signal: ctrl.signal,
-            headers: { 'Accept': 'application/json' }
-          });
-          clearTimeout(timeout);
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+        const isGAS = baseUrl.includes('script.google.com');
+        const url = buildUrl(baseUrl, action, data);
 
-          if (!r.ok) {
+        // GAS: sem headers customizados (evita erro de CORS/redirect)
+        const fetchOptions = {
+            signal: ctrl.signal,
+            method: 'GET',
+            redirect: 'follow'
+        };
+        if (!isGAS) {
+            fetchOptions.headers = { 'Accept': 'application/json' };
+        }
+
+        const r = await fetch(url, fetchOptions);
+        clearTimeout(timeout);
+
+        if (!r.ok) {
             console.warn(`⚠️ [${action}] ${label} HTTP ${r.status}`);
             return null;
-          }
+        }
 
-          const text = await r.text();
-          let json = null;
-          try {
+        const text = await r.text();
+        let json = null;
+        try {
             json = JSON.parse(text);
-          } catch (_) {
+        } catch (_) {
             const m = text.match(/\{[\s\S]*\}/);
             if (m) {
-              try { json = JSON.parse(m[0]); } catch (_) {}
+                try { json = JSON.parse(m[0]); } catch (_) {}
             }
-          }
+        }
 
-          if (_isValidResponse(action, json)) {
+        if (_isValidResponse(action, json)) {
             console.log(`✅ [${action}] via ${label}`);
             return json;
-          }
-
-          console.warn(`⚠️ [${action}] ${label} resposta inválida`, json);
-          return null;
-        } catch (e) {
-          clearTimeout(timeout);
-          if (e.name !== 'AbortError') {
-            console.warn(`⚠️ [${action}] ${label} erro:`, e.name, e.message);
-          }
-          return null;
         }
-      };
+
+        console.warn(`⚠️ [${action}] ${label} resposta inválida`, json);
+        return null;
+    } catch (e) {
+        clearTimeout(timeout);
+        if (e.name !== 'AbortError') {
+            console.warn(`⚠️ [${action}] ${label} erro:`, e.name, e.message);
+        }
+        return null;
+    }
+};
 
       // Tentar backend — 🆕 SEMPRE na mesma origem do usuário
       const vercelJson = await tryFetch(ENDPOINT_URLS.backend, 20000, 'Vercel');
