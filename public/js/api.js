@@ -66,7 +66,54 @@ const API_ENDPOINTS = {
     'get_global_playlists':                 'backend',
     'create_global_playlist':               'backend',
     'add_music_to_global_playlist':         'backend',
-    'remove_music_from_global_playlist':    'backend'
+    'remove_music_from_global_playlist':    'backend',
+
+    // 🆕 AUTH + FINANCEIRO (backend principal /api/backend)
+    'login':                        'backend',
+    'register':                     'backend',
+    'reset_password':               'backend',
+    'request_password_reset':       'backend',
+    'verify_reset_token':           'backend',
+    'request_withdrawal':           'backend',
+    'buy':                          'backend',
+    'buy_external':                 'backend',
+    'sell_to_market':               'backend',
+    'create_trade':                 'backend',
+    'accept_trade':                 'backend',
+    'decline_trade':                'backend',
+    'cancel_trade':                 'backend',
+    'get_saldo':                    'backend',
+    'get_carteira':                 'backend',
+    'get_extrato':                  'backend',
+    'get_trades':                   'backend',
+    'get_following':                'backend',
+    'toggle_follow':                'backend',
+    'toggle_favorite':              'backend',
+    'get_tickets':                  'backend',
+    'redeem_ticket':                'backend',
+    'create_ticket':                'backend',
+    'get_user_profile':             'backend',
+    'update_profile':               'backend',
+    'upload_music':                 'backend',
+    'update_music':                 'backend',
+    'pause_music':                  'backend',
+    'delete_music':                 'backend',
+    'get_artist_data':              'backend',
+    'search_youtube':               'backend',
+    'search_isrc':                  'backend',
+    'get_youtube_stats':            'backend',
+    'register_streaming':           'backend',
+    'get_streaming_stats':          'backend',
+    'get_top_investments':          'backend',
+    'get_external_musicas':         'backend',
+    'suggest_external_music':       'backend',
+    'get_news':                     'backend',
+    'mark_news_seen':               'backend',
+    'track_news_interaction':       'backend',
+    'get_mining_blocks':            'backend',
+    'add_block':                    'backend',
+    'get_stats':                    'backend',
+    'get_admin_stats':              'backend'
 };
 
 // ============================================================
@@ -123,7 +170,7 @@ window.HealthCheck = {
   mode: 'checking',
 
   async testVercel() {
-    const url = CONFIG.VERCEL_URL + '?action=ping';
+    const url = ENDPOINT_URLS.backend + '?action=ping';   // 🆕 relativo
     try {
       const c = new AbortController();
       const t = setTimeout(() => c.abort(), 8000);
@@ -465,8 +512,8 @@ window.callAPI = async function (action, data, _retry) {
         }
       };
 
-      // Tentar backend
-      const vercelJson = await tryFetch(CONFIG.VERCEL_URL, 20000, 'Vercel');
+      // Tentar backend — 🆕 SEMPRE na mesma origem do usuário
+      const vercelJson = await tryFetch(ENDPOINT_URLS.backend, 20000, 'Vercel');
       if (vercelJson) {
         HealthCheck.vercel.online = true;
         if (HealthCheck.mode !== 'vercel') {
