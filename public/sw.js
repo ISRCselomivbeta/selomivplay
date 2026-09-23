@@ -1,32 +1,14 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.8.0
+// SERVICE WORKER — PLAY MY v9.8.3
 // Cache inteligente por tipo de recurso + PWA
 //
-// MUDANÇAS v9.8.0:
-//   - skipWaiting() REMOVIDO do install (SW fica em "waiting")
-//   - App detecta update e mostra toast "Nova versão"
-//   - SKIP_WAITING agora avisa clients via SW_ACTIVATED
-//   - FORCE_UPDATE também avisa clients
-//
-// MUDANÇAS v9.7.0:
-//   - Adicionados share.js e royalties-panel.js ao pré-cache
-//   - SW_VERSION atualizado para forçar limpeza de cache antigo
-//   - Mantém NAVIGATE_HOME, JS pré-cache, stale-while-revalidate
-//
-// MUDANÇAS v9.6.0:
-//   - Adicionados os 4 ícones novos ao pré-cache
-//
-// MUDANÇAS v9.1.0:
-//   - Adicionado NAVIGATE_HOME (usado pelo offline.html)
-//   - JS adicionado ao pré-cache (api.js, router.js, auth.js...)
-//   - Estratégia de JS/CSS: cache-first + revalidate em background
-//   - Imagens: stale-while-revalidate
-//   - Navegação: network-first com timeout de 6s
-//   - Fallback para offline.html quando index.html não está em cache
+// MUDANÇAS v9.8.3:
+//   - JS/CSS: network-first (antes era cache-first)
+//   - SW_VERSION: hard-coded (antes era Date.now())
+//   - NO_CACHE_HOSTS: limpo (sem domínios antigos)
 // ============================================================
 
-// ✅ Auto-versão: muda a cada deploy (o SW detecta "novo" sempre)
-const SW_VERSION = '9.8.0-' + Date.now();
+const SW_VERSION = '9.8.3';   // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
@@ -87,8 +69,6 @@ const STATIC_ASSETS = [
 const NO_CACHE_HOSTS = [
   'script.google.com',
   'script.googleusercontent.com',
-  'selomivplay-seyv.vercel.app',
-  'selomivplay.vercel.app',
   'www.googleapis.com',
   'news.google.com',
   'allorigins.win',
@@ -131,8 +111,6 @@ function isImage(request, url) {
 
 // ============================================================
 // INSTALL — pré-cache dos assets essenciais
-// ⚠️ NÃO chamamos skipWaiting() aqui: deixamos o SW em "waiting"
-//    para o app detectar via updatefound e avisar o usuário.
 // ============================================================
 self.addEventListener('install', (event) => {
   console.log('[SW] Instalando v' + SW_VERSION);
@@ -147,7 +125,7 @@ self.addEventListener('install', (event) => {
           )
         );
       })
-      .then(() => self.skipWaiting())   // 🆕 MANTÉM para forçar update
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -185,7 +163,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1.1. API do próprio domínio → network-only
+  // 2. API do próprio domínio → network-only
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request).catch(() =>
@@ -198,7 +176,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. CDN → cache-first
+  // 3. CDN → cache-first
   if (
     url.hostname.includes('cdn.jsdelivr.net') ||
     url.hostname.includes('cdnjs.cloudflare.com')
@@ -225,7 +203,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Imagens → stale-while-revalidate
+  // 4. Imagens → stale-while-revalidate
   if (isImage(request, url)) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -245,7 +223,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. HTML/navegação → network-first com timeout
+  // 5. HTML/navegação → network-first com timeout
   if (
     request.mode === 'navigate' ||
     (request.headers.get('accept') || '').includes('text/html')
@@ -278,27 +256,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 5. JS/CSS → cache-first + revalidate
+  // 6. JS/CSS → network-first com fallback para cache ✅ MUDOU
   if (isStaticAsset(url)) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request)
-          .then((response) => {
-            if (response && response.status === 200) {
-              const clone = response.clone();
-              caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
-            }
-            return response;
-          })
-          .catch(() => cached);
-
-        return cached || fetchPromise;
-      })
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }
 
-  // 6. Outros → cache-first com revalidate
+  // 7. Outros → cache-first com revalidate
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request)
@@ -326,7 +300,6 @@ self.addEventListener('message', (event) => {
   switch (data.type) {
     case 'SKIP_WAITING':
       self.skipWaiting().then(() => {
-        // Avisa todos os clients que o SW novo ativou
         self.clients.matchAll({ type: 'window' }).then((clients) => {
           clients.forEach((client) => {
             client.postMessage({ type: 'SW_ACTIVATED' });
