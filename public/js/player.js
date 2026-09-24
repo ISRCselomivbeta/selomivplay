@@ -1,8 +1,15 @@
 // ============================================================
-// js/player.js — PLAY MY v9.0.0
+// js/player.js — PLAY MY v9.1.0
 // Player completo: reprodução, controles, progresso, volume.
 // Depende de: config.js, utils.js, state.js, api.js, youtube.js
 // DEVE carregar DEPOIS de youtube.js e ANTES de marketplace.js.
+//
+// MUDANÇAS v9.1.0:
+//   - 🆕 MEDIA SESSION API: suporte a segundo plano no celular
+//     - metadados (título, artista, capa) na tela de bloqueio
+//     - controles play/pause/next/prev no sistema operacional
+//     - AudioSession.type = 'playback' (iOS)
+//     - Wake Lock (opcional) para não apagar a tela durante a música
 //
 // MUDANÇAS v9.0.0:
 //   - playTrack/playExternalTrack continuam atualizando o PLAYER EXPANDIDO
@@ -10,6 +17,150 @@
 //   - player.js agora loga o videoId para debug
 //   - Nada quebra do v8.5.2
 // ============================================================
+
+// ============================================================
+// 🆕 MEDIA SESSION — suporte a segundo plano
+// ============================================================
+let _wakeLock = null;
+let _wakeLockRequested = false;
+
+function _setupMediaSession(titulo, artista, capaUrl) {
+  if (!('mediaSession' in navigator)) {
+    console.log('🎵 [MediaSession] não suportado neste navegador');
+    return;
+  }
+
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: titulo || 'PLAY MY',
+      artist: artista || 'PLAY MY',
+      album: 'PLAY MY',
+      artwork: [
+        { src: capaUrl || '/images/logo.png', sizes: '96x96',   type: 'image/png' },
+        { src: capaUrl || '/images/logo.png', sizes: '128x128', type: 'image/png' },
+        { src: capaUrl || '/images/logo.png', sizes: '192x192', type: 'image/png' },
+        { src: capaUrl || '/images/logo.png', sizes: '256x256', type: 'image/png' },
+        { src: capaUrl || '/images/logo.png', sizes: '384x384', type: 'image/png' },
+        { src: capaUrl || '/images/logo.png', sizes: '512x512', type: 'image/png' }
+      ]
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (state.youtubePlayer && state.youtubePlayer.playVideo) {
+        state.youtubePlayer.playVideo();
+        state.isPlaying = true;
+        updatePlayerIcons();
+      }
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+      if (state.youtubePlayer && state.youtubePlayer.pauseVideo) {
+        state.youtubePlayer.pauseVideo();
+        state.isPlaying = false;
+        updatePlayerIcons();
+      }
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      if (typeof playPrevious === 'function') playPrevious();
+    });
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      if (typeof playNext === 'function') playNext();
+    });
+    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+      if (state.youtubePlayer && state.youtubePlayer.seekTo) {
+        const skip = details.seekOffset || 10;
+        const t = state.youtubePlayer.getCurrentTime() - skip;
+        state.youtubePlayer.seekTo(Math.max(0, t), true);
+      }
+    });
+    navigator.mediaSession.setActionHandler('seekforward', (details) => {
+      if (state.youtubePlayer && state.youtubePlayer.seekTo) {
+        const skip = details.seekOffset || 10;
+        const t = state.youtubePlayer.getCurrentTime() + skip;
+        state.youtubePlayer.seekTo(t, true);
+      }
+    });
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (state.youtubePlayer && state.youtubePlayer.seekTo && details.seekTime != null) {
+        state.youtubePlayer.seekTo(details.seekTime, true);
+      }
+    });
+
+    navigator.mediaSession.playbackState = 'playing';
+    console.log('🎵 [MediaSession] configurada:', titulo, '-', artista);
+  } catch (e) {
+    console.warn('⚠️ [MediaSession] erro:', e.message);
+  }
+}
+
+function _updateMediaSessionState(isPlaying) {
+  if (!('mediaSession' in navigator)) return;
+  try {
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+  } catch (e) {}
+}
+
+function _updateMediaSessionPosition() {
+  if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+  if (!state.youtubePlayer || !state.youtubePlayer.getCurrentTime) return;
+  try {
+    const duration = state.youtubePlayer.getDuration();
+    const position = state.youtubePlayer.getCurrentTime();
+    const rate = 1;
+    if (duration > 0 && position >= 0 && position <= duration) {
+      navigator.mediaSession.setPositionState({ duration, position, playbackRate: rate });
+    }
+  } catch (e) {}
+}
+
+function _clearMediaSession() {
+  if (!('mediaSession' in navigator)) return;
+  try {
+    navigator.mediaSession.metadata = null;
+    navigator.mediaSession.playbackState = 'none';
+  } catch (e) {}
+}
+
+// ============================================================
+// 🆕 AUDIO SESSION + WAKE LOCK (iOS + Android)
+// ============================================================
+function _setAudioSessionType(type) {
+  try {
+    if (navigator.audioSession && 'type' in navigator.audioSession) {
+      navigator.audioSession.type = type || 'playback';
+      console.log('🎵 [AudioSession] type =', navigator.audioSession.type);
+    }
+  } catch (e) {}
+}
+
+async function _requestWakeLock() {
+  if (_wakeLockRequested) return;
+  _wakeLockRequested = true;
+  try {
+    if ('wakeLock' in navigator && navigator.wakeLock) {
+      _wakeLock = await navigator.wakeLock.request('screen');
+      console.log('🎵 [WakeLock] ativado');
+      _wakeLock.addEventListener('release', () => {
+        console.log('🎵 [WakeLock] liberado');
+        _wakeLock = null;
+      });
+    }
+  } catch (e) {
+    console.log('🎵 [WakeLock] indisponível:', e.message);
+  }
+}
+
+function _releaseWakeLock() {
+  _wakeLockRequested = false;
+  if (_wakeLock) {
+    try { _wakeLock.release(); } catch (e) {}
+    _wakeLock = null;
+  }
+}
+
+// ============================================================
+// 🆕 PATCH: updatePlayerProgress agora atualiza a posição da Media Session
+// ============================================================
+const _originalUpdatePlayerProgress = window.updatePlayerProgress;
 
 // ============ TOCAR MÚSICA INTERNA ============
 window.playTrack = function (index) {
@@ -65,7 +216,12 @@ window.playTrack = function (index) {
   const trackOverlayIcon = document.getElementById('trackOverlayIcon');
   if (trackOverlayIcon) trackOverlayIcon.className = 'bi bi-play-fill';
 
-  // ✅ Carrega o player do YouTube (agora com origin + registrarStreaming automáticos)
+  // 🆕 MEDIA SESSION — configura título/artista/capa na tela de bloqueio
+  _setupMediaSession(t.titulo, t.artista, getCoverUrl(t, false));
+  _setAudioSessionType('playback');
+  _requestWakeLock();
+
+  // ✅ Carrega o player do YouTube
   if (t.link_youtube) {
     const v = extractYouTubeId(t.link_youtube);
     console.log('🎵 YouTube video ID:', v);
@@ -139,6 +295,11 @@ window.playExternalTrack = function (index) {
   const expandedAvailable = document.getElementById('expandedAvailable');
   if (expandedAvailable) expandedAvailable.textContent = (t.percentual_disponivel || 0) + '%';
 
+  // 🆕 MEDIA SESSION
+  _setupMediaSession(t.titulo, t.artista, getCoverUrl(t, true));
+  _setAudioSessionType('playback');
+  _requestWakeLock();
+
   // ✅ Carrega o player do YouTube
   if (t.link_youtube) {
     const v = extractYouTubeId(t.link_youtube);
@@ -198,6 +359,11 @@ window.playSearchResult = function (type, id) {
     const expandedArtist = document.getElementById('expandedArtist');
     if (expandedArtist) expandedArtist.textContent = 'Resultado da busca';
 
+    // 🆕 MEDIA SESSION
+    _setupMediaSession('YouTube', 'PLAY MY', 'https://img.youtube.com/vi/' + vid + '/hqdefault.jpg');
+    _setAudioSessionType('playback');
+    _requestWakeLock();
+
     const loading = document.getElementById('playerLoadingExpanded');
     if (loading) loading.style.display = 'flex';
 
@@ -244,6 +410,9 @@ window.updatePlayerIcons = function () {
     const el = document.getElementById(id);
     if (el) el.className = ip ? 'bi bi-pause-fill' : 'bi bi-play-fill';
   });
+
+  // 🆕 Atualiza a Media Session também
+  _updateMediaSessionState(ip);
 };
 
 // ============ VOLUME ============
@@ -341,5 +510,24 @@ window.closePlayerExpanded = function () {
   }
 };
 
-// ============ LOG DE CARREGAMENTO ============
-console.log('✅ [player.js] v9.0.0 carregado — registrarStreaming automático via youtube.js');
+// ============================================================
+// 🆕 LIBERAÇÃO DE RECURSOS
+// Chamado quando a música termina ou é pausada por muito tempo
+// ============================================================
+window._onPlayerStop = function () {
+  _releaseWakeLock();
+  _clearMediaSession();
+  _setAudioSessionType('auto');
+};
+
+// ============================================================
+// 🆕 PATCH: atualiza a posição da Media Session junto com o progresso
+// ============================================================
+const _progressIntervalPatch = setInterval(() => {
+  if (state.isPlaying) _updateMediaSessionPosition();
+}, 5000);
+
+// ============================================================
+// LOG DE CARREGAMENTO
+// ============================================================
+console.log('✅ [player.js] v9.1.0 carregado — Media Session + segundo plano');
