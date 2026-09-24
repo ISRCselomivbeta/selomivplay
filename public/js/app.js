@@ -1,5 +1,5 @@
 // ============================================================
-// js/app.js — PLAY MY v9.8.0
+// js/app.js — PLAY MY v9.8.1
 // Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
 // + Detecção de app nativo (Capacitor/TWA)
 // + Safe areas (iPhone notch)
@@ -9,6 +9,12 @@
 // + INSTALAÇÃO INTELIGENTE via SIDEBAR (sem balão flutuante)
 // Depende de TODOS os módulos anteriores.
 // DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
+//
+// MUDANÇAS v9.8.1:
+//   - FIX: registerServiceWorker() idempotente (não registra 2x)
+//   - FIX: updatefound → SKIP_WAITING automático (SW assume na hora)
+//   - FIX: controllerchange → reload 1x (antes ficava "sem reload")
+//   - FIX: __swRefreshing guard evita loop de reload
 //
 // MUDANÇAS v9.8.0:
 //   - ETAPA 7: verificação periódica de update (30 min)
@@ -220,10 +226,20 @@ function handleDeepLink() {
 }
 
 // ============================================================
-// SERVICE WORKER — registro + detecção de update (v9.8.0)
+// SERVICE WORKER — registro + detecção de update (v9.8.1)
+// - registerServiceWorker() é idempotente (não registra 2x)
+// - updatefound → SKIP_WAITING automático (SW assume na hora)
+// - controllerchange → reload UMA vez
 // ============================================================
+let __swRegistered = false;
+let __swRefreshing = false;
+
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
+
+  // 🔒 idempotente: só registra uma vez por sessão de página
+  if (__swRegistered) return;
+  __swRegistered = true;
 
   navigator.serviceWorker.register('/sw.js', {
     scope: '/',
@@ -243,10 +259,15 @@ function registerServiceWorker() {
         if (!newWorker) return;
 
         newWorker.addEventListener('statechange', () => {
+          // Quando o novo SW terminar de instalar E já existe um controlando
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            console.log('🆕 [SW] Nova versão disponível');
+            console.log('🆕 [SW] Nova versão instalada — ativando...');
+
+            // 🔥 força o novo SW a assumir imediatamente
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+
             if (typeof showToast === 'function') {
-              showToast('🆕 Nova versão disponível — recarregue', 'info', 6000);
+              showToast('🆕 Atualizando para nova versão...', 'info', 3000);
             }
           }
         });
@@ -263,9 +284,12 @@ function registerServiceWorker() {
       console.error('❌ [SW] falha no registro:', err);
     });
 
-  // 🚨 REMOVIDO: o location.reload() causava flash de versão antiga
+  // 🔄 quando o novo SW assume o controle → recarrega UMA vez
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('🔄 [SW] Novo SW assumiu o controle (sem reload)');
+    if (__swRefreshing) return;
+    __swRefreshing = true;
+    console.log('🔄 [SW] Novo SW assumiu o controle — recarregando');
+    window.location.reload();
   });
 }
 
@@ -281,7 +305,7 @@ window.initializeApp = async function () {
 
   loadYouTubeAPI();
 
-  // SW com detecção de update
+  // SW com detecção de update (idempotente — não duplica)
   registerServiceWorker();
 
   setTimeout(hideSplashScreen, 300);
@@ -337,7 +361,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupStatusBar();
   blockNativeGestures();
 
-  // SW com detecção de update
+  // SW com detecção de update (idempotente — pode chamar aqui e no initializeApp)
   registerServiceWorker();
 
   // 1. Health check inicial
@@ -710,7 +734,7 @@ window.addEventListener('load', () => {
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.8.0 carregado — aplicação inicializada');
+console.log('✅ [app.js] v9.8.1 carregado — aplicação inicializada');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
-console.log('📲 Instalação via sidebar ativa — v9.8.0');
+console.log('📲 Instalação via sidebar ativa — v9.8.1');
