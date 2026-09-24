@@ -1,7 +1,10 @@
 // ============================================================
-// js/config.js — PLAY MY v8.6.0
+// js/config.js — PLAY MY v9.8.1
 // Configurações globais. NÃO depende de nenhum outro módulo.
 // DEVE ser o primeiro script a carregar.
+//
+// MUDANÇAS v9.8.1:
+//   - VERSION bumpada para bater com app.js v9.8.1
 //
 // MUDANÇAS v8.6.0:
 //   - FIX: Placeholders SVG com aspas simples (não quebram mais
@@ -18,7 +21,7 @@ window.CONFIG = {
 
   GAS_URL: 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
 
-  VERSION: '8.6.0',
+  VERSION: '9.8.1',
 
   MERCADO_PAGO_LINK: 'https://link.mercadopago.com.br/selomiv',
 
