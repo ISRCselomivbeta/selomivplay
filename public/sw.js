@@ -2,7 +2,7 @@
 // SERVICE WORKER — PLAY MY v9.9.6
 // Cache inteligente por tipo de recurso + PWA
 //
-// MUDANÇAS v9.9.5:
+// MUDANÇAS v9.9.5: 
 //   - 🔧 CDN: retry 3x + nunca devolver Response vazio (antes
 //             devolvia 504 vazio → CSS quebrado no 2º F5)
 //   - 🔧 FONTES: mesmo tratamento (antes 404 vazio → sem ícone)
