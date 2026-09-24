@@ -1,7 +1,9 @@
-// ============================================================
-// js/router.js — PLAY MY v1.0.0
+// js/router.js — PLAY MY v1.0.1
 // Sistema de roteamento SPA
-// ============================================================
+//
+// MUDANÇAS v1.0.1:
+//   - FIX: Router.init() espera state.js + bootstrap do app.js
+//          (antes rodava antes dos dados e renderizava vazio)
 
 const ROUTES = {
     '/':              { section: 'marketplace' },
@@ -73,6 +75,25 @@ window.navigateTo = (p) => Router.goToSection(p);
 window.goToSection = (s) => Router.goToSection(s);
 
 // Inicializar quando o DOM estiver pronto
-document.addEventListener('DOMContentLoaded', () => Router.init());
+// 🔥 FIX v1.0.1 — espera o app.js terminar o bootstrap
+// (restoreSession + initializeApp + loadAllData)
+// antes de chamar Router.init() → evita renderMarketplace() com state vazio
+document.addEventListener('DOMContentLoaded', () => {
+  // Se o app já restaurou a sessão, o initializeApp vai rodar em breve
+  // e fará o re-render. Damos um pequeno delay pra não competir com o
+  // bootstrap. O app.js também força re-render pós-loadAllData (defesa dupla).
+  const tryInit = () => {
+    // Espera window.state existir (state.js já carregou)
+    if (!window.state) {
+      setTimeout(tryInit, 50);
+      return;
+    }
+    // Se já tem usuário logado, espera um pouco mais pro app.js rodar
+    const hasUser = !!(window.state.currentUser);
+    const delay = hasUser ? 600 : 200;
+    setTimeout(() => Router.init(), delay);
+  };
+  tryInit();
+});
 
-console.log('✅ [router.js] v1.0.0 carregado');
+console.log('✅ [router.js] v1.0.1 carregado');
