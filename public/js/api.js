@@ -1,8 +1,12 @@
 // ============================================================
-// js/api.js — PLAY MY v8.9.1
+// js/api.js — PLAY MY v8.9.2
 // HealthCheck + callAPI (roteador multi-API + Vercel → GAS → Local).
 // Depende de: config.js, utils.js, state.js
 // DEVE carregar DEPOIS de state.js e ANTES de auth.js.
+//
+// MUDANÇAS v8.9.2:
+//   - 🔧 Bump de versão (8.9.1 → 8.9.2) para forçar atualização no cache
+//   - Nenhuma mudança funcional
 //
 // MUDANÇAS v8.9.1:
 //   - 🆕 DEDUP: chamadas idênticas simultâneas compartilham a mesma promise
@@ -51,14 +55,14 @@ const API_ENDPOINTS = {
     'get_elo_ranking':      'elo',
     'atualizar_todos_elos': 'elo',
 
-       // ISRC (/api/isrc)
+    // ISRC (/api/isrc)
     'validar_isrc':         'isrc',
     'buscar_isrc':          'isrc',
     'vincular_isrc':        'isrc',
     'ver_isrc':             'isrc',
     'listar_isrcs':         'isrc',
 
-    // 🆕 PLAYLISTS (backend principal /api/backend)
+    // PLAYLISTS (backend principal /api/backend)
     'get_playlists':                        'backend',
     'create_playlist':                      'backend',
     'add_music_to_playlist':                'backend',
@@ -68,7 +72,7 @@ const API_ENDPOINTS = {
     'add_music_to_global_playlist':         'backend',
     'remove_music_from_global_playlist':    'backend',
 
-    // 🆕 AUTH + FINANCEIRO (backend principal /api/backend)
+    // AUTH + FINANCEIRO (backend principal /api/backend)
     'login':                        'backend',
     'register':                     'backend',
     'reset_password':               'backend',
@@ -129,7 +133,7 @@ const ENDPOINT_URLS = {
 };
 
 // ============================================================
-// 🆕 AÇÕES QUE EXIGEM "data" NA RESPOSTA
+// AÇÕES QUE EXIGEM "data" NA RESPOSTA
 // Se vierem com success:true mas SEM data → considerar inválido
 // ============================================================
 const ACOES_EXIGEM_DATA = [
@@ -138,7 +142,7 @@ const ACOES_EXIGEM_DATA = [
     'get_elo_ranking', 'ver_elo', 'calcular_elo',
     'royalties_resumo', 'royalties_periodos', 'extrato_usuario',
     'get_saldo', 'get_carteira', 'get_extrato', 'get_musicas', 'get_artists',
-    // 🆕 Playlists — exigem data na resposta
+    // Playlists — exigem data na resposta
     'get_playlists', 'create_playlist',
     'get_global_playlists', 'create_global_playlist',
     'add_music_to_playlist', 'remove_music_from_playlist',
@@ -146,7 +150,7 @@ const ACOES_EXIGEM_DATA = [
 ];
 
 // ============================================================
-// 🆕 AÇÕES DE LEITURA (elegíveis a cache curto)
+// AÇÕES DE LEITURA (elegíveis a cache curto)
 // Não inclui mutações nem ações críticas
 // ============================================================
 const ACOES_CACHEAVEIS = [
@@ -170,7 +174,7 @@ window.HealthCheck = {
   mode: 'checking',
 
   async testVercel() {
-    const url = ENDPOINT_URLS.backend + '?action=ping';   // 🆕 relativo
+    const url = ENDPOINT_URLS.backend + '?action=ping';
     try {
       const c = new AbortController();
       const t = setTimeout(() => c.abort(), 8000);
@@ -316,13 +320,12 @@ const ACOES_CRITICAS = [
 ];
 
 // ============================================================
-// 🆕 DEDUP + CACHE (v8.9.1)
+// DEDUP + CACHE (v8.9.1)
 // ============================================================
-const _inFlight = new Map();   // chave → Promise em andamento
-const _cache    = new Map();   // chave → { at, json }
+const _inFlight = new Map();
+const _cache    = new Map();
 
 function _keyFor(action, data) {
-    // Chave estável (ordem de chaves não importa)
     const keys = Object.keys(data || {}).sort();
     const parts = keys.map(k => k + '=' + String(data[k]));
     return action + '|' + parts.join('&');
@@ -350,8 +353,6 @@ function _setCached(action, data, json) {
 // ============================================================
 // VALIDAÇÃO DE RESPOSTA
 // ============================================================
-// 🆕 Ações que aceitam success:false como resposta VÁLIDA
-// (não é erro de rede, é resposta de negócio: senha errada, email duplicado, etc)
 const ACOES_ACEITAM_FALSE = [
     'login',
     'register',
@@ -372,9 +373,7 @@ const ACOES_ACEITAM_FALSE = [
 function _isValidResponse(action, json) {
     if (!json || typeof json !== 'object') return false;
 
-    // 🆕 Ações de negócio: success:false é resposta válida
     if (ACOES_ACEITAM_FALSE.includes(action)) {
-        // Se tem message ou data, é resposta válida
         if (json.message !== undefined || json.data !== undefined) {
             return true;
         }
@@ -383,7 +382,6 @@ function _isValidResponse(action, json) {
 
     if (json.success === false) return false;
 
-    // success:true mas sem data em ação que exige data → inválido
     if (ACOES_EXIGEM_DATA.includes(action)) {
         if (json.data === undefined || json.data === null) {
             console.warn(`⚠️ [${action}] respondeu success:true SEM data — tratando como inválido`);
@@ -430,9 +428,7 @@ window.callAPI = async function (action, data, _retry) {
     data.user_id = state.currentUser.id;
   }
 
-  // ============================================================
-  // 🆕 v8.9.1 — DEDUP: mesma chamada em andamento → mesma promise
-  // ============================================================
+  // DEDUP: mesma chamada em andamento → mesma promise
   if (_retry === 0) {
       const inFlightKey = _keyFor(action, data);
       if (_inFlight.has(inFlightKey)) {
@@ -440,7 +436,7 @@ window.callAPI = async function (action, data, _retry) {
           return _inFlight.get(inFlightKey);
       }
 
-      // 🆕 CACHE: resposta recente (5s)
+      // CACHE: resposta recente (5s)
       const cached = _getCached(action, data);
       if (cached) {
           console.log(`📦 [${action}] cache hit (${CACHE_TTL_MS}ms)`);
@@ -449,9 +445,7 @@ window.callAPI = async function (action, data, _retry) {
   }
 
   const _run = async () => {
-      // ============================================================
       // TENTATIVA 1: API ESPECÍFICA (streams, valuation, royalties, elo, isrc)
-      // ============================================================
       const specificEndpoint = getEndpointForAction(action);
 
       if (specificEndpoint !== ENDPOINT_URLS.backend) {
@@ -496,9 +490,7 @@ window.callAPI = async function (action, data, _retry) {
           }
       }
 
-      // ============================================================
       // TENTATIVA 2: BACKEND PRINCIPAL (Vercel)
-      // ============================================================
       const tryFetch = async (baseUrl, timeoutMs, label) => {
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -506,7 +498,6 @@ window.callAPI = async function (action, data, _retry) {
         const isGAS = baseUrl.includes('script.google.com');
         const url = buildUrl(baseUrl, action, data);
 
-        // GAS: sem headers customizados (evita erro de CORS/redirect)
         const fetchOptions = {
             signal: ctrl.signal,
             method: 'GET',
@@ -551,7 +542,7 @@ window.callAPI = async function (action, data, _retry) {
     }
 };
 
-      // Tentar backend — 🆕 SEMPRE na mesma origem do usuário
+      // Tentar backend — SEMPRE na mesma origem do usuário
       const vercelJson = await tryFetch(ENDPOINT_URLS.backend, 20000, 'Vercel');
       if (vercelJson) {
         HealthCheck.vercel.online = true;
@@ -577,9 +568,7 @@ window.callAPI = async function (action, data, _retry) {
         console.warn('⚠️ Vercel marcada offline — tentando GAS');
       }
 
-      // ============================================================
       // TENTATIVA 3: GAS
-      // ============================================================
       const gasJson = await tryFetch(CONFIG.GAS_URL, 30000, 'GAS');
       if (gasJson) {
         HealthCheck.gas.online = true;
@@ -587,14 +576,11 @@ window.callAPI = async function (action, data, _retry) {
         return gasJson;
       }
 
-      // ============================================================
       // TENTATIVA 4: FALLBACK LOCAL
-      // ============================================================
       console.warn(`📦 [${action}] fallback local`);
       return getFallbackData(action);
   };
 
-  // 🆕 Envolve em promise deduplicada (só para _retry === 0)
   if (_retry === 0) {
       const inFlightKey = _keyFor(action, data);
       const p = (async () => {
@@ -612,7 +598,7 @@ window.callAPI = async function (action, data, _retry) {
 };
 
 // ============================================================
-// 🆕 DEBUG — limpar caches
+// DEBUG — limpar caches
 // ============================================================
 window.callAPI.clearCache = function () {
     _inFlight.clear();
@@ -624,7 +610,7 @@ window.callAPI.clearCache = function () {
 // FALLBACK LOCAL
 // ============================================================
 window.getFallbackData = function (action) {
-  // ❌ AÇÕES CRÍTICAS — NUNCA retornar sucesso falso
+  // AÇÕES CRÍTICAS — NUNCA retornar sucesso falso
   if (action === 'login') {
     return { success: false, message: 'Não foi possível conectar. Verifique sua internet e tente novamente.', _via: 'local', _offline: true };
   }
@@ -653,7 +639,7 @@ window.getFallbackData = function (action) {
     return { success: false, message: 'Venda indisponível offline.', _via: 'local', _offline: true };
   }
 
-  // ✅ AÇÕES DE LEITURA
+  // AÇÕES DE LEITURA
   if (action === 'get_musicas') return { success: true, data: [], _via: 'local' };
   if (action === 'get_external_musicas') return { success: true, data: [], _via: 'local' };
   if (action === 'get_artists') return { success: true, data: [], _via: 'local' };
@@ -670,7 +656,7 @@ window.getFallbackData = function (action) {
   if (action === 'get_trades') return { success: true, data: { received: [], sent: [], history: [] }, _via: 'local' };
   if (action === 'get_top_investments') return { success: true, data: [], _via: 'local' };
 
-  // ✅ AÇÕES DAS NOVAS APIs
+  // AÇÕES DAS NOVAS APIs
   if (action === 'streams_total') return { success: true, data: { streams_total: 0, streams_hoje: 0, total_musicas: 0 }, _via: 'local' };
   if (action === 'streams_ranking') return { success: true, data: [], _via: 'local' };
   if (action === 'ver_stream') return { success: true, data: { total: 0, hoje: 0 }, _via: 'local' };
@@ -687,4 +673,4 @@ window.getFallbackData = function (action) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [api.js] v8.9.1 carregado — dedup + cache TTL + validação de resposta');
+console.log('✅ [api.js] v8.9.2 carregado — dedup + cache TTL + validação de resposta');
