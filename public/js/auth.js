@@ -1,8 +1,12 @@
 // ============================================================
-// js/auth.js — PLAY MY v8.5.0
+// js/auth.js — PLAY MY v8.5.1
 // Login, registro, logout, reset de senha, sessão.
 // Depende de: config.js, utils.js, state.js, api.js
 // DEVE carregar DEPOIS de api.js e ANTES de app.js.
+//
+// MUDANÇAS v8.5.1:
+//   - 🔒 SEGURANÇA: restoreSession() apaga miv_user se tiver
+//     'senha' ou 'senha_hash' (sessão antiga) e força login
 // ============================================================
 
 // ============ LOGIN ============
@@ -210,6 +214,14 @@ window.restoreSession = function () {
 
   try {
     const user = JSON.parse(stored);
+
+    // 🔒 SEGURANÇA: sessão antiga com credenciais — apaga e força login
+    if (user && (user.senha || user.senha_hash)) {
+      console.warn('🔒 [auth] Sessão antiga com credenciais — removendo e forçando login');
+      localStorage.removeItem('miv_user');
+      return false;
+    }
+
     state.currentUser = user;
     state.userBalance = user.saldo || 0;
     state.seloCoinBalance = user.selo_coin || 0;
@@ -226,4 +238,4 @@ window.restoreSession = function () {
 };
 
 // ============ LOG DE CARREGAMENTO ============
-console.log('✅ [auth.js] carregado — login, registro, logout prontos');
+console.log('✅ [auth.js] v8.5.1 carregado — login, registro, logout prontos');
