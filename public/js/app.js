@@ -226,13 +226,15 @@ function handleDeepLink() {
 }
 
 // ============================================================
-// SERVICE WORKER — registro + detecção de update (v9.8.1)
+// SERVICE WORKER — registro + detecção de update (v9.8.2)
 // - registerServiceWorker() é idempotente (não registra 2x)
 // - updatefound → SKIP_WAITING automático (SW assume na hora)
-// - controllerchange → reload UMA vez
+// - controllerchange → reload UMA vez, SÓ se já havia SW antes
+//   (evita a piscada na primeira instalação do SW)
 // ============================================================
 let __swRegistered = false;
 let __swRefreshing = false;
+const __swHadController = !!navigator.serviceWorker.controller;
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -285,8 +287,16 @@ function registerServiceWorker() {
     });
 
   // 🔄 quando o novo SW assume o controle → recarrega UMA vez
+  // ⚠️ SÓ recarrega se JÁ HAVIA um SW controlando antes.
+  //    Se for a PRIMEIRA instalação, não recarrega (evita piscar).
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (__swRefreshing) return;
+
+    if (!__swHadController) {
+      console.log('🔄 [SW] Primeiro SW assumiu o controle (sem reload)');
+      return;
+    }
+
     __swRefreshing = true;
     console.log('🔄 [SW] Novo SW assumiu o controle — recarregando');
     window.location.reload();
