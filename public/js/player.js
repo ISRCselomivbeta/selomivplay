@@ -156,7 +156,43 @@ function _releaseWakeLock() {
     _wakeLock = null;
   }
 }
+// ============================================================
+// 🆕 HELPERS PARA MOVER O IFRAME DO YOUTUBE
+// O iframe vive no #youtubePlayerGlobal (fora das seções).
+// openPlayerExpanded() MOVE pra seção expandida.
+// closePlayerExpanded() DEVOLVE pro global.
+// A música NÃO pausa ao navegar entre seções.
+// ============================================================
+window._moveYouTubeToExpanded = function () {
+  const globalContainer = document.getElementById('youtubePlayerGlobal');
+  const expandedContainer = document.getElementById('youtubePlayerExpanded');
+  if (!globalContainer || !expandedContainer) return;
+  if (!globalContainer.firstChild) return;
 
+  while (globalContainer.firstChild) {
+    expandedContainer.appendChild(globalContainer.firstChild);
+  }
+  console.log('🎵 [Player] iframe movido → expandido');
+};
+
+window._moveYouTubeToGlobal = function () {
+  const globalContainer = document.getElementById('youtubePlayerGlobal');
+  const expandedContainer = document.getElementById('youtubePlayerExpanded');
+  if (!globalContainer || !expandedContainer) return;
+  if (!expandedContainer.firstChild) return;
+
+  while (expandedContainer.firstChild) {
+    globalContainer.appendChild(expandedContainer.firstChild);
+  }
+  console.log('🎵 [Player] iframe devolvido → global');
+};
+
+window._moveYouTubeToExpandedIfOpen = function () {
+  const expandedSection = document.getElementById('playerExpandedSection');
+  if (expandedSection && expandedSection.classList.contains('active')) {
+    window._moveYouTubeToExpanded();
+  }
+};
 // ============================================================
 // 🆕 PATCH: updatePlayerProgress agora atualiza a posição da Media Session
 // ============================================================
@@ -498,9 +534,14 @@ window.openPlayerExpanded = function () {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   const el = document.getElementById('playerExpandedSection');
   if (el) el.classList.add('active');
-};
 
+  // 🆕 Move o iframe do YouTube pra dentro do player expandido
+  window._moveYouTubeToExpanded();
+};
 window.closePlayerExpanded = function () {
+  // 🆕 Devolve o iframe pro container global (não pausa a música)
+  window._moveYouTubeToGlobal();
+
   if (typeof changeSection === 'function') {
     changeSection('marketplace');
   } else {
