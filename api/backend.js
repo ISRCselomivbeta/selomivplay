@@ -1,4 +1,4 @@
-// BACKEND.JS - VERSÃO 9.7.7
+// BACKEND.JS - VERSÃO 9.7.8
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -6,6 +6,11 @@
 // + VENDA DIRETA AO MERCADO (sell_to_market)
 // + VENDA P2P COM EMAIL (create_trade robusto)
 // + IMAGENS REAIS NOS FEEDS (G1, UOL, Rolling Stone)
+//
+// MUDANÇAS v9.7.8:
+//   - ✅ FIX: GAS_URL com fallback hard-coded (a env var do Vercel
+//            nem sempre chega no runtime; fallback garante funcionamento)
+//   - ✅ FIX: migration e login com senha_hash SHA-256
 //
 // MUDANÇAS v9.7.7:
 //   - ✅ FIX: callGAS timeout 6s → 15s (GAS demora mais que 6s)
@@ -74,8 +79,21 @@ if (!kv) {
     console.warn('⚠️ Nenhum KV disponível — usando fallback em memória');
 }
 
-// 🔧 v9.7.8 — fallback: se a env var não existir, usa a mesma URL do config.js
-const GAS_URL = process.env.GAS_URL || 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
+// ============================================================
+// 🔧 v9.7.8 — GAS_URL com fallback hard-coded
+// A env var do Vercel pode não chegar no runtime (problema
+// recorrente). O fallback usa a MESMA URL do config.js do
+// frontend (que já é pública). Sem risco de segurança novo.
+// ============================================================
+const GAS_URL_FALLBACK = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
+const GAS_URL = process.env.GAS_URL || GAS_URL_FALLBACK;
+
+if (!process.env.GAS_URL) {
+    console.warn('⚠️ [GAS_URL] env var não configurada no Vercel — usando fallback hard-coded');
+} else {
+    console.log('✅ [GAS_URL] env var configurada no Vercel');
+}
+
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const EMAIL_FROM = 'selomivplay@gmail.com';
 const EMAIL_NAME = 'PLAY MY';
@@ -329,9 +347,16 @@ function normalizePlaylistFromKV(pl) {
 }
 
 // ============================================================
-// CHAMAR GAS — timeout 15s + 1 retry (🆕 era 6s)
+// CHAMAR GAS — timeout 15s + 1 retry
 // ============================================================
 async function callGAS(action, params = {}, retries = 1) {
+    // 🔧 v9.7.8 — fail fast se GAS_URL não existir (não deve acontecer
+    // por causa do fallback, mas é defesa em profundidade)
+    if (!GAS_URL) {
+        console.error('[callGAS] GAS_URL não configurada — impossível chamar GAS');
+        return { success: false, error: 'GAS_URL não configurada no servidor' };
+    }
+
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             const gasUrl = new URL(GAS_URL);
@@ -344,7 +369,7 @@ async function callGAS(action, params = {}, retries = 1) {
                 }
             });
             const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 7000);
+            const timeout = setTimeout(() => controller.abort(), 15000);
             const response = await fetch(gasUrl.toString(), {
                 method: 'GET',
                 headers: { 'Cache-Control': 'no-cache', 'Accept': 'application/json' },
@@ -372,7 +397,6 @@ function unwrapGAS(gasResult) {
         return { success: false, message: inner.message || 'GAS retornou erro', _via: 'gas_error' };
     }
 
-    // 🆕 Extrai o array de QUALQUER formato possível
     let payload;
     if (inner.data !== undefined) {
         payload = inner.data;
@@ -551,7 +575,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.7)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.8)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -625,7 +649,7 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.7)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.8)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -780,7 +804,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
         const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.7.7 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.7.8 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -1143,6 +1167,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
         _via: 'local'
     };
 }
+
 // ============================================================
 // 🔒 SEGURANÇA — limpeza one-shot de senhas em texto plano
 // Remove o campo 'senha' de todos os usuários no KV
@@ -1156,11 +1181,10 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
         let mudou = false;
         for (const u of users) {
             if (u && u.senha) {
-                // Se ainda não tem hash, gera a partir da senha atual
                 if (!u.senha_hash) {
                     u.senha_hash = crypto.createHash('sha256').update(String(u.senha)).digest('hex');
                 }
-                delete u.senha;  // 🔥 remove o texto plano
+                delete u.senha;
                 mudou = true;
             }
         }
@@ -1173,8 +1197,9 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
         console.warn('⚠️ [migração] falha:', e.message);
     }
 })();
+
 // ============================================================
-// HANDLER PRINCIPAL — v9.7.7
+// HANDLER PRINCIPAL — v9.7.8
 // ============================================================
 module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1198,13 +1223,14 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.7.7',
+                version: '9.7.8',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
                 nodemailer_enabled: !!nodemailer,
                 youtube_enabled: !!YOUTUBE_API_KEY,
                 gas_ping: gasPing,
+                gas_url_source: process.env.GAS_URL ? 'env' : 'fallback',
                 timestamp: new Date().toISOString()
             });
         }
@@ -1222,46 +1248,42 @@ module.exports = async (req, res) => {
             const rateCheck = rateLimiter.check(clientIP);
             if (!rateCheck.allowed) return res.status(200).json({ success: false, message: rateCheck.message });
 
-            // ⚠️ SEGURANÇA: admin via variáveis de ambiente
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH;
+            const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+            const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH;
 
-if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
-  const senhaHash = crypto.createHash('sha256').update(password).digest('hex');
-  if (senhaHash === ADMIN_PASS_HASH) {
-    rateLimiter.reset(clientIP);
-    console.log('✅ [login] admin autenticado via env');
-    return res.status(200).json({
-      success: true,
-      data: {
-        id: 'admin_master',
-        nome: 'Administrador',
-        email: ADMIN_EMAIL,
-        tipo: 'admin',
-        saldo: 1000000,
-        selo_coin: 50000,
-        favorite_music_ids: [],
-        email_confirmado: true
-      }
-    });
-  }
-}
+            if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
+                const senhaHash = crypto.createHash('sha256').update(password).digest('hex');
+                if (senhaHash === ADMIN_PASS_HASH) {
+                    rateLimiter.reset(clientIP);
+                    console.log('✅ [login] admin autenticado via env');
+                    return res.status(200).json({
+                        success: true,
+                        data: {
+                            id: 'admin_master',
+                            nome: 'Administrador',
+                            email: ADMIN_EMAIL,
+                            tipo: 'admin',
+                            saldo: 1000000,
+                            selo_coin: 50000,
+                            favorite_music_ids: [],
+                            email_confirmado: true
+                        }
+                    });
+                }
+            }
 
             const users = await Storage.get('users_all') || [];
             let user = users.find(u => u.email === email);
 
-            // 🔒 SEGURANÇA: aceita hash novo OU senha em texto plano (legado)
             const senhaHash = crypto.createHash('sha256').update(password).digest('hex');
             const senhaBate = user && (
                 user.senha_hash === senhaHash ||
-                user.senha === password  // legado (será removido após migração)
+                user.senha === password
             );
 
             if (senhaBate) {
                 rateLimiter.reset(clientIP);
                 console.log('✅ [login] via KV (cache)');
-
-                // 🔒 SEGURANÇA: remove senha antes de devolver
                 const { senha, senha_hash, ...userSafe } = user;
                 return res.status(200).json({ success: true, data: userSafe, _via: 'kv' });
             }
@@ -1275,7 +1297,6 @@ if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
                 const gasUser = unwrapped.data;
                 const existingIdx = users.findIndex(u => u.email === email);
 
-                // 🔒 SEGURANÇA: guarda hash, nunca texto plano
                 if (existingIdx >= 0) {
                     const { senha: _oldSenha, ...rest } = users[existingIdx];
                     users[existingIdx] = { ...rest, ...gasUser, senha_hash: senhaHash };
@@ -1286,7 +1307,6 @@ if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
                 await Storage.set('users_all', users);
                 console.log('🔄 [login] usuário sincronizado do GAS para o KV:', email);
 
-                // 🔒 SEGURANÇA: remove senha antes de devolver
                 const { senha, senha_hash, ...gasUserSafe } = gasUser;
                 return res.status(200).json({
                     success: true, data: gasUserSafe, _via: 'gas', _synced: true
@@ -1386,13 +1406,12 @@ if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
                 });
             }
 
-                        try {
+            try {
                 const users = await Storage.get('users_all') || [];
                 const user = users.find(u => u.email === record.email);
                 if (user) {
-                    // 🔒 SEGURANÇA: hash, nunca texto plano
                     user.senha_hash = crypto.createHash('sha256').update(new_password).digest('hex');
-                    delete user.senha;  // remove senha antiga se existir
+                    delete user.senha;
                     user.updated_at = new Date().toISOString();
                     await Storage.set('users_all', users);
                 }
@@ -2101,7 +2120,7 @@ if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
         }
 
         // ============================================================
-        // MÚSICAS — 🆕 ROBUSTO
+        // MÚSICAS — ROBUSTO
         // ============================================================
         if (action === 'get_musicas') {
             const cachedL1 = cache.get('musicas');
@@ -2110,7 +2129,6 @@ if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
             const gasResult = await callGAS('get_musicas', params);
             const unwrapped = unwrapGAS(gasResult);
 
-            // 🆕 Tenta extrair array de QUALQUER formato possível
             let musicas = null;
 
             if (unwrapped.success) {
@@ -2584,7 +2602,7 @@ if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.7.7',
+            version: '9.7.8',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
