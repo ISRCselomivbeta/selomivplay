@@ -74,8 +74,9 @@ if (!kv) {
     console.warn('⚠️ Nenhum KV disponível — usando fallback em memória');
 }
 
-const GAS_URL = process.env.GAS_URL || 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
+// ⚠️ SEGURANÇA: sem fallback hard-coded
+const GAS_URL = process.env.GAS_URL;
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const EMAIL_FROM = 'selomivplay@gmail.com';
 const EMAIL_NAME = 'PLAY MY';
 
