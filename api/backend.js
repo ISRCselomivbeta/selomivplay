@@ -1193,17 +1193,30 @@ module.exports = async (req, res) => {
             const rateCheck = rateLimiter.check(clientIP);
             if (!rateCheck.allowed) return res.status(200).json({ success: false, message: rateCheck.message });
 
-            if (email === 'admin@selomiv.com' && password === 'admin123') {
-                rateLimiter.reset(clientIP);
-                return res.status(200).json({
-                    success: true,
-                    data: {
-                        id: 'admin_master', nome: 'Administrador', email: 'admin@selomiv.com',
-                        tipo: 'admin', saldo: 1000000, selo_coin: 50000,
-                        favorite_music_ids: [], email_confirmado: true
-                    }
-                });
-            }
+            // ⚠️ SEGURANÇA: admin via variáveis de ambiente
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH;
+
+if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
+  const senhaHash = crypto.createHash('sha256').update(password).digest('hex');
+  if (senhaHash === ADMIN_PASS_HASH) {
+    rateLimiter.reset(clientIP);
+    console.log('✅ [login] admin autenticado via env');
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: 'admin_master',
+        nome: 'Administrador',
+        email: ADMIN_EMAIL,
+        tipo: 'admin',
+        saldo: 1000000,
+        selo_coin: 50000,
+        favorite_music_ids: [],
+        email_confirmado: true
+      }
+    });
+  }
+}
 
             const users = await Storage.get('users_all') || [];
             let user = users.find(u => u.email === email);
