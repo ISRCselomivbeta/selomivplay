@@ -1,28 +1,28 @@
 // ============================================================
-// js/state.js — PLAY MY v8.5.1
+// js/state.js — PLAY MY v8.5.2
 // Estado global da aplicação + fila de reprodução.
 // Depende de: config.js
 // DEVE carregar DEPOIS de config.js e ANTES de api.js.
 //
+// MUDANÇAS v8.5.2:
+//   - FIX: fallback agora inclui 'miv_user' (chave real usada pelo auth.js)
+//   - FIX: reforço de retorno — se o original não restaurou, o fallback tenta
+//
 // MUDANÇAS v8.5.1:
 //   - FIX: restoreSession() com fallback robusto (v1.0.2)
 //          Agora espera auth.js definir a função antes de envolver
-//          (antes rodava cedo demais e o fix era pulado)
 // ============================================================
 
 // ============ ESTADO GLOBAL ============
 window.state = {
-  // Sessão do usuário
   currentUser: null,
   userBalance: 0,
   seloCoinBalance: 0,
   favoriteMusicIds: [],
 
-  // Catálogo de músicas
-  playlist: [],              // músicas internas (marketplace)
-  externalPlaylist: [],      // músicas externas
+  playlist: [],
+  externalPlaylist: [],
 
-  // Dados do usuário
   portfolioAssets: [],
   ledgerData: [],
   topInvestments: [],
@@ -33,7 +33,6 @@ window.state = {
   tickets: [],
   tradesData: { received: [], sent: [], history: [] },
 
-  // Player
   currentTrackIndex: -1,
   isPlaying: false,
   youtubePlayer: null,
@@ -44,16 +43,13 @@ window.state = {
   playerReady: false,
   progressInterval: null,
 
-  // Modais / interações
   currentInvestTrack: null,
   currentExternalTrack: null,
   currentTradeAsset: null,
   currentManagingPlaylistId: null,
 
-  // Streaming / recompensas
   streamingLastReward: 0,
 
-  // Notícias
   news: {
     items: [],
     filter: 'all',
@@ -65,16 +61,14 @@ window.state = {
     preferences: {}
   },
 
-  // PWA
   deferredInstallPrompt: null
 };
 
 // ============ FILA DE REPRODUÇÃO ============
 window.playQueue = {
-  items: [],        // [{ type: 'internal' | 'external', index: number }]
+  items: [],
   currentIndex: -1,
 
-  // Toca o item atual da fila
   playCurrent() {
     if (this.currentIndex < 0 || this.currentIndex >= this.items.length) return;
     const c = this.items[this.currentIndex];
@@ -87,7 +81,6 @@ window.playQueue = {
     }
   },
 
-  // Próxima faixa
   playNext() {
     if (this.currentIndex < this.items.length - 1) {
       this.currentIndex++;
@@ -101,7 +94,6 @@ window.playQueue = {
     }
   },
 
-  // Faixa anterior
   playPrevious() {
     if (this.currentIndex > 0) {
       this.currentIndex--;
@@ -109,13 +101,11 @@ window.playQueue = {
     }
   },
 
-  // Embaralha a fila (mantém a atual na primeira posição)
   shuffle() {
     if (this.items.length <= 1) return;
     const c = this.items[this.currentIndex];
     const o = this.items.filter((_, i) => i !== this.currentIndex);
 
-    // Fisher-Yates
     for (let i = o.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [o[i], o[j]] = [o[j], o[i]];
@@ -125,7 +115,6 @@ window.playQueue = {
     this.currentIndex = 0;
   },
 
-  // Substitui a fila inteira e começa a tocar do início
   setQueue(items) {
     if (!Array.isArray(items) || !items.length) return;
     this.items = items;
@@ -133,7 +122,6 @@ window.playQueue = {
     this.playCurrent();
   },
 
-  // Limpa a fila
   clear() {
     this.items = [];
     this.currentIndex = -1;
@@ -141,19 +129,13 @@ window.playQueue = {
 };
 
 // ============================================================
-// FIX v1.0.2 — restoreSession() com fallback robusto
-// Aplicado DEPOIS que auth.js definir a função.
-//
-// ⚠️ IMPORTANTE: este bloco roda no carregamento do state.js,
-//    mas o auth.js carrega DEPOIS. Por isso usamos tryInstall()
-//    que espera a função existir antes de envolvê-la.
+// FIX v1.0.3 — restoreSession() com fallback robusto
+// ✅ Inclui 'miv_user' (chave real usada pelo auth.js)
 // ============================================================
 (function installRestoreSessionFix() {
   function tryInstall() {
     const original = window.restoreSession;
     if (typeof original !== 'function') return false;
-
-    // Já foi envolvido nesta sessão? Evita duplo wrap.
     if (original.__fixed) return true;
 
     const wrapped = function () {
@@ -164,12 +146,16 @@ window.playQueue = {
         console.warn('[state] restoreSession original falhou:', e);
       }
 
-      // Se não restaurou (ou restaurou sem usuário), tenta fallback
       if (!result || !window.state || !window.state.currentUser) {
+        // ✅ LISTA COMPLETA — inclui 'miv_user' (chave real do auth.js)
         const candidates = [
-          'user', 'currentUser', 'playmy_user', 'playmy_current_user',
-          'session', 'auth_user', 'usuario', 'loggedUser',
-          'playmy_session', 'playmyUser', 'USER', 'User'
+          'miv_user',                  // ✅ CHAVE CORRETA
+          'user', 'currentUser',
+          'playmy_user', 'playmy_current_user',
+          'session', 'auth_user',
+          'usuario', 'loggedUser',
+          'playmy_session', 'playmyUser',
+          'USER', 'User'
         ];
 
         for (const key of candidates) {
@@ -180,11 +166,16 @@ window.playQueue = {
             if (parsed && (parsed.email || parsed.id || parsed.nome)) {
               window.state = window.state || {};
               window.state.currentUser = parsed;
+              window.state.userBalance = parsed.saldo || 0;
+              window.state.seloCoinBalance = parsed.selo_coin || 0;
+              window.state.favoriteMusicIds = Array.isArray(parsed.favorite_music_ids)
+                ? parsed.favorite_music_ids
+                : [];
               console.log('[state] ✅ Sessão restaurada via fallback key:', key);
               result = true;
               break;
             }
-          } catch (e) { /* JSON inválido — ignora */ }
+          } catch (e) { /* JSON inválido */ }
         }
       }
 
@@ -193,29 +184,26 @@ window.playQueue = {
 
     wrapped.__fixed = true;
     window.restoreSession = wrapped;
-    console.log('[state] 🔧 restoreSession com fallback instalado (v1.0.2)');
+    console.log('[state] 🔧 restoreSession com fallback instalado (v1.0.3)');
     return true;
   }
 
-  // 1ª tentativa: agora (caso auth.js já tenha carregado)
   if (tryInstall()) return;
 
-  // 2ª tentativa: quando o DOM estiver pronto (todos os scripts já rodaram)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       if (!tryInstall()) {
-        console.warn('[state] ⚠️ restoreSession não encontrada após DOM pronto — verifique auth.js');
+        console.warn('[state] ⚠️ restoreSession não encontrada após DOM pronto');
       }
     });
   } else {
-    // DOM já pronto (improvável nesse ponto, mas por segurança)
     setTimeout(() => {
       if (!tryInstall()) {
-        console.warn('[state] ⚠️ restoreSession não encontrada — verifique auth.js');
+        console.warn('[state] ⚠️ restoreSession não encontrada');
       }
     }, 0);
   }
 })();
 
 // ============ LOG DE CARREGAMENTO ============
-console.log('✅ [state.js] v8.5.1 carregado — estado global e playQueue prontos');
+console.log('✅ [state.js] v8.5.2 carregado — estado global e playQueue prontos');
