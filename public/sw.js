@@ -1,8 +1,14 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.9.6
+// SERVICE WORKER — PLAY MY v9.9.7
 // Cache inteligente por tipo de recurso + PWA
 //
-// MUDANÇAS v9.9.5: 
+// MUDANÇAS v9.9.7:
+//   - 🔧 SW_VERSION bumpada (9.9.6 → 9.9.7) para forçar reinstalação
+//   - 🔧 Adicionado bootstrap.min.css ao pré-cache (antes só os
+//             ícones eram cacheados, o CSS do Bootstrap vinha da rede
+//             e podia quebrar o layout no 2º F5)
+//
+// MUDANÇAS v9.9.5:
 //   - 🔧 CDN: retry 3x + nunca devolver Response vazio (antes
 //             devolvia 504 vazio → CSS quebrado no 2º F5)
 //   - 🔧 FONTES: mesmo tratamento (antes 404 vazio → sem ícone)
@@ -17,7 +23,7 @@
 //   - updateViaCache tratado no app.js (não muda aqui)
 // ============================================================
 
-const SW_VERSION = '9.9.6';  // 👈 BUMP manual a cada deploy relevante
+const SW_VERSION = '9.9.7';  // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
@@ -37,6 +43,9 @@ const STATIC_ASSETS = [
   '/images/icon-512.png',
   '/images/icon-maskable-192.png',
   '/images/icon-maskable-512.png',
+
+  // 🆕 BOOTSTRAP CSS — CDN
+  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
 
   // 🆕 BOOTSTRAP ICONS — CDN
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css',
@@ -136,7 +145,7 @@ function isCDN(url) {
 }
 
 // ============================================================
-// 🔧 v9.9.5 — FETCH COM RETRY (para CDN/fontes)
+// 🔧 FETCH COM RETRY (para CDN/fontes)
 // Tenta até 3x. Se todas falharem, LANÇA o erro (não devolve vazio!)
 // ============================================================
 async function fetchWithRetry(request, maxAttempts = 3) {
@@ -164,7 +173,7 @@ self.addEventListener('install', (event) => {
       .then((cache) => {
         return Promise.all(
           STATIC_ASSETS.map(async (url) => {
-            // 🔧 v9.9.5 — retry 3x por asset
+            // 🔧 retry 3x por asset
             for (let attempt = 1; attempt <= 3; attempt++) {
               try {
                 // 'reload' evita pegar do HTTP cache um recurso inválido
@@ -241,7 +250,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 3. CDN → stale-while-revalidate com retry
-  //    🔧 v9.9.5: não devolve mais Response vazio (causava CSS quebrado)
+  //    🔧 não devolve mais Response vazio (causava CSS quebrado)
   if (isCDN(url)) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -273,7 +282,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 3.5. FONTES → stale-while-revalidate com retry
-  //      🔧 v9.9.5: não devolve mais 404 vazio (causava "quadrados" sem ícone)
+  //      🔧 não devolve mais 404 vazio (causava "quadrados" sem ícone)
   if (isFont(url)) {
     event.respondWith(
       caches.match(request).then((cached) => {
