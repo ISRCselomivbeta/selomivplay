@@ -1143,7 +1143,36 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
         _via: 'local'
     };
 }
+// ============================================================
+// 🔒 SEGURANÇA — limpeza one-shot de senhas em texto plano
+// Remove o campo 'senha' de todos os usuários no KV
+// e converte para 'senha_hash' (se ainda tiver senha)
+// ============================================================
+(async function migrateSenhasToHash() {
+    try {
+        const users = await Storage.get('users_all') || [];
+        if (!Array.isArray(users) || !users.length) return;
 
+        let mudou = false;
+        for (const u of users) {
+            if (u && u.senha) {
+                // Se ainda não tem hash, gera a partir da senha atual
+                if (!u.senha_hash) {
+                    u.senha_hash = crypto.createHash('sha256').update(String(u.senha)).digest('hex');
+                }
+                delete u.senha;  // 🔥 remove o texto plano
+                mudou = true;
+            }
+        }
+
+        if (mudou) {
+            await Storage.set('users_all', users);
+            console.log(`🔒 [migração] ${users.length} usuários migrados (senha → senha_hash)`);
+        }
+    } catch (e) {
+        console.warn('⚠️ [migração] falha:', e.message);
+    }
+})();
 // ============================================================
 // HANDLER PRINCIPAL — v9.7.7
 // ============================================================
@@ -1221,10 +1250,20 @@ if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
             const users = await Storage.get('users_all') || [];
             let user = users.find(u => u.email === email);
 
-            if (user && user.senha === password) {
+            // 🔒 SEGURANÇA: aceita hash novo OU senha em texto plano (legado)
+            const senhaHash = crypto.createHash('sha256').update(password).digest('hex');
+            const senhaBate = user && (
+                user.senha_hash === senhaHash ||
+                user.senha === password  // legado (será removido após migração)
+            );
+
+            if (senhaBate) {
                 rateLimiter.reset(clientIP);
                 console.log('✅ [login] via KV (cache)');
-                return res.status(200).json({ success: true, data: user, _via: 'kv' });
+
+                // 🔒 SEGURANÇA: remove senha antes de devolver
+                const { senha, senha_hash, ...userSafe } = user;
+                return res.status(200).json({ success: true, data: userSafe, _via: 'kv' });
             }
 
             const gasResult = await callGAS('login', { email, password });
@@ -1235,16 +1274,22 @@ if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
 
                 const gasUser = unwrapped.data;
                 const existingIdx = users.findIndex(u => u.email === email);
+
+                // 🔒 SEGURANÇA: guarda hash, nunca texto plano
                 if (existingIdx >= 0) {
-                    users[existingIdx] = { ...users[existingIdx], ...gasUser, senha: password };
+                    const { senha: _oldSenha, ...rest } = users[existingIdx];
+                    users[existingIdx] = { ...rest, ...gasUser, senha_hash: senhaHash };
                 } else {
-                    users.push({ ...gasUser, senha: password });
+                    const { senha: _gasSenha, ...gasSafe } = gasUser;
+                    users.push({ ...gasSafe, senha_hash: senhaHash });
                 }
                 await Storage.set('users_all', users);
                 console.log('🔄 [login] usuário sincronizado do GAS para o KV:', email);
 
+                // 🔒 SEGURANÇA: remove senha antes de devolver
+                const { senha, senha_hash, ...gasUserSafe } = gasUser;
                 return res.status(200).json({
-                    success: true, data: gasUser, _via: 'gas', _synced: true
+                    success: true, data: gasUserSafe, _via: 'gas', _synced: true
                 });
             }
 
@@ -1341,11 +1386,13 @@ if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
                 });
             }
 
-            try {
+                        try {
                 const users = await Storage.get('users_all') || [];
                 const user = users.find(u => u.email === record.email);
                 if (user) {
-                    user.senha = new_password;
+                    // 🔒 SEGURANÇA: hash, nunca texto plano
+                    user.senha_hash = crypto.createHash('sha256').update(new_password).digest('hex');
+                    delete user.senha;  // remove senha antiga se existir
                     user.updated_at = new Date().toISOString();
                     await Storage.set('users_all', users);
                 }
