@@ -74,8 +74,8 @@ if (!kv) {
     console.warn('⚠️ Nenhum KV disponível — usando fallback em memória');
 }
 
-// ⚠️ SEGURANÇA: sem fallback hard-coded
-const GAS_URL = process.env.GAS_URL;
+// 🔧 v9.7.8 — fallback: se a env var não existir, usa a mesma URL do config.js
+const GAS_URL = process.env.GAS_URL || 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const EMAIL_FROM = 'selomivplay@gmail.com';
 const EMAIL_NAME = 'PLAY MY';
