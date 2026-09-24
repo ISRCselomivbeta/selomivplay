@@ -1,6 +1,13 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.9.3
+// SERVICE WORKER — PLAY MY v9.9.5
 // Cache inteligente por tipo de recurso + PWA
+//
+// MUDANÇAS v9.9.5:
+//   - 🔧 CDN: retry 3x + nunca devolver Response vazio (antes
+//             devolvia 504 vazio → CSS quebrado no 2º F5)
+//   - 🔧 FONTES: mesmo tratamento (antes 404 vazio → sem ícone)
+//   - 🔧 install: retry 3x por asset (antes falhava silenciosamente
+//             em CDN lento → recurso ficava sem cache → 2º F5 quebrado)
 //
 // MUDANÇAS v9.9.1:
 //   - CDN: cache-first → stale-while-revalidate (corrige ícones velhos)
@@ -10,7 +17,7 @@
 //   - updateViaCache tratado no app.js (não muda aqui)
 // ============================================================
 
-const SW_VERSION = '9.9.3';  // 👈 BUMP manual a cada deploy relevante
+const SW_VERSION = '9.9.5';  // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
@@ -129,7 +136,26 @@ function isCDN(url) {
 }
 
 // ============================================================
-// INSTALL — pré-cache dos assets essenciais
+// 🔧 v9.9.5 — FETCH COM RETRY (para CDN/fontes)
+// Tenta até 3x. Se todas falharem, LANÇA o erro (não devolve vazio!)
+// ============================================================
+async function fetchWithRetry(request, maxAttempts = 3) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch(request);
+      if (response && response.status === 200) return response;
+      // Status != 200 — tenta de novo
+      if (attempt === maxAttempts) return response;
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+      console.warn(`[SW] tentativa ${attempt}/${maxAttempts} falhou:`, request.url, '-', err.message);
+      await new Promise(r => setTimeout(r, 300 * attempt));
+    }
+  }
+}
+
+// ============================================================
+// INSTALL — pré-cache dos assets essenciais (com retry)
 // ============================================================
 self.addEventListener('install', (event) => {
   console.log('[SW] Instalando v' + SW_VERSION);
@@ -138,16 +164,27 @@ self.addEventListener('install', (event) => {
       .then((cache) => {
         return Promise.all(
           STATIC_ASSETS.map(async (url) => {
-            try {
-              // 'reload' evita pegar do HTTP cache um recurso inválido
-              const res = await fetch(url, { cache: 'reload' });
-              if (!res || !res.ok) {
-                throw new Error('HTTP ' + (res ? res.status : 'sem resposta'));
+            // 🔧 v9.9.5 — retry 3x por asset
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              try {
+                // 'reload' evita pegar do HTTP cache um recurso inválido
+                const res = await fetch(url, { cache: 'reload' });
+                if (!res || !res.ok) {
+                  throw new Error('HTTP ' + (res ? res.status : 'sem resposta'));
+                }
+                await cache.put(url, res);
+                if (attempt > 1) {
+                  console.log(`[SW] ✅ cacheado na tentativa ${attempt}:`, url);
+                }
+                return; // sucesso — sai do loop
+              } catch (err) {
+                console.warn(`[SW] ⚠️ tentativa ${attempt}/3 falhou:`, url, '-', err.message);
+                if (attempt === 3) {
+                  console.error('[SW] ❌ falha definitiva:', url);
+                } else {
+                  await new Promise(r => setTimeout(r, 500 * attempt));
+                }
               }
-              await cache.put(url, res);
-            } catch (err) {
-              // ✅ NÃO silencia: loga como erro para diagnóstico
-              console.error('[SW] ❌ Falha ao cachear:', url, '-', err.message);
             }
           })
         );
@@ -203,43 +240,62 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. CDN → stale-while-revalidate
-  //    (antes: cache-first puro → servia ícones velhos/incompletos)
+  // 3. CDN → stale-while-revalidate com retry
+  //    🔧 v9.9.5: não devolve mais Response vazio (causava CSS quebrado)
   if (isCDN(url)) {
     event.respondWith(
       caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request)
-          .then((response) => {
+        // Se tem cache, devolve AGORA e revalida em background
+        if (cached) {
+          fetch(request).then((response) => {
             if (response && response.status === 200) {
-              const clone = response.clone();
-              caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
+              caches.open(CACHE_STATIC).then((cache) => cache.put(request, response));
             }
-            return response;
-          })
-          .catch(() => cached || new Response('', { status: 504 }));
+          }).catch(() => {});
+          return cached;
+        }
 
-        return cached || fetchPromise;
+        // Sem cache: tenta rede com retry
+        return fetchWithRetry(request, 3).then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        }).catch((err) => {
+          console.error('[SW] ❌ CDN falhou após 3 tentativas:', url.href);
+          // Propaga o erro — o navegador vai tratar como falha real
+          throw err;
+        });
       })
     );
     return;
   }
 
-  // 3.5. FONTES → stale-while-revalidate
-  //      (antes: cache-first permanente → .woff2 corrompido ficava pra sempre)
+  // 3.5. FONTES → stale-while-revalidate com retry
+  //      🔧 v9.9.5: não devolve mais 404 vazio (causava "quadrados" sem ícone)
   if (isFont(url)) {
     event.respondWith(
       caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request)
-          .then((response) => {
+        if (cached) {
+          fetch(request).then((response) => {
             if (response && response.status === 200) {
-              const clone = response.clone();
-              caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
+              caches.open(CACHE_STATIC).then((cache) => cache.put(request, response));
             }
-            return response;
-          })
-          .catch(() => cached || new Response('', { status: 404 }));
+          }).catch(() => {});
+          return cached;
+        }
 
-        return cached || fetchPromise;
+        return fetchWithRetry(request, 3).then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        }).catch((err) => {
+          console.error('[SW] ❌ Fonte falhou após 3 tentativas:', url.href);
+          throw err;
+        });
       })
     );
     return;
