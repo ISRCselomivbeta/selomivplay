@@ -313,9 +313,22 @@ window.initializeApp = async function () {
   updateUserInterface();
   await loadAllData();
 
+  // 🔥 FIX v9.8.3 — re-render das seções após loadAllData
+  // O router.js chamava changeSection('marketplace') no DOMContentLoaded
+  // ANTES dos dados existirem → marketplace ficava vazio.
+  // Aqui forçamos o re-render com o state já populado.
+  try {
+    if (typeof window.renderMarketplace === 'function') window.renderMarketplace();
+    if (typeof window.renderGlobalPlaylists === 'function') window.renderGlobalPlaylists();
+    if (typeof window.renderFeaturedArtists === 'function') window.renderFeaturedArtists();
+    if (typeof window.renderRecommended === 'function') window.renderRecommended();
+    console.log('✅ [app] re-render pós-loadAllData concluído');
+  } catch (e) {
+    console.warn('⚠️ [app] re-render falhou:', e);
+  }
+
   loadYouTubeAPI();
 
-  // SW com detecção de update (idempotente — não duplica)
   registerServiceWorker();
 
   setTimeout(hideSplashScreen, 300);
@@ -744,7 +757,7 @@ window.addEventListener('load', () => {
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.8.1 carregado — aplicação inicializada');
+console.log('✅ [app.js] v9.8.3 carregado — aplicação inicializada');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
-console.log('📲 Instalação via sidebar ativa — v9.8.1');
+console.log('📲 Instalação via sidebar ativa — v9.8.3');
