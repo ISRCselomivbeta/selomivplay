@@ -1,5 +1,5 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.9.5
+// SERVICE WORKER — PLAY MY v9.9.6
 // Cache inteligente por tipo de recurso + PWA
 //
 // MUDANÇAS v9.9.5:
@@ -17,7 +17,7 @@
 //   - updateViaCache tratado no app.js (não muda aqui)
 // ============================================================
 
-const SW_VERSION = '9.9.5';  // 👈 BUMP manual a cada deploy relevante
+const SW_VERSION = '9.9.6';  // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
