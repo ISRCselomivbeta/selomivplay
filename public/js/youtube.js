@@ -1,7 +1,13 @@
 // ============================================================
-// js/youtube.js — PLAY MY v9.0.0
+// js/youtube.js — PLAY MY v9.1.0
 // Integração YouTube: API IFrame, busca, player.
 // Depende de: config.js, utils.js, state.js, api.js
+//
+// MUDANÇAS v9.1.0:
+//   - 🔧 Iframe agora vive no container GLOBAL (#youtubePlayerGlobal)
+//     fora das seções. A música NÃO pausa ao navegar entre seções.
+//     O player.js move o iframe pro expandido quando abre, e
+//     devolve pro global quando fecha.
 //
 // MUDANÇAS v9.0.0 (A PONTE):
 //   - origin: window.location.origin  → YouTube conta a view
@@ -171,6 +177,9 @@ window.searchYouTubeDirect = async function (query) {
 // ============================================================
 // INICIALIZAÇÃO DO PLAYER
 // ============================================================
+// 🆕 O iframe vive no #youtubePlayerGlobal (fora das seções).
+//    Isso garante que a música NÃO pause ao navegar entre seções.
+// ============================================================
 window.initializeYouTubePlayer = function (videoId) {
   console.log('🎵 [initializeYouTubePlayer] videoId:', videoId);
 
@@ -183,9 +192,10 @@ window.initializeYouTubePlayer = function (videoId) {
     return;
   }
 
-  const el = document.getElementById('youtubePlayerExpanded');
+  // 🆕 Container GLOBAL (fora das seções) — não pausa a música
+  const el = document.getElementById('youtubePlayerGlobal');
   if (!el) {
-    console.error('❌ #youtubePlayerExpanded NÃO existe');
+    console.error('❌ #youtubePlayerGlobal NÃO existe — adicione no index.html');
     return;
   }
 
@@ -236,6 +246,11 @@ window.initializeYouTubePlayer = function (videoId) {
 
           if (state.progressInterval) clearInterval(state.progressInterval);
           state.progressInterval = setInterval(updatePlayerProgress, 1000);
+
+          // 🆕 Se o player expandido estiver aberto, move o iframe pra dentro dele
+          if (typeof window._moveYouTubeToExpandedIfOpen === 'function') {
+            window._moveYouTubeToExpandedIfOpen();
+          }
         },
 
         onStateChange: function (e) {
@@ -323,4 +338,4 @@ window.updatePlayerProgress = function () {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [youtube.js] v9.0.0 carregado — A PONTE (origin + enablejsapi + registrarStreaming)');
+console.log('✅ [youtube.js] v9.1.0 carregado — iframe global (não pausa ao navegar)');
