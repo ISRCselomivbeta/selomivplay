@@ -1,8 +1,16 @@
 // ============================================================
-// js/news-unified.js — PLAY MY v10.2.0
-// Feed de notícias unificado: RSS primeiro (imagens reais) + backend fallback
+// js/news-unified.js — PLAY MY v10.3.0
+// Feed de notícias unificado: backend + RSS + og:image enrichment
 // + SVG fallback (inline)
 // + link sempre para Google News
+//
+// MUDANÇAS v10.3.0:
+//   - 🆕 enrichWithOgImage melhorado (6 padrões de meta tag)
+//   - 🆕 enrichWithOgImage agora roda TAMBÉM nas notícias do backend
+//   - 🆕 renderCard com data-original-src + console.warn no onerror
+//   - 🆕 user_id real (não mais 'anon') quando logado
+//   - 🆕 Trava _loadingGuard para evitar chamadas duplicadas
+//   - 🔧 CSP: img-src * data: blob: no vercel.json (fora deste arquivo)
 // ============================================================
 
 (function () {
@@ -24,7 +32,7 @@
     { url: 'https://news.google.com/rss/search?q=artista+m%C3%BAsica&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'artistas', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=edital+cultural+m%C3%BAsica&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'editais', fonte: 'Google News' },
 
-    // 🆕 Feeds que SEMPRE trazem imagem (enclosure / media:content)
+    // Feeds que SEMPRE trazem imagem (enclosure / media:content)
     { url: 'https://g1.globo.com/rss/g1/pop-arte/musica/', cat: 'musica', fonte: 'G1' },
     { url: 'https://g1.globo.com/rss/g1/pop-arte/', cat: 'musica', fonte: 'G1' },
     { url: 'https://rss.uol.com.br/feed/musica.xml', cat: 'musica', fonte: 'UOL' },
@@ -82,6 +90,10 @@
     source: null
   };
 
+  // 🆕 v10.3.0 — Trava de reentrância
+  var _loadingGuard = false;
+  var _lastLoadAt = 0;
+
   function resetDailySeen() {
     try {
       var today = new Date().toISOString().slice(0, 10);
@@ -115,12 +127,23 @@
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), items: items })); } catch (e) {}
   }
 
+  // 🆕 v10.3.0 — user_id real
+  function getCurrentUserId() {
+    try {
+      if (window.state && window.state.currentUser && window.state.currentUser.id) {
+        return window.state.currentUser.id;
+      }
+    } catch (e) {}
+    return 'anon';
+  }
+
   function tryBackend() {
     return new Promise(function (resolve) {
       var ctrl = new AbortController();
       var timer = setTimeout(function () { ctrl.abort(); }, 8000);
 
-      var url = BACKEND_URL + '?action=get_news&page=1&limit=50&user_id=anon';
+      var userId = getCurrentUserId();
+      var url = BACKEND_URL + '?action=get_news&page=1&limit=50&user_id=' + encodeURIComponent(userId);
 
       fetch(url, { signal: ctrl.signal })
         .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
@@ -191,7 +214,7 @@
 
       var id = 'news_' + hashStr(title);
 
-      // 🔥 Extração agressiva de imagem (8 formatos diferentes)
+      // Extração agressiva de imagem (8 formatos)
       var imagemReal = null;
       var candidates = [
         x.match(/<enclosure[^>]*url=["']([^"']+)["']/i),
@@ -240,13 +263,19 @@
     return items;
   }
 
-  // 🆕 Busca og:image do link original para notícias sem imagem
+  // ============================================================
+  // 🆕 v10.3.0 — ENRIQUECER COM og:image (6 padrões + suporte backend)
+  // ============================================================
   function enrichWithOgImage(items) {
     var semImagem = items.filter(function (n) {
-      return n.imagem && n.imagem.indexOf('data:image/svg') === 0 && n._linkOriginal && n._linkOriginal !== '#';
+      return (!n.imagem || n.imagem.indexOf('data:image/svg') === 0) &&
+             n._linkOriginal && n._linkOriginal !== '#' &&
+             n._linkOriginal.indexOf('http') === 0;
     }).slice(0, 8);
 
     if (!semImagem.length) return Promise.resolve(items);
+
+    console.log('[news] 🔍 buscando og:image para ' + semImagem.length + ' notícias...');
 
     var promises = semImagem.map(function (n) {
       return new Promise(function (resolve) {
@@ -256,11 +285,22 @@
         fetch(proxyUrl, { signal: ctrl.signal })
           .then(function (r) { clearTimeout(timer); return r.text(); })
           .then(function (html) {
-            var m = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
-                    html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i) ||
-                    html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i);
-            if (m && m[1] && m[1].indexOf('http') === 0) {
-              n.imagem = m[1];
+            // 6 padrões de meta tag
+            var patterns = [
+              /<meta[^>]*property=["']og:image:secure_url["'][^>]*content=["']([^"']+)["']/i,
+              /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
+              /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i,
+              /<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i,
+              /<meta[^>]*name=["']twitter:image:src["'][^>]*content=["']([^"']+)["']/i,
+              /<link[^>]*rel=["']image_src["'][^>]*href=["']([^"']+)["']/i
+            ];
+            for (var i = 0; i < patterns.length; i++) {
+              var m = html.match(patterns[i]);
+              if (m && m[1] && m[1].indexOf('http') === 0) {
+                n.imagem = m[1];
+                console.log('[news] ✅ og:image achada:', (n.titulo || '').substring(0, 40));
+                break;
+              }
             }
             resolve(n);
           })
@@ -305,12 +345,27 @@
   }
 
   function loadAllNews(force) {
+    // 🆕 v10.3.0 — Trava de reentrância
+    if (_loadingGuard) {
+      console.log('[news] ⏳ loadAllNews ignorado (já carregando)');
+      return;
+    }
     if (state.loading) return;
+
+    // 🆕 Dedup temporal: não recarrega em menos de 2s
+    var now = Date.now();
+    if (!force && now - _lastLoadAt < 2000) {
+      console.log('[news] ⏳ loadAllNews ignorado (dedup 2s)');
+      return;
+    }
+    _lastLoadAt = now;
+
+    _loadingGuard = true;
     state.loading = true;
     resetDailySeen();
 
     var feed = document.getElementById('pm-feed');
-    if (!feed) { state.loading = false; return; }
+    if (!feed) { _loadingGuard = false; state.loading = false; return; }
 
     if (force) {
       try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
@@ -324,6 +379,7 @@
         state.page = 1;
         state.hasMore = cached.length > PAGE_SIZE;
         state.loading = false;
+        _loadingGuard = false;
         renderFresh();
         return;
       }
@@ -340,11 +396,13 @@
     // ✅ BACKEND PRIMEIRO, RSS depois
     tryBackend().then(function (backendItems) {
       if (backendItems && backendItems.length) {
-        return backendItems;
+        // 🆕 v10.3.0 — Enriquece TAMBÉM as notícias do backend
+        return enrichWithOgImage(backendItems);
       }
       return tryRSS();
     }).then(function (items) {
       state.loading = false;
+      _loadingGuard = false;
       state.items = items || [];
       state.page = 1;
       state.hasMore = state.items.length > PAGE_SIZE;
@@ -362,6 +420,7 @@
       renderFresh();
     }).catch(function (e) {
       state.loading = false;
+      _loadingGuard = false;
       console.error('[news] erro geral:', e);
       feed.innerHTML = '<div style="text-align:center;padding:40px;color:#8e8e93">Erro ao carregar notícias.</div>';
     });
@@ -425,10 +484,13 @@
 
     var imgUrl = n.imagem || gerarPlaceholder(n.categoria);
     var fallback = gerarPlaceholder(n.categoria);
+
+    // 🆕 v10.3.0 — data-original-src + console.warn no onerror
     var imgHtml = '<img src="' + imgUrl + '" ' +
       'style="width:100%;height:180px;object-fit:cover;display:block;background:#2c2c2e" ' +
       'loading="lazy" ' +
-      'onerror="this.src=\'' + fallback + '\';this.onerror=null">';
+      'data-original-src="' + esc(imgUrl.substring(0, 120)) + '" ' +
+      'onerror="console.warn(\'[news] ⚠️ img falhou:\', this.src.substring(0,80)); this.onerror=null; this.src=\'' + fallback + '\'">';
 
     return '<article style="background:#1c1c1e;border:0.5px solid #38383a;border-radius:16px;margin-bottom:16px;overflow:hidden;animation:pmFadeIn 0.4s ease">' +
       imgHtml +
@@ -543,5 +605,5 @@
     init();
   }
 
-  console.log('✅ [news-unified.js] v10.2.0 carregado');
+  console.log('✅ [news-unified.js] v10.3.0 carregado');
 })();
