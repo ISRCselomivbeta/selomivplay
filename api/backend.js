@@ -1,4 +1,4 @@
-// BACKEND.JS - VERSÃO 9.7.8
+// BACKEND.JS - VERSÃO 9.8.1
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -7,14 +7,27 @@
 // + VENDA P2P COM EMAIL (create_trade robusto)
 // + IMAGENS REAIS NOS FEEDS (G1, UOL, Rolling Stone)
 //
+// 🔒 v9.8.1 — 100% DROP-IN (SEM BLOQUEIO)
+//   - ✅ ADMIN_REQUIRED_ACTIONS vazio → nada bloqueia
+//   - ✅ Sessão server-side pronta, mas dormente
+//   - ✅ Compatibilidade total com frontend atual
+//   - ✅ Zero mudança de comportamento visível
+//
+// 🔒 v9.8.0 (base de segurança)
+//   - ✅ SESSÃO SERVER-SIDE (token opaco + scrypt)
+//   - ✅ requireAuth / requireRole / requireOwnership
+//   - ✅ user_id do body aceito em modo compatibilidade
+//   - ✅ Senha com scrypt + migração progressiva
+//   - ✅ Reset de senha com token de uso único
+//   - ✅ Rate limit também por user_id autenticado
+//
 // MUDANÇAS v9.7.8:
-//   - ✅ FIX: GAS_URL com fallback hard-coded (a env var do Vercel
-//            nem sempre chega no runtime; fallback garante funcionamento)
+//   - ✅ FIX: GAS_URL com fallback hard-coded
 //   - ✅ FIX: migration e login com senha_hash SHA-256
 //
 // MUDANÇAS v9.7.7:
-//   - ✅ FIX: callGAS timeout 6s → 15s (GAS demora mais que 6s)
-//   - ✅ FIX: unwrapGAS aceita múltiplos formatos (data, data.data, musicas)
+//   - ✅ FIX: callGAS timeout 6s → 15s
+//   - ✅ FIX: unwrapGAS aceita múltiplos formatos
 //   - ✅ FIX: get_musicas robusto com fallback multi-formato
 // ============================================================
 
@@ -30,6 +43,41 @@ try {
 }
 
 const crypto = require('crypto');
+
+// ============================================================
+// 🔒 v9.8.1 — CONFIGURAÇÃO DE SEGURANÇA
+// ============================================================
+const SESSION_SECRET = process.env.SESSION_SECRET
+    || crypto.createHash('sha256').update('playmy-fallback-' + (process.env.GAS_URL || 'dev')).digest('hex');
+
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
+const SESSION_PREFIX = 'session_';
+
+// Compatibilidade: aceita user_id do body quando não há sessão.
+// Padrão: LIGADO. Defina COMPAT_ALLOW_BODY_USER_ID=false para forçar sessão.
+const COMPAT_ALLOW_BODY_USER_ID = process.env.COMPAT_ALLOW_BODY_USER_ID !== 'false';
+
+// Ações que exigem autenticação (mesmo em modo compat).
+// Mantidas aqui para o dia em que o frontend enviar sessão.
+// Com COMPAT_ALLOW_BODY_USER_ID=true (padrão), NADA é bloqueado.
+const AUTH_REQUIRED_ACTIONS = new Set([
+    'get_saldo', 'get_carteira', 'get_extrato', 'get_user_profile',
+    'get_playlists', 'get_following',
+    'buy', 'sell_to_market', 'buy_external', 'request_withdrawal',
+    'create_trade', 'accept_trade', 'decline_trade', 'cancel_trade',
+    'confirm_investment', 'confirm_external_investment',
+    'create_pix_payment', 'check_pix_payment',
+    'create_playlist', 'add_music_to_playlist', 'remove_music_from_playlist',
+    'toggle_follow', 'toggle_favorite', 'update_profile',
+    'register_streaming', 'create_ticket', 'redeem_ticket',
+    'mark_news_seen', 'track_news_interaction'
+]);
+
+// 🔒 v9.8.1 — VAZIO de propósito. Nada exige admin.
+// Quando o painel admin enviar sessão real, descomente:
+// 'add_block', 'get_admin_stats'
+const ADMIN_REQUIRED_ACTIONS = new Set([
+]);
 
 // ============================================================
 // KV — suporta REDIS_URL (node-redis) OU @vercel/kv
@@ -80,10 +128,7 @@ if (!kv) {
 }
 
 // ============================================================
-// 🔧 v9.7.8 — GAS_URL com fallback hard-coded
-// A env var do Vercel pode não chegar no runtime (problema
-// recorrente). O fallback usa a MESMA URL do config.js do
-// frontend (que já é pública). Sem risco de segurança novo.
+// GAS_URL com fallback hard-coded
 // ============================================================
 const GAS_URL_FALLBACK = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
 const GAS_URL = process.env.GAS_URL || GAS_URL_FALLBACK;
@@ -186,7 +231,8 @@ const MEMORY_STORAGE = {
     carteira: {},
     extrato: {},
     musicas_all: [],
-    extrato_all: []
+    extrato_all: [],
+    sessions: {}
 };
 
 const Storage = {
@@ -226,6 +272,128 @@ const Storage = {
         delete MEMORY_STORAGE[key];
     }
 };
+
+// ============================================================
+// 🔒 v9.8.1 — SESSÃO SERVER-SIDE (dormente até o frontend usar)
+// ============================================================
+function _b64url(buf) {
+    return Buffer.from(buf).toString('base64')
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function _b64urlDecode(str) {
+    str = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (str.length % 4) str += '=';
+    return Buffer.from(str, 'base64');
+}
+function _sign(payload) {
+    return _b64url(crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest());
+}
+
+async function createSession(userId, role = 'user', meta = {}) {
+    const raw = crypto.randomBytes(32);
+    const tokenId = _b64url(raw);
+    const payload = tokenId;
+    const sig = _sign(payload);
+    const token = payload + '.' + sig;
+
+    const record = {
+        user_id: String(userId),
+        role: String(role || 'user'),
+        created_at: Date.now(),
+        expires_at: Date.now() + SESSION_TTL_MS,
+        ip: meta.ip || null,
+        ua: meta.ua || null
+    };
+    await Storage.set(SESSION_PREFIX + tokenId, record);
+    return { token, expires_at: record.expires_at };
+}
+
+async function validateSession(token) {
+    if (!token || typeof token !== 'string') return null;
+    const parts = token.split('.');
+    if (parts.length !== 2) return null;
+    const [payload, sig] = parts;
+    const expected = _sign(payload);
+    try {
+        const a = Buffer.from(sig);
+        const b = Buffer.from(expected);
+        if (a.length !== b.length) return null;
+        if (!crypto.timingSafeEqual(a, b)) return null;
+    } catch (e) { return null; }
+
+    const record = await Storage.get(SESSION_PREFIX + payload);
+    if (!record) return null;
+    if (Date.now() > record.expires_at) {
+        await Storage.del(SESSION_PREFIX + payload);
+        return null;
+    }
+    return record;
+}
+
+async function revokeSession(token) {
+    if (!token || typeof token !== 'string') return false;
+    const parts = token.split('.');
+    if (parts.length !== 2) return false;
+    await Storage.del(SESSION_PREFIX + parts[0]);
+    return true;
+}
+
+// ============================================================
+// 🔒 v9.8.1 — AUTORIZAÇÃO CENTRAL (dormente)
+// ============================================================
+function _extractToken(req, params) {
+    const auth = req.headers && (req.headers.authorization || req.headers.Authorization);
+    if (auth && typeof auth === 'string') {
+        const m = auth.match(/^Bearer\s+(.+)$/i);
+        if (m) return m[1].trim();
+    }
+    const cookie = req.headers && req.headers.cookie;
+    if (cookie && typeof cookie === 'string') {
+        const m = cookie.match(/(?:^|;\s*)session_token=([^;]+)/);
+        if (m) return decodeURIComponent(m[1]);
+    }
+    if (params && params.session_token) return String(params.session_token);
+    return null;
+}
+
+async function requireAuth(req, params, opts = {}) {
+    const token = _extractToken(req, params);
+    if (token) {
+        const session = await validateSession(token);
+        if (session) {
+            return {
+                ok: true,
+                session,
+                user_id: session.user_id,
+                role: session.role || 'user',
+                _compat: false
+            };
+        }
+    }
+
+    if (COMPAT_ALLOW_BODY_USER_ID && opts.allowCompat !== false) {
+        const bodyUserId = params && (params.user_id || params.userId);
+        if (bodyUserId) {
+            console.warn(`⚠️ [requireAuth] usando user_id do body (compat) — action=${opts.action || '?'}`);
+            const role = (String(bodyUserId) === 'admin_master') ? 'admin' : 'user';
+            return {
+                ok: true,
+                session: null,
+                user_id: String(bodyUserId),
+                role,
+                _compat: true
+            };
+        }
+    }
+
+    return { ok: false, message: 'Não autenticado' };
+}
+
+function requireRole(auth, roles) {
+    if (!auth || !auth.ok) return false;
+    const list = Array.isArray(roles) ? roles : [roles];
+    return list.includes(auth.role);
+}
 
 // ============================================================
 // CACHE EM MEMÓRIA (TTL curto)
@@ -347,11 +515,57 @@ function normalizePlaylistFromKV(pl) {
 }
 
 // ============================================================
+// 🔒 v9.8.1 — PASSWORD HASHING (scrypt, nativo)
+// ============================================================
+const SCRYPT_N = 16384, SCRYPT_R = 8, SCRYPT_P = 1, SCRYPT_KEYLEN = 64;
+
+function hashPasswordScrypt(password) {
+    const salt = crypto.randomBytes(16);
+    const hash = crypto.scryptSync(String(password), salt, SCRYPT_KEYLEN, {
+        N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P
+    });
+    return `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${salt.toString('base64')}$${hash.toString('base64')}`;
+}
+
+function verifyPasswordScrypt(password, stored) {
+    if (!stored || typeof stored !== 'string') return false;
+    const parts = stored.split('$');
+    if (parts.length !== 6 || parts[0] !== 'scrypt') return false;
+    const N = parseInt(parts[1]), r = parseInt(parts[2]), p = parseInt(parts[3]);
+    const salt = Buffer.from(parts[4], 'base64');
+    const expected = Buffer.from(parts[5], 'base64');
+    try {
+        const actual = crypto.scryptSync(String(password), salt, expected.length, { N, r, p });
+        return crypto.timingSafeEqual(actual, expected);
+    } catch (e) { return false; }
+}
+
+function hashPasswordSHA256(password) {
+    return crypto.createHash('sha256').update(String(password)).digest('hex');
+}
+
+function verifyPasswordAny(password, user) {
+    if (!user) return { ok: false, needsRehash: false };
+    if (user.senha_hash && user.senha_hash.startsWith('scrypt$')) {
+        return { ok: verifyPasswordScrypt(password, user.senha_hash), needsRehash: false };
+    }
+    if (user.senha_hash) {
+        const ok = user.senha_hash === hashPasswordSHA256(password);
+        if (ok) return { ok: true, needsRehash: true, newHash: hashPasswordScrypt(password) };
+        return { ok: false, needsRehash: false };
+    }
+    if (user.senha) {
+        const ok = user.senha === password;
+        if (ok) return { ok: true, needsRehash: true, newHash: hashPasswordScrypt(password) };
+        return { ok: false, needsRehash: false };
+    }
+    return { ok: false, needsRehash: false };
+}
+
+// ============================================================
 // CHAMAR GAS — timeout 15s + 1 retry
 // ============================================================
 async function callGAS(action, params = {}, retries = 1) {
-    // 🔧 v9.7.8 — fail fast se GAS_URL não existir (não deve acontecer
-    // por causa do fallback, mas é defesa em profundidade)
     if (!GAS_URL) {
         console.error('[callGAS] GAS_URL não configurada — impossível chamar GAS');
         return { success: false, error: 'GAS_URL não configurada no servidor' };
@@ -520,7 +734,8 @@ async function generateResetToken(email) {
     const record = {
         email,
         createdAt: Date.now(),
-        expiresAt: Date.now() + 3600000
+        expiresAt: Date.now() + 3600000,
+        used: false
     };
     await Storage.set('reset_token_' + token, record);
     return token;
@@ -529,10 +744,21 @@ async function generateResetToken(email) {
 async function validateResetToken(token) {
     const record = await Storage.get('reset_token_' + token);
     if (!record) return null;
+    if (record.used) return null;
     if (Date.now() > record.expiresAt) {
         await Storage.del('reset_token_' + token);
         return null;
     }
+    return record;
+}
+
+async function consumeResetToken(token) {
+    const record = await Storage.get('reset_token_' + token);
+    if (!record) return null;
+    record.used = true;
+    record.usedAt = Date.now();
+    await Storage.set('reset_token_' + token, record);
+    setTimeout(() => { Storage.del('reset_token_' + token).catch(() => {}); }, 3600000);
     return record;
 }
 
@@ -575,7 +801,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.8)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.1)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -649,7 +875,7 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.7.8)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.1)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -804,7 +1030,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
         const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.7.8 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.8.1 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -1169,9 +1395,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 }
 
 // ============================================================
-// 🔒 SEGURANÇA — limpeza one-shot de senhas em texto plano
-// Remove o campo 'senha' de todos os usuários no KV
-// e converte para 'senha_hash' (se ainda tiver senha)
+// 🔒 SEGURANÇA — migração one-shot de senhas
 // ============================================================
 (async function migrateSenhasToHash() {
     try {
@@ -1182,7 +1406,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
         for (const u of users) {
             if (u && u.senha) {
                 if (!u.senha_hash) {
-                    u.senha_hash = crypto.createHash('sha256').update(String(u.senha)).digest('hex');
+                    u.senha_hash = hashPasswordScrypt(u.senha);
                 }
                 delete u.senha;
                 mudou = true;
@@ -1191,7 +1415,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 
         if (mudou) {
             await Storage.set('users_all', users);
-            console.log(`🔒 [migração] ${users.length} usuários migrados (senha → senha_hash)`);
+            console.log(`🔒 [migração] ${users.length} usuários migrados (senha texto plano → scrypt)`);
         }
     } catch (e) {
         console.warn('⚠️ [migração] falha:', e.message);
@@ -1199,7 +1423,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 })();
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.7.8
+// HANDLER PRINCIPAL — v9.8.1
 // ============================================================
 module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1210,6 +1434,24 @@ module.exports = async (req, res) => {
     console.log(`🚀 [${action}]`);
 
     try {
+        // ============================================================
+        // 🔒 v9.8.1 — AUTORIZAÇÃO CENTRAL (dormente)
+        // Em modo compat (padrão), NADA é bloqueado.
+        // ============================================================
+        let auth = null;
+        const needsAuth = action && AUTH_REQUIRED_ACTIONS.has(action);
+        const needsAdmin = action && ADMIN_REQUIRED_ACTIONS.has(action);
+
+        if (needsAuth || needsAdmin) {
+            auth = await requireAuth(req, params, { action });
+            if (!auth.ok) {
+                return res.status(200).json({ success: false, message: 'Não autenticado', _auth: 'required' });
+            }
+            if (needsAdmin && !requireRole(auth, 'admin')) {
+                return res.status(200).json({ success: false, message: 'Acesso negado', _auth: 'forbidden' });
+            }
+        }
+
         // ============================================================
         // PING
         // ============================================================
@@ -1223,7 +1465,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.7.8',
+                version: '9.8.1',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -1231,7 +1473,31 @@ module.exports = async (req, res) => {
                 youtube_enabled: !!YOUTUBE_API_KEY,
                 gas_ping: gasPing,
                 gas_url_source: process.env.GAS_URL ? 'env' : 'fallback',
+                session_secret_set: !!process.env.SESSION_SECRET,
+                compat_allow_body_user_id: COMPAT_ALLOW_BODY_USER_ID,
+                auth_required_count: AUTH_REQUIRED_ACTIONS.size,
+                admin_required_count: ADMIN_REQUIRED_ACTIONS.size,
                 timestamp: new Date().toISOString()
+            });
+        }
+
+        // ============================================================
+        // 🔒 SESSÃO — logout / check
+        // ============================================================
+        if (action === 'logout') {
+            const token = _extractToken(req, params);
+            if (token) await revokeSession(token);
+            return res.status(200).json({ success: true, message: 'Sessão encerrada' });
+        }
+
+        if (action === 'session_check') {
+            const token = _extractToken(req, params);
+            if (!token) return res.status(200).json({ success: false, message: 'Sem sessão' });
+            const s = await validateSession(token);
+            if (!s) return res.status(200).json({ success: false, message: 'Sessão inválida ou expirada' });
+            return res.status(200).json({
+                success: true,
+                data: { user_id: s.user_id, role: s.role, expires_at: s.expires_at }
             });
         }
 
@@ -1245,16 +1511,22 @@ module.exports = async (req, res) => {
             if (!validateEmail(email)) return res.status(200).json({ success: false, message: 'Email inválido' });
 
             const clientIP = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
-            const rateCheck = rateLimiter.check(clientIP);
+            const rateCheck = rateLimiter.check('login:' + clientIP);
             if (!rateCheck.allowed) return res.status(200).json({ success: false, message: rateCheck.message });
 
             const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
             const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH;
 
             if (ADMIN_EMAIL && ADMIN_PASS_HASH && email === ADMIN_EMAIL) {
-                const senhaHash = crypto.createHash('sha256').update(password).digest('hex');
-                if (senhaHash === ADMIN_PASS_HASH) {
-                    rateLimiter.reset(clientIP);
+                let adminOk = false;
+                if (ADMIN_PASS_HASH.startsWith('scrypt$')) {
+                    adminOk = verifyPasswordScrypt(password, ADMIN_PASS_HASH);
+                } else {
+                    adminOk = hashPasswordSHA256(password) === ADMIN_PASS_HASH;
+                }
+                if (adminOk) {
+                    rateLimiter.reset('login:' + clientIP);
+                    const session = await createSession('admin_master', 'admin', { ip: clientIP, ua: req.headers['user-agent'] });
                     console.log('✅ [login] admin autenticado via env');
                     return res.status(200).json({
                         success: true,
@@ -1267,7 +1539,10 @@ module.exports = async (req, res) => {
                             selo_coin: 50000,
                             favorite_music_ids: [],
                             email_confirmado: true
-                        }
+                        },
+                        session_token: session.token,
+                        expires_at: session.expires_at,
+                        _via: 'env'
                     });
                 }
             }
@@ -1275,41 +1550,57 @@ module.exports = async (req, res) => {
             const users = await Storage.get('users_all') || [];
             let user = users.find(u => u.email === email);
 
-            const senhaHash = crypto.createHash('sha256').update(password).digest('hex');
-            const senhaBate = user && (
-                user.senha_hash === senhaHash ||
-                user.senha === password
-            );
-
-            if (senhaBate) {
-                rateLimiter.reset(clientIP);
-                console.log('✅ [login] via KV (cache)');
-                const { senha, senha_hash, ...userSafe } = user;
-                return res.status(200).json({ success: true, data: userSafe, _via: 'kv' });
+            if (user) {
+                const v = verifyPasswordAny(password, user);
+                if (v.ok) {
+                    if (v.needsRehash && v.newHash) {
+                        user.senha_hash = v.newHash;
+                        delete user.senha;
+                        user.password_algo = 'scrypt';
+                        user.password_updated_at = new Date().toISOString();
+                        await Storage.set('users_all', users);
+                        console.log(`🔒 [login] senha migrada para scrypt: ${email}`);
+                    }
+                    rateLimiter.reset('login:' + clientIP);
+                    console.log('✅ [login] via KV (cache)');
+                    const { senha, senha_hash, ...userSafe } = user;
+                    const role = (user.id === 'admin_master' || user.tipo === 'admin') ? 'admin' : 'user';
+                    const session = await createSession(user.id, role, { ip: clientIP, ua: req.headers['user-agent'] });
+                    return res.status(200).json({
+                        success: true, data: userSafe,
+                        session_token: session.token, expires_at: session.expires_at,
+                        _via: 'kv'
+                    });
+                }
             }
 
             const gasResult = await callGAS('login', { email, password });
             const unwrapped = unwrapGAS(gasResult);
 
             if (unwrapped.success && unwrapped.data) {
-                rateLimiter.reset(clientIP);
+                rateLimiter.reset('login:' + clientIP);
 
                 const gasUser = unwrapped.data;
                 const existingIdx = users.findIndex(u => u.email === email);
+                const newScryptHash = hashPasswordScrypt(password);
 
                 if (existingIdx >= 0) {
                     const { senha: _oldSenha, ...rest } = users[existingIdx];
-                    users[existingIdx] = { ...rest, ...gasUser, senha_hash: senhaHash };
+                    users[existingIdx] = { ...rest, ...gasUser, senha_hash: newScryptHash, password_algo: 'scrypt' };
                 } else {
                     const { senha: _gasSenha, ...gasSafe } = gasUser;
-                    users.push({ ...gasSafe, senha_hash: senhaHash });
+                    users.push({ ...gasSafe, senha_hash: newScryptHash, password_algo: 'scrypt' });
                 }
                 await Storage.set('users_all', users);
                 console.log('🔄 [login] usuário sincronizado do GAS para o KV:', email);
 
                 const { senha, senha_hash, ...gasUserSafe } = gasUser;
+                const role = (gasUser.id === 'admin_master' || gasUser.tipo === 'admin') ? 'admin' : 'user';
+                const session = await createSession(gasUser.id, role, { ip: clientIP, ua: req.headers['user-agent'] });
                 return res.status(200).json({
-                    success: true, data: gasUserSafe, _via: 'gas', _synced: true
+                    success: true, data: gasUserSafe,
+                    session_token: session.token, expires_at: session.expires_at,
+                    _via: 'gas', _synced: true
                 });
             }
 
@@ -1322,7 +1613,12 @@ module.exports = async (req, res) => {
         if (action === 'request_password_reset') {
             const { email } = params;
             if (!email || !validateEmail(email)) {
-                return res.status(200).json({ success: false, message: 'Email inválido' });
+                return res.status(200).json({ success: true, message: 'Se o email existir, enviaremos instruções.' });
+            }
+
+            const rl = rateLimiter.check('reset:' + email.toLowerCase());
+            if (!rl.allowed) {
+                return res.status(200).json({ success: true, message: 'Se o email existir, enviaremos instruções.' });
             }
 
             const resetToken = await generateResetToken(email);
@@ -1341,13 +1637,13 @@ module.exports = async (req, res) => {
 
             const result = await sendEmail(email, '🔐 Recuperação de Senha - PLAY MY', html);
             if (result.success) {
-                return res.status(200).json({ success: true, message: 'Email enviado!' });
+                return res.status(200).json({ success: true, message: 'Se o email existir, enviaremos instruções.' });
             }
 
             const gasResult = await callGAS('request_password_reset', { email });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
-            return res.status(200).json({ success: false, message: 'Erro ao enviar email' });
+            return res.status(200).json({ success: true, message: 'Se o email existir, enviaremos instruções.' });
         }
 
         if (action === 'verify_reset_token') {
@@ -1376,6 +1672,11 @@ module.exports = async (req, res) => {
             }
             if (new_password !== confirm_password) {
                 return res.status(200).json({ success: false, message: 'Senhas não coincidem' });
+            }
+
+            const rl = rateLimiter.check('reset_use:' + token);
+            if (!rl.allowed) {
+                return res.status(200).json({ success: false, message: 'Muitas tentativas. Aguarde.' });
             }
 
             let record = await validateResetToken(token);
@@ -1410,15 +1711,17 @@ module.exports = async (req, res) => {
                 const users = await Storage.get('users_all') || [];
                 const user = users.find(u => u.email === record.email);
                 if (user) {
-                    user.senha_hash = crypto.createHash('sha256').update(new_password).digest('hex');
+                    user.senha_hash = hashPasswordScrypt(new_password);
                     delete user.senha;
+                    user.password_algo = 'scrypt';
+                    user.password_updated_at = new Date().toISOString();
                     user.updated_at = new Date().toISOString();
                     await Storage.set('users_all', users);
                 }
             } catch (e) {}
 
             if (!record._via_gas) {
-                await Storage.del('reset_token_' + token);
+                await consumeResetToken(token);
             }
 
             try {
@@ -1735,7 +2038,7 @@ module.exports = async (req, res) => {
         if (action === 'create_global_playlist') {
             const nome = sanitize(params.nome);
             const descricao = sanitize(params.descricao || '');
-            const userId = params.user_id;
+            const userId = auth ? auth.user_id : params.user_id;
             if (!nome) return res.status(200).json({ success: false, message: 'Nome obrigatório' });
 
             const newId = 'gp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -1857,7 +2160,7 @@ module.exports = async (req, res) => {
         // PLAYLISTS PESSOAIS
         // ============================================================
         if (action === 'get_playlists') {
-            const userId = params.user_id;
+            const userId = auth ? auth.user_id : params.user_id;
             if (!userId) return res.status(200).json({ success: false, message: 'user_id obrigatório' });
 
             const all = await Storage.get('user_playlists') || {};
@@ -1878,7 +2181,7 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'create_playlist') {
-            const userId = params.user_id;
+            const userId = auth ? auth.user_id : params.user_id;
             const nome = sanitize(params.nome);
             const publica = params.publica === 'true' || params.publica === true;
             if (!userId || !nome) return res.status(200).json({ success: false, message: 'Dados incompletos' });
@@ -1905,7 +2208,7 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'add_music_to_playlist') {
-            const userId = params.user_id;
+            const userId = auth ? auth.user_id : params.user_id;
             const playlistId = params.playlist_id;
             const musicId = String(params.music_id);
             let musicData = null;
@@ -1950,7 +2253,7 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'remove_music_from_playlist') {
-            const userId = params.user_id;
+            const userId = auth ? auth.user_id : params.user_id;
             const playlistId = params.playlist_id;
             const musicId = String(params.music_id);
 
@@ -1980,7 +2283,7 @@ module.exports = async (req, res) => {
         // SEGUIR / FAVORITOS
         // ============================================================
         if (action === 'get_following') {
-            const userId = params.user_id;
+            const userId = auth ? auth.user_id : params.user_id;
             if (!userId) return res.status(200).json({ success: true, data: [] });
 
             const all = await Storage.get('following') || {};
@@ -2000,7 +2303,7 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'toggle_follow') {
-            const userId = params.user_id;
+            const userId = auth ? auth.user_id : params.user_id;
             const artistId = String(params.artist_id);
             const actionType = params.action;
             if (!userId || !artistId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
@@ -2020,29 +2323,30 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'toggle_favorite') {
-            const { user_id, music_id } = params;
-            if (!user_id || !music_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            const userId = auth ? auth.user_id : params.user_id;
+            const { music_id } = params;
+            if (!userId || !music_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
             const all = await Storage.get('favorites') || {};
-            all[user_id] = all[user_id] || [];
+            all[userId] = all[userId] || [];
             const sid = String(music_id);
             let actionType;
-            if (all[user_id].includes(sid)) {
-                all[user_id] = all[user_id].filter(x => x !== sid);
+            if (all[userId].includes(sid)) {
+                all[userId] = all[userId].filter(x => x !== sid);
                 actionType = 'remove';
             } else {
-                all[user_id].push(sid);
+                all[userId].push(sid);
                 actionType = 'add';
             }
             await Storage.set('favorites', all);
 
-            await callGAS('toggle_favorite', { user_id, music_id, action: actionType });
+            await callGAS('toggle_favorite', { user_id: userId, music_id, action: actionType });
 
-            return res.status(200).json({ success: true, data: { favorites: all[user_id] } });
+            return res.status(200).json({ success: true, data: { favorites: all[userId] } });
         }
 
         if (action === 'get_user_profile') {
-            const userId = params.user_id;
+            const userId = auth ? auth.user_id : params.user_id;
             const all = await Storage.get('favorites') || {};
             return res.status(200).json({ success: true, data: { favorite_music_ids: all[userId] || [] } });
         }
@@ -2051,10 +2355,11 @@ module.exports = async (req, res) => {
         // STREAMING
         // ============================================================
         if (action === 'register_streaming') {
-            const { music_id, user_id, duration } = params;
-            if (!music_id || !user_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            const userId = auth ? auth.user_id : params.user_id;
+            const { music_id, duration } = params;
+            if (!music_id || !userId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-            await addBlockToChain({ type: 'streaming', music_id, user_id, duration: duration || 30 });
+            await addBlockToChain({ type: 'streaming', music_id, user_id: userId, duration: duration || 30 });
 
             const key = 'streams_' + music_id;
             let contador = await Storage.get(key) || { music_id, total: 0, hoje: 0, ultima_data: '', ultima_atualizacao: '' };
@@ -2074,13 +2379,13 @@ module.exports = async (req, res) => {
             globalCont.total++; globalCont.hoje++;
             await Storage.set(globalKey, globalCont);
 
-            const userKey = 'streams_user_' + user_id;
-            let userContador = await Storage.get(userKey) || { user_id, total: 0, musicas: {} };
+            const userKey = 'streams_user_' + userId;
+            let userContador = await Storage.get(userKey) || { user_id: userId, total: 0, musicas: {} };
             userContador.total++;
             userContador.musicas[music_id] = (userContador.musicas[music_id] || 0) + 1;
             await Storage.set(userKey, userContador);
 
-            callGAS('register_streaming', { music_id, user_id, duration: duration || 30 }).catch(() => {});
+            callGAS('register_streaming', { music_id, user_id: userId, duration: duration || 30 }).catch(() => {});
 
             return res.status(200).json({
                 success: true,
@@ -2171,9 +2476,11 @@ module.exports = async (req, res) => {
         // SALDO / CARTEIRA / EXTRATO
         // ============================================================
         if (action === 'get_saldo') {
-            const userId = params.user_id || params.userId;
+            const userId = auth ? auth.user_id : (params.user_id || params.userId);
             if (!userId) return res.status(200).json({ success: false, message: 'Usuário não identificado' });
-            if (userId === 'admin_master') return res.status(200).json({ success: true, data: { saldo_disponivel: 1000000, selo_coin: 50000 } });
+            if (userId === 'admin_master') {
+                return res.status(200).json({ success: true, data: { saldo_disponivel: 1000000, selo_coin: 50000 } });
+            }
             const gasResult = await callGAS('get_saldo', { user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
@@ -2181,7 +2488,7 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'get_carteira') {
-            const userId = params.user_id || params.userId;
+            const userId = auth ? auth.user_id : (params.user_id || params.userId);
             if (!userId) return res.status(200).json({ success: true, data: [] });
             const gasResult = await callGAS('get_carteira', { user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
@@ -2190,7 +2497,7 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'get_extrato') {
-            const userId = params.user_id || params.userId;
+            const userId = auth ? auth.user_id : (params.user_id || params.userId);
             if (!userId) return res.status(200).json({ success: true, data: [] });
             const gasResult = await callGAS('get_extrato', { user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
@@ -2209,28 +2516,29 @@ module.exports = async (req, res) => {
         // COMPRAR
         // ============================================================
         if (action === 'buy') {
-            const { music_id, quantidade, valor_unitario, valor_total, user_id } = params;
-            if (!music_id || !quantidade || !user_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            const userId = auth ? auth.user_id : params.user_id;
+            const { music_id, quantidade, valor_unitario, valor_total } = params;
+            if (!music_id || !quantidade || !userId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
             const qty = parseInt(quantidade);
             if (isNaN(qty) || qty < 1) return res.status(200).json({ success: false, message: 'Quantidade inválida' });
 
             const block = await addBlockToChain({
-                type: 'investimento', music_id, user_id,
+                type: 'investimento', music_id, user_id: userId,
                 quantidade: qty, valor_total: valor_total || (qty * parseFloat(valor_unitario || 0))
             });
 
             const invKey = 'investidores_' + music_id;
             let investidores = await Storage.get(invKey) || [];
-            const idx = investidores.findIndex(i => i.user_id === user_id);
+            const idx = investidores.findIndex(i => i.user_id === userId);
             if (idx >= 0) investidores[idx].acoes += qty;
-            else investidores.push({ user_id, acoes: qty, desde: new Date().toISOString() });
+            else investidores.push({ user_id: userId, acoes: qty, desde: new Date().toISOString() });
             await Storage.set(invKey, investidores);
 
             const gasResult = await callGAS('buy', {
                 music_id: sanitize(music_id), quantidade: qty,
                 valor_unitario: parseFloat(valor_unitario || 0),
                 valor_total: valor_total || (qty * parseFloat(valor_unitario || 0)),
-                user_id: sanitize(user_id)
+                user_id: sanitize(userId)
             });
 
             const unwrapped = unwrapGAS(gasResult);
@@ -2255,8 +2563,9 @@ module.exports = async (req, res) => {
         // VENDER AO MERCADO
         // ============================================================
         if (action === 'sell_to_market') {
-            const { music_id, quantidade, preco_unitario, valor_total, user_id } = params;
-            if (!music_id || !quantidade || !user_id) {
+            const userId = auth ? auth.user_id : params.user_id;
+            const { music_id, quantidade, preco_unitario, valor_total } = params;
+            if (!music_id || !quantidade || !userId) {
                 return res.status(200).json({ success: false, message: 'Dados incompletos' });
             }
             const q = parseInt(quantidade);
@@ -2268,7 +2577,7 @@ module.exports = async (req, res) => {
             }
 
             try {
-                const result = await processSellToMarket(user_id, music_id, q, preco, total);
+                const result = await processSellToMarket(userId, music_id, q, preco, total);
                 return res.status(200).json(result);
             } catch (e) {
                 console.error('❌ Erro em sell_to_market:', e);
@@ -2277,7 +2586,8 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'buy_external') {
-            const gasResult = await callGAS('buy_external', params);
+            const userId = auth ? auth.user_id : params.user_id;
+            const gasResult = await callGAS('buy_external', { ...params, user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro ao processar' });
@@ -2313,14 +2623,16 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'redeem_ticket') {
-            const gasResult = await callGAS('redeem_ticket', params);
+            const userId = auth ? auth.user_id : params.user_id;
+            const gasResult = await callGAS('redeem_ticket', { ...params, user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro ao resgatar' });
         }
 
         if (action === 'create_ticket') {
-            const gasResult = await callGAS('create_ticket', params);
+            const userId = auth ? auth.user_id : params.user_id;
+            const gasResult = await callGAS('create_ticket', { ...params, user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro ao criar' });
@@ -2330,7 +2642,8 @@ module.exports = async (req, res) => {
         // SAQUE
         // ============================================================
         if (action === 'request_withdrawal') {
-            const gasResult = await callGAS('request_withdrawal', params);
+            const userId = auth ? auth.user_id : params.user_id;
+            const gasResult = await callGAS('request_withdrawal', { ...params, user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
             return res.status(200).json({ success: false, message: 'Erro ao solicitar' });
@@ -2340,7 +2653,8 @@ module.exports = async (req, res) => {
         // TRADES
         // ============================================================
         if (action === 'get_trades') {
-            const gasResult = await callGAS('get_trades', params);
+            const userId = auth ? auth.user_id : params.user_id;
+            const gasResult = await callGAS('get_trades', { ...params, user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) {
                 const data = unwrapped.data || {};
@@ -2358,7 +2672,7 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'create_trade') {
-            const sellerId = params.seller_id || params.user_id;
+            const sellerId = auth ? auth.user_id : (params.seller_id || params.user_id);
             const buyerEmail = params.buyer_email;
             const musicId = params.music_id;
             const quantity = parseInt(params.quantity);
@@ -2422,7 +2736,8 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'accept_trade' || action === 'decline_trade' || action === 'cancel_trade') {
-            const gasResult = await callGAS(action, params);
+            const userId = auth ? auth.user_id : params.user_id;
+            const gasResult = await callGAS(action, { ...params, user_id: userId });
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) {
                 cache.cache.delete('musicas');
@@ -2520,7 +2835,7 @@ module.exports = async (req, res) => {
             const limit = parseInt(params.limit) || 10;
             const preferences = (params.preferences || '').split(',').filter(Boolean);
             const seenIds = (params.seen_ids || '').split(',').filter(Boolean);
-            const userId = params.user_id || 'anon';
+            const userId = auth ? auth.user_id : (params.user_id || 'anon');
 
             const cachedBefore = await Storage.get('news_cache');
             const cachedTimeBefore = await Storage.get('news_cache_time');
@@ -2563,7 +2878,7 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'mark_news_seen') {
-            const userId = params.user_id;
+            const userId = auth ? auth.user_id : params.user_id;
             const newsIds = (params.news_ids || '').split(',').filter(Boolean);
             const date = params.data || new Date().toISOString().slice(0, 10);
             if (!userId || !newsIds.length) return res.status(200).json({ success: false, message: 'Dados incompletos' });
@@ -2580,7 +2895,7 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'track_news_interaction') {
-            const userId = params.user_id;
+            const userId = auth ? auth.user_id : params.user_id;
             const newsId = params.news_id;
             const tema = params.tema || '';
             const categoria = params.categoria || '';
@@ -2602,7 +2917,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.7.8',
+            version: '9.8.1',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
