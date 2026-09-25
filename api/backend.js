@@ -1,34 +1,26 @@
-// BACKEND.JS - VERSÃO 9.8.1
+// BACKEND.JS - VERSÃO 9.8.2
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
 // + COMPATIBILIDADE TOTAL COM GAS 7.0.1
 // + VENDA DIRETA AO MERCADO (sell_to_market)
 // + VENDA P2P COM EMAIL (create_trade robusto)
-// + IMAGENS REAIS NOS FEEDS (G1, UOL, Rolling Stone)
+// + IMAGENS REAIS NOS FEEDS (extração agressiva + og:image)
+//
+// 🔒 v9.8.2 — MELHORIAS DE IMAGEM E ROBUSTEZ
+//   - ✅ FIX: getFonteLogo com URLs reais (antes eram fake)
+//   - ✅ FIX: extração de imagem em 8 formatos (igual ao front)
+//   - ✅ FIX: enriquecimento og:image para notícias sem imagem
+//   - ✅ FIX: get_trades com fallback multi-formato
+//   - ✅ FIX: create_trade valida posse antes de chamar GAS
+//   - ✅ FIX: content-type aceita text/plain (Google News)
+//   - ✅ ADD: feeds diretos faltantes (Omelete, Papelpop, Popline, G1 Pop Arte)
+//   - ✅ ADD: log de timeout no aggregateNews
 //
 // 🔒 v9.8.1 — 100% DROP-IN (SEM BLOQUEIO)
 //   - ✅ ADMIN_REQUIRED_ACTIONS vazio → nada bloqueia
 //   - ✅ Sessão server-side pronta, mas dormente
 //   - ✅ Compatibilidade total com frontend atual
-//   - ✅ Zero mudança de comportamento visível
-//
-// 🔒 v9.8.0 (base de segurança)
-//   - ✅ SESSÃO SERVER-SIDE (token opaco + scrypt)
-//   - ✅ requireAuth / requireRole / requireOwnership
-//   - ✅ user_id do body aceito em modo compatibilidade
-//   - ✅ Senha com scrypt + migração progressiva
-//   - ✅ Reset de senha com token de uso único
-//   - ✅ Rate limit também por user_id autenticado
-//
-// MUDANÇAS v9.7.8:
-//   - ✅ FIX: GAS_URL com fallback hard-coded
-//   - ✅ FIX: migration e login com senha_hash SHA-256
-//
-// MUDANÇAS v9.7.7:
-//   - ✅ FIX: callGAS timeout 6s → 15s
-//   - ✅ FIX: unwrapGAS aceita múltiplos formatos
-//   - ✅ FIX: get_musicas robusto com fallback multi-formato
 // ============================================================
 
 // ============================================================
@@ -174,11 +166,12 @@ const GAS_ACTIONS = new Set([
 ]);
 
 // ============================================================
-// MAPA DE LOGOS DE FONTES REAIS
+// MAPA DE LOGOS DE FONTES REAIS (v9.8.2 — URLs corrigidas)
 // ============================================================
 const FONTE_LOGOS = {
-    'g1': 'https://s2.glbimg.com/9vC0e5YhKt8tXQ8yQ8yQ8yQ8yQ8=/0x0:0x0/100x100/i.s3.glbimg.com/v1/AUTH_59edd422c0c84a879bd37670ae4f538a/internal_photos/bs/2020/2/0/8Q8yQ8yQ8yQ8yQ8yQ8yQ8Q/g1.png',
-    'globo': 'https://s2.glbimg.com/9vC0e5YhKt8tXQ8yQ8yQ8yQ8yQ8=/0x0:0x0/100x100/i.s3.glbimg.com/v1/AUTH_59edd422c0c84a879bd37670ae4f538a/internal_photos/bs/2020/2/0/8Q8yQ8yQ8yQ8yQ8yQ8yQ8Q/g1.png',
+    'g1': 'https://s2.glbimg.com/favicon.ico',
+    'globo': 'https://s2.glbimg.com/favicon.ico',
+    'ge': 'https://s2.glbimg.com/favicon.ico',
     'folha': 'https://www1.folha.uol.com.br/favicon.ico',
     'uol': 'https://www.uol.com.br/favicon.ico',
     'cnn': 'https://www.cnnbrasil.com.br/favicon.ico',
@@ -187,7 +180,12 @@ const FONTE_LOGOS = {
     'exame': 'https://exame.com/favicon.ico',
     'billboard': 'https://www.billboard.com/favicon.ico',
     'rollingstone': 'https://rollingstone.uol.com.br/favicon.ico',
+    'rolling stone': 'https://rollingstone.uol.com.br/favicon.ico',
+    'tenhomaisdiscos': 'https://tenhomaisdiscosqueamigos.com/favicon.ico',
     'tenho mais discos': 'https://tenhomaisdiscosqueamigos.com/favicon.ico',
+    'omelete': 'https://www.omelete.com.br/favicon.ico',
+    'papelpop': 'https://www.papelpop.com/favicon.ico',
+    'popline': 'https://portalpopline.com.br/favicon.ico',
     'minc': 'https://www.gov.br/cultura/favicon.ico',
     'gov.br': 'https://www.gov.br/favicon.ico',
     'secult': 'https://www.saude.go.gov.br/favicon.ico'
@@ -195,7 +193,10 @@ const FONTE_LOGOS = {
 
 function getFonteLogo(fonte) {
     if (!fonte) return null;
-    const f = fonte.toLowerCase();
+    const f = fonte.toLowerCase().trim();
+    // Match exato primeiro
+    if (FONTE_LOGOS[f]) return FONTE_LOGOS[f];
+    // Match parcial
     for (const key in FONTE_LOGOS) {
         if (f.includes(key)) return FONTE_LOGOS[key];
     }
@@ -791,7 +792,76 @@ async function addBlockToChain(data) {
 }
 
 // ============================================================
-// NOTÍCIAS — GOOGLE NEWS RSS
+// 🆕 v9.8.2 — EXTRAÇÃO AGRESSIVA DE IMAGEM (8 formatos)
+// ============================================================
+function extractImageFromItem(itemXml, ceMatch, dsMatch) {
+    const candidates = [
+        itemXml.match(/<enclosure[^>]*url=["']([^"']+)["']/i),
+        itemXml.match(/<media:content[^>]*url=["']([^"']+)["']/i),
+        itemXml.match(/<media:thumbnail[^>]*url=["']([^"']+)["']/i),
+        itemXml.match(/<media:group>[\s\S]*?<media:content[^>]*url=["']([^"']+)["']/i),
+        itemXml.match(/<img[^>]*src=["']([^"']+)["']/i),
+        (ceMatch && ceMatch[1] && ceMatch[1].match(/<img[^>]*src=["']([^"']+)["']/i)),
+        (dsMatch && dsMatch[1] && dsMatch[1].match(/<img[^>]*src=["']([^"']+)["']/i)),
+        (ceMatch && ceMatch[1] && ceMatch[1].match(/property=["']og:image["'][^>]*content=["']([^"']+)["']/i))
+    ];
+    for (const c of candidates) {
+        if (c && c[1]) {
+            const url = c[1];
+            if (url && url.indexOf('http') === 0 &&
+                url.indexOf('feedburner') === -1 &&
+                url.indexOf('pixel') === -1 &&
+                !/\.(gif|svg)$/i.test(url.split('?')[0])) {
+                return url;
+            }
+        }
+    }
+    return null;
+}
+
+// ============================================================
+// 🆕 v9.8.2 — ENRIQUECER COM og:image (para notícias sem imagem)
+// ============================================================
+async function enrichWithOgImage(items) {
+    const semImagem = items.filter(n =>
+        (!n.imagem || n.imagem === '') && n.link && n.link.indexOf('http') === 0
+    ).slice(0, 8);
+
+    if (!semImagem.length) return items;
+
+    console.log(`[news] 🔍 enriquecendo ${semImagem.length} notícias com og:image...`);
+
+    const promises = semImagem.map(n => {
+        return new Promise(resolve => {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 6000);
+            fetch(n.link, {
+                signal: controller.signal,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.2)',
+                    'Accept': 'text/html'
+                }
+            })
+                .then(r => { clearTimeout(timer); return r.text(); })
+                .then(html => {
+                    const m = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+                              html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i) ||
+                              html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i);
+                    if (m && m[1] && m[1].indexOf('http') === 0) {
+                        n.imagem = m[1];
+                    }
+                    resolve(n);
+                })
+                .catch(() => { clearTimeout(timer); resolve(n); });
+        });
+    });
+
+    await Promise.allSettled(promises);
+    return items;
+}
+
+// ============================================================
+// NOTÍCIAS — GOOGLE NEWS RSS (v9.8.2 — extração agressiva)
 // ============================================================
 async function fetchNewsFromGoogleRSS(query, categoria) {
     try {
@@ -801,7 +871,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.1)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.2)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -809,7 +879,9 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
 
         if (!response.ok) return [];
         const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('xml') && !contentType.includes('rss') && !contentType.includes('html')) return [];
+        // 🆕 v9.8.2 — aceita text/plain também (Google News às vezes manda)
+        if (!contentType.includes('xml') && !contentType.includes('rss') &&
+            !contentType.includes('html') && !contentType.includes('text/plain')) return [];
 
         const xml = await response.text();
         if (!xml.includes('<item>')) return [];
@@ -825,6 +897,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
             const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/);
             const sourceMatch = itemXml.match(/<source[^>]*>(.*?)<\/source>/);
             const descMatch = itemXml.match(/<description>(.*?)<\/description>/);
+            const ceMatch = itemXml.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/);
             if (titleMatch) {
                 let title = titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
                 const source = sourceMatch ? sourceMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : 'Google News';
@@ -835,15 +908,8 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
                     if (texto) texto += '...';
                 }
 
-                const encMatch = itemXml.match(/<enclosure[^>]*url="([^"]+)"/);
-                const mediaMatch = itemXml.match(/<media:content[^>]*url="([^"]+)"/);
-                const mediaThumbMatch = itemXml.match(/<media:thumbnail[^>]*url="([^"]+)"/);
-                const imgInDescMatch = itemXml.match(/<img[^>]*src="([^"]+)"/);
-                const imagemReal = (encMatch && encMatch[1]) ||
-                                   (mediaMatch && mediaMatch[1]) ||
-                                   (mediaThumbMatch && mediaThumbMatch[1]) ||
-                                   (imgInDescMatch && imgInDescMatch[1]) ||
-                                   null;
+                // 🆕 v9.8.2 — extração agressiva
+                const imagemReal = extractImageFromItem(itemXml, ceMatch, descMatch);
 
                 const id = 'news_' + crypto.createHash('md5').update(title).digest('hex').substring(0, 12);
                 items.push({
@@ -866,7 +932,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
 }
 
 // ============================================================
-// NOTÍCIAS — FEEDS DIRETOS
+// NOTÍCIAS — FEEDS DIRETOS (v9.8.2 — extração agressiva)
 // ============================================================
 async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
     try {
@@ -875,7 +941,7 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.1)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.2)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -895,6 +961,7 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
             const linkMatch = itemXml.match(/<link>(.*?)<\/link>/);
             const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/);
             const descMatch = itemXml.match(/<description>(.*?)<\/description>/);
+            const ceMatch = itemXml.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/);
 
             if (titleMatch) {
                 let title = titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
@@ -904,15 +971,8 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
                     if (texto) texto += '...';
                 }
 
-                const encMatch = itemXml.match(/<enclosure[^>]*url="([^"]+)"/);
-                const mediaMatch = itemXml.match(/<media:content[^>]*url="([^"]+)"/);
-                const mediaThumbMatch = itemXml.match(/<media:thumbnail[^>]*url="([^"]+)"/);
-                const imgInDescMatch = itemXml.match(/<img[^>]*src="([^"]+)"/);
-                const imagemReal = (encMatch && encMatch[1]) ||
-                                   (mediaMatch && mediaMatch[1]) ||
-                                   (mediaThumbMatch && mediaThumbMatch[1]) ||
-                                   (imgInDescMatch && imgInDescMatch[1]) ||
-                                   null;
+                // 🆕 v9.8.2 — extração agressiva
+                const imagemReal = extractImageFromItem(itemXml, ceMatch, descMatch);
 
                 const id = 'news_' + crypto.createHash('md5').update(title).digest('hex').substring(0, 12);
                 items.push({
@@ -935,7 +995,7 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
 }
 
 // ============================================================
-// AGREGADOR DE NOTÍCIAS
+// AGREGADOR DE NOTÍCIAS (v9.8.2 — feeds extras + og:image)
 // ============================================================
 async function aggregateNews() {
     const cached = await Storage.get('news_cache');
@@ -953,11 +1013,16 @@ async function aggregateNews() {
         { q: 'edital cultural música', cat: 'editais' }
     ];
 
+    // 🆕 v9.8.2 — feeds diretos expandidos (paridade com o frontend)
     const RSS_DIRETOS = [
         { url: 'https://g1.globo.com/rss/g1/pop-arte/musica/', cat: 'musica', fonte: 'G1' },
+        { url: 'https://g1.globo.com/rss/g1/pop-arte/', cat: 'musica', fonte: 'G1' },
         { url: 'https://rss.uol.com.br/feed/musica.xml', cat: 'musica', fonte: 'UOL' },
         { url: 'https://rollingstone.uol.com.br/rss/', cat: 'musica', fonte: 'Rolling Stone' },
-        { url: 'https://tenhomaisdiscosqueamigos.com/feed/', cat: 'musica', fonte: 'Tenho Mais Discos' }
+        { url: 'https://tenhomaisdiscosqueamigos.com/feed/', cat: 'musica', fonte: 'Tenho Mais Discos' },
+        { url: 'https://www.omelete.com.br/feed', cat: 'musica', fonte: 'Omelete' },
+        { url: 'https://www.papelpop.com/feed/', cat: 'musica', fonte: 'Papelpop' },
+        { url: 'https://portalpopline.com.br/feed/', cat: 'musica', fonte: 'Popline' }
     ];
 
     const batchesPromise = Promise.allSettled([
@@ -972,6 +1037,8 @@ async function aggregateNews() {
     const result = await Promise.race([batchesPromise, timeoutPromise]);
 
     if (result === '__timeout__') {
+        // 🆕 v9.8.2 — log de timeout
+        console.warn('[news] ⏱️ aggregateNews timeout (8s) — usando cache stale');
         const stale = await Storage.get('news_cache');
         return stale || [];
     }
@@ -995,6 +1062,9 @@ async function aggregateNews() {
         seen.add(k);
         return true;
     });
+
+    // 🆕 v9.8.2 — enriquecer com og:image as que ficaram sem imagem
+    await enrichWithOgImage(unique);
 
     await Storage.set('news_cache', unique);
     await Storage.set('news_cache_time', Date.now());
@@ -1030,7 +1100,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
         const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.8.1 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.8.2 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -1423,7 +1493,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 })();
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.8.1
+// HANDLER PRINCIPAL — v9.8.2
 // ============================================================
 module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1465,7 +1535,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.1',
+                version: '9.8.2',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -2658,12 +2728,16 @@ module.exports = async (req, res) => {
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) {
                 const data = unwrapped.data || {};
+                // 🆕 v9.8.2 — fallback multi-formato
+                const received = data.received || data.recebidas || data.trades_received || [];
+                const sent = data.sent || data.enviadas || data.trades_sent || [];
+                const history = data.history || data.historico || data.trades_history || [];
                 return res.status(200).json({
                     success: true,
                     data: {
-                        received: Array.isArray(data.received) ? data.received : [],
-                        sent: Array.isArray(data.sent) ? data.sent : [],
-                        history: Array.isArray(data.history) ? data.history : []
+                        received: Array.isArray(received) ? received : [],
+                        sent: Array.isArray(sent) ? sent : [],
+                        history: Array.isArray(history) ? history : []
                     },
                     _via: 'gas'
                 });
@@ -2691,6 +2765,30 @@ module.exports = async (req, res) => {
             }
             if (price < 0.01) {
                 return res.status(200).json({ success: false, message: 'Preço deve ser maior que zero' });
+            }
+
+            // 🆕 v9.8.2 — valida posse antes de chamar GAS
+            try {
+                const carteira = await Storage.get('carteira_' + sellerId) || [];
+                const ativo = carteira.find(a =>
+                    String(a.music_id) === String(musicId) && a.status === 'ativo'
+                );
+                if (ativo && ativo.quantidade < quantity) {
+                    return res.status(200).json({
+                        success: false,
+                        message: `Você só possui ${ativo.quantidade} ações dessa música`
+                    });
+                }
+                if (!ativo && carteira.length > 0) {
+                    // Se tem carteira mas não tem esse ativo, avisa
+                    return res.status(200).json({
+                        success: false,
+                        message: 'Você não possui ações dessa música'
+                    });
+                }
+                // Se carteira vazia (KV pode não ter ainda), deixa o GAS validar
+            } catch (e) {
+                // silencioso — deixa o GAS validar
             }
 
             const gasResult = await callGAS('create_trade', {
@@ -2917,7 +3015,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.1',
+            version: '9.8.2',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
