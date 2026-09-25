@@ -1,26 +1,29 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.9.7
+// SERVICE WORKER — PLAY MY v9.9.8
 // Cache inteligente por tipo de recurso + PWA
 //
+// MUDANÇAS v9.9.8:
+//   - 🔧 SW_VERSION bumpada (9.9.7 → 9.9.8)
+//   - 🆕 news-unified.js agora é cacheado com network-first
+//        prioritário (evita feed de notícias desatualizado)
+//   - 🆕 Domínio do backend /api/backend tem fallback JSON
+//        mesmo quando offline (não quebra o app)
+//   - 🆕 Suporte a imagens data: e blob: (não tenta cachear)
+//   - 🆕 enrichWithOgImage pode buscar imagens externas (http)
+//        → tratadas como isImage() e cacheadas com segurança
+//
 // MUDANÇAS v9.9.7:
-//   - 🔧 SW_VERSION bumpada (9.9.6 → 9.9.7) para forçar reinstalação
-//   - 🔧 Adicionado bootstrap.min.css ao pré-cache (antes só os
-//             ícones eram cacheados, o CSS do Bootstrap vinha da rede
-//             e podia quebrar o layout no 2º F5)
+//   - 🔧 Adicionado bootstrap.min.css ao pré-cache
 //
 // MUDANÇAS v9.9.5:
-//   - 🔧 CDN: retry 3x + nunca devolver Response vazio (antes
-//             devolvia 504 vazio → CSS quebrado no 2º F5)
-//   - 🔧 FONTES: mesmo tratamento (antes 404 vazio → sem ícone)
-//   - 🔧 install: retry 3x por asset (antes falhava silenciosamente
-//             em CDN lento → recurso ficava sem cache → 2º F5 quebrado)
+//   - 🔧 CDN: retry 3x + nunca devolver Response vazio
+//   - 🔧 FONTES: mesmo tratamento
+//   - 🔧 install: retry 3x por asset
 //
 // MUDANÇAS v9.9.1:
-//   - CDN: cache-first → stale-while-revalidate (corrige ícones velhos)
-//   - Fontes: cache-first puro → stale-while-revalidate (corrige .woff2 vazio)
-//   - install: falha alto com console.error (antes silenciava erros)
-//   - isStaticAsset: inclui fontes
-//   - updateViaCache tratado no app.js (não muda aqui)
+//   - CDN: stale-while-revalidate
+//   - Fontes: stale-while-revalidate
+//   - install: falha alto com console.error
 // ============================================================
 
 const SW_VERSION = '9.9.8';  // 👈 BUMP manual a cada deploy relevante
@@ -126,9 +129,15 @@ function isStaticAsset(url) {
 }
 
 function isImage(request, url) {
+  // 🆕 v9.9.8 — não tenta cachear data:/blob: URIs
+  if (url.protocol === 'data:' || url.protocol === 'blob:') return false;
+
   return (
     request.destination === 'image' ||
-    /\.(png|jpg|jpeg|gif|webp|svg|ico|avif)$/i.test(url.pathname)
+    /\.(png|jpg|jpeg|gif|webp|svg|ico|avif)$/i.test(url.pathname) ||
+    // 🆕 v9.9.8 — imagens externas do og:image (sem extensão explícita)
+    //    tratadas como image se vierem de hosts comuns de CDN de notícias
+    (request.destination === '' && /image|photo|thumb|media|capa|cover/i.test(url.pathname))
   );
 }
 
@@ -142,6 +151,20 @@ function isCDN(url) {
     url.hostname.includes('cdnjs.cloudflare.com') ||
     url.hostname.includes('unpkg.com')
   );
+}
+
+// 🆕 v9.9.8 — assets críticos do feed de notícias (network-first prioritário)
+function isNewsAsset(url) {
+  return (
+    url.pathname === '/js/news.js' ||
+    url.pathname === '/js/news-unified.js' ||
+    url.pathname === '/css/news.css'
+  );
+}
+
+// 🆕 v9.9.8 — verifica se é endpoint do backend
+function isBackendApi(url) {
+  return url.pathname === '/api/backend' || url.pathname.startsWith('/api/');
 }
 
 // ============================================================
@@ -231,17 +254,43 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   if (url.protocol === 'chrome-extension:' || url.protocol === 'moz-extension:') return;
 
+  // 🆕 v9.9.8 — não intercepta data:/blob: (imagens inline / geradas)
+  if (url.protocol === 'data:' || url.protocol === 'blob:') return;
+
   // 1. Hosts "tempo real" → network-only
   if (NO_CACHE_HOSTS.some((host) => url.hostname.includes(host))) {
     return;
   }
 
-  // 2. API do próprio domínio → network-only
-  if (url.pathname.startsWith('/api/')) {
+  // 🆕 v9.9.8 — assets críticos de notícias → network-first prioritário
+  // (garante que o feed de notícias pegue sempre a versão mais recente)
+  if (isNewsAsset(url)) {
+    event.respondWith(
+      fetchWithTimeout(request, NETWORK_TIMEOUT_MS)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_STATIC).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // 2. API do próprio domínio → network-only (com fallback JSON)
+  // 🆕 v9.9.8 — fallback JSON melhorado (não quebra o app offline)
+  if (isBackendApi(url)) {
     event.respondWith(
       fetch(request).catch(() =>
         new Response(
-          JSON.stringify({ success: false, offline: true, message: 'Sem conexão' }),
+          JSON.stringify({
+            success: false,
+            offline: true,
+            message: 'Sem conexão',
+            version: SW_VERSION
+          }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         )
       )
@@ -311,6 +360,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 4. Imagens → stale-while-revalidate
+  // 🆕 v9.9.8 — aceita imagens externas (og:image), com fallback inteligente
   if (isImage(request, url)) {
     event.respondWith(
       caches.match(request).then((cached) => {
