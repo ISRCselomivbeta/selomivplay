@@ -834,25 +834,45 @@ async function enrichWithOgImage(items) {
     const promises = semImagem.map(n => {
         return new Promise(resolve => {
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 6000);
+            const timer = setTimeout(() => controller.abort(), 8000);
             fetch(n.link, {
                 signal: controller.signal,
+                redirect: 'follow',  // 🆕 segue redirects do Google News
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.2)',
-                    'Accept': 'text/html'
+                    // 🆕 User-Agent de navegador real
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
                 }
             })
                 .then(r => { clearTimeout(timer); return r.text(); })
                 .then(html => {
-                    const m = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
-                              html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i) ||
-                              html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i);
-                    if (m && m[1] && m[1].indexOf('http') === 0) {
-                        n.imagem = m[1];
+                    // 🆕 6 padrões de meta tag
+                    const patterns = [
+                        /<meta[^>]*property=["']og:image:secure_url["'][^>]*content=["']([^"']+)["']/i,
+                        /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
+                        /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i,
+                        /<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i,
+                        /<meta[^>]*name=["']twitter:image:src["'][^>]*content=["']([^"']+)["']/i,
+                        /<link[^>]*rel=["']image_src["'][^>]*href=["']([^"']+)["']/i
+                    ];
+                    for (const p of patterns) {
+                        const m = html.match(p);
+                        if (m && m[1] && m[1].indexOf('http') === 0) {
+                            n.imagem = m[1];
+                            console.log(`[news] ✅ og:image achada: ${n.titulo.substring(0, 40)}`);
+                            break;
+                        }
                     }
                     resolve(n);
                 })
-                .catch(() => { clearTimeout(timer); resolve(n); });
+                .catch(err => {
+                    clearTimeout(timer);
+                    console.log(`[news] ⚠️ og:image falhou: ${n.link.substring(0, 60)} — ${err.message}`);
+                    resolve(n);
+                });
         });
     });
 
