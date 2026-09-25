@@ -1,8 +1,18 @@
 // ============================================================
-// js/player.js — PLAY MY v9.1.0
+// js/player.js — PLAY MY v9.2.0
 // Player completo: reprodução, controles, progresso, volume.
 // Depende de: config.js, utils.js, state.js, api.js, youtube.js
 // DEVE carregar DEPOIS de youtube.js e ANTES de marketplace.js.
+//
+// MUDANÇAS v9.2.0:
+//   - 🆕 SHUFFLE + REPEAT funcionais (implementação local, sem playQueue)
+//     - toggleShuffle embaralha state.playlist e guarda ordem original
+//     - toggleRepeat cicla off → all → one → off
+//     - playNext respeita repeatMode ('off' | 'all' | 'one')
+//     - playPrevious respeita repeat all
+//     - Visual dos botões (cor + ícone) atualizado
+//   - 🔧 Fonte única de verdade: state.playlist + state.currentTrackIndex
+//     (não depende mais de playQueue.items, que ficava dessincronizado)
 //
 // MUDANÇAS v9.1.0:
 //   - 🆕 MEDIA SESSION API: suporte a segundo plano no celular
@@ -156,6 +166,7 @@ function _releaseWakeLock() {
     _wakeLock = null;
   }
 }
+
 // ============================================================
 // 🆕 HELPERS PARA MOVER O IFRAME DO YOUTUBE
 // O iframe vive no #youtubePlayerGlobal (fora das seções).
@@ -193,6 +204,7 @@ window._moveYouTubeToExpandedIfOpen = function () {
     window._moveYouTubeToExpanded();
   }
 };
+
 // ============================================================
 // 🆕 PATCH: updatePlayerProgress agora atualiza a posição da Media Session
 // ============================================================
@@ -427,18 +439,6 @@ window.togglePlay = function () {
   }
 };
 
-window.playNext = function () {
-  if (typeof playQueue !== 'undefined' && playQueue.playNext) {
-    playQueue.playNext();
-  }
-};
-
-window.playPrevious = function () {
-  if (typeof playQueue !== 'undefined' && playQueue.playPrevious) {
-    playQueue.playPrevious();
-  }
-};
-
 // ============ ÍCONES DO PLAYER ============
 window.updatePlayerIcons = function () {
   const ip = state.isPlaying;
@@ -500,28 +500,206 @@ window.handleExpandedProgressClick = function (e) {
   state.youtubePlayer.seekTo(state.youtubePlayer.getDuration() * p, true);
 };
 
-// ============ SHUFFLE / REPEAT ============
+// ============================================================
+// 🆕 v9.2.0 — SHUFFLE / REPEAT / NEXT / PREV
+// Implementação local, sem depender do playQueue.
+// Fonte única de verdade: state.playlist + state.currentTrackIndex
+// ============================================================
+
+// Inicializa os campos de shuffle/repeat
+(function initShuffleRepeatV2() {
+  if (typeof state.isShuffle !== 'boolean') state.isShuffle = false;
+  if (typeof state.isRepeat !== 'boolean') state.isRepeat = false;
+  if (typeof state.repeatMode !== 'string') state.repeatMode = 'off';
+  if (!Array.isArray(state._originalPlaylist)) state._originalPlaylist = null;
+  console.log('🎵 [player] shuffle/repeat inicializado:', {
+    isShuffle: state.isShuffle,
+    isRepeat: state.isRepeat,
+    repeatMode: state.repeatMode,
+    playlistLength: (state.playlist && state.playlist.length) || 0
+  });
+})();
+
+// ------------------------------------------------------------
+// TOGGLE SHUFFLE
+// ------------------------------------------------------------
 window.toggleShuffle = function () {
   state.isShuffle = !state.isShuffle;
-  if (state.isShuffle && typeof playQueue !== 'undefined' && playQueue.shuffle) {
-    playQueue.shuffle();
-  }
-  showToast(state.isShuffle ? 'Aleatório ON' : 'Aleatório OFF', 'info');
 
+  const playlist = state.playlist || [];
+  if (!playlist.length) {
+    if (typeof showToast === 'function') showToast('⚠️ Fila vazia', 'warning');
+    state.isShuffle = false;
+    return;
+  }
+
+  if (state.isShuffle) {
+    // Salva a ordem original
+    if (!state._originalPlaylist) {
+      state._originalPlaylist = playlist.slice();
+    }
+
+    // Fisher-Yates
+    const shuffled = playlist.slice();
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = shuffled[i];
+      shuffled[i] = shuffled[j];
+      shuffled[j] = tmp;
+    }
+
+    // Mantém a música atual na frente
+    const idxAtual = state.currentTrackIndex;
+    if (idxAtual >= 0 && idxAtual < playlist.length) {
+      const atual = playlist[idxAtual];
+      const pos = shuffled.findIndex(function (t) {
+        return t && atual && String(t.id) === String(atual.id);
+      });
+      if (pos > 0) {
+        shuffled.splice(pos, 1);
+        shuffled.unshift(atual);
+      }
+    }
+
+    state.playlist = shuffled;
+    state.currentTrackIndex = 0;
+
+    if (typeof showToast === 'function') showToast('🔀 Aleatório ON', 'info');
+    console.log('🔀 Shuffle ON — playlist embaralhada');
+  } else {
+    // Restaura ordem original
+    if (state._originalPlaylist) {
+      state.playlist = state._originalPlaylist.slice();
+
+      const atual2 = state._originalPlaylist[state.currentTrackIndex];
+      if (atual2) {
+        const pos2 = state.playlist.findIndex(function (t) {
+          return t && atual2 && String(t.id) === String(atual2.id);
+        });
+        state.currentTrackIndex = pos2 >= 0 ? pos2 : 0;
+      } else {
+        state.currentTrackIndex = 0;
+      }
+
+      state._originalPlaylist = null;
+    }
+
+    if (typeof showToast === 'function') showToast('🔀 Aleatório OFF', 'info');
+    console.log('🔀 Shuffle OFF — playlist restaurada');
+  }
+
+  // Visual
   const btn = document.getElementById('shuffleBtn');
   if (btn) {
     btn.style.color = state.isShuffle ? 'var(--apple-green)' : '';
+    btn.style.background = state.isShuffle ? 'rgba(52,199,89,0.15)' : '';
   }
 };
 
+// ------------------------------------------------------------
+// TOGGLE REPEAT — cicla: off → all → one → off
+// ------------------------------------------------------------
 window.toggleRepeat = function () {
-  state.isRepeat = !state.isRepeat;
-  showToast(state.isRepeat ? 'Repetir ON' : 'Repetir OFF', 'info');
+  const ciclo = ['off', 'all', 'one'];
+  const atual = ciclo.indexOf(state.repeatMode);
+  const proximo = ciclo[(atual + 1) % ciclo.length];
 
+  state.repeatMode = proximo;
+  state.isRepeat = (proximo !== 'off');
+
+  console.log('🔁 Repeat:', proximo);
+
+  const msgs = {
+    'off': '🔁 Repetir OFF',
+    'all': '🔁 Repetir FILA',
+    'one': '🔂 Repetir MÚSICA'
+  };
+
+  if (typeof showToast === 'function') showToast(msgs[proximo], 'info');
+
+  // Visual
   const btn = document.getElementById('repeatBtn');
   if (btn) {
-    btn.style.color = state.isRepeat ? 'var(--apple-green)' : '';
+    const icon = btn.querySelector('i');
+    if (proximo === 'off') {
+      btn.style.color = '';
+      btn.style.background = '';
+      if (icon) icon.className = 'bi bi-repeat';
+    } else if (proximo === 'all') {
+      btn.style.color = 'var(--apple-green)';
+      btn.style.background = 'rgba(52,199,89,0.15)';
+      if (icon) icon.className = 'bi bi-repeat';
+    } else if (proximo === 'one') {
+      btn.style.color = 'var(--apple-green)';
+      btn.style.background = 'rgba(52,199,89,0.15)';
+      if (icon) icon.className = 'bi bi-repeat-1';
+    }
   }
+};
+
+// ------------------------------------------------------------
+// PLAY NEXT — respeita shuffle + repeat
+// ------------------------------------------------------------
+window.playNext = function () {
+  const playlist = state.playlist || [];
+  if (!playlist.length) {
+    console.warn('⚠️ playNext: fila vazia');
+    return;
+  }
+
+  // 1) Repeat one → repete a mesma
+  if (state.repeatMode === 'one') {
+    const idx = state.currentTrackIndex;
+    if (idx >= 0 && idx < playlist.length) {
+      console.log('🔂 Repeat one — repetindo:', playlist[idx] && playlist[idx].titulo);
+      playTrack(idx);
+      return;
+    }
+  }
+
+  // 2) Próximo índice
+  let nextIdx = state.currentTrackIndex + 1;
+
+  // 3) Chegou no fim?
+  if (nextIdx >= playlist.length) {
+    if (state.repeatMode === 'all') {
+      nextIdx = 0;
+      console.log('🔁 Repeat all — voltando ao início');
+    } else {
+      console.log('⏹️ Fim da fila');
+      if (typeof showToast === 'function') showToast('⏹️ Fim da fila', 'info');
+      if (state.youtubePlayer && state.youtubePlayer.pauseVideo) {
+        state.youtubePlayer.pauseVideo();
+        state.isPlaying = false;
+        updatePlayerIcons();
+      }
+      return;
+    }
+  }
+
+  // 4) Toca
+  console.log('▶️ Próxima:', nextIdx + 1, '/', playlist.length, '-', playlist[nextIdx] && playlist[nextIdx].titulo);
+  playTrack(nextIdx);
+};
+
+// ------------------------------------------------------------
+// PLAY PREVIOUS — respeita repeat all
+// ------------------------------------------------------------
+window.playPrevious = function () {
+  const playlist = state.playlist || [];
+  if (!playlist.length) return;
+
+  let prevIdx = state.currentTrackIndex - 1;
+  if (prevIdx < 0) {
+    if (state.repeatMode === 'all') {
+      prevIdx = playlist.length - 1;
+    } else {
+      prevIdx = 0;
+    }
+  }
+
+  console.log('⏮️ Anterior:', prevIdx + 1, '/', playlist.length, '-', playlist[prevIdx] && playlist[prevIdx].titulo);
+  playTrack(prevIdx);
 };
 
 // ============ FAVORITOS (a partir do player) ============
@@ -569,6 +747,46 @@ const _progressIntervalPatch = setInterval(() => {
 }, 5000);
 
 // ============================================================
+// 🆕 v9.2.0 — APLICAR ESTADO INICIAL DOS BOTÕES
+// Garante que o visual reflita o estado atual ao carregar
+// ============================================================
+window._aplicarEstadoShuffleRepeat = function () {
+  // Shuffle
+  const btnShuffle = document.getElementById('shuffleBtn');
+  if (btnShuffle) {
+    btnShuffle.style.color = state.isShuffle ? 'var(--apple-green)' : '';
+    btnShuffle.style.background = state.isShuffle ? 'rgba(52,199,89,0.15)' : '';
+  }
+
+  // Repeat
+  const btnRepeat = document.getElementById('repeatBtn');
+  if (btnRepeat) {
+    const icon = btnRepeat.querySelector('i');
+    if (state.repeatMode === 'off') {
+      btnRepeat.style.color = '';
+      btnRepeat.style.background = '';
+      if (icon) icon.className = 'bi bi-repeat';
+    } else if (state.repeatMode === 'all') {
+      btnRepeat.style.color = 'var(--apple-green)';
+      btnRepeat.style.background = 'rgba(52,199,89,0.15)';
+      if (icon) icon.className = 'bi bi-repeat';
+    } else if (state.repeatMode === 'one') {
+      btnRepeat.style.color = 'var(--apple-green)';
+      btnRepeat.style.background = 'rgba(52,199,89,0.15)';
+      if (icon) icon.className = 'bi bi-repeat-1';
+    }
+  }
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(window._aplicarEstadoShuffleRepeat, 200);
+  });
+} else {
+  setTimeout(window._aplicarEstadoShuffleRepeat, 200);
+}
+
+// ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [player.js] v9.1.0 carregado — Media Session + segundo plano');
+console.log('✅ [player.js] v9.2.0 carregado — shuffle + repeat + Media Session + segundo plano');
