@@ -1394,6 +1394,211 @@ window.togglePassword = function(fieldId, icon) {
 <script src="/js/royalties-panel.js"></script>
 
 <script src="/js/app.js"></script>
-  
+  <!-- ============================================================ -->
+<!-- MATRIX BACKGROUND — fundo animado da tela de login            -->
+<!-- Aparece só na tela de login. Some quando o mainApp aparece.   -->
+<!-- ============================================================ -->
+<script>
+(function matrixLoginBackground() {
+    'use strict';
+
+    // ------------------------------------------------------------
+    // CONFIG
+    // ------------------------------------------------------------
+    const CONFIG = {
+        corPrincipal: '#00ff88',
+        corBrilho:    '#ccffcc',
+        corFundo:     'rgba(0,0,0,0.06)',
+        opacidade:    0.35,
+        tamanhoFonte: 16,
+        intervaloMs:  50,
+        fonte:        'monospace',
+        caracteres:   'アカサタナハマヤラワイキシチニヒミリウクスツヌフムユルエケセテネヘメレオコソトノホモヨロ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    };
+
+    // Acessibilidade
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    // Celular = mais leve
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+        CONFIG.tamanhoFonte = 20;
+        CONFIG.intervaloMs  = 80;
+        CONFIG.opacidade    = 0.28;
+    }
+
+    // ------------------------------------------------------------
+    // Cria o canvas
+    // ------------------------------------------------------------
+    const canvas = document.createElement('canvas');
+    canvas.id = 'matrix-bg';
+    canvas.setAttribute('aria-hidden', 'true');
+    canvas.style.cssText = [
+        'position:fixed',
+        'top:0','left:0','width:100vw','height:100vh',
+        'z-index:0',                       // fica atrás do authScreen (que tem z-index maior)
+        'pointer-events:none',
+        'background:#000',
+        'opacity:' + CONFIG.opacidade,
+        'transition:opacity .6s ease',
+        'mask-image:linear-gradient(to bottom, transparent 0%, black 12%, black 100%)',
+        '-webkit-mask-image:linear-gradient(to bottom, transparent 0%, black 12%, black 100%)'
+    ].join(';');
+
+    // ------------------------------------------------------------
+    // Insere ANTES do authScreen (para ficar atrás)
+    // ------------------------------------------------------------
+    function inserirCanvas() {
+        const authScreen = document.getElementById('authScreen');
+        if (authScreen && authScreen.parentNode) {
+            authScreen.parentNode.insertBefore(canvas, authScreen);
+        } else {
+            document.body.prepend(canvas);
+        }
+    }
+    if (document.body) inserirCanvas();
+    else document.addEventListener('DOMContentLoaded', inserirCanvas);
+
+    // ------------------------------------------------------------
+    // Setup do canvas
+    // ------------------------------------------------------------
+    const ctx = canvas.getContext('2d', { alpha: false });
+    let largura = 0, altura = 0, dpr = 1;
+    let drops = [];
+    const chars = CONFIG.caracteres.split('');
+
+    function redimensionar() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        largura = window.innerWidth;
+        altura  = window.innerHeight;
+        canvas.width  = largura * dpr;
+        canvas.height = altura * dpr;
+        canvas.style.width  = largura + 'px';
+        canvas.style.height = altura + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const colunas = Math.floor(largura / CONFIG.tamanhoFonte);
+        drops = new Array(colunas).fill(0).map(() => Math.random() * -altura);
+    }
+    redimensionar();
+    window.addEventListener('resize', redimensionar);
+
+    // ------------------------------------------------------------
+    // Loop
+    // ------------------------------------------------------------
+    let ultimoTempo = 0;
+    let rodando = true;
+
+    function desenhar(tempo) {
+        if (!rodando) return;
+        requestAnimationFrame(desenhar);
+
+        if (tempo - ultimoTempo < CONFIG.intervaloMs) return;
+        ultimoTempo = tempo;
+
+        ctx.fillStyle = CONFIG.corFundo;
+        ctx.fillRect(0, 0, largura, altura);
+
+        ctx.font = CONFIG.tamanhoFonte + 'px ' + CONFIG.fonte;
+
+        if (!isMobile) {
+            ctx.shadowColor = CONFIG.corPrincipal;
+            ctx.shadowBlur = 6;
+        }
+
+        for (let i = 0; i < drops.length; i++) {
+            const ch = chars[Math.floor(Math.random() * chars.length)];
+            const x = i * CONFIG.tamanhoFonte;
+            const y = drops[i];
+
+            ctx.fillStyle = CONFIG.corBrilho;
+            ctx.fillText(ch, x, y);
+
+            ctx.fillStyle = CONFIG.corPrincipal;
+            ctx.fillText(chars[Math.floor(Math.random() * chars.length)], x, y - CONFIG.tamanhoFonte);
+
+            drops[i] += CONFIG.tamanhoFonte;
+
+            if (y > altura && Math.random() > 0.975) drops[i] = 0;
+        }
+
+        ctx.shadowBlur = 0;
+    }
+    requestAnimationFrame(desenhar);
+
+    // Pausa quando a aba perde foco
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            rodando = false;
+        } else if (!rodando) {
+            rodando = true;
+            ultimoTempo = 0;
+            requestAnimationFrame(desenhar);
+        }
+    });
+
+    // ------------------------------------------------------------
+    // Esconde quando o authScreen sumir e o mainApp aparecer
+    // (o seu app.js já faz essa troca — vamos observar)
+    // ------------------------------------------------------------
+    const authScreen = document.getElementById('authScreen');
+    const mainApp    = document.getElementById('mainApp');
+
+    function checarLogin() {
+        if (!authScreen || !mainApp) return;
+
+        const authVisivel = authScreen.style.display !== 'none' &&
+                            getComputedStyle(authScreen).display !== 'none';
+        const mainVisivel = mainApp.style.display !== 'none' &&
+                            getComputedStyle(mainApp).display !== 'none';
+
+        // Quando o mainApp aparece e o authScreen some → login feito
+        if (mainVisivel && !authVisivel) {
+            esconderMatrix();
+        }
+        // Se o usuário deslogar (authScreen volta) → mostra de novo
+        if (authVisivel && canvas.style.display === 'none') {
+            mostrarMatrix();
+        }
+    }
+
+    // Observa mudanças de estilo nos dois elementos
+    if (window.MutationObserver && authScreen && mainApp) {
+        const observer = new MutationObserver(checarLogin);
+        observer.observe(authScreen, { attributes: true, attributeFilter: ['style', 'class'] });
+        observer.observe(mainApp,    { attributes: true, attributeFilter: ['style', 'class'] });
+        // checa uma vez no início (caso já esteja logado ao carregar)
+        setTimeout(checarLogin, 300);
+    }
+
+    // Fallback: verifica a cada 1s (garante que funciona mesmo se o app mudar de outra forma)
+    setInterval(checarLogin, 1000);
+
+    // ------------------------------------------------------------
+    // API pública (opcional, caso queira chamar manualmente)
+    // ------------------------------------------------------------
+    function esconderMatrix() {
+        if (canvas.style.display === 'none') return;
+        canvas.style.opacity = '0';
+        setTimeout(() => {
+            rodando = false;
+            canvas.style.display = 'none';
+        }, 700);
+    }
+    function mostrarMatrix() {
+        canvas.style.display = 'block';
+        void canvas.offsetWidth;
+        canvas.style.opacity = String(CONFIG.opacidade);
+        if (!rodando) {
+            rodando = true;
+            ultimoTempo = 0;
+            requestAnimationFrame(desenhar);
+        }
+    }
+    window.esconderMatrix = esconderMatrix;
+    window.mostrarMatrix  = mostrarMatrix;
+
+    console.log('🎬 Matrix ativo na tela de login');
+})();
+</script>
 </body>
 </html>
