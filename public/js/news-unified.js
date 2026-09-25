@@ -16,16 +16,23 @@
   var CACHE_TTL = 10 * 60 * 1000;
 
   var RSS_SOURCES = [
+    // Google News (sem imagem — será enriquecido via og:image)
     { url: 'https://news.google.com/rss/search?q=m%C3%BAsica+brasileira&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'musica', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=lan%C3%A7amento+musical&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'lancamentos', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=shows+turn%C3%AA+Brasil&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'shows', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=ind%C3%BAstria+musical&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'negocios', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=artista+m%C3%BAsica&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'artistas', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=edital+cultural+m%C3%BAsica&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'editais', fonte: 'Google News' },
+
+    // 🆕 Feeds que SEMPRE trazem imagem (enclosure / media:content)
     { url: 'https://g1.globo.com/rss/g1/pop-arte/musica/', cat: 'musica', fonte: 'G1' },
+    { url: 'https://g1.globo.com/rss/g1/pop-arte/', cat: 'musica', fonte: 'G1' },
     { url: 'https://rss.uol.com.br/feed/musica.xml', cat: 'musica', fonte: 'UOL' },
     { url: 'https://rollingstone.uol.com.br/rss/', cat: 'musica', fonte: 'Rolling Stone' },
-    { url: 'https://tenhomaisdiscosqueamigos.com/feed/', cat: 'musica', fonte: 'Tenho Mais Discos' }
+    { url: 'https://tenhomaisdiscosqueamigos.com/feed/', cat: 'musica', fonte: 'Tenho Mais Discos' },
+    { url: 'https://www.omelete.com.br/feed', cat: 'musica', fonte: 'Omelete' },
+    { url: 'https://www.papelpop.com/feed/', cat: 'musica', fonte: 'Papelpop' },
+    { url: 'https://portalpopline.com.br/feed/', cat: 'musica', fonte: 'Popline' }
   ];
 
   var PROXIES = [
@@ -169,6 +176,7 @@
       var d = x.match(/<pubDate>(.*?)<\/pubDate>/);
       var s = x.match(/<source[^>]*>(.*?)<\/source>/);
       var ds = x.match(/<description>(.*?)<\/description>/);
+      var ce = x.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/);
       if (!t) continue;
 
       var title = t[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
@@ -183,18 +191,30 @@
 
       var id = 'news_' + hashStr(title);
 
-      // 🆕 Tenta extrair imagem real do RSS (5 formatos)
-      var enc = x.match(/<enclosure[^>]*url="([^"]+)"/);
-      var mediaContent = x.match(/<media:content[^>]*url="([^"]+)"/);
-      var mediaThumb = x.match(/<media:thumbnail[^>]*url="([^"]+)"/);
-      var imgInDesc = x.match(/<img[^>]*src="([^"]+)"/);
-      var imgInContent = x.match(/<content:encoded[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"/);
-      var imagemReal = (enc && enc[1]) ||
-                       (mediaContent && mediaContent[1]) ||
-                       (mediaThumb && mediaThumb[1]) ||
-                       (imgInDesc && imgInDesc[1]) ||
-                       (imgInContent && imgInContent[1]) ||
-                       null;
+      // 🔥 Extração agressiva de imagem (8 formatos diferentes)
+      var imagemReal = null;
+      var candidates = [
+        x.match(/<enclosure[^>]*url=["']([^"']+)["']/i),
+        x.match(/<media:content[^>]*url=["']([^"']+)["']/i),
+        x.match(/<media:thumbnail[^>]*url=["']([^"']+)["']/i),
+        x.match(/<media:group>[\s\S]*?<media:content[^>]*url=["']([^"']+)["']/i),
+        x.match(/<img[^>]*src=["']([^"']+)["']/i),
+        (ce && ce[1] && ce[1].match(/<img[^>]*src=["']([^"']+)["']/i)),
+        (ds && ds[1] && ds[1].match(/<img[^>]*src=["']([^"']+)["']/i)),
+        (ce && ce[1] && ce[1].match(/property=["']og:image["'][^>]*content=["']([^"']+)["']/i))
+      ];
+      for (var k = 0; k < candidates.length; k++) {
+        if (candidates[k] && candidates[k][1]) {
+          var url = candidates[k][1];
+          if (url && url.indexOf('http') === 0 &&
+              url.indexOf('feedburner') === -1 &&
+              url.indexOf('pixel') === -1 &&
+              !/\.(gif|svg)$/i.test(url.split('?')[0])) {
+            imagemReal = url;
+            break;
+          }
+        }
+      }
 
       var linkOriginal = l ? l[1].trim() : '#';
 
@@ -212,11 +232,43 @@
         tema: cat,
         prazo: null,
         investidores_hoje: 0,
-        em_alta: false
+        em_alta: false,
+        _linkOriginal: linkOriginal
       });
       count++;
     }
     return items;
+  }
+
+  // 🆕 Busca og:image do link original para notícias sem imagem
+  function enrichWithOgImage(items) {
+    var semImagem = items.filter(function (n) {
+      return n.imagem && n.imagem.indexOf('data:image/svg') === 0 && n._linkOriginal && n._linkOriginal !== '#';
+    }).slice(0, 8);
+
+    if (!semImagem.length) return Promise.resolve(items);
+
+    var promises = semImagem.map(function (n) {
+      return new Promise(function (resolve) {
+        var ctrl = new AbortController();
+        var timer = setTimeout(function () { ctrl.abort(); }, 6000);
+        var proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(n._linkOriginal);
+        fetch(proxyUrl, { signal: ctrl.signal })
+          .then(function (r) { clearTimeout(timer); return r.text(); })
+          .then(function (html) {
+            var m = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+                    html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i) ||
+                    html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i);
+            if (m && m[1] && m[1].indexOf('http') === 0) {
+              n.imagem = m[1];
+            }
+            resolve(n);
+          })
+          .catch(function () { clearTimeout(timer); resolve(n); });
+      });
+    });
+
+    return Promise.all(promises).then(function () { return items; });
   }
 
   function tryRSS() {
@@ -247,8 +299,8 @@
         return new Date(b.timestamp) - new Date(a.timestamp);
       });
 
-      console.log('[news] ✅ RSS OK: ' + unique.length + ' notícias');
-      return unique;
+      console.log('[news] ✅ RSS OK: ' + unique.length + ' notícias (buscando og:image...)');
+      return enrichWithOgImage(unique);
     });
   }
 
@@ -285,13 +337,13 @@
         '</div>';
     }
 
-   // ✅ BACKEND PRIMEIRO, RSS depois (elimina erros do corsproxy.io)
-tryBackend().then(function (backendItems) {
-  if (backendItems && backendItems.length) {
-    return backendItems;
-  }
-  return tryRSS();
-}).then(function (items) {
+    // ✅ BACKEND PRIMEIRO, RSS depois
+    tryBackend().then(function (backendItems) {
+      if (backendItems && backendItems.length) {
+        return backendItems;
+      }
+      return tryRSS();
+    }).then(function (items) {
       state.loading = false;
       state.items = items || [];
       state.page = 1;
