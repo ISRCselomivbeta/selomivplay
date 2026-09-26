@@ -1,21 +1,27 @@
 // ============================================================
-// js/api.js — PLAY MY v8.9.3
+// js/api.js — PLAY MY v8.9.4
 // HealthCheck + callAPI (roteador multi-API + Vercel → GAS → Local).
 // Depende de: config.js, utils.js, state.js
 // DEVE carregar DEPOIS de state.js e ANTES de auth.js.
 //
-// MUDANÇAS v8.9.3 (sequência recomendada — apenas revisão):
+// MUDANÇAS v8.9.4 (relatório de prioridades):
+//   - 🆕 CACHE_TTL_BY_ACTION: TTL específico por action
+//       • 3s   → get_saldo, get_carteira, get_extrato
+//       • 5s   → padrão
+//       • 15s  → get_musicas
+//       • 30s  → rankings + valuation + top_investments + news
+//       • 60s  → get_artists, get_mining_blocks
+//   - 🆕 callAPI.invalidate(action): invalidação cirúrgica de cache
+//   - 🆕 TIMEOUT_BY_ACTION: 25s para get_top_investments / valuation_catalogo
+//   - 🔧 Alinhamento com backend v9.8.3
+//
+// MUDANÇAS v8.9.3:
 //   - 🔧 Bump de versão (8.9.2 → 8.9.3) para forçar refresh no PWA
 //   - 📝 Comentário de alinhamento com backend v9.8.3 (stream guard)
-//   - ✅ Nenhuma mudança funcional — drop-in total
-//
-// MUDANÇAS v8.9.2:
-//   - 🔧 Bump de versão (8.9.1 → 8.9.2) para forçar atualização no cache
-//   - Nenhuma mudança funcional
 //
 // MUDANÇAS v8.9.1:
 //   - 🆕 DEDUP: chamadas idênticas simultâneas compartilham a mesma promise
-//   - 🆕 CACHE curto (5s) para ações de leitura (evita re-fetch em cascata)
+//   - 🆕 CACHE curto para ações de leitura (evita re-fetch em cascata)
 //   - 🆕 VALIDAÇÃO: success:true sem "data" em ações que exigem data → inválido
 //   - 🆕 debug: window.callAPI.clearCache() limpa dedup + cache
 //
@@ -138,6 +144,60 @@ const ENDPOINT_URLS = {
 };
 
 // ============================================================
+// 🆕 v8.9.4 — TTL ESPECÍFICO POR ACTION
+// ------------------------------------------------------------
+// Dados do usuário mudam rápido → TTL curto (3s)
+// Rankings / valuation mudam pouco → TTL longo (30s)
+// Catálogos estáticos → TTL muito longo (60s)
+// ============================================================
+const CACHE_TTL_BY_ACTION = {
+    // TTL curto (dados do usuário, mudam rápido)
+    'get_saldo':            3000,
+    'get_carteira':         3000,
+    'get_extrato':          3000,
+
+    // TTL padrão
+    '_default':             5000,
+
+    // TTL médio (catálogo de músicas)
+    'get_musicas':          15000,
+
+    // TTL longo (rankings e valuation — mudam a cada minutos)
+    'get_elo_ranking':      30000,
+    'streams_ranking':      30000,
+    'valuation_catalogo':   30000,
+    'ultimo_catalogo':      30000,
+    'valuation_mercado':    30000,
+    'get_top_investments':  30000,
+    'get_news':             30000,
+
+    // TTL bem longo (catálogos estáticos)
+    'get_artists':          60000,
+    'get_mining_blocks':    60000
+};
+
+function _ttlFor(action) {
+    return CACHE_TTL_BY_ACTION[action] || CACHE_TTL_BY_ACTION['_default'];
+}
+
+// ============================================================
+// 🆕 v8.9.4 — TIMEOUT ESPECÍFICO POR ACTION
+// ------------------------------------------------------------
+// get_top_investments e valuation_catalogo são pesados
+// (loops no backend + várias leituras KV) → timeout maior
+// ============================================================
+const TIMEOUT_BY_ACTION = {
+    'get_top_investments':  25000,
+    'valuation_catalogo':   25000,
+    'calcular_valuation':   25000,
+    '_default':             20000
+};
+
+function _timeoutFor(action) {
+    return TIMEOUT_BY_ACTION[action] || TIMEOUT_BY_ACTION['_default'];
+}
+
+// ============================================================
 // AÇÕES QUE EXIGEM "data" NA RESPOSTA
 // Se vierem com success:true mas SEM data → considerar inválido
 // ============================================================
@@ -165,10 +225,13 @@ const ACOES_CACHEAVEIS = [
     'royalties_resumo', 'royalties_periodos',
     'get_musicas', 'get_artists', 'get_extrato', 'get_carteira',
     'get_top_investments',
-    'get_news', 'get_mining_blocks'
+    'get_news', 'get_mining_blocks',
+    // 🆕 v8.9.4
+    'get_saldo'
 ];
 
-const CACHE_TTL_MS = 5000; // 5 segundos
+// CACHE_TTL_MS mantido por compatibilidade (fallback), mas _ttlFor() tem prioridade
+const CACHE_TTL_MS = 5000;
 
 // ============================================================
 // HEALTH CHECK
@@ -325,7 +388,7 @@ const ACOES_CRITICAS = [
 ];
 
 // ============================================================
-// DEDUP + CACHE (v8.9.1)
+// DEDUP + CACHE (v8.9.1) — com TTL por action desde v8.9.4
 // ============================================================
 const _inFlight = new Map();
 const _cache    = new Map();
@@ -341,7 +404,10 @@ function _getCached(action, data) {
     const k = _keyFor(action, data);
     const hit = _cache.get(k);
     if (!hit) return null;
-    if (Date.now() - hit.at > CACHE_TTL_MS) {
+
+    // 🆕 v8.9.4 — TTL específico por action
+    const ttl = _ttlFor(action);
+    if (Date.now() - hit.at > ttl) {
         _cache.delete(k);
         return null;
     }
@@ -441,10 +507,10 @@ window.callAPI = async function (action, data, _retry) {
           return _inFlight.get(inFlightKey);
       }
 
-      // CACHE: resposta recente (5s)
+      // CACHE: resposta recente (TTL específico por action desde v8.9.4)
       const cached = _getCached(action, data);
       if (cached) {
-          console.log(`📦 [${action}] cache hit (${CACHE_TTL_MS}ms)`);
+          console.log(`📦 [${action}] cache hit (TTL ${_ttlFor(action)}ms)`);
           return cached;
       }
   }
@@ -455,7 +521,8 @@ window.callAPI = async function (action, data, _retry) {
 
       if (specificEndpoint !== ENDPOINT_URLS.backend) {
           const ctrl = new AbortController();
-          const timeout = setTimeout(() => ctrl.abort(), 20000);
+          // 🆕 v8.9.4 — timeout específico por action
+          const timeout = setTimeout(() => ctrl.abort(), _timeoutFor(action));
 
           try {
               const url = buildUrl(specificEndpoint, action, data);
@@ -548,7 +615,8 @@ window.callAPI = async function (action, data, _retry) {
 };
 
       // Tentar backend — SEMPRE na mesma origem do usuário
-      const vercelJson = await tryFetch(ENDPOINT_URLS.backend, 20000, 'Vercel');
+      // 🆕 v8.9.4 — timeout específico por action (get_top_investments: 25s)
+      const vercelJson = await tryFetch(ENDPOINT_URLS.backend, _timeoutFor(action), 'Vercel');
       if (vercelJson) {
         HealthCheck.vercel.online = true;
         if (HealthCheck.mode !== 'vercel') {
@@ -609,6 +677,44 @@ window.callAPI.clearCache = function () {
     _inFlight.clear();
     _cache.clear();
     console.log('🧹 [api] caches limpos (dedup + TTL)');
+};
+
+// ============================================================
+// 🆕 v8.9.4 — INVALIDAR CACHE DE UMA ACTION ESPECÍFICA
+// ------------------------------------------------------------
+// Uso típico após mutações:
+//   await callAPI('buy', {...});
+//   callAPI.invalidate('get_saldo');
+//   callAPI.invalidate('get_carteira');
+// ============================================================
+window.callAPI.invalidate = function (action) {
+    if (!action || typeof action !== 'string') return 0;
+    let removed = 0;
+    const prefix = action + '|';
+    for (const key of Array.from(_cache.keys())) {
+        if (key.startsWith(prefix)) {
+            _cache.delete(key);
+            removed++;
+        }
+    }
+    console.log(`🧹 [api] ${removed} entrada(s) invalidada(s) de "${action}"`);
+    return removed;
+};
+
+// ============================================================
+// 🆕 v8.9.4 — DEBUG: listar entradas de cache ativas
+// ============================================================
+window.callAPI.cacheStats = function () {
+    const now = Date.now();
+    const stats = [];
+    for (const [key, entry] of _cache) {
+        const action = key.split('|')[0];
+        const ttl = _ttlFor(action);
+        const age = now - entry.at;
+        stats.push({ key, action, ttl, age, fresh: age <= ttl });
+    }
+    console.table(stats);
+    return stats;
 };
 
 // ============================================================
@@ -678,4 +784,4 @@ window.getFallbackData = function (action) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [api.js] v8.9.3 carregado — dedup + cache TTL + validação de resposta');
+console.log('✅ [api.js] v8.9.4 carregado — TTL por action + invalidate + timeout pesado');
