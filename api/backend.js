@@ -1,4 +1,4 @@
-// BACKEND.JS - VERSÃO 9.8.2
+// BACKEND.JS - VERSÃO 9.8.3
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -6,6 +6,13 @@
 // + VENDA DIRETA AO MERCADO (sell_to_market)
 // + VENDA P2P COM EMAIL (create_trade robusto)
 // + IMAGENS REAIS NOS FEEDS (extração agressiva + og:image)
+//
+// 🔒 v9.8.3 (sequência recomendada) — PROTEÇÃO DE STREAMS
+//   - ✅ ADD: STREAM_INTERVAL_MS (30 min) + STREAM_MIN_DURATION (30s)
+//   - ✅ ADD: _checkStreamAllowed(user_id, music_id, ip, duration)
+//   - ✅ FIX: register_streaming valida IP + usuário + timestamp
+//   - ✅ FIX: 1 stream válido por música a cada 30 minutos por usuário+IP
+//   - ✅ FIX: registra ip e timestamp no bloco e no GAS
 //
 // 🔒 v9.8.2 — MELHORIAS DE IMAGEM E ROBUSTEZ
 //   - ✅ FIX: getFonteLogo com URLs reais (antes eram fake)
@@ -70,6 +77,53 @@ const AUTH_REQUIRED_ACTIONS = new Set([
 // 'add_block', 'get_admin_stats'
 const ADMIN_REQUIRED_ACTIONS = new Set([
 ]);
+
+// ============================================================
+// 🔒 v9.8.3 — ANTI-FRAUDE DE STREAMS
+// ============================================================
+const STREAM_INTERVAL_MS = 30 * 60 * 1000;   // 30 minutos
+const STREAM_MIN_DURATION = 30;              // segundos mínimos ouvidos
+const STREAM_PREFIX = 'stream_guard:';
+
+/**
+ * Valida se um stream pode ser registrado.
+ * Retorna { ok: true } ou { ok: false, reason: '...' }
+ *
+ * Regras:
+ *  - user_id e music_id obrigatórios
+ *  - IP obrigatório
+ *  - duração mínima (STREAM_MIN_DURATION)
+ *  - 1 stream válido por música por usuário+IP a cada 30 min
+ */
+async function _checkStreamAllowed(userId, musicId, ip, duration) {
+    // 1) Campos obrigatórios
+    if (!userId || !musicId) {
+        return { ok: false, reason: 'user_id e music_id obrigatórios' };
+    }
+    if (!ip || ip === 'unknown') {
+        return { ok: false, reason: 'IP não identificado' };
+    }
+    if (duration && parseInt(duration) < STREAM_MIN_DURATION) {
+        return { ok: false, reason: `Duração mínima de ${STREAM_MIN_DURATION}s` };
+    }
+
+    // 2) Timestamp — 1 stream por música a cada 30 min por usuário+IP
+    const guardKey = STREAM_PREFIX + userId + ':' + musicId + ':' + ip;
+    const now = Date.now();
+    const last = await Storage.get(guardKey);
+    if (last && typeof last === 'number' && (now - last) < STREAM_INTERVAL_MS) {
+        const restante = Math.ceil((STREAM_INTERVAL_MS - (now - last)) / 60000);
+        return {
+            ok: false,
+            reason: `Stream já contabilizado. Aguarde ~${restante} min`,
+            _guard: true
+        };
+    }
+
+    // 3) Marca o timestamp
+    await Storage.set(guardKey, now);
+    return { ok: true, ts: now };
+}
 
 // ============================================================
 // KV — suporta REDIS_URL (node-redis) OU @vercel/kv
@@ -194,9 +248,7 @@ const FONTE_LOGOS = {
 function getFonteLogo(fonte) {
     if (!fonte) return null;
     const f = fonte.toLowerCase().trim();
-    // Match exato primeiro
     if (FONTE_LOGOS[f]) return FONTE_LOGOS[f];
-    // Match parcial
     for (const key in FONTE_LOGOS) {
         if (f.includes(key)) return FONTE_LOGOS[key];
     }
@@ -474,6 +526,21 @@ function extractYouTubeId(url) {
         if (m && m[1] && m[1].length === 11) return m[1];
     }
     return null;
+}
+
+// 🆕 v9.8.3 — extrai IP real do request (Vercel usa x-forwarded-for)
+function _getClientIP(req) {
+    try {
+        const xff = req.headers && (req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For']);
+        if (xff && typeof xff === 'string') {
+            const first = xff.split(',')[0].trim();
+            if (first) return first;
+        }
+        if (req.ip) return String(req.ip);
+        if (req.connection && req.connection.remoteAddress) return String(req.connection.remoteAddress);
+        if (req.socket && req.socket.remoteAddress) return String(req.socket.remoteAddress);
+    } catch (e) {}
+    return 'unknown';
 }
 
 function csvToArray(csv) {
@@ -837,9 +904,8 @@ async function enrichWithOgImage(items) {
             const timer = setTimeout(() => controller.abort(), 8000);
             fetch(n.link, {
                 signal: controller.signal,
-                redirect: 'follow',  // 🆕 segue redirects do Google News
+                redirect: 'follow',
                 headers: {
-                    // 🆕 User-Agent de navegador real
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
                     'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
@@ -849,7 +915,6 @@ async function enrichWithOgImage(items) {
             })
                 .then(r => { clearTimeout(timer); return r.text(); })
                 .then(html => {
-                    // 🆕 6 padrões de meta tag
                     const patterns = [
                         /<meta[^>]*property=["']og:image:secure_url["'][^>]*content=["']([^"']+)["']/i,
                         /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
@@ -891,7 +956,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.2)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.3)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -899,7 +964,6 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
 
         if (!response.ok) return [];
         const contentType = response.headers.get('content-type') || '';
-        // 🆕 v9.8.2 — aceita text/plain também (Google News às vezes manda)
         if (!contentType.includes('xml') && !contentType.includes('rss') &&
             !contentType.includes('html') && !contentType.includes('text/plain')) return [];
 
@@ -928,7 +992,6 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
                     if (texto) texto += '...';
                 }
 
-                // 🆕 v9.8.2 — extração agressiva
                 const imagemReal = extractImageFromItem(itemXml, ceMatch, descMatch);
 
                 const id = 'news_' + crypto.createHash('md5').update(title).digest('hex').substring(0, 12);
@@ -961,7 +1024,7 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.2)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.3)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -991,7 +1054,6 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
                     if (texto) texto += '...';
                 }
 
-                // 🆕 v9.8.2 — extração agressiva
                 const imagemReal = extractImageFromItem(itemXml, ceMatch, descMatch);
 
                 const id = 'news_' + crypto.createHash('md5').update(title).digest('hex').substring(0, 12);
@@ -1033,7 +1095,6 @@ async function aggregateNews() {
         { q: 'edital cultural música', cat: 'editais' }
     ];
 
-    // 🆕 v9.8.2 — feeds diretos expandidos (paridade com o frontend)
     const RSS_DIRETOS = [
         { url: 'https://g1.globo.com/rss/g1/pop-arte/musica/', cat: 'musica', fonte: 'G1' },
         { url: 'https://g1.globo.com/rss/g1/pop-arte/', cat: 'musica', fonte: 'G1' },
@@ -1057,7 +1118,6 @@ async function aggregateNews() {
     const result = await Promise.race([batchesPromise, timeoutPromise]);
 
     if (result === '__timeout__') {
-        // 🆕 v9.8.2 — log de timeout
         console.warn('[news] ⏱️ aggregateNews timeout (8s) — usando cache stale');
         const stale = await Storage.get('news_cache');
         return stale || [];
@@ -1083,7 +1143,6 @@ async function aggregateNews() {
         return true;
     });
 
-    // 🆕 v9.8.2 — enriquecer com og:image as que ficaram sem imagem
     await enrichWithOgImage(unique);
 
     await Storage.set('news_cache', unique);
@@ -1120,7 +1179,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
         const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.8.2 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.8.3 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -1513,7 +1572,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 })();
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.8.2
+// HANDLER PRINCIPAL — v9.8.3
 // ============================================================
 module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1555,7 +1614,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.2',
+                version: '9.8.3',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -1567,6 +1626,9 @@ module.exports = async (req, res) => {
                 compat_allow_body_user_id: COMPAT_ALLOW_BODY_USER_ID,
                 auth_required_count: AUTH_REQUIRED_ACTIONS.size,
                 admin_required_count: ADMIN_REQUIRED_ACTIONS.size,
+                stream_guard_enabled: true,
+                stream_interval_min: STREAM_INTERVAL_MS / 60000,
+                stream_min_duration_s: STREAM_MIN_DURATION,
                 timestamp: new Date().toISOString()
             });
         }
@@ -2442,14 +2504,38 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // STREAMING
+        // STREAMING — 🔒 v9.8.3 COM ANTI-FRAUDE
         // ============================================================
         if (action === 'register_streaming') {
             const userId = auth ? auth.user_id : params.user_id;
             const { music_id, duration } = params;
-            if (!music_id || !userId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            if (!music_id || !userId) {
+                return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            }
 
-            await addBlockToChain({ type: 'streaming', music_id, user_id: userId, duration: duration || 30 });
+            // 🔒 v9.8.3 — IP + validação de fraude
+            const clientIP = _getClientIP(req);
+            const check = await _checkStreamAllowed(userId, music_id, clientIP, duration);
+            if (!check.ok) {
+                console.warn(`🚫 [register_streaming] bloqueado: ${check.reason} — user=${userId} music=${music_id} ip=${clientIP}`);
+                return res.status(200).json({
+                    success: false,
+                    message: check.reason,
+                    reason: check.reason,
+                    blocked: true,
+                    _guard: !!check._guard
+                });
+            }
+
+            // Registra no blockchain com IP + timestamp
+            await addBlockToChain({
+                type: 'streaming',
+                music_id,
+                user_id: userId,
+                ip: clientIP,
+                duration: duration || 30,
+                timestamp: new Date().toISOString()
+            });
 
             const key = 'streams_' + music_id;
             let contador = await Storage.get(key) || { music_id, total: 0, hoje: 0, ultima_data: '', ultima_atualizacao: '' };
@@ -2475,11 +2561,23 @@ module.exports = async (req, res) => {
             userContador.musicas[music_id] = (userContador.musicas[music_id] || 0) + 1;
             await Storage.set(userKey, userContador);
 
-            callGAS('register_streaming', { music_id, user_id: userId, duration: duration || 30 }).catch(() => {});
+            callGAS('register_streaming', {
+                music_id,
+                user_id: userId,
+                ip: clientIP,
+                duration: duration || 30,
+                timestamp: new Date().toISOString()
+            }).catch(() => {});
 
             return res.status(200).json({
                 success: true,
-                data: { reward: 1, streams_total: contador.total, streams_hoje: contador.hoje, streams_global: globalCont.total }
+                data: {
+                    reward: 1,
+                    streams_total: contador.total,
+                    streams_hoje: contador.hoje,
+                    streams_global: globalCont.total,
+                    ip_registrado: clientIP.substring(0, 3) + '***' // ofuscação leve
+                }
             });
         }
 
@@ -2748,7 +2846,6 @@ module.exports = async (req, res) => {
             const unwrapped = unwrapGAS(gasResult);
             if (unwrapped.success) {
                 const data = unwrapped.data || {};
-                // 🆕 v9.8.2 — fallback multi-formato
                 const received = data.received || data.recebidas || data.trades_received || [];
                 const sent = data.sent || data.enviadas || data.trades_sent || [];
                 const history = data.history || data.historico || data.trades_history || [];
@@ -2787,7 +2884,6 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: false, message: 'Preço deve ser maior que zero' });
             }
 
-            // 🆕 v9.8.2 — valida posse antes de chamar GAS
             try {
                 const carteira = await Storage.get('carteira_' + sellerId) || [];
                 const ativo = carteira.find(a =>
@@ -2800,16 +2896,12 @@ module.exports = async (req, res) => {
                     });
                 }
                 if (!ativo && carteira.length > 0) {
-                    // Se tem carteira mas não tem esse ativo, avisa
                     return res.status(200).json({
                         success: false,
                         message: 'Você não possui ações dessa música'
                     });
                 }
-                // Se carteira vazia (KV pode não ter ainda), deixa o GAS validar
-            } catch (e) {
-                // silencioso — deixa o GAS validar
-            }
+            } catch (e) {}
 
             const gasResult = await callGAS('create_trade', {
                 seller_id: sellerId, buyer_email: buyerEmail, music_id: musicId,
@@ -3035,7 +3127,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.2',
+            version: '9.8.3',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
