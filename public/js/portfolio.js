@@ -1,8 +1,16 @@
 // ============================================================
-// js/portfolio.js — PLAY MY v9.4.0
+// js/portfolio.js — PLAY MY v9.4.1
 // Portfólio, extrato, dividendos, dados do artista, dados do admin.
 // Depende de: config.js, utils.js, state.js, api.js
 // DEVE carregar DEPOIS de marketplace.js e ANTES de trades.js.
+//
+// MUDANÇAS v9.4.1:
+//   - 🆕 carregarELOsEValuations roda para artista/admin mesmo sem portfólio
+//   - 🔧 Cache interno reduzido 60s → 25s (alinhado ao TTL 30s do api.js)
+//   - 🆕 Log detalhado quando valuation volta vazio (diagnóstico)
+//   - 🆕 callAPI.invalidate() após venda (get_carteira/get_extrato/valuation)
+//   - 🔒 escapeHtml() em renderPortfolio, renderArtistMusic, renderLedger, loadDividends
+//   - 🔒 music_id sanitizado nos onclick
 //
 // MUDANÇAS v9.4.0:
 //   - 🆕 Modal de venda com EMAIL DO COMPRADOR (venda P2P via create_trade)
@@ -26,6 +34,19 @@
 //   - Mostra projeção de receita por ativo
 //   - Mostra multiplier aplicado
 // ============================================================
+
+// ============================================================
+// 🔒 HELPER LOCAL — escape HTML (compatível com marketplace.js)
+// ============================================================
+function _portfolioEsc(str) {
+  if (typeof escapeHtml === 'function') return escapeHtml(str);
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // ============================================================
 // CARREGAR PORTFÓLIO
@@ -71,14 +92,22 @@ window.loadLedger = async function () {
 
 // ============================================================
 // CARREGAR ELOs E VALUATIONS DAS MÚSICAS DO PORTFÓLIO
+// 🆕 v9.4.1 — roda também para artista/admin sem portfólio
 // ============================================================
 window.carregarELOsEValuations = async function () {
   const ativos = state.portfolioAssets || [];
-  if (!ativos.length) return;
+  const ehArtistaOuAdmin = state.currentUser &&
+    (state.currentUser.tipo === 'artista' || state.currentUser.tipo === 'admin');
 
-  // 🆕 Cache global de 60s — evita re-chamar a cada navegação
-  if (state._valuationCache && (Date.now() - state._valuationCacheAt) < 60000) {
-    console.log('📦 [valuation] cache hit (60s)');
+  // 🆕 v9.4.1 — carrega mesmo sem portfólio se for artista/admin
+  if (!ativos.length && !ehArtistaOuAdmin) {
+    console.log('📦 [valuation] sem ativos e não é artista/admin — pulando');
+    return;
+  }
+
+  // 🔧 v9.4.1 — cache 25s (abaixo do TTL 30s do api.js)
+  if (state._valuationCache && (Date.now() - state._valuationCacheAt) < 25000) {
+    console.log('📦 [valuation] cache hit (25s)');
     return;
   }
 
@@ -96,7 +125,9 @@ window.carregarELOsEValuations = async function () {
         };
       });
       state.eloMap = mapa;
-      console.log('✅ [ELO] carregado via 1 chamada');
+      console.log(`✅ [ELO] ${r.data.ranking.length} músicas carregadas`);
+    } else {
+      console.warn('⚠️ [ELO] resposta vazia ou inválida:', r);
     }
   } catch (e) {
     console.warn('⚠️ carregarELOs (portfolio):', e.message);
@@ -107,25 +138,37 @@ window.carregarELOsEValuations = async function () {
   try {
     const r = await callAPI('valuation_catalogo');
     if (r && r.success && r.data && Array.isArray(r.data.musicas)) {
-      r.data.musicas.forEach(v => {
-        const mid = String(v.music_id);
-        state.valuationMap[mid] = {
-          valuation: v.valuation || 0,
-          receita_anual_projetada: v.receita_anual_projetada || 0,
-          multiplo_final: v.multiplo_final || 10,
-          ajuste_elo: v.ajuste_elo || 0
-        };
-      });
+      if (!r.data.musicas.length) {
+        // 🆕 v9.4.1 — log detalhado para diagnóstico do "0 músicas"
+        console.warn('⚠️ [valuation] catálogo vazio — musicas.length=0',
+          '| quantidade_musicas:', r.data.quantidade_musicas,
+          '| valuation_total:', r.data.valuation_total,
+          '| streams_index pode estar vazio no backend');
+      } else {
+        r.data.musicas.forEach(v => {
+          const mid = String(v.music_id);
+          state.valuationMap[mid] = {
+            valuation: v.valuation || 0,
+            receita_anual_projetada: v.receita_anual_projetada || 0,
+            multiplo_final: v.multiplo_final || 10,
+            ajuste_elo: v.ajuste_elo || 0
+          };
+        });
+        console.log(`✅ [valuation] ${r.data.musicas.length} músicas carregadas`);
+      }
+
       state._valuationCache = r.data;
       state._valuationCacheAt = Date.now();
-      console.log(`✅ [valuation] ${r.data.musicas.length} músicas em 1 chamada`);
+    } else {
+      console.warn('⚠️ [valuation] resposta inválida:', r);
     }
   } catch (e) {
     console.warn('⚠️ carregarValuations (portfolio):', e.message);
   }
 };
+
 // ============================================================
-// RENDERIZAR PORTFÓLIO — v9.4.0 (com botão VENDER)
+// RENDERIZAR PORTFÓLIO — v9.4.1 (com escape + botão VENDER)
 // ============================================================
 window.renderPortfolio = function () {
   const c = document.getElementById('portfolioContent');
@@ -159,21 +202,24 @@ window.renderPortfolio = function () {
     const ganhoPct = x.valor_total > 0 ? (ganho / x.valor_total) * 100 : 0;
     const precoMedio = x.quantidade > 0 ? (x.valor_total || 0) / x.quantidade : 0;
 
+    // 🔒 v9.4.1 — music_id sanitizado para uso em onclick
+    const midSafe = String(x.music_id).replace(/[^a-zA-Z0-9_\-]/g, '');
+
     return '<div class="spotify-card">' +
       '<div class="spotify-cover">' +
-        '<img src="' + getCoverUrl(m, false) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+        '<img src="' + _portfolioEsc(getCoverUrl(m, false)) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
         (eloInfo && eloInfo.elo >= 1400
           ? '<div style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
               'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
           : '') +
       '</div>' +
-      '<h3 class="spotify-title">' + (m.titulo || x.music_id || 'Música') + '</h3>' +
-      '<p class="spotify-artist">' + (m.artista || '') + '</p>' +
+      '<h3 class="spotify-title">' + _portfolioEsc(m.titulo || x.music_id || 'Música') + '</h3>' +
+      '<p class="spotify-artist">' + _portfolioEsc(m.artista || '') + '</p>' +
 
       (eloInfo
         ? '<div style="font-size:11px;margin-top:4px">' +
             '<span style="color:' + eloInfo.cor + ';font-weight:700">⚡ ' + eloInfo.elo + '</span>' +
-            '<span style="color:var(--apple-label-2);margin-left:6px">' + eloInfo.faixa_label + '</span>' +
+            '<span style="color:var(--apple-label-2);margin-left:6px">' + _portfolioEsc(eloInfo.faixa_label) + '</span>' +
           '</div>'
         : '') +
 
@@ -211,7 +257,7 @@ window.renderPortfolio = function () {
       // 🆕 BOTÃO VENDER
       '<div style="display:flex;gap:6px;margin-top:10px">' +
         '<button class="btn-invest" style="flex:1;background:linear-gradient(135deg,#ff9500,#ff6b00);color:#fff;border:none;padding:10px;border-radius:8px;font-weight:700;cursor:pointer" ' +
-          'onclick="openSellModal(\'' + x.music_id + '\')">' +
+          'onclick="openSellModal(\'' + midSafe + '\')">' +
           '<i class="bi bi-cash-coin"></i> VENDER' +
         '</button>' +
       '</div>' +
@@ -262,7 +308,7 @@ window.openSellModal = function (musicId) {
   if (eloEl) {
     if (eloInfo) {
       eloEl.innerHTML = '<span style="color:' + eloInfo.cor + ';font-weight:700">⚡ ' + eloInfo.elo + '</span> ' +
-                        '<span style="color:var(--apple-label-2)">' + eloInfo.faixa_label + '</span>';
+                        '<span style="color:var(--apple-label-2)">' + _portfolioEsc(eloInfo.faixa_label) + '</span>';
     } else {
       eloEl.innerHTML = '<span style="color:var(--apple-label-2)">Sem ELO calculado</span>';
     }
@@ -346,7 +392,7 @@ window.setSellPrice = function (tipo) {
 };
 
 // ============================================================
-// 🆕 CONFIRMAR VENDA — v9.4.0 (P2P com email)
+// 🆕 CONFIRMAR VENDA — v9.4.1 (P2P + invalidate cache)
 // ============================================================
 window.confirmSell = async function () {
   if (!state.currentUser || !state._sellingAsset) return;
@@ -396,6 +442,20 @@ window.confirmSell = async function () {
     if (r && r.success) {
       showToast('✅ Oferta enviada para ' + email, 'success');
       closeModal('sellModal');
+
+      // 🆕 v9.4.1 — invalida cache (api.js v8.9.4 tem callAPI.invalidate)
+      try {
+        if (typeof callAPI.invalidate === 'function') {
+          callAPI.invalidate('get_carteira');
+          callAPI.invalidate('get_extrato');
+          callAPI.invalidate('valuation_catalogo');
+          console.log('🧹 [portfolio] cache invalidado após venda');
+        }
+      } catch (e) {}
+
+      // Limpa o cache interno do portfólio também
+      state._valuationCache = null;
+      state._valuationCacheAt = 0;
 
       await loadPortfolio();
       if (typeof loadLedger === 'function') await loadLedger();
@@ -513,7 +573,7 @@ window.updatePortfolioMetrics = function () {
 };
 
 // ============================================================
-// RENDERIZAR EXTRATO
+// RENDERIZAR EXTRATO — v9.4.1 (com escape)
 // ============================================================
 window.renderLedger = function () {
   const c = document.getElementById('ledgerContent');
@@ -527,8 +587,8 @@ window.renderLedger = function () {
   c.innerHTML = state.ledgerData.map(t => {
     const isNeg = t.valor < 0;
     return '<tr>' +
-      '<td>' + formatDate(t.data) + '</td>' +
-      '<td>' + (t.descricao || t.tipo) + '</td>' +
+      '<td>' + _portfolioEsc(formatDate(t.data)) + '</td>' +
+      '<td>' + _portfolioEsc(t.descricao || t.tipo) + '</td>' +
       '<td class="text-end ' + (isNeg ? 'text-danger' : 'text-success') + '">' +
         '<strong>' + (isNeg ? '-' : '+') + formatCurrency(Math.abs(t.valor || 0)) + '</strong>' +
       '</td>' +
@@ -538,7 +598,7 @@ window.renderLedger = function () {
 };
 
 // ============================================================
-// CARREGAR DIVIDENDOS
+// CARREGAR DIVIDENDOS — v9.4.1 (com escape)
 // ============================================================
 window.loadDividends = async function () {
   const c = document.getElementById('dividendsContent');
@@ -600,9 +660,9 @@ window.loadDividends = async function () {
           '<tbody>' +
             ultimos.map(x => {
               return '<tr>' +
-                '<td class="text-muted small">' + formatDate(x.data || x.timestamp) + '</td>' +
-                '<td>' + (x.musica_titulo || x.musica || '—') + '</td>' +
-                '<td class="text-muted small">' + (x.periodo || '—') + '</td>' +
+                '<td class="text-muted small">' + _portfolioEsc(formatDate(x.data || x.timestamp)) + '</td>' +
+                '<td>' + _portfolioEsc(x.musica_titulo || x.musica || '—') + '</td>' +
+                '<td class="text-muted small">' + _portfolioEsc(x.periodo || '—') + '</td>' +
                 '<td class="text-end text-success fw-bold">+' + formatCurrency(x.valor || 0) + '</td>' +
               '</tr>';
             }).join('') +
@@ -646,7 +706,7 @@ window.loadArtistData = async function () {
 };
 
 // ============================================================
-// RENDERIZAR MÚSICAS DO ARTISTA
+// RENDERIZAR MÚSICAS DO ARTISTA — v9.4.1 (com escape)
 // ============================================================
 window.renderArtistMusic = function (musics) {
   const c = document.getElementById('artistMusicContent');
@@ -666,16 +726,16 @@ window.renderArtistMusic = function (musics) {
 
     return '<div class="spotify-card">' +
       '<div class="spotify-cover">' +
-        '<img src="' + getCoverUrl(t, false) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+        '<img src="' + _portfolioEsc(getCoverUrl(t, false)) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
         (eloInfo && eloInfo.elo >= 1400
           ? '<div style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
               'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
           : '') +
       '</div>' +
-      '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
+      '<h3 class="spotify-title">' + _portfolioEsc(t.titulo || '') + '</h3>' +
       '<p class="spotify-artist">' + formatCurrency(t.valor_acao || 0) + '</p>' +
       (eloInfo
-        ? '<div style="font-size:11px;color:' + eloInfo.cor + ';margin-top:4px;font-weight:700">⚡ ' + eloInfo.elo + ' ' + eloInfo.faixa_label + '</div>'
+        ? '<div style="font-size:11px;color:' + eloInfo.cor + ';margin-top:4px;font-weight:700">⚡ ' + eloInfo.elo + ' ' + _portfolioEsc(eloInfo.faixa_label) + '</div>'
         : '') +
       (valInfo && valInfo.valuation > 0
         ? '<div style="font-size:11px;color:var(--apple-blue);margin-top:2px">💰 ' + formatCurrency(valInfo.valuation) + '</div>'
@@ -719,4 +779,4 @@ window.loadAdminData = async function () {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [portfolio.js] v9.4.0 carregado — portfólio, extrato, dividendos, ELO, valuation, artista, admin e VENDA P2P');
+console.log('✅ [portfolio.js] v9.4.1 carregado — portfólio, extrato, dividendos, ELO, valuation, artista, admin, VENDA P2P + invalidate + escape');
