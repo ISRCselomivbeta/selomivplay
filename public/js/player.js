@@ -1,8 +1,13 @@
 // ============================================================
-// js/player.js — PLAY MY v9.2.0
+// js/player.js — PLAY MY v9.2.1
 // Player completo: reprodução, controles, progresso, volume.
 // Depende de: config.js, utils.js, state.js, api.js, youtube.js
 // DEVE carregar DEPOIS de youtube.js e ANTES de marketplace.js.
+//
+// MUDANÇAS v9.2.1 (sequência recomendada):
+//   - 🔒 playTrack(): trava anti-duplo-clique (state._loadingTrack)
+//   - 🛡️ extractYouTubeId(): guarda de tipo antes de chamar
+//   - 🛡️ progress bars: validam container antes de getBoundingClientRect
 //
 // MUDANÇAS v9.2.0:
 //   - 🆕 SHUFFLE + REPEAT funcionais (implementação local, sem playQueue)
@@ -16,17 +21,29 @@
 //
 // MUDANÇAS v9.1.0:
 //   - 🆕 MEDIA SESSION API: suporte a segundo plano no celular
-//     - metadados (título, artista, capa) na tela de bloqueio
-//     - controles play/pause/next/prev no sistema operacional
-//     - AudioSession.type = 'playback' (iOS)
-//     - Wake Lock (opcional) para não apagar a tela durante a música
+//   - 🆕 AUDIO SESSION + WAKE LOCK
 //
 // MUDANÇAS v9.0.0:
-//   - playTrack/playExternalTrack continuam atualizando o PLAYER EXPANDIDO
+//   - playTrack/playExternalTrack atualizam o PLAYER EXPANDIDO
 //   - registrarStreaming é disparado quando o vídeo começa
-//   - player.js agora loga o videoId para debug
-//   - Nada quebra do v8.5.2
 // ============================================================
+
+// ============================================================
+// 🆕 HELPER INTERNO — resolve o video ID com segurança
+// ============================================================
+function _safeExtractYouTubeId(link) {
+  if (!link) return null;
+  if (typeof extractYouTubeId === 'function') {
+    try {
+      return extractYouTubeId(link);
+    } catch (e) {
+      console.warn('⚠️ extractYouTubeId falhou:', e.message);
+      return null;
+    }
+  }
+  console.warn('⚠️ extractYouTubeId não está disponível');
+  return null;
+}
 
 // ============================================================
 // 🆕 MEDIA SESSION — suporte a segundo plano
@@ -169,10 +186,6 @@ function _releaseWakeLock() {
 
 // ============================================================
 // 🆕 HELPERS PARA MOVER O IFRAME DO YOUTUBE
-// O iframe vive no #youtubePlayerGlobal (fora das seções).
-// openPlayerExpanded() MOVE pra seção expandida.
-// closePlayerExpanded() DEVOLVE pro global.
-// A música NÃO pausa ao navegar entre seções.
 // ============================================================
 window._moveYouTubeToExpanded = function () {
   const globalContainer = document.getElementById('youtubePlayerGlobal');
@@ -212,91 +225,105 @@ const _originalUpdatePlayerProgress = window.updatePlayerProgress;
 
 // ============ TOCAR MÚSICA INTERNA ============
 window.playTrack = function (index) {
-  console.log('🎵 playTrack chamada com index:', index);
-
-  const t = state.playlist[index];
-  if (!t) {
-    console.warn('⚠️ playTrack: índice inválido', index);
+  // 🔒 Trava anti-duplo-clique
+  if (state._loadingTrack) {
+    console.log('⏳ playTrack ignorado — já carregando');
     return;
   }
+  state._loadingTrack = true;
 
-  console.log('🎵 Música:', t.titulo, '-', t.artista);
-  console.log('🎵 link_youtube:', t.link_youtube);
+  try {
+    console.log('🎵 playTrack chamada com index:', index);
 
-  state.currentTrackIndex = index;
+    const t = state.playlist[index];
+    if (!t) {
+      console.warn('⚠️ playTrack: índice inválido', index);
+      return;
+    }
 
-  // ✅ Atualiza mini-player (rodapé)
-  const playerSpotify = document.getElementById('playerSpotify');
-  if (playerSpotify) playerSpotify.style.display = 'flex';
+    console.log('🎵 Música:', t.titulo, '-', t.artista);
+    console.log('🎵 link_youtube:', t.link_youtube);
 
-  const playerTitle = document.getElementById('playerTitle');
-  if (playerTitle) playerTitle.textContent = t.titulo || '';
+    state.currentTrackIndex = index;
 
-  const playerArtist = document.getElementById('playerArtist');
-  if (playerArtist) playerArtist.textContent = t.artista || '';
+    // ✅ Atualiza mini-player (rodapé)
+    const playerSpotify = document.getElementById('playerSpotify');
+    if (playerSpotify) playerSpotify.style.display = 'flex';
 
-  const playerAlbumArt = document.getElementById('playerAlbumArt');
-  if (playerAlbumArt) playerAlbumArt.src = getCoverUrl(t, false);
+    const playerTitle = document.getElementById('playerTitle');
+    if (playerTitle) playerTitle.textContent = t.titulo || '';
 
-  // ✅ Atualiza PLAYER EXPANDIDO
-  const expandedTitle = document.getElementById('expandedTitle');
-  if (expandedTitle) expandedTitle.textContent = t.titulo || 'Sem título';
+    const playerArtist = document.getElementById('playerArtist');
+    if (playerArtist) playerArtist.textContent = t.artista || '';
 
-  const expandedArtist = document.getElementById('expandedArtist');
-  if (expandedArtist) expandedArtist.textContent = t.artista || 'Artista desconhecido';
+    const playerAlbumArt = document.getElementById('playerAlbumArt');
+    if (playerAlbumArt) playerAlbumArt.src = getCoverUrl(t, false);
 
-  const expandedAlbumArt = document.getElementById('expandedAlbumArt');
-  if (expandedAlbumArt) expandedAlbumArt.src = getCoverUrl(t, false);
+    // ✅ Atualiza PLAYER EXPANDIDO
+    const expandedTitle = document.getElementById('expandedTitle');
+    if (expandedTitle) expandedTitle.textContent = t.titulo || 'Sem título';
 
-  const expandedPrice = document.getElementById('expandedPrice');
-  if (expandedPrice) expandedPrice.textContent = formatCurrency(t.valor_acao || 0);
+    const expandedArtist = document.getElementById('expandedArtist');
+    if (expandedArtist) expandedArtist.textContent = t.artista || 'Artista desconhecido';
 
-  const expandedAvailable = document.getElementById('expandedAvailable');
-  if (expandedAvailable) expandedAvailable.textContent = (t.percentual_disponivel || 0) + '%';
+    const expandedAlbumArt = document.getElementById('expandedAlbumArt');
+    if (expandedAlbumArt) expandedAlbumArt.src = getCoverUrl(t, false);
 
-  const expandedReturn = document.getElementById('expandedReturn');
-  if (expandedReturn) expandedReturn.textContent = (t.rentabilidade_media || 0) + '%';
+    const expandedPrice = document.getElementById('expandedPrice');
+    if (expandedPrice) expandedPrice.textContent = formatCurrency(t.valor_acao || 0);
 
-  const expandedInvestors = document.getElementById('expandedInvestors');
-  if (expandedInvestors) expandedInvestors.textContent = t.total_investidores || 0;
+    const expandedAvailable = document.getElementById('expandedAvailable');
+    if (expandedAvailable) expandedAvailable.textContent = (t.percentual_disponivel || 0) + '%';
 
-  // ✅ Atualiza o overlay do track
-  const trackOverlayIcon = document.getElementById('trackOverlayIcon');
-  if (trackOverlayIcon) trackOverlayIcon.className = 'bi bi-play-fill';
+    const expandedReturn = document.getElementById('expandedReturn');
+    if (expandedReturn) expandedReturn.textContent = (t.rentabilidade_media || 0) + '%';
 
-  // 🆕 MEDIA SESSION — configura título/artista/capa na tela de bloqueio
-  _setupMediaSession(t.titulo, t.artista, getCoverUrl(t, false));
-  _setAudioSessionType('playback');
-  _requestWakeLock();
+    const expandedInvestors = document.getElementById('expandedInvestors');
+    if (expandedInvestors) expandedInvestors.textContent = t.total_investidores || 0;
 
-  // ✅ Carrega o player do YouTube
-  if (t.link_youtube) {
-    const v = extractYouTubeId(t.link_youtube);
-    console.log('🎵 YouTube video ID:', v);
+    // ✅ Atualiza o overlay do track
+    const trackOverlayIcon = document.getElementById('trackOverlayIcon');
+    if (trackOverlayIcon) trackOverlayIcon.className = 'bi bi-play-fill';
 
-    if (v) {
-      const loading = document.getElementById('playerLoadingExpanded');
-      if (loading) loading.style.display = 'flex';
+    // 🆕 MEDIA SESSION — configura título/artista/capa na tela de bloqueio
+    _setupMediaSession(t.titulo, t.artista, getCoverUrl(t, false));
+    _setAudioSessionType('playback');
+    _requestWakeLock();
 
-      loadYouTubeAPI(() => {
-        console.log('🎵 YouTube API pronta, inicializando player...');
-        initializeYouTubePlayer(v);
-      });
+    // ✅ Carrega o player do YouTube
+    if (t.link_youtube) {
+      const v = _safeExtractYouTubeId(t.link_youtube);
+      console.log('🎵 YouTube video ID:', v);
+
+      if (v) {
+        const loading = document.getElementById('playerLoadingExpanded');
+        if (loading) loading.style.display = 'flex';
+
+        loadYouTubeAPI(() => {
+          console.log('🎵 YouTube API pronta, inicializando player...');
+          initializeYouTubePlayer(v);
+        });
+      } else {
+        console.warn('⚠️ YouTube ID inválido em:', t.link_youtube);
+        showToast('Link do YouTube inválido', 'warning');
+        const loading = document.getElementById('playerLoadingExpanded');
+        if (loading) loading.style.display = 'none';
+      }
     } else {
-      console.warn('⚠️ YouTube ID inválido em:', t.link_youtube);
-      showToast('Link do YouTube inválido', 'warning');
+      console.warn('⚠️ Música sem link_youtube');
+      showToast('Música sem link do YouTube', 'warning');
       const loading = document.getElementById('playerLoadingExpanded');
       if (loading) loading.style.display = 'none';
     }
-  } else {
-    console.warn('⚠️ Música sem link_youtube');
-    showToast('Música sem link do YouTube', 'warning');
-    const loading = document.getElementById('playerLoadingExpanded');
-    if (loading) loading.style.display = 'none';
-  }
 
-  state.isPlaying = true;
-  updatePlayerIcons();
+    state.isPlaying = true;
+    updatePlayerIcons();
+  } finally {
+    // 🔓 Libera a trava após 1s (evita clique duplo)
+    setTimeout(() => {
+      state._loadingTrack = false;
+    }, 1000);
+  }
 };
 
 // ============ TOCAR MÚSICA EXTERNA ============
@@ -350,7 +377,7 @@ window.playExternalTrack = function (index) {
 
   // ✅ Carrega o player do YouTube
   if (t.link_youtube) {
-    const v = extractYouTubeId(t.link_youtube);
+    const v = _safeExtractYouTubeId(t.link_youtube);
     console.log('🎵 YouTube video ID:', v);
 
     if (v) {
@@ -483,11 +510,19 @@ window.handleVolumeClick = function (e) {
   }
 };
 
-// ============ PROGRESSO ============
+// ============ PROGRESSO (com validação de container) ============
 window.handleProgressClick = function (e) {
   if (!state.youtubePlayer || !state.youtubePlayer.seekTo) return;
 
-  const r = document.getElementById('progressContainer').getBoundingClientRect();
+  const container = document.getElementById('progressContainer');
+  if (!container) {
+    console.warn('⚠️ handleProgressClick: progressContainer não encontrado');
+    return;
+  }
+
+  const r = container.getBoundingClientRect();
+  if (!r || !r.width) return;
+
   const p = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
   state.youtubePlayer.seekTo(state.youtubePlayer.getDuration() * p, true);
 };
@@ -495,15 +530,21 @@ window.handleProgressClick = function (e) {
 window.handleExpandedProgressClick = function (e) {
   if (!state.youtubePlayer || !state.youtubePlayer.seekTo) return;
 
-  const r = document.getElementById('expandedProgressContainer').getBoundingClientRect();
+  const container = document.getElementById('expandedProgressContainer');
+  if (!container) {
+    console.warn('⚠️ handleExpandedProgressClick: expandedProgressContainer não encontrado');
+    return;
+  }
+
+  const r = container.getBoundingClientRect();
+  if (!r || !r.width) return;
+
   const p = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
   state.youtubePlayer.seekTo(state.youtubePlayer.getDuration() * p, true);
 };
 
 // ============================================================
 // 🆕 v9.2.0 — SHUFFLE / REPEAT / NEXT / PREV
-// Implementação local, sem depender do playQueue.
-// Fonte única de verdade: state.playlist + state.currentTrackIndex
 // ============================================================
 
 // Inicializa os campos de shuffle/repeat
@@ -512,6 +553,7 @@ window.handleExpandedProgressClick = function (e) {
   if (typeof state.isRepeat !== 'boolean') state.isRepeat = false;
   if (typeof state.repeatMode !== 'string') state.repeatMode = 'off';
   if (!Array.isArray(state._originalPlaylist)) state._originalPlaylist = null;
+  if (typeof state._loadingTrack !== 'boolean') state._loadingTrack = false;
   console.log('🎵 [player] shuffle/repeat inicializado:', {
     isShuffle: state.isShuffle,
     isRepeat: state.isRepeat,
@@ -731,7 +773,6 @@ window.closePlayerExpanded = function () {
 
 // ============================================================
 // 🆕 LIBERAÇÃO DE RECURSOS
-// Chamado quando a música termina ou é pausada por muito tempo
 // ============================================================
 window._onPlayerStop = function () {
   _releaseWakeLock();
@@ -748,7 +789,6 @@ const _progressIntervalPatch = setInterval(() => {
 
 // ============================================================
 // 🆕 v9.2.0 — APLICAR ESTADO INICIAL DOS BOTÕES
-// Garante que o visual reflita o estado atual ao carregar
 // ============================================================
 window._aplicarEstadoShuffleRepeat = function () {
   // Shuffle
@@ -789,4 +829,4 @@ if (document.readyState === 'loading') {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [player.js] v9.2.0 carregado — shuffle + repeat + Media Session + segundo plano');
+console.log('✅ [player.js] v9.2.1 carregado — shuffle + repeat + Media Session + anti-duplo-clique');
