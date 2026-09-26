@@ -1,13 +1,21 @@
 // ============================================================
-// js/youtube.js — PLAY MY v9.1.0
+// js/youtube.js — PLAY MY v9.2.0
 // Integração YouTube: API IFrame, busca, player.
 // Depende de: config.js, utils.js, state.js, api.js
+//
+// MUDANÇAS v9.2.0:
+//   - 🚀 REUSO DO PLAYER: se o player já existe, usa loadVideoById()
+//        → troca de música instantânea (~0.2s em vez de ~2s)
+//        → NÃO destrói o iframe, NÃO pisca, YouTube cacheia melhor
+//   - 🆕 prefetchYouTubeVideo(videoId): aquece thumbnail do próximo
+//   - 🔧 registrarStreaming alinhado ao stream guard v9.8.4:
+//        + timestamp no payload
+//        + log 🛡️ quando bloqueado
+//   - ✅ Player inicial (1º play) continua criando new YT.Player
 //
 // MUDANÇAS v9.1.0:
 //   - 🔧 Iframe agora vive no container GLOBAL (#youtubePlayerGlobal)
 //     fora das seções. A música NÃO pausa ao navegar entre seções.
-//     O player.js move o iframe pro expandido quando abre, e
-//     devolve pro global quando fecha.
 //
 // MUDANÇAS v9.0.0 (A PONTE):
 //   - origin: window.location.origin  → YouTube conta a view
@@ -110,9 +118,29 @@ window.loadYouTubeAPI = function (cb) {
 };
 
 // ============================================================
-// 🆕 REGISTRAR STREAMING — A PONTE
-// Avisa o backend que a música começou a tocar.
-// O backend guarda o contador de streams por música.
+// 🆕 v9.2.0 — PREFETCH DE THUMBNAIL
+// Aquece a CDN do YouTube com a thumbnail do próximo vídeo.
+// Uso: playNext() / playPrevious() podem chamar antes de tocar.
+// ============================================================
+window.prefetchYouTubeVideo = function (videoId) {
+  if (!videoId || typeof videoId !== 'string') return;
+  // Evita repetir o mesmo prefetch
+  if (window._lastPrefetchId === videoId) return;
+  window._lastPrefetchId = videoId;
+
+  try {
+    const img = new Image();
+    img.decoding = 'async';
+    img.loading = 'eager';
+    img.src = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
+    console.log('🖼️ [prefetch] thumbnail:', videoId);
+  } catch (e) {
+    // silencioso — prefetch é best-effort
+  }
+};
+
+// ============================================================
+// 🆕 REGISTRAR STREAMING — A PONTE (alinhado ao stream guard v9.8.4)
 // ============================================================
 window.registrarStreaming = function (videoId) {
   const user = window.state && window.state.currentUser;
@@ -121,11 +149,11 @@ window.registrarStreaming = function (videoId) {
     return;
   }
 
-  // Evita registrar 2x o mesmo vídeo em menos de 30s
+  // Evita registrar 2x o mesmo vídeo em menos de 30s (defesa local)
   const agora = Date.now();
   if (window._ultimoStream && window._ultimoStream.id === videoId &&
       (agora - window._ultimoStream.ts) < 30000) {
-    console.log('🎵 [registrarStreaming] duplicado, ignorando');
+    console.log('🎵 [registrarStreaming] duplicado local (<30s), ignorando');
     return;
   }
   window._ultimoStream = { id: videoId, ts: agora };
@@ -136,10 +164,15 @@ window.registrarStreaming = function (videoId) {
     window.callAPI('register_streaming', {
       music_id: videoId,
       user_id: user.id,
-      duration: 30
+      duration: 30,
+      // 🆕 v9.2.0 — timestamp para auditoria do backend
+      timestamp: new Date().toISOString()
     }).then(r => {
       if (r && r.success) {
         console.log('🎵 [registrarStreaming] backend OK:', r.data);
+      } else if (r && r.blocked) {
+        // 🛡️ Stream guard do backend rejeitou
+        console.log('🛡️ [registrarStreaming] bloqueado pelo guard:', r.reason || r.message);
       }
     }).catch(e => {
       console.warn('🎵 [registrarStreaming] erro:', e.message);
@@ -175,10 +208,10 @@ window.searchYouTubeDirect = async function (query) {
 };
 
 // ============================================================
-// INICIALIZAÇÃO DO PLAYER
-// ============================================================
-// 🆕 O iframe vive no #youtubePlayerGlobal (fora das seções).
-//    Isso garante que a música NÃO pause ao navegar entre seções.
+// 🆕 v9.2.0 — INICIALIZAÇÃO DO PLAYER COM REUSO INTELIGENTE
+// ------------------------------------------------------------
+// 1º play  → new YT.Player (cria o iframe)
+// Próximos → state.youtubePlayer.loadVideoById(videoId) (instantâneo)
 // ============================================================
 window.initializeYouTubePlayer = function (videoId) {
   console.log('🎵 [initializeYouTubePlayer] videoId:', videoId);
@@ -199,8 +232,32 @@ window.initializeYouTubePlayer = function (videoId) {
     return;
   }
 
-  el.innerHTML = '';
   const loading = document.getElementById('playerLoadingExpanded');
+
+  // ============================================================
+  // 🆕 v9.2.0 — REUSO: se o player já existe, apenas troca o vídeo
+  // ============================================================
+  if (state.youtubePlayer && typeof state.youtubePlayer.loadVideoById === 'function') {
+    console.log('🚀 [initializeYouTubePlayer] REUSO — loadVideoById:', videoId);
+    if (loading) loading.style.display = 'flex';
+
+    try {
+      state.youtubePlayer.loadVideoById(videoId);
+      // Não precisa reconfigurar onReady/onStateChange — já estão ativos
+      state.playerReady = true;
+      return;
+    } catch (e) {
+      console.warn('⚠️ loadVideoById falhou, recriando player:', e.message);
+      // Cai no fluxo de criação abaixo
+      try { state.youtubePlayer.destroy(); } catch (_) {}
+      state.youtubePlayer = null;
+    }
+  }
+
+  // ============================================================
+  // PRIMEIRO PLAY — cria o player do zero
+  // ============================================================
+  el.innerHTML = '';
   if (loading) loading.style.display = 'flex';
 
   if (state.youtubePlayer && state.youtubePlayer.destroy) {
@@ -227,7 +284,6 @@ window.initializeYouTubePlayer = function (videoId) {
         rel: 0,
         playsinline: 1,
         enablejsapi: 1,
-        // ✅ A PONTE: diz ao YouTube de onde vem o player
         origin: window.location.origin
       },
       events: {
@@ -247,7 +303,7 @@ window.initializeYouTubePlayer = function (videoId) {
           if (state.progressInterval) clearInterval(state.progressInterval);
           state.progressInterval = setInterval(updatePlayerProgress, 1000);
 
-          // 🆕 Se o player expandido estiver aberto, move o iframe pra dentro dele
+          // Se o player expandido estiver aberto, move o iframe pra dentro dele
           if (typeof window._moveYouTubeToExpandedIfOpen === 'function') {
             window._moveYouTubeToExpandedIfOpen();
           }
@@ -261,7 +317,6 @@ window.initializeYouTubePlayer = function (videoId) {
             e.data === 0 ? '(ENDED)' : '');
 
           if (e.data === 1) {
-            // ✅ A PONTE: quando começa a tocar, avisa o backend
             state.isPlaying = true;
             if (loading) loading.style.display = 'none';
             window.registrarStreaming(videoId);
@@ -338,4 +393,4 @@ window.updatePlayerProgress = function () {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [youtube.js] v9.1.0 carregado — iframe global (não pausa ao navegar)');
+console.log('✅ [youtube.js] v9.2.0 carregado — iframe global + reuso de player + prefetch');
