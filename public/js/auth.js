@@ -1,5 +1,5 @@
 // ============================================================
-// js/auth.js — PLAY MY v8.5.1
+// js/auth.js — PLAY MY v8.5.2
 // Login, registro, logout, reset de senha, sessão.
 // Depende de: config.js, utils.js, state.js, api.js
 // DEVE carregar DEPOIS de api.js e ANTES de app.js.
@@ -7,6 +7,11 @@
 // MUDANÇAS v8.5.1:
 //   - 🔒 SEGURANÇA: restoreSession() apaga miv_user se tiver
 //     'senha' ou 'senha_hash' (sessão antiga) e força login
+//
+// MUDANÇAS v8.5.2 (sequência recomendada):
+//   - restoreSession(): valida user.id antes de restaurar
+//   - Login falho: limpa miv_user em r.success === false
+//   - Logout: também limpa sessionStorage
 // ============================================================
 
 // ============ LOGIN ============
@@ -47,10 +52,14 @@ window.handleLogin = async function () {
         console.warn('⚠️ initializeApp ainda não carregado');
       }
     } else {
+      // 🔒 Limpa qualquer sessão corrompida em caso de falha
+      localStorage.removeItem('miv_user');
       showToast((r && r.message) || 'Credenciais inválidas', 'error');
     }
   } catch (e) {
     console.error('Erro no login:', e);
+    // 🔒 Limpa qualquer sessão corrompida em caso de erro
+    localStorage.removeItem('miv_user');
     showToast('Erro ao conectar', 'error');
   } finally {
     btn.disabled = false;
@@ -133,6 +142,7 @@ window.logout = function () {
 
   // Limpa storage
   localStorage.removeItem('miv_user');
+  sessionStorage.clear();
 
   // Esconde app, mostra auth
   document.getElementById('mainApp').style.display = 'none';
@@ -215,8 +225,15 @@ window.restoreSession = function () {
   try {
     const user = JSON.parse(stored);
 
+    // 🔒 SEGURANÇA: sessão sem id válido — apaga e força login
+    if (!user || !user.id) {
+      console.warn('🔒 [auth] Sessão sem id válido — removendo');
+      localStorage.removeItem('miv_user');
+      return false;
+    }
+
     // 🔒 SEGURANÇA: sessão antiga com credenciais — apaga e força login
-    if (user && (user.senha || user.senha_hash)) {
+    if (user.senha || user.senha_hash) {
       console.warn('🔒 [auth] Sessão antiga com credenciais — removendo e forçando login');
       localStorage.removeItem('miv_user');
       return false;
@@ -238,4 +255,4 @@ window.restoreSession = function () {
 };
 
 // ============ LOG DE CARREGAMENTO ============
-console.log('✅ [auth.js] v8.5.1 carregado — login, registro, logout prontos');
+console.log('✅ [auth.js] v8.5.2 carregado — login, registro, logout prontos');
