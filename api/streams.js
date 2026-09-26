@@ -1,7 +1,16 @@
 // ============================================================
-// api/streams.js — PLAY MY v1.0.0
-// Contador simples de streams do PLAY MY.
-// Chamado pelo frontend a cada play no player interno.
+// api/streams.js — PLAY MY v1.1.0
+// READ-ONLY: contadores de streams do PLAY MY.
+//
+// MUDANÇAS v1.1.0 (consolidação Opção A):
+//   - 🚫 action=registrar REMOVIDA (escrita foi consolidada no /api/backend)
+//        → retorna success:false com instrução para o novo endpoint
+//   - 🔧 Leitura compatível com ambos formatos de chave:
+//        • stream_<id>    (formato antigo, /api/streams)
+//        • streams_<id>   (formato novo, /api/backend v9.8.3)
+//        • streams_global (compartilhado)
+//   - 🔧 Fallback: se o novo formato existe, ele tem prioridade
+//   - ✅ Mantém ver / total / ranking / ping
 // ============================================================
 
 let kv = null;
@@ -12,9 +21,6 @@ try {
     console.warn('⚠️ [streams] KV não instalado — usando fallback em memória');
 }
 
-// ============================================================
-// STORAGE FALLBACK
-// ============================================================
 const MEMORY = {
     streams: {},
     streams_index: [],
@@ -31,16 +37,8 @@ async function getKV(key) {
     return MEMORY[key] !== undefined ? MEMORY[key] : null;
 }
 
-async function setKV(key, value) {
-    if (kv) {
-        try { await kv.set('playmy:' + key, value); return true; } catch (e) {}
-    }
-    MEMORY[key] = value;
-    return true;
-}
-
 // ============================================================
-// ALIASES — compatibilidade com o front (api.js usa prefixo)
+// ALIASES DE ACTION (compatibilidade com o front)
 // ============================================================
 const ALIASES = {
     'streams_ranking':   'ranking',
@@ -53,6 +51,41 @@ const ALIASES = {
 };
 
 // ============================================================
+// LEITURA DE CONTADOR — tenta os dois formatos de chave
+//   1) stream_<id>   (formato antigo)
+//   2) streams_<id>  (formato novo — backend v9.8.3)
+// ============================================================
+async function lerContador(music_id) {
+    const antigo = await getKV('stream_' + music_id);
+    const novo = await getKV('streams_' + music_id);
+
+    // Prefere o novo (backend tem o guard e é a fonte de verdade)
+    if (novo) {
+        return {
+            music_id: music_id,
+            titulo: novo.titulo || (antigo && antigo.titulo) || '',
+            total: novo.total || 0,
+            hoje: novo.hoje || 0,
+            ultima_data: novo.ultima_data || '',
+            ultima_atualizacao: novo.ultima_atualizacao || '',
+            _formato: 'novo'
+        };
+    }
+    if (antigo) {
+        return {
+            music_id: music_id,
+            titulo: antigo.titulo || '',
+            total: antigo.total || 0,
+            hoje: antigo.hoje || 0,
+            ultima_data: antigo.ultima_data || '',
+            ultima_atualizacao: antigo.ultima_atualizacao || '',
+            _formato: 'antigo'
+        };
+    }
+    return null;
+}
+
+// ============================================================
 // HANDLER
 // ============================================================
 module.exports = async (req, res) => {
@@ -62,7 +95,7 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     const params = req.method === 'POST' ? req.body : req.query;
-    const { action: _actionOriginal, music_id, user_id, titulo, duration } = params;
+    const { action: _actionOriginal, music_id } = params;
 
     // ✅ Resolve alias
     const action = ALIASES[_actionOriginal] || _actionOriginal;
@@ -71,76 +104,27 @@ module.exports = async (req, res) => {
 
     try {
         // ============================================================
-        // 1. REGISTRAR UM STREAM
+        // 🚫 REGISTRAR — MOVIDO PARA /api/backend
         // ============================================================
         if (action === 'registrar') {
-            if (!music_id) {
-                return res.status(200).json({ success: false, message: 'music_id obrigatório' });
-            }
-
-            const hoje = new Date().toISOString().slice(0, 10);
-
-            // --- Contador por música ---
-            const key = 'stream_' + music_id;
-            let contador = await getKV(key) || {
-                music_id: music_id,
-                titulo: titulo || '',
-                total: 0,
-                hoje: 0,
-                ultima_data: hoje,
-                por_dia: {}
-            };
-
-            if (contador.ultima_data !== hoje) {
-                contador.hoje = 0;
-                contador.ultima_data = hoje;
-            }
-
-            contador.total++;
-            contador.hoje++;
-            contador.por_dia[hoje] = (contador.por_dia[hoje] || 0) + 1;
-            contador.ultima_atualizacao = new Date().toISOString();
-            contador.ultimo_user = user_id || 'anon';
-
-            await setKV(key, contador);
-
-            // --- Índice de músicas ---
-            let idx = await getKV('streams_index') || [];
-            if (!idx.includes(music_id)) {
-                idx.push(music_id);
-                await setKV('streams_index', idx);
-            }
-
-            // --- Contador global ---
-            let globalCont = await getKV('streams_global') || { total: 0, hoje: 0, ultima_data: hoje };
-            if (globalCont.ultima_data !== hoje) {
-                globalCont.hoje = 0;
-                globalCont.ultima_data = hoje;
-            }
-            globalCont.total++;
-            globalCont.hoje++;
-            await setKV('streams_global', globalCont);
-
-            console.log(`🎵 [streams] PLAY MY registrou: ${music_id} | total: ${contador.total} | hoje: ${contador.hoje} | user: ${user_id}`);
-
+            console.warn(`⚠️ [streams] escrita descontinuada — use /api/backend?action=register_streaming`);
             return res.status(200).json({
-                success: true,
-                music_id: music_id,
-                total: contador.total,
-                hoje: contador.hoje,
-                global: globalCont.total,
-                mensagem: '✅ Play do PLAY MY registrado'
+                success: false,
+                message: 'A ação "registrar" foi movida para /api/backend?action=register_streaming',
+                novo_endpoint: '/api/backend?action=register_streaming',
+                motivo: 'Stream Guard (IP + intervalo 30min + duration mínima)',
+                version: '1.1.0'
             });
         }
 
         // ============================================================
-        // 2. VER STREAMS DE UMA MÚSICA
+        // VER STREAMS DE UMA MÚSICA
         // ============================================================
         if (action === 'ver') {
             if (!music_id) {
                 return res.status(200).json({ success: false, message: 'music_id obrigatório' });
             }
-            const d = await getKV('stream_' + music_id);
+            const d = await lerContador(music_id);
             return res.status(200).json({
                 success: true,
                 data: d || { music_id: music_id, total: 0, hoje: 0 }
@@ -148,7 +132,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 3. TOTAL GERAL
+        // TOTAL GERAL
         // ============================================================
         if (action === 'total') {
             const globalCont = await getKV('streams_global') || { total: 0, hoje: 0 };
@@ -166,14 +150,14 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 4. RANKING (top músicas)
+        // RANKING (top músicas) — lê dos dois formatos
         // ============================================================
         if (action === 'ranking') {
             const idx = await getKV('streams_index') || [];
             const lista = [];
 
             for (const id of idx) {
-                const d = await getKV('stream_' + id);
+                const d = await lerContador(id);
                 if (d) lista.push(d);
             }
 
@@ -186,30 +170,33 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 5. PING
+        // PING
         // ============================================================
         if (action === 'ping') {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '1.0.0',
-                kv_enabled: !!kv
+                version: '1.1.0',
+                mode: 'read-only',
+                kv_enabled: !!kv,
+                note: 'escrita consolidada no /api/backend (Stream Guard)'
             });
         }
-      // ============================================================
-      // DEFAULT — action desconhecida
-      // ✅ success:false (era true) — quebra loop do front
-      // ============================================================
-      console.warn(`⚠️ [streams] action desconhecida: ${_actionOriginal}`);
-      return res.status(200).json({
-          success: false,
-          message: `Action desconhecida: ${_actionOriginal}`,
-          version: '1.0.1',
-          acoes: ['registrar', 'ver', 'total', 'ranking', 'ping']
-      });
 
-  } catch (e) {
-      console.error('❌ [streams] Erro:', e);
-      return res.status(200).json({ success: false, message: e.message });
-  }
+        // ============================================================
+        // DEFAULT — action desconhecida
+        // ============================================================
+        console.warn(`⚠️ [streams] action desconhecida: ${_actionOriginal}`);
+        return res.status(200).json({
+            success: false,
+            message: `Action desconhecida: ${_actionOriginal}`,
+            version: '1.1.0',
+            acoes: ['ver', 'total', 'ranking', 'ping'],
+            note: 'escrita via /api/backend?action=register_streaming'
+        });
+
+    } catch (e) {
+        console.error('❌ [streams] Erro:', e);
+        return res.status(200).json({ success: false, message: e.message });
+    }
 };
