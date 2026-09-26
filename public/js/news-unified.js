@@ -1,8 +1,14 @@
 // ============================================================
-// js/news-unified.js — PLAY MY v10.3.0
+// js/news-unified.js — PLAY MY v10.3.1
 // Feed de notícias unificado: backend + RSS + og:image enrichment
 // + SVG fallback (inline)
 // + link sempre para Google News
+//
+// MUDANÇAS v10.3.1 (sequência recomendada — paridade com news.js):
+//   - 💾 saveSeen() agora limita state.seen a 1000 entradas
+//        (evita crescer infinito no localStorage)
+//   - ✅ Confirma esc() aplicado em titulo/texto/autor/fonte/link
+//        (XSS já estava coberto desde v10.3.0)
 //
 // MUDANÇAS v10.3.0:
 //   - 🆕 enrichWithOgImage melhorado (6 padrões de meta tag)
@@ -22,6 +28,7 @@
   var SEEN_KEY = 'pm_news_seen_v10';
   var SEEN_DATE_KEY = 'pm_news_seen_date_v10';
   var CACHE_TTL = 10 * 60 * 1000;
+  var SEEN_MAX = 1000;  // 🆕 v10.3.1 — cap de entradas em state.seen
 
   var RSS_SOURCES = [
     // Google News (sem imagem — será enriquecido via og:image)
@@ -108,8 +115,25 @@
     } catch (e) { state.seen = {}; }
   }
 
+  // 🆕 v10.3.1 — Limita state.seen a SEEN_MAX entradas mais recentes
   function saveSeen() {
-    try { localStorage.setItem(SEEN_KEY, JSON.stringify(state.seen)); } catch (e) {}
+    try {
+      var keys = Object.keys(state.seen);
+      if (keys.length > SEEN_MAX) {
+        // Ordena por timestamp (valor) e mantém os SEEN_MAX mais recentes
+        keys.sort(function (a, b) {
+          return (state.seen[b] || 0) - (state.seen[a] || 0);
+        });
+        var keep = keys.slice(0, SEEN_MAX);
+        var novo = {};
+        for (var i = 0; i < keep.length; i++) {
+          novo[keep[i]] = state.seen[keep[i]];
+        }
+        state.seen = novo;
+        console.log('[news] 🧹 seenIds limitado a ' + SEEN_MAX + ' entradas');
+      }
+      localStorage.setItem(SEEN_KEY, JSON.stringify(state.seen));
+    } catch (e) {}
   }
 
   function loadCache() {
@@ -463,7 +487,7 @@
     for (var j = 0; j < slice.length; j++) {
       state.seen[slice[j].id] = Date.now();
     }
-    saveSeen();
+    saveSeen();  // 🆕 v10.3.1 — agora com cap de 1000
 
     state.page++;
     state.hasMore = (start + PAGE_SIZE) < state.items.length;
@@ -605,5 +629,5 @@
     init();
   }
 
-  console.log('✅ [news-unified.js] v10.3.0 carregado');
+  console.log('✅ [news-unified.js] v10.3.1 carregado — XSS ok + seenIds cap 1000');
 })();
