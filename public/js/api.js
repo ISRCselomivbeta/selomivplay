@@ -1,8 +1,13 @@
 // ============================================================
-// js/api.js — PLAY MY v8.9.2
+// js/api.js — PLAY MY v8.9.3
 // HealthCheck + callAPI (roteador multi-API + Vercel → GAS → Local).
 // Depende de: config.js, utils.js, state.js
 // DEVE carregar DEPOIS de state.js e ANTES de auth.js.
+//
+// MUDANÇAS v8.9.3 (sequência recomendada — apenas revisão):
+//   - 🔧 Bump de versão (8.9.2 → 8.9.3) para forçar refresh no PWA
+//   - 📝 Comentário de alinhamento com backend v9.8.3 (stream guard)
+//   - ✅ Nenhuma mudança funcional — drop-in total
 //
 // MUDANÇAS v8.9.2:
 //   - 🔧 Bump de versão (8.9.1 → 8.9.2) para forçar atualização no cache
@@ -673,4 +678,4 @@ window.getFallbackData = function (action) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [api.js] v8.9.2 carregado — dedup + cache TTL + validação de resposta');
+console.log('✅ [api.js] v8.9.3 carregado — dedup + cache TTL + validação de resposta');
