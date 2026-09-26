@@ -1,5 +1,5 @@
 // ============================================================
-// js/app.js — PLAY MY v9.8.1
+// js/app.js — PLAY MY v9.8.4
 // Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
 // + Detecção de app nativo (Capacitor/TWA)
 // + Safe areas (iPhone notch)
@@ -7,8 +7,20 @@
 // + Splash screen handling
 // + Deep linking (?section=)
 // + INSTALAÇÃO INTELIGENTE via SIDEBAR (sem balão flutuante)
+// + 🆕 v9.8.4 — loadAllData em 4 ETAPAS SEQUENCIAIS
 // Depende de TODOS os módulos anteriores.
 // DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
+//
+// MUDANÇAS v9.8.4:
+//   - 🆕 loadAllData() reescrita em 4 etapas (Etapa 1 → Etapa 4)
+//       • Etapa 1 (crítica): saldo + get_musicas + playlists → hideLoading
+//       • Etapa 2 (usuário): carteira + extrato + following
+//       • Etapa 3 (rankings): marketplace (streams/ELO) + artistas
+//       • Etapa 4 (secundário): top investments + tickets + externos + globais
+//   - 🆕 hideLoading movido para depois da Etapa 1 (app fica usável mais rápido)
+//   - 🆕 try/catch por etapa (falha de uma não bloqueia as outras)
+//   - 🆕 Logs por etapa para debug
+//   - 🔧 Alinhamento de versão com backend v9.8.3
 //
 // MUDANÇAS v9.8.1:
 //   - FIX: registerServiceWorker() idempotente (não registra 2x)
@@ -36,18 +48,6 @@
 //   - CORRIGIDO: showModal(id) — compatível com modals.js v9.0.0
 //   - CORRIGIDO: installApp sobrescreve a versão do modals.js
 //   - Modal de instruções criado DINAMICAMENTE (com ID fixo)
-//
-// MUDANÇAS v9.3.0:
-//   - Detecção de ambiente nativo (Capacitor, TWA, standalone)
-//   - Safe area insets (notch, home indicator)
-//   - Status bar com cor dinâmica por scroll
-//   - Splash screen escondida quando o app está pronto
-//   - Bloqueio de gestos nativos (pull-to-refresh, pinch-zoom)
-//   - Deep linking via URL (?section=marketplace)
-//
-// MUDANÇAS v9.2.0:
-//   - Bootstrap com HealthCheck + restoreSession
-//   - Aliases globais para compatibilidade com HTML inline
 // ============================================================
 
 // ============================================================
@@ -227,10 +227,6 @@ function handleDeepLink() {
 
 // ============================================================
 // SERVICE WORKER — registro + detecção de update (v9.8.2)
-// - registerServiceWorker() é idempotente (não registra 2x)
-// - updatefound → SKIP_WAITING automático (SW assume na hora)
-// - controllerchange → reload UMA vez, SÓ se já havia SW antes
-//   (evita a piscada na primeira instalação do SW)
 // ============================================================
 let __swRegistered = false;
 let __swRefreshing = false;
@@ -261,11 +257,9 @@ function registerServiceWorker() {
         if (!newWorker) return;
 
         newWorker.addEventListener('statechange', () => {
-          // Quando o novo SW terminar de instalar E já existe um controlando
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
             console.log('🆕 [SW] Nova versão instalada — ativando...');
 
-            // 🔥 força o novo SW a assumir imediatamente
             newWorker.postMessage({ type: 'SKIP_WAITING' });
 
             if (typeof showToast === 'function') {
@@ -287,8 +281,6 @@ function registerServiceWorker() {
     });
 
   // 🔄 quando o novo SW assume o controle → recarrega UMA vez
-  // ⚠️ SÓ recarrega se JÁ HAVIA um SW controlando antes.
-  //    Se for a PRIMEIRA instalação, não recarrega (evita piscar).
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (__swRefreshing) return;
 
@@ -313,10 +305,7 @@ window.initializeApp = async function () {
   updateUserInterface();
   await loadAllData();
 
-  // 🔥 FIX v9.8.3 — re-render das seções após loadAllData
-  // O router.js chamava changeSection('marketplace') no DOMContentLoaded
-  // ANTES dos dados existirem → marketplace ficava vazio.
-  // Aqui forçamos o re-render com o state já populado.
+  // 🔥 re-render das seções após loadAllData
   try {
     if (typeof window.renderMarketplace === 'function') window.renderMarketplace();
     if (typeof window.renderGlobalPlaylists === 'function') window.renderGlobalPlaylists();
@@ -335,27 +324,97 @@ window.initializeApp = async function () {
 };
 
 // ============================================================
-// CARREGAR TODOS OS DADOS EM PARALELO
+// 🆕 v9.8.4 — CARREGAR DADOS EM 4 ETAPAS SEQUENCIAIS
+// ------------------------------------------------------------
+// Etapa 1 (crítica)   → app fica usável; hideLoading aqui
+// Etapa 2 (usuário)   → dados financeiros do usuário
+// Etapa 3 (rankings)  → marketplace + streams + ELO + artistas
+// Etapa 4 (secundário)→ top investments, tickets, externos, globais
+//
+// Cada etapa roda em paralelo INTERNO (Promise.all),
+// mas as etapas rodam em SEQUÊNCIA para não saturar a Vercel.
 // ============================================================
 window.loadAllData = async function () {
   showLoading('Carregando dados...');
 
+  // ------------------------------------------------------------
+  // ETAPA 1 — CRÍTICA (app fica usável aqui)
+  // ------------------------------------------------------------
   try {
-    await Promise.all([
-      loadMarketplace(),
-      loadExternalMarketplace(),
+    console.log('📦 [app] Etapa 1/4 — dados críticos');
+    await Promise.allSettled([
+      updateBalanceDisplay(),
+      loadUserPlaylists(),
+      (async () => {
+        // get_musicas direto (não depende de loadMarketplace)
+        try {
+          if (typeof callAPI === 'function') {
+            const r = await callAPI('get_musicas');
+            if (r && r.success && Array.isArray(r.data)) {
+              state.playlist = r.data;
+              if (typeof window.renderMarketplace === 'function') {
+                window.renderMarketplace();
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ [app] Etapa 1 get_musicas falhou:', e.message);
+        }
+      })()
+    ]);
+  } catch (e) {
+    console.warn('⚠️ [app] Etapa 1 falhou:', e.message);
+  }
+
+  // 🔓 Libera a UI AGORA — app usável, resto roda em background
+  hideLoading();
+
+  // ------------------------------------------------------------
+  // ETAPA 2 — DADOS DO USUÁRIO
+  // ------------------------------------------------------------
+  try {
+    console.log('📦 [app] Etapa 2/4 — dados do usuário');
+    await Promise.allSettled([
       loadPortfolio(),
       loadLedger(),
-      loadTopInvestments(),
-      loadUserPlaylists(),
-      loadGlobalPlaylists(),
-      loadArtists(),
-      loadTickets(),
       loadFollowing()
     ]);
+  } catch (e) {
+    console.warn('⚠️ [app] Etapa 2 falhou:', e.message);
+  }
 
-    await updateBalanceDisplay();
+  // ------------------------------------------------------------
+  // ETAPA 3 — RANKINGS E ARTISTAS
+  // ------------------------------------------------------------
+  try {
+    console.log('📦 [app] Etapa 3/4 — rankings e artistas');
+    await Promise.allSettled([
+      loadMarketplace(),  // dispara streams + ELO internamente
+      loadArtists()
+    ]);
+  } catch (e) {
+    console.warn('⚠️ [app] Etapa 3 falhou:', e.message);
+  }
 
+  // ------------------------------------------------------------
+  // ETAPA 4 — SECUNDÁRIO
+  // ------------------------------------------------------------
+  try {
+    console.log('📦 [app] Etapa 4/4 — dados secundários');
+    await Promise.allSettled([
+      loadTopInvestments(),
+      loadTickets(),
+      loadExternalMarketplace(),
+      loadGlobalPlaylists()
+    ]);
+  } catch (e) {
+    console.warn('⚠️ [app] Etapa 4 falhou:', e.message);
+  }
+
+  // ------------------------------------------------------------
+  // PÓS-ETAPAS — artista / admin
+  // ------------------------------------------------------------
+  try {
     if (state.currentUser && state.currentUser.tipo === 'artista') {
       await loadArtistData();
     }
@@ -363,14 +422,12 @@ window.loadAllData = async function () {
     if (state.currentUser && state.currentUser.tipo === 'admin') {
       await loadAdminData();
     }
-
-    showToast('Sistema carregado!', 'success');
   } catch (e) {
-    console.error('Erro ao carregar dados:', e);
-    showToast('Alguns dados não carregaram', 'warning');
-  } finally {
-    hideLoading();
+    console.warn('⚠️ [app] pós-etapas falhou:', e.message);
   }
+
+  showToast('Sistema carregado!', 'success');
+  console.log('✅ [app] loadAllData concluído (4 etapas)');
 };
 
 // ============================================================
@@ -409,7 +466,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ============================================================
 // PWA — INSTALAÇÃO INTELIGENTE via SIDEBAR (v9.6.0)
-// Compatível com showModal(id) do modals.js v9.0.0
 // ============================================================
 
 // Detecta se o app já está instalado
@@ -430,7 +486,6 @@ function setupInstallButton() {
     return;
   }
 
-  // Mostra o item no menu lateral
   navItem.style.display = 'block';
 }
 
@@ -457,7 +512,6 @@ window.addEventListener('appinstalled', () => {
 
 // ============================================================
 // INSTALAÇÃO — FLUXO INTELIGENTE (v9.6.0)
-// SOBRESCREVE a versão simples do modals.js
 // ============================================================
 window.installApp = async function () {
   // 1. Já é nativo (Capacitor/TWA)
@@ -757,7 +811,7 @@ window.addEventListener('load', () => {
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.8.3 carregado — aplicação inicializada');
+console.log('✅ [app.js] v9.8.4 carregado — 4 etapas de carregamento sequenciais');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
-console.log('📲 Instalação via sidebar ativa — v9.8.3');
+console.log('📲 Instalação via sidebar ativa — v9.8.4');
