@@ -27,7 +27,7 @@ window.CONFIG = {
 
   RESET_PASSWORD_URL: 'https://playmy.com.br/reset-password.html',
 
-  CONFIRM_EMAIL_URL: 'https://playmy.com.br/confirm-email.html'
+  CONFIRM_EMAIL_URL: 'https://playmy.com.br/confirm-email.html',
 
   // ⚠️ ATENÇÃO: YOUTUBE_API_KEY foi REMOVIDA do frontend por segurança.
   // Todas as chamadas ao YouTube devem passar pelo backend (/api/backend?action=search_youtube)
