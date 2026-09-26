@@ -1,4 +1,4 @@
-// BACKEND.JS - VERSÃO 9.8.3
+// BACKEND.JS - VERSÃO 9.8.4
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -7,21 +7,28 @@
 // + VENDA P2P COM EMAIL (create_trade robusto)
 // + IMAGENS REAIS NOS FEEDS (extração agressiva + og:image)
 //
-// 🔒 v9.8.3 (sequência recomendada) — PROTEÇÃO DE STREAMS
-//   - ✅ ADD: STREAM_INTERVAL_MS (30 min) + STREAM_MIN_DURATION (30s)
-//   - ✅ ADD: _checkStreamAllowed(user_id, music_id, ip, duration)
-//   - ✅ FIX: register_streaming valida IP + usuário + timestamp
-//   - ✅ FIX: 1 stream válido por música a cada 30 minutos por usuário+IP
-//   - ✅ FIX: registra ip e timestamp no bloco e no GAS
+// 🔒 v9.8.4 (consolidação Opção A) — COMPATIBILIDADE STREAMS
+//   - ✅ register_streaming agora grava TAMBÉM em stream_<id> (formato antigo)
+//        para compatibilidade com /api/streams.js (agora read-only)
+//   - ✅ Mantém gravação em streams_<id> (formato novo — fonte de verdade)
+//   - ✅ streams_global compartilhado entre os dois
+//   - ✅ Escrita consolidada aqui (Stream Guard ativo)
+//
+// 🔒 v9.8.3 — PROTEÇÃO DE STREAMS
+//   - ✅ STREAM_INTERVAL_MS (30 min) + STREAM_MIN_DURATION (30s)
+//   - ✅ _checkStreamAllowed(user_id, music_id, ip, duration)
+//   - ✅ register_streaming valida IP + usuário + timestamp
+//   - ✅ 1 stream válido por música a cada 30 minutos por usuário+IP
+//   - ✅ registra ip e timestamp no bloco e no GAS
 //
 // 🔒 v9.8.2 — MELHORIAS DE IMAGEM E ROBUSTEZ
-//   - ✅ FIX: getFonteLogo com URLs reais (antes eram fake)
+//   - ✅ FIX: getFonteLogo com URLs reais
 //   - ✅ FIX: extração de imagem em 8 formatos (igual ao front)
 //   - ✅ FIX: enriquecimento og:image para notícias sem imagem
 //   - ✅ FIX: get_trades com fallback multi-formato
 //   - ✅ FIX: create_trade valida posse antes de chamar GAS
 //   - ✅ FIX: content-type aceita text/plain (Google News)
-//   - ✅ ADD: feeds diretos faltantes (Omelete, Papelpop, Popline, G1 Pop Arte)
+//   - ✅ ADD: feeds diretos faltantes
 //   - ✅ ADD: log de timeout no aggregateNews
 //
 // 🔒 v9.8.1 — 100% DROP-IN (SEM BLOQUEIO)
@@ -52,13 +59,8 @@ const SESSION_SECRET = process.env.SESSION_SECRET
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
 const SESSION_PREFIX = 'session_';
 
-// Compatibilidade: aceita user_id do body quando não há sessão.
-// Padrão: LIGADO. Defina COMPAT_ALLOW_BODY_USER_ID=false para forçar sessão.
 const COMPAT_ALLOW_BODY_USER_ID = process.env.COMPAT_ALLOW_BODY_USER_ID !== 'false';
 
-// Ações que exigem autenticação (mesmo em modo compat).
-// Mantidas aqui para o dia em que o frontend enviar sessão.
-// Com COMPAT_ALLOW_BODY_USER_ID=true (padrão), NADA é bloqueado.
 const AUTH_REQUIRED_ACTIONS = new Set([
     'get_saldo', 'get_carteira', 'get_extrato', 'get_user_profile',
     'get_playlists', 'get_following',
@@ -72,9 +74,6 @@ const AUTH_REQUIRED_ACTIONS = new Set([
     'mark_news_seen', 'track_news_interaction'
 ]);
 
-// 🔒 v9.8.1 — VAZIO de propósito. Nada exige admin.
-// Quando o painel admin enviar sessão real, descomente:
-// 'add_block', 'get_admin_stats'
 const ADMIN_REQUIRED_ACTIONS = new Set([
 ]);
 
@@ -85,18 +84,7 @@ const STREAM_INTERVAL_MS = 30 * 60 * 1000;   // 30 minutos
 const STREAM_MIN_DURATION = 30;              // segundos mínimos ouvidos
 const STREAM_PREFIX = 'stream_guard:';
 
-/**
- * Valida se um stream pode ser registrado.
- * Retorna { ok: true } ou { ok: false, reason: '...' }
- *
- * Regras:
- *  - user_id e music_id obrigatórios
- *  - IP obrigatório
- *  - duração mínima (STREAM_MIN_DURATION)
- *  - 1 stream válido por música por usuário+IP a cada 30 min
- */
 async function _checkStreamAllowed(userId, musicId, ip, duration) {
-    // 1) Campos obrigatórios
     if (!userId || !musicId) {
         return { ok: false, reason: 'user_id e music_id obrigatórios' };
     }
@@ -107,7 +95,6 @@ async function _checkStreamAllowed(userId, musicId, ip, duration) {
         return { ok: false, reason: `Duração mínima de ${STREAM_MIN_DURATION}s` };
     }
 
-    // 2) Timestamp — 1 stream por música a cada 30 min por usuário+IP
     const guardKey = STREAM_PREFIX + userId + ':' + musicId + ':' + ip;
     const now = Date.now();
     const last = await Storage.get(guardKey);
@@ -120,7 +107,6 @@ async function _checkStreamAllowed(userId, musicId, ip, duration) {
         };
     }
 
-    // 3) Marca o timestamp
     await Storage.set(guardKey, now);
     return { ok: true, ts: now };
 }
@@ -220,7 +206,7 @@ const GAS_ACTIONS = new Set([
 ]);
 
 // ============================================================
-// MAPA DE LOGOS DE FONTES REAIS (v9.8.2 — URLs corrigidas)
+// MAPA DE LOGOS DE FONTES REAIS
 // ============================================================
 const FONTE_LOGOS = {
     'g1': 'https://s2.glbimg.com/favicon.ico',
@@ -327,7 +313,7 @@ const Storage = {
 };
 
 // ============================================================
-// 🔒 v9.8.1 — SESSÃO SERVER-SIDE (dormente até o frontend usar)
+// SESSÃO SERVER-SIDE
 // ============================================================
 function _b64url(buf) {
     return Buffer.from(buf).toString('base64')
@@ -392,7 +378,7 @@ async function revokeSession(token) {
 }
 
 // ============================================================
-// 🔒 v9.8.1 — AUTORIZAÇÃO CENTRAL (dormente)
+// AUTORIZAÇÃO CENTRAL
 // ============================================================
 function _extractToken(req, params) {
     const auth = req.headers && (req.headers.authorization || req.headers.Authorization);
@@ -528,7 +514,6 @@ function extractYouTubeId(url) {
     return null;
 }
 
-// 🆕 v9.8.3 — extrai IP real do request (Vercel usa x-forwarded-for)
 function _getClientIP(req) {
     try {
         const xff = req.headers && (req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For']);
@@ -583,7 +568,7 @@ function normalizePlaylistFromKV(pl) {
 }
 
 // ============================================================
-// 🔒 v9.8.1 — PASSWORD HASHING (scrypt, nativo)
+// PASSWORD HASHING (scrypt, nativo)
 // ============================================================
 const SCRYPT_N = 16384, SCRYPT_R = 8, SCRYPT_P = 1, SCRYPT_KEYLEN = 64;
 
@@ -859,7 +844,7 @@ async function addBlockToChain(data) {
 }
 
 // ============================================================
-// 🆕 v9.8.2 — EXTRAÇÃO AGRESSIVA DE IMAGEM (8 formatos)
+// EXTRAÇÃO AGRESSIVA DE IMAGEM (8 formatos)
 // ============================================================
 function extractImageFromItem(itemXml, ceMatch, dsMatch) {
     const candidates = [
@@ -887,7 +872,7 @@ function extractImageFromItem(itemXml, ceMatch, dsMatch) {
 }
 
 // ============================================================
-// 🆕 v9.8.2 — ENRIQUECER COM og:image (para notícias sem imagem)
+// ENRIQUECER COM og:image
 // ============================================================
 async function enrichWithOgImage(items) {
     const semImagem = items.filter(n =>
@@ -946,7 +931,7 @@ async function enrichWithOgImage(items) {
 }
 
 // ============================================================
-// NOTÍCIAS — GOOGLE NEWS RSS (v9.8.2 — extração agressiva)
+// NOTÍCIAS — GOOGLE NEWS RSS
 // ============================================================
 async function fetchNewsFromGoogleRSS(query, categoria) {
     try {
@@ -956,7 +941,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.3)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.4)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -1015,7 +1000,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
 }
 
 // ============================================================
-// NOTÍCIAS — FEEDS DIRETOS (v9.8.2 — extração agressiva)
+// NOTÍCIAS — FEEDS DIRETOS
 // ============================================================
 async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
     try {
@@ -1024,7 +1009,7 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.3)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.4)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -1077,7 +1062,7 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
 }
 
 // ============================================================
-// AGREGADOR DE NOTÍCIAS (v9.8.2 — feeds extras + og:image)
+// AGREGADOR DE NOTÍCIAS
 // ============================================================
 async function aggregateNews() {
     const cached = await Storage.get('news_cache');
@@ -1179,7 +1164,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
         const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.8.3 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.8.4 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -1544,7 +1529,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 }
 
 // ============================================================
-// 🔒 SEGURANÇA — migração one-shot de senhas
+// MIGRAÇÃO ONE-SHOT DE SENHAS
 // ============================================================
 (async function migrateSenhasToHash() {
     try {
@@ -1572,7 +1557,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 })();
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.8.3
+// HANDLER PRINCIPAL — v9.8.4
 // ============================================================
 module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1583,10 +1568,6 @@ module.exports = async (req, res) => {
     console.log(`🚀 [${action}]`);
 
     try {
-        // ============================================================
-        // 🔒 v9.8.1 — AUTORIZAÇÃO CENTRAL (dormente)
-        // Em modo compat (padrão), NADA é bloqueado.
-        // ============================================================
         let auth = null;
         const needsAuth = action && AUTH_REQUIRED_ACTIONS.has(action);
         const needsAdmin = action && ADMIN_REQUIRED_ACTIONS.has(action);
@@ -1614,7 +1595,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.3',
+                version: '9.8.4',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -1629,12 +1610,13 @@ module.exports = async (req, res) => {
                 stream_guard_enabled: true,
                 stream_interval_min: STREAM_INTERVAL_MS / 60000,
                 stream_min_duration_s: STREAM_MIN_DURATION,
+                streams_compat_legacy: true,
                 timestamp: new Date().toISOString()
             });
         }
 
         // ============================================================
-        // 🔒 SESSÃO — logout / check
+        // SESSÃO
         // ============================================================
         if (action === 'logout') {
             const token = _extractToken(req, params);
@@ -2504,11 +2486,11 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // STREAMING — 🔒 v9.8.3 COM ANTI-FRAUDE
+        // STREAMING — 🔒 v9.8.4 COM ANTI-FRAUDE + COMPAT LEGACY
         // ============================================================
         if (action === 'register_streaming') {
             const userId = auth ? auth.user_id : params.user_id;
-            const { music_id, duration } = params;
+            const { music_id, duration, titulo } = params;
             if (!music_id || !userId) {
                 return res.status(200).json({ success: false, message: 'Dados incompletos' });
             }
@@ -2527,7 +2509,6 @@ module.exports = async (req, res) => {
                 });
             }
 
-            // Registra no blockchain com IP + timestamp
             await addBlockToChain({
                 type: 'streaming',
                 music_id,
@@ -2537,24 +2518,48 @@ module.exports = async (req, res) => {
                 timestamp: new Date().toISOString()
             });
 
+            const hoje = new Date().toISOString().slice(0, 10);
+
+            // ---------- FORMATO NOVO (fonte de verdade) ----------
             const key = 'streams_' + music_id;
             let contador = await Storage.get(key) || { music_id, total: 0, hoje: 0, ultima_data: '', ultima_atualizacao: '' };
-            const hoje = new Date().toISOString().slice(0, 10);
             if (contador.ultima_data !== hoje) { contador.hoje = 0; contador.ultima_data = hoje; }
             contador.total++;
             contador.hoje++;
             contador.ultima_atualizacao = new Date().toISOString();
             await Storage.set(key, contador);
 
+            // 🆕 v9.8.4 — COMPATIBILIDADE: grava também no formato antigo
+            // (/api/streams.js read-only lê de stream_<id> singular)
+            const keyAntiga = 'stream_' + music_id;
+            let contadorAntigo = await Storage.get(keyAntiga) || {
+                music_id: music_id, titulo: titulo || '', total: 0, hoje: 0,
+                ultima_data: hoje, por_dia: {}
+            };
+            if (contadorAntigo.ultima_data !== hoje) {
+                contadorAntigo.hoje = 0;
+                contadorAntigo.ultima_data = hoje;
+            }
+            contadorAntigo.total++;
+            contadorAntigo.hoje++;
+            contadorAntigo.por_dia[hoje] = (contadorAntigo.por_dia[hoje] || 0) + 1;
+            contadorAntigo.ultima_atualizacao = new Date().toISOString();
+            contadorAntigo.ultimo_user = userId;
+            if (titulo && !contadorAntigo.titulo) contadorAntigo.titulo = titulo;
+            await Storage.set(keyAntiga, contadorAntigo);
+
+            // ---------- ÍNDICE (compartilhado) ----------
             let idx = await Storage.get('streams_index') || [];
             if (!idx.includes(music_id)) { idx.push(music_id); await Storage.set('streams_index', idx); }
 
+            // ---------- GLOBAL (compartilhado) ----------
             const globalKey = 'streams_global';
             let globalCont = await Storage.get(globalKey) || { total: 0, hoje: 0, ultima_data: '' };
             if (globalCont.ultima_data !== hoje) { globalCont.hoje = 0; globalCont.ultima_data = hoje; }
             globalCont.total++; globalCont.hoje++;
             await Storage.set(globalKey, globalCont);
 
+            // ---------- POR USUÁRIO ----------
             const userKey = 'streams_user_' + userId;
             let userContador = await Storage.get(userKey) || { user_id: userId, total: 0, musicas: {} };
             userContador.total++;
@@ -2576,7 +2581,7 @@ module.exports = async (req, res) => {
                     streams_total: contador.total,
                     streams_hoje: contador.hoje,
                     streams_global: globalCont.total,
-                    ip_registrado: clientIP.substring(0, 3) + '***' // ofuscação leve
+                    ip_registrado: clientIP.substring(0, 3) + '***'
                 }
             });
         }
@@ -3127,7 +3132,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.3',
+            version: '9.8.4',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
