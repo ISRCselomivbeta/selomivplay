@@ -1,8 +1,12 @@
 // ============================================================
-// js/news.js — PLAY MY v9.0.0
+// js/news.js — PLAY MY v9.0.1
 // Feed infinito de notícias musicais com personalização.
 // Depende de: config.js, utils.js, state.js, api.js
 // DEVE carregar DEPOIS de blockchain.js e ANTES de modals.js.
+//
+// MUDANÇAS v9.0.1 (sequência recomendada):
+//   - 🔒 XSS: newsEscapeHtml() aplicado em titulo/texto/autor/fonte
+//   - 💾 seenIds limitado a 1000 itens (evita crescer infinito)
 // ============================================================
 
 // ------------------------------------------------------------
@@ -50,6 +54,18 @@ var NEWS_PLACEHOLDER_META = {
   artistas:    { emoji: '⭐', cor1: '#ffcc00', cor2: '#ff9500' },
   editais:     { emoji: '📜', cor1: '#8e8e93', cor2: '#48484a' }
 };
+
+// ------------------------------------------------------------
+// 🔒 SEGURANÇA — ESCAPE HTML (anti-XSS para RSS externo)
+// ------------------------------------------------------------
+function newsEscapeHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // ------------------------------------------------------------
 // HELPERS DE IMAGEM
@@ -408,6 +424,11 @@ window.loadNewsFeed = async function (force) {
     }
     c.insertAdjacentHTML('beforeend', html);
 
+    // 💾 Limita histórico de "já visto" a 1000 itens
+    if (state.news.seenIds.length > 1000) {
+      state.news.seenIds = state.news.seenIds.slice(-1000);
+    }
+
     // Persiste
     localStorage.setItem(NEWS_SEEN_KEY, JSON.stringify(state.news.seenIds));
 
@@ -459,35 +480,37 @@ window.renderNewsCard = function (n) {
   var fallback = newsGerarPlaceholder(n.categoria);
   var imgUrl = n.imagem || fallback;
 
-  var img = '<img src="' + imgUrl + '" class="news-image" loading="lazy" ' +
+  var img = '<img src="' + newsEscapeHtml(imgUrl) + '" class="news-image" loading="lazy" ' +
             'onerror="this.onerror=null;this.src=\'' + fallback + '\'">';
 
   var fonteLogo = n.fonte_logo
-    ? '<img src="' + n.fonte_logo + '" class="news-fonte-logo" onerror="this.style.display=\'none\'">'
+    ? '<img src="' + newsEscapeHtml(n.fonte_logo) + '" class="news-fonte-logo" onerror="this.style.display=\'none\'">'
     : '<i class="bi bi-newspaper news-fonte-icon"></i>';
 
   var prazo = n.prazo
-    ? '<span class="news-prazo"><i class="bi bi-clock"></i> Fecha em ' + n.prazo + '</span>'
+    ? '<span class="news-prazo"><i class="bi bi-clock"></i> Fecha em ' + newsEscapeHtml(n.prazo) + '</span>'
     : '';
 
   var social = n.investidores_hoje
-    ? '<span class="news-social"><i class="bi bi-fire"></i> ' + n.investidores_hoje + ' investiram hoje</span>'
+    ? '<span class="news-social"><i class="bi bi-fire"></i> ' + newsEscapeHtml(n.investidores_hoje) + ' investiram hoje</span>'
     : '';
 
   var emAlta = n.em_alta
     ? '<span class="news-em-alta">🔥 Em alta</span>'
     : '';
 
-  var titulo = (n.titulo || '').replace(/'/g, '&#39;');
-  var tema = (n.tema || '').replace(/'/g, '&#39;');
-  var cat = (n.categoria || '').replace(/'/g, '&#39;');
+  var tituloSafe = newsEscapeHtml(n.titulo || '');
+  var tema = newsEscapeHtml(n.tema || '');
+  var cat = newsEscapeHtml(n.categoria || '');
+  var linkSafe = newsEscapeHtml(n.link || '#');
+  var fonteSafe = newsEscapeHtml(n.fonte || n.autor || 'PLAY MY');
 
   return '' +
-    '<article class="news-card" data-id="' + n.id + '" data-tema="' + tema + '">' +
+    '<article class="news-card" data-id="' + newsEscapeHtml(n.id) + '" data-tema="' + tema + '">' +
       '<div class="news-header">' +
         fonteLogo +
         '<div class="news-author-info">' +
-          '<div class="news-author">' + (n.fonte || n.autor || 'PLAY MY') + '</div>' +
+          '<div class="news-author">' + fonteSafe + '</div>' +
           '<div class="news-time">' + formatRelativeTime(n.timestamp) + '</div>' +
         '</div>' +
         '<span class="news-category">' + catLabel + '</span>' +
@@ -496,20 +519,20 @@ window.renderNewsCard = function (n) {
       img +
 
       '<div class="news-body">' +
-        '<div class="news-title">' + (n.titulo || '') + '</div>' +
-        '<div class="news-text">' + (n.texto || '') + '</div>' +
+        '<div class="news-title">' + tituloSafe + '</div>' +
+        '<div class="news-text">' + newsEscapeHtml(n.texto || '') + '</div>' +
         prazo + social + emAlta +
       '</div>' +
 
       '<div class="news-actions">' +
-        '<a class="news-action-btn" href="' + (n.link || '#') + '" target="_blank" rel="noopener" ' +
-          'onclick="trackNewsInteraction(' + n.id + ', \'click\', \'' + tema + '\', \'' + cat + '\')">' +
+        '<a class="news-action-btn" href="' + linkSafe + '" target="_blank" rel="noopener" ' +
+          'onclick="trackNewsInteraction(\'' + newsEscapeHtml(n.id) + '\', \'click\', \'' + tema + '\', \'' + cat + '\')">' +
           '<i class="bi bi-box-arrow-up-right"></i> Ler mais' +
         '</a>' +
-        '<button class="news-action-btn" onclick="trackNewsInteraction(' + n.id + ', \'save\', \'' + tema + '\', \'' + cat + '\')">' +
+        '<button class="news-action-btn" onclick="trackNewsInteraction(\'' + newsEscapeHtml(n.id) + '\', \'save\', \'' + tema + '\', \'' + cat + '\')">' +
           '<i class="bi bi-star"></i> Salvar' +
         '</button>' +
-        '<button class="news-action-btn news-action-invest" onclick="trackNewsInteraction(' + n.id + ', \'invest\', \'' + tema + '\', \'' + cat + '\')">' +
+        '<button class="news-action-btn news-action-invest" onclick="trackNewsInteraction(\'' + newsEscapeHtml(n.id) + '\', \'invest\', \'' + tema + '\', \'' + cat + '\')">' +
           '<i class="bi bi-cash-coin"></i> Investir' +
         '</button>' +
       '</div>' +
@@ -588,4 +611,4 @@ window.initNewsInfiniteScroll = function () {
 // ------------------------------------------------------------
 // LOG
 // ------------------------------------------------------------
-console.log('✅ [news.js] v9.0.0 carregado — feed infinito pronto com imagens reais');
+console.log('✅ [news.js] v9.0.1 carregado — feed infinito com imagens reais + XSS fix + histórico limitado');
