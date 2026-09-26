@@ -1,8 +1,13 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v9.3.0
+// js/marketplace.js — PLAY MY v9.3.3
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
+//
+// MUDANÇAS v9.3.3 (sequência recomendada):
+//   - 🔒 XSS: escapeHtml() aplicado em titulo/artista (todos os renderers)
+//   - 🎯 renderRecommended(): playTrack usa o índice REAL do destaque
+//   - ♻️ _cacheInvalidate('elo'/'streams') após editar/pausar/reativar/excluir
 //
 // MUDANÇAS v9.3.0:
 //   - 🆕 Botões "Editar", "Pausar", "Excluir" nos cards (dono ou admin)
@@ -38,6 +43,18 @@ function _cacheTouch(chave) {
 
 function _cacheInvalidate(chave) {
   _cacheMark[chave] = 0;
+}
+
+// ============================================================
+// 🔒 SEGURANÇA — ESCAPE HTML (anti-XSS)
+// ============================================================
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ============================================================
@@ -332,15 +349,15 @@ window.renderMarketplace = function () {
         '<div class="play-overlay" onclick="playTrack(' + idx + ')"><i class="bi bi-play-fill"></i></div>' +
         (emAlta ? '<div class="em-alta-badge" title="Em alta">🔥</div>' : '') +
         (eloInfo && eloInfo.elo >= 1400
-          ? '<div class="elo-badge" title="ELO ' + eloInfo.elo + ' — ' + eloInfo.faixa_label + '" ' +
+          ? '<div class="elo-badge" title="ELO ' + eloInfo.elo + ' — ' + escapeHtml(eloInfo.faixa_label) + '" ' +
               'style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
               'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">' +
               '⚡ ' + eloInfo.elo +
             '</div>'
           : '') +
       '</div>' +
-      '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
-      '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
+      '<h3 class="spotify-title">' + escapeHtml(t.titulo || '') + '</h3>' +
+      '<p class="spotify-artist">' + escapeHtml(t.artista || '') + '</p>' +
       '<div class="spotify-stats">' +
         '<span class="spotify-elo">' + (t.percentual_disponivel || 0) + '%</span>' +
         '<span class="spotify-price">' + formatCurrency(t.valor_acao || 0) + '</span>' +
@@ -348,7 +365,7 @@ window.renderMarketplace = function () {
       (eloInfo
         ? '<div style="font-size:11px;margin-top:4px">' +
             '<span style="color:' + eloInfo.cor + ';font-weight:700">⚡ ' + eloInfo.elo + '</span>' +
-            '<span style="color:var(--apple-label-2);margin-left:6px">' + eloInfo.faixa_label + '</span>' +
+            '<span style="color:var(--apple-label-2);margin-left:6px">' + escapeHtml(eloInfo.faixa_label) + '</span>' +
             (streams > 0
               ? '<span style="color:var(--apple-label-2);margin-left:6px"><i class="bi bi-play-circle"></i> ' + formatNumber(streams) + '</span>'
               : '') +
@@ -469,6 +486,9 @@ window.saveMusicEdit = async function () {
     if (r && r.success) {
       showToast('✅ Música atualizada!', 'success');
       closeModal('editMusicModal');
+      // ♻️ Invalida caches relacionados
+      _cacheInvalidate('elo');
+      _cacheInvalidate('streams');
       await loadMarketplace();
       if (typeof loadArtistData === 'function') await loadArtistData();
     } else {
@@ -504,6 +524,9 @@ window.pauseMusic = async function (musicId) {
     
     if (r && r.success) {
       showToast('⏸️ Música pausada', 'success');
+      // ♻️ Invalida caches relacionados
+      _cacheInvalidate('elo');
+      _cacheInvalidate('streams');
       await loadMarketplace();
     } else {
       showToast(r.message || 'Erro ao pausar', 'error');
@@ -533,6 +556,9 @@ window.resumeMusic = async function (musicId) {
     
     if (r && r.success) {
       showToast('▶️ Música reativada', 'success');
+      // ♻️ Invalida caches relacionados
+      _cacheInvalidate('elo');
+      _cacheInvalidate('streams');
       await loadMarketplace();
     } else {
       showToast(r.message || 'Erro ao reativar', 'error');
@@ -563,6 +589,9 @@ window.deleteMusic = async function (musicId) {
     
     if (r && r.success) {
       showToast('🗑️ Música excluída', 'success');
+      // ♻️ Invalida caches relacionados
+      _cacheInvalidate('elo');
+      _cacheInvalidate('streams');
       await loadMarketplace();
       if (typeof loadArtistData === 'function') await loadArtistData();
     } else {
@@ -647,16 +676,20 @@ window.renderRecommended = function () {
   const streams = (state.streamsMap && state.streamsMap[String(p.id)]) || 0;
   const eloInfo = getEloMusica(p.id);
 
+  // 🎯 Índice REAL do destaque na playlist
+  const realIndex = playlist.findIndex(x => String(x.id) === String(p.id));
+  const playIdx = realIndex >= 0 ? realIndex : 0;
+
   rec.innerHTML =
     '<img src="' + getCoverUrl(p, false) + '" class="recommended-cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
     '<div class="recommended-info">' +
-      '<h4>' + (p.titulo || '') + ' • ' + (p.artista || '') + '</h4>' +
+      '<h4>' + escapeHtml(p.titulo || '') + ' • ' + escapeHtml(p.artista || '') + '</h4>' +
       '<p>' + formatCurrency(p.valor_acao || 0) + ' por ação' +
         (eloInfo ? ' • ⚡ ' + eloInfo.elo : '') +
         (streams > 0 ? ' • ' + formatNumber(streams) + ' streams' : '') +
       '</p>' +
     '</div>' +
-    '<button class="btn-play" onclick="playTrack(0)"><i class="bi bi-play-fill"></i></button>';
+    '<button class="btn-play" onclick="playTrack(' + playIdx + ')"><i class="bi bi-play-fill"></i></button>';
 };
 
 window.renderExternalMarketplace = function () {
@@ -681,8 +714,8 @@ window.renderExternalMarketplace = function () {
         '<img src="' + getCoverUrl(t, true) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.EXT_300 + '\'">' +
         '<div class="play-overlay" onclick="playExternalTrack(' + i + ')"><i class="bi bi-play-fill"></i></div>' +
       '</div>' +
-      '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
-      '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
+      '<h3 class="spotify-title">' + escapeHtml(t.titulo || '') + '</h3>' +
+      '<p class="spotify-artist">' + escapeHtml(t.artista || '') + '</p>' +
       '<div class="spotify-stats">' +
         '<span class="spotify-elo">' + (t.percentual_disponivel || 0) + '%</span>' +
         '<span class="spotify-price">' + formatCurrency(t.valor_acao || 0) + '</span>' +
@@ -722,8 +755,8 @@ window.renderTopInvestments = function () {
               'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
           : '') +
       '</div>' +
-      '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
-      '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
+      '<h3 class="spotify-title">' + escapeHtml(t.titulo || '') + '</h3>' +
+      '<p class="spotify-artist">' + escapeHtml(t.artista || '') + '</p>' +
       '<div class="spotify-stats">' +
         '<span class="spotify-elo">' + (t.investment_score || 0) + '</span>' +
         '<span class="spotify-price">' + formatCurrency(t.valor_acao || 0) + '</span>' +
@@ -751,7 +784,7 @@ window.renderArtists = function () {
     const avatar = a.avatar && a.avatar.startsWith('http') ? a.avatar : PLACEHOLDERS.ARTIST;
     return '<div class="artist-card">' +
       '<img src="' + avatar + '" class="artist-avatar" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.ARTIST + '\'">' +
-      '<h4 class="artist-name">' + (a.nome || '') + '</h4>' +
+      '<h4 class="artist-name">' + escapeHtml(a.nome || '') + '</h4>' +
       '<p class="artist-followers">' + formatNumber(a.followers || 0) + ' seguidores</p>' +
       '<button class="btn-follow ' + (isFollowing ? 'following' : '') + '" onclick="toggleFollow(\'' + a.id + '\')">' +
         (isFollowing ? 'Seguindo' : 'Seguir') +
@@ -774,7 +807,7 @@ window.renderFeaturedArtists = function () {
     const avatar = a.avatar && a.avatar.startsWith('http') ? a.avatar : PLACEHOLDERS.ARTIST;
     return '<div class="artist-card">' +
       '<img src="' + avatar + '" class="artist-avatar" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.ARTIST + '\'">' +
-      '<h4 class="artist-name">' + (a.nome || '') + '</h4>' +
+      '<h4 class="artist-name">' + escapeHtml(a.nome || '') + '</h4>' +
       '<button class="btn-follow ' + (isFollowing ? 'following' : '') + '" onclick="toggleFollow(\'' + a.id + '\')">' +
         (isFollowing ? 'Seguindo' : 'Seguir') +
       '</button>' +
@@ -796,7 +829,7 @@ window.renderPlaylists = function () {
       '<div class="playlist-item" onclick="playUserPlaylist(\'' + p.id + '\')">' +
         '<div class="playlist-cover"><i class="bi bi-music-note-list"></i></div>' +
         '<div class="flex-grow-1">' +
-          '<h6 class="mb-0">' + (p.nome || '') + '</h6>' +
+          '<h6 class="mb-0">' + escapeHtml(p.nome || '') + '</h6>' +
           '<small class="text-muted">' + ((p.musicas || []).length) + ' músicas</small>' +
         '</div>' +
         '<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); playUserPlaylist(\'' + p.id + '\')">' +
@@ -832,8 +865,8 @@ window.renderFavorites = function () {
                 'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
             : '') +
         '</div>' +
-        '<h3 class="spotify-title">' + (t.titulo || '') + '</h3>' +
-        '<p class="spotify-artist">' + (t.artista || '') + '</p>' +
+        '<h3 class="spotify-title">' + escapeHtml(t.titulo || '') + '</h3>' +
+        '<p class="spotify-artist">' + escapeHtml(t.artista || '') + '</p>' +
       '</div>';
     }).join('');
   } else {
@@ -856,8 +889,8 @@ window.renderGlobalPlaylists = function () {
         '<i class="bi bi-globe"></i>' +
       '</div>' +
       '<div class="flex-grow-1">' +
-        '<h6 class="mb-0">' + (p.nome || '') + '</h6>' +
-        '<small class="text-muted">' + (p.descricao || 'Playlist global') + ' • ' + ((p.musicas || []).length) + ' músicas</small>' +
+        '<h6 class="mb-0">' + escapeHtml(p.nome || '') + '</h6>' +
+        '<small class="text-muted">' + escapeHtml(p.descricao || 'Playlist global') + ' • ' + ((p.musicas || []).length) + ' músicas</small>' +
       '</div>' +
       '<button class="btn btn-sm btn-success me-2" onclick="event.stopPropagation(); playGlobalPlaylist(\'' + p.id + '\')">' +
         '<i class="bi bi-play-fill"></i> Tocar' +
@@ -872,7 +905,7 @@ window.renderGlobalPlaylists = function () {
         '<i class="bi bi-globe" style="font-size:64px;color:#fff"></i>' +
         '<div class="global-badge" style="position:absolute"><i class="bi bi-globe"></i> Global</div>' +
       '</div>' +
-      '<h3 class="spotify-title">' + (p.nome || '') + '</h3>' +
+      '<h3 class="spotify-title">' + escapeHtml(p.nome || '') + '</h3>' +
       '<p class="spotify-artist">' + ((p.musicas || []).length) + ' músicas</p>' +
     '</div>'
   ).join('') : '';
@@ -897,7 +930,7 @@ window.renderAdminGlobalPlaylists = function () {
         '<i class="bi bi-globe"></i>' +
       '</div>' +
       '<div class="flex-grow-1">' +
-        '<h6 class="mb-0">' + (p.nome || '') + '</h6>' +
+        '<h6 class="mb-0">' + escapeHtml(p.nome || '') + '</h6>' +
         '<small class="text-muted">' + ((p.musicas || []).length) + ' músicas</small>' +
       '</div>' +
       '<button class="btn btn-sm btn-info me-2" onclick="openManageGlobalPlaylist(\'' + p.id + '\')">' +
@@ -924,10 +957,10 @@ window.renderTickets = function () {
   c.innerHTML = tickets.map(t =>
     '<div class="ticket-card">' +
       '<div class="d-flex justify-content-between">' +
-        '<div class="ticket-title">' + (t.titulo || 'Ingresso') + '</div>' +
+        '<div class="ticket-title">' + escapeHtml(t.titulo || 'Ingresso') + '</div>' +
         '<span class="badge" style="background:linear-gradient(135deg,var(--selo-coin),var(--selo-coin-dark));color:#000">' + (t.quantidade_disponivel || 0) + ' restantes</span>' +
       '</div>' +
-      '<p class="text-muted small mt-2">' + (t.descricao || '') + '</p>' +
+      '<p class="text-muted small mt-2">' + escapeHtml(t.descricao || '') + '</p>' +
       '<div class="d-flex justify-content-between align-items-center">' +
         '<div class="ticket-price">' + (t.preco_selo || 0) + ' SELO</div>' +
         '<button class="btn-redeem" onclick="redeemTicket(\'' + t.id + '\')" ' + ((state.seloCoinBalance || 0) < (t.preco_selo || 0) ? 'disabled' : '') + '>Resgatar</button>' +
@@ -1004,16 +1037,16 @@ window.displaySearchResults = function (all) {
         ? '<span class="search-result-badge">🌐</span>'
         : '<span class="search-result-badge normal">🔷</span>');
 
-    const title = safeStr(item.titulo);
-    const sub = safeStr(item.artista);
+    const title = escapeHtml(safeStr(item.titulo));
+    const sub = escapeHtml(safeStr(item.artista));
 
     let clickAction;
     if (isYT) {
       const vid = String(item.id || '').replace('yt_', '');
       state._lastYouTubeTrack = {
         id: 'yt_' + vid,
-        titulo: title,
-        artista: sub,
+        titulo: safeStr(item.titulo),
+        artista: safeStr(item.artista),
         link_youtube: 'https://www.youtube.com/watch?v=' + vid,
         is_youtube: true
       };
@@ -1022,8 +1055,12 @@ window.displaySearchResults = function (all) {
       clickAction = 'playSearchResult(\'' + item._type + '\', \'' + item.id + '\')';
     }
 
+    // Para o botão de adicionar, precisamos dos valores originais escapados para JS
+    const rawTitle = safeStr(item.titulo).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const rawArtist = safeStr(item.artista).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
     const addBtn = isYT
-      ? '<button class="search-result-add" title="Adicionar à playlist" onclick="event.stopPropagation(); addYouTubeToPlaylistUI(\'' + String(item.id || '').replace('yt_', '') + '\', \'' + title.replace(/'/g, "\\'") + '\', \'' + sub.replace(/'/g, "\\'") + '\')"><i class="bi bi-plus-square"></i></button>'
+      ? '<button class="search-result-add" title="Adicionar à playlist" onclick="event.stopPropagation(); addYouTubeToPlaylistUI(\'' + String(item.id || '').replace('yt_', '') + '\', \'' + rawTitle + '\', \'' + rawArtist + '\')"><i class="bi bi-plus-square"></i></button>'
       : '';
 
     return '<div class="search-result-item" onclick="' + clickAction + '">' +
@@ -1073,7 +1110,7 @@ window.openPlaylistSelector = function (track) {
       '<div class="playlist-selector-item" onclick="selectPlaylistForYouTube(\'' + p.id + '\', false)">' +
         '<div style="display:flex;align-items:center;gap:12px">' +
           '<div class="playlist-cover"><i class="bi bi-music-note-list"></i></div>' +
-          '<div><div style="font-weight:600">' + (p.nome || '') + '</div>' +
+          '<div><div style="font-weight:600">' + escapeHtml(p.nome || '') + '</div>' +
             '<div style="font-size:12px;color:var(--apple-label-2)">' + ((p.musicas || []).length) + ' músicas</div>' +
           '</div>' +
         '</div>' +
@@ -1086,7 +1123,7 @@ window.openPlaylistSelector = function (track) {
       '<div class="playlist-selector-item" onclick="selectPlaylistForYouTube(\'' + p.id + '\', true)">' +
         '<div style="display:flex;align-items:center;gap:12px">' +
           '<div class="playlist-cover" style="background:linear-gradient(135deg,var(--apple-blue),var(--apple-purple))"><i class="bi bi-globe"></i></div>' +
-          '<div><div style="font-weight:600">' + (p.nome || '') + '</div>' +
+          '<div><div style="font-weight:600">' + escapeHtml(p.nome || '') + '</div>' +
             '<div style="font-size:12px;color:var(--apple-label-2)">' + ((p.musicas || []).length) + ' músicas</div>' +
           '</div>' +
         '</div>' +
@@ -1102,7 +1139,7 @@ window.openPlaylistSelector = function (track) {
   list.innerHTML = html;
   const info = document.getElementById('playlistSelectorTrackInfo');
   if (info) {
-    info.innerHTML = '🎵 <strong>' + (track.titulo || 'Sem título') + '</strong><br><small style="color:var(--apple-label-2)">' + (track.artista || '') + '</small>';
+    info.innerHTML = '🎵 <strong>' + escapeHtml(track.titulo || 'Sem título') + '</strong><br><small style="color:var(--apple-label-2)">' + escapeHtml(track.artista || '') + '</small>';
   }
   showModal('playlistSelectorModal');
 };
@@ -1367,8 +1404,8 @@ window.analisarVideoYouTube = async function () {
       if (res) {
         res.style.display = 'block';
         res.innerHTML = '<strong>✅ Vídeo analisado</strong><br>' +
-          '<small>Artista: ' + (r.data.artist || 'N/A') + '</small><br>' +
-          '<small>Vídeo ID: ' + videoIdAtual + '</small>';
+          '<small>Artista: ' + escapeHtml(r.data.artist || 'N/A') + '</small><br>' +
+          '<small>Vídeo ID: ' + escapeHtml(videoIdAtual) + '</small>';
       }
       showToast('✅ Dados carregados!', 'success');
     } else {
@@ -1524,7 +1561,7 @@ window.openManageGlobalPlaylist = function (playlistId) {
   const sel = document.getElementById('manageGlobalMusicSelect');
   const playlist = Array.isArray(state.playlist) ? state.playlist : [];
   sel.innerHTML = '<option value="">Selecione uma música...</option>' +
-    playlist.map(m => '<option value="' + m.id + '">' + (m.titulo || '') + ' — ' + (m.artista || '') + '</option>').join('');
+    playlist.map(m => '<option value="' + m.id + '">' + escapeHtml(m.titulo || '') + ' — ' + escapeHtml(m.artista || '') + '</option>').join('');
   renderManageGlobalMusicList();
   showModal('manageGlobalPlaylistModal');
 };
@@ -1547,7 +1584,7 @@ window.renderManageGlobalMusicList = function () {
     if (!m) {
       if (String(id).startsWith('yt_')) {
         return '<div class="d-flex align-items-center justify-content-between p-2 mb-1" style="background:var(--apple-gray-5);border-radius:var(--radius-sm)">' +
-          '<div style="font-size:13px;color:var(--apple-label-2)">🎥 Vídeo do YouTube (' + String(id).substring(0, 15) + ')</div>' +
+          '<div style="font-size:13px;color:var(--apple-label-2)">🎥 Vídeo do YouTube (' + escapeHtml(String(id).substring(0, 15)) + ')</div>' +
           '<button class="btn btn-sm btn-outline-danger" onclick="removeMusicFromGlobalPlaylist(\'' + id + '\')"><i class="bi bi-trash"></i></button>' +
         '</div>';
       }
@@ -1556,8 +1593,8 @@ window.renderManageGlobalMusicList = function () {
     return '<div class="d-flex align-items-center justify-content-between p-2 mb-1" style="background:var(--apple-gray-5);border-radius:var(--radius-sm)">' +
       '<div class="d-flex align-items-center gap-2">' +
         '<img src="' + getCoverUrl(m, false) + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
-        '<div><div class="text-white" style="font-size:13px;font-weight:600">' + (m.titulo || '') + '</div>' +
-          '<div class="text-muted" style="font-size:11px">' + (m.artista || '') + '</div></div>' +
+        '<div><div class="text-white" style="font-size:13px;font-weight:600">' + escapeHtml(m.titulo || '') + '</div>' +
+          '<div class="text-muted" style="font-size:11px">' + escapeHtml(m.artista || '') + '</div></div>' +
       '</div>' +
       '<button class="btn btn-sm btn-outline-danger" onclick="removeMusicFromGlobalPlaylist(\'' + id + '\')"><i class="bi bi-trash"></i></button>' +
     '</div>';
@@ -1710,4 +1747,4 @@ window.toggleFavoriteMusic = async function (musicId) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.3.2 carregado — ELO + streams + cache 30s + playlist fix');
+console.log('✅ [marketplace.js] v9.3.3 carregado — ELO + streams + cache 30s + XSS fix + destaque real');
