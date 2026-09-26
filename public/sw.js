@@ -1,6 +1,13 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.9.8
+// SERVICE WORKER — PLAY MY v9.9.9
 // Cache inteligente por tipo de recurso + PWA
+//
+// MUDANÇAS v9.9.9 (sequência recomendada):
+//   - 🔧 SW_VERSION bumpada (9.9.8 → 9.9.9) para forçar update automático
+//   - ✅ Verificado: self.skipWaiting() presente no install e nos handlers
+//   - ✅ Verificado: clients.claim() presente no activate
+//   - 📝 Cobre /api/streams, /api/valuation, /api/royalties, /api/elo, /api/isrc
+//        via isBackendApi() → network-only com fallback JSON offline
 //
 // MUDANÇAS v9.9.8:
 //   - 🔧 SW_VERSION bumpada (9.9.7 → 9.9.8)
@@ -26,7 +33,7 @@
 //   - install: falha alto com console.error
 // ============================================================
 
-const SW_VERSION = '9.9.8';  // 👈 BUMP manual a cada deploy relevante
+const SW_VERSION = '9.9.9';  // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
@@ -163,6 +170,7 @@ function isNewsAsset(url) {
 }
 
 // 🆕 v9.9.8 — verifica se é endpoint do backend
+//    cobre /api/backend, /api/streams, /api/valuation, /api/royalties, /api/elo, /api/isrc
 function isBackendApi(url) {
   return url.pathname === '/api/backend' || url.pathname.startsWith('/api/');
 }
@@ -188,6 +196,7 @@ async function fetchWithRetry(request, maxAttempts = 3) {
 
 // ============================================================
 // INSTALL — pré-cache dos assets essenciais (com retry)
+// ✅ self.skipWaiting() garante que o novo SW assume na hora
 // ============================================================
 self.addEventListener('install', (event) => {
   console.log('[SW] Instalando v' + SW_VERSION);
@@ -221,12 +230,13 @@ self.addEventListener('install', (event) => {
           })
         );
       })
-      .then(() => self.skipWaiting())
+      .then(() => self.skipWaiting())  // ✅ ativa imediatamente
   );
 });
 
 // ============================================================
 // ACTIVATE — limpa caches antigos
+// ✅ clients.claim() garante que o novo SW controle as abas abertas
 // ============================================================
 self.addEventListener('activate', (event) => {
   console.log('[SW] Ativando v' + SW_VERSION);
@@ -240,7 +250,7 @@ self.addEventListener('activate', (event) => {
             return caches.delete(key);
           })
       ))
-      .then(() => self.clients.claim())
+      .then(() => self.clients.claim())  // ✅ assume controle imediato
   );
 });
 
@@ -281,6 +291,7 @@ self.addEventListener('fetch', (event) => {
 
   // 2. API do próprio domínio → network-only (com fallback JSON)
   // 🆕 v9.9.8 — fallback JSON melhorado (não quebra o app offline)
+  // Cobre /api/backend, /api/streams, /api/valuation, /api/royalties, /api/elo, /api/isrc
   if (isBackendApi(url)) {
     event.respondWith(
       fetch(request).catch(() =>
