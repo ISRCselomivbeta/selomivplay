@@ -1,5 +1,5 @@
 // ============================================================
-// api/valuation.js — PLAY MY v1.0.1
+// api/valuation.js — PLAY MY v1.0.2
 // Motor de valuation artístico.
 // Transforma streams + ELO em previsão de receita futura.
 //
@@ -7,10 +7,18 @@
 //   Receita Projetada = Streams/mês × valor por stream × 12
 //   Valuation = Receita Projetada × Múltiplo (ajustado pelo ELO)
 //
+// MUDANÇAS v1.0.2:
+//   - 🆕 FALLBACK em 3 camadas no calcularValuationCatalogo():
+//       1) streams_index (fonte principal)
+//       2) musicas_all  (KV local)
+//       3) /api/backend?action=get_musicas (último recurso)
+//       4) get_musicas direto do GAS (último recurso)
+//   - 🆕 Logs detalhados para diagnóstico do "0 músicas"
+//   - ✅ Resolve "⚠️ valuation catálogo vazio" no portfolio.js
+//
 // MUDANÇAS v1.0.1:
 //   - 🆕 ALIASES: aceita "valuation_catalogo", "valuation_ver", etc.
-//   - 🔧 DEFAULT agora retorna success:false (não mente mais "sucesso")
-//   - 🔧 Logs mostram action original + resolvida
+//   - 🔧 DEFAULT agora retorna success:false
 // ============================================================
 
 let kv = null;
@@ -22,16 +30,15 @@ try {
 }
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'AIzaSyAPaYGY_MrrNgKdEqTs3Qw7tPNv5p5QwPM';
+const GAS_URL_FALLBACK = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
+const GAS_URL = process.env.GAS_URL || GAS_URL_FALLBACK;
 
 // ============================================================
-// ALIASES — compatibilidade com o front (api.js usa prefixo "valuation_")
+// ALIASES
 // ============================================================
 const ALIASES = {
-    // ✅ ADICIONAR ESTAS DUAS — o front chama exatamente "ver_valuation"
     'ver_valuation':       'ver',
     'ver_catalogo':        'catalogo',
-
-    // Já existentes (aceitam variações antigas)
     'valuation_catalogo':  'catalogo',
     'valuation_ver':       'ver',
     'valuation_calcular':  'calcular',
@@ -87,7 +94,73 @@ const MERCADO = {
 };
 
 // ============================================================
-// REGRESSÃO LINEAR — calcula tendência
+// 🆕 v1.0.2 — RESOLVE LISTA DE IDs DO CATÁLOGO (fallback em camadas)
+// ------------------------------------------------------------
+// 1. streams_index (fonte principal — populado por register_streaming)
+// 2. musicas_all  (KV local — populado por get_musicas)
+// 3. /api/backend?action=get_musicas (último recurso interno)
+// 4. get_musicas direto do GAS (último recurso externo)
+// ============================================================
+async function _resolverIdsCatalogo() {
+    // ---------- Camada 1: streams_index ----------
+    let idx = await getKV('streams_index') || [];
+    if (idx.length) {
+        console.log(`[valuation] ✅ streams_index: ${idx.length} músicas`);
+        return idx.map(String);
+    }
+
+    // ---------- Camada 2: musicas_all ----------
+    console.warn('[valuation] ⚠️ streams_index vazio — tentando musicas_all');
+    const musicasAll = await getKV('musicas_all') || [];
+    if (musicasAll.length) {
+        idx = musicasAll.map(m => String(m.id)).filter(Boolean);
+        if (idx.length) {
+            console.log(`[valuation] ✅ musicas_all: ${idx.length} músicas`);
+            return idx;
+        }
+    }
+
+    // ---------- Camada 3: /api/backend?action=get_musicas ----------
+    console.warn('[valuation] ⚠️ musicas_all vazio — consultando /api/backend');
+    try {
+        const baseUrl = process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : 'https://playmy.com.br';
+        const r = await fetch(`${baseUrl}/api/backend?action=get_musicas`);
+        const j = await r.json();
+        if (j && j.success && Array.isArray(j.data) && j.data.length) {
+            idx = j.data.map(m => String(m.id)).filter(Boolean);
+            console.log(`[valuation] ✅ backend: ${idx.length} músicas`);
+            return idx;
+        }
+    } catch (e) {
+        console.warn('[valuation] fallback backend falhou:', e.message);
+    }
+
+    // ---------- Camada 4: get_musicas direto do GAS ----------
+    console.warn('[valuation] ⚠️ backend vazio — consultando GAS');
+    try {
+        const gasUrl = new URL(GAS_URL);
+        gasUrl.searchParams.append('action', 'get_musicas');
+        const r = await fetch(gasUrl.toString());
+        const j = await r.json();
+        // GAS pode devolver {success:true, data:[...]} OU {success:true, musicas:[...]}
+        const lista = (j && j.data) || (j && j.musicas) || (Array.isArray(j) ? j : []);
+        if (Array.isArray(lista) && lista.length) {
+            idx = lista.map(m => String(m.id)).filter(Boolean);
+            console.log(`[valuation] ✅ GAS: ${idx.length} músicas`);
+            return idx;
+        }
+    } catch (e) {
+        console.warn('[valuation] fallback GAS falhou:', e.message);
+    }
+
+    console.error('[valuation] ❌ Todas as camadas falharam — catálogo permanece vazio');
+    return [];
+}
+
+// ============================================================
+// REGRESSÃO LINEAR
 // ============================================================
 function calcularTendencia(valores) {
     const n = valores.length;
@@ -183,11 +256,13 @@ async function calcularValuation(music_id, video_id_youtube) {
         atualizado_em: new Date().toISOString()
     };
 
-    // 1. PLAY MY
-    const playmy = await getKV('stream_' + music_id) || { total: 0, por_dia: {} };
+    // 1. PLAY MY (tenta formato novo, cai no antigo)
+    const playmyNovo = await getKV('streams_' + music_id) || { total: 0, por_dia: {} };
+    const playmyAntigo = await getKV('stream_' + music_id) || { total: 0, por_dia: {} };
+    const playmy = (playmyNovo.total || 0) >= (playmyAntigo.total || 0) ? playmyNovo : playmyAntigo;
     if (playmy.por_dia) {
         const porMes = agruparPorMes(playmy.por_dia);
-        dados.fontes.play_my = { total: playmy.total, por_mes: porMes };
+        dados.fontes.play_my = { total: playmy.total || 0, por_mes: porMes };
         dados.projecoes.play_my = projetarReceita(porMes, 'play_my');
     }
 
@@ -220,7 +295,7 @@ async function calcularValuation(music_id, video_id_youtube) {
         }
     }
 
-    // 3. ROC NATION (Spotify, Deezer, Apple, etc.)
+    // 3. ROC NATION
     const periodos = await getKV('royalties_periodos') || [];
     const porPlataforma = {};
 
@@ -245,14 +320,14 @@ async function calcularValuation(music_id, video_id_youtube) {
         dados.projecoes[plataforma] = projetarReceita(dadosPlat, plataforma);
     }
 
-    // 4. SOMA RECEITA ANUAL PROJETADA
+    // 4. SOMA RECEITA ANUAL
     let receitaAnual = 0;
     for (const proj of Object.values(dados.projecoes)) {
         receitaAnual += proj.projecao_receita || 0;
     }
     dados.receita_anual_projetada = Math.round(receitaAnual * 100) / 100;
 
-    // 5. BUSCA ELO
+    // 5. BUSCA ELO (tenta novo, cai no antigo)
     try {
         let eloData = await getKV('elo_' + music_id);
         if (!eloData) {
@@ -297,13 +372,25 @@ async function calcularValuation(music_id, video_id_youtube) {
 }
 
 // ============================================================
-// CALCULAR VALUATION DO CATÁLOGO INTEIRO
+// 🆕 v1.0.2 — CALCULAR VALUATION DO CATÁLOGO (com fallback)
 // ============================================================
 async function calcularValuationCatalogo() {
-    const idx = await getKV('streams_index') || [];
-    const valuations = [];
+    const ids = await _resolverIdsCatalogo();
 
-    for (const id of idx) {
+    if (!ids.length) {
+        console.error('[valuation] ❌ catálogo vazio após todas as tentativas');
+        return {
+            valuation_total: 0,
+            receita_anual_total: 0,
+            quantidade_musicas: 0,
+            musicas: [],
+            aviso: 'Catálogo em atualização — nenhuma música com streams registrados ainda',
+            atualizado_em: new Date().toISOString()
+        };
+    }
+
+    const valuations = [];
+    for (const id of ids) {
         try {
             const musica = await getKV('musica_' + id) || {};
             const videoId = musica.youtube_video_id || null;
@@ -340,15 +427,12 @@ module.exports = async (req, res) => {
     const params = req.method === 'POST' ? req.body : req.query;
     const { action: _actionOriginal, music_id, video_id } = params;
 
-    // ✅ Resolve alias — "valuation_catalogo" → "catalogo"
     const action = ALIASES[_actionOriginal] || _actionOriginal;
 
     console.log(`💰 [valuation] ${_actionOriginal}${action !== _actionOriginal ? ' → ' + action : ''}`);
 
     try {
-        // ============================================================
-        // CALCULAR VALUATION DE UMA MÚSICA
-        // ============================================================
+        // CALCULAR UMA MÚSICA
         if (action === 'calcular') {
             if (!music_id) {
                 return res.status(200).json({ success: false, message: 'music_id obrigatório' });
@@ -362,18 +446,15 @@ module.exports = async (req, res) => {
             return res.status(200).json({ success: true, data: resultado });
         }
 
-        // ============================================================
-        // CALCULAR VALUATION DO CATÁLOGO
-        // ============================================================
+        // 🆕 v1.0.2 — CATÁLOGO (com fallback em camadas)
         if (action === 'catalogo') {
             const resultado = await calcularValuationCatalogo();
             await setKV('valuation_catalogo', resultado);
+            console.log(`💰 [valuation] catálogo: ${resultado.quantidade_musicas} músicas | total: R$ ${resultado.valuation_total}`);
             return res.status(200).json({ success: true, data: resultado });
         }
 
-        // ============================================================
-        // VER VALUATION DE UMA MÚSICA (cache)
-        // ============================================================
+        // VER VALUATION DE UMA MÚSICA
         if (action === 'ver') {
             if (!music_id) {
                 return res.status(200).json({ success: false, message: 'music_id obrigatório' });
@@ -388,9 +469,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({ success: true, data: v });
         }
 
-        // ============================================================
-        // VER ÚLTIMO CATÁLOGO CALCULADO
-        // ============================================================
+        // VER ÚLTIMO CATÁLOGO
         if (action === 'ultimo_catalogo') {
             const v = await getKV('valuation_catalogo');
             return res.status(200).json({
@@ -399,22 +478,17 @@ module.exports = async (req, res) => {
             });
         }
 
-        // ============================================================
-        // CONFIGURAÇÕES DE MERCADO
-        // ============================================================
+        // MERCADO
         if (action === 'mercado') {
             return res.status(200).json({ success: true, data: MERCADO });
         }
 
-        // ============================================================
-        // DEFAULT — action desconhecida
-        // ✅ success:false (era true) — quebra o loop do front
-        // ============================================================
+        // DEFAULT
         console.warn(`⚠️ [valuation] action desconhecida: ${_actionOriginal}`);
         return res.status(200).json({
             success: false,
             message: `Action desconhecida: ${_actionOriginal}`,
-            version: '1.0.1',
+            version: '1.0.2',
             acoes: ['calcular', 'catalogo', 'ver', 'ultimo_catalogo', 'mercado']
         });
 
@@ -423,3 +497,5 @@ module.exports = async (req, res) => {
         return res.status(200).json({ success: false, message: e.message });
     }
 };
+
+console.log('✅ [valuation] v1.0.2 carregado — fallback em 3 camadas');
