@@ -1,4 +1,4 @@
-// BACKEND.JS - VERSÃO 9.8.4
+// BACKEND.JS - VERSÃO 9.8.5
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -1595,7 +1595,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.4',
+                version: '9.8.5',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -1993,7 +1993,46 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'valuation_catalogo') {
-            const idx = await Storage.get('streams_index') || [];
+            // 🆕 v9.8.5 — FALLBACK em 3 camadas para o índice
+            let idx = await Storage.get('streams_index') || [];
+
+            // Camada 2: musicas_all (KV local)
+            if (!idx.length) {
+                console.warn('⚠️ [valuation_catalogo] streams_index vazio — tentando musicas_all');
+                const musicasAll = await Storage.get('musicas_all') || [];
+                idx = musicasAll.map(m => String(m.id)).filter(Boolean);
+            }
+
+            // Camada 3: get_musicas do GAS
+            if (!idx.length) {
+                console.warn('⚠️ [valuation_catalogo] musicas_all vazio — consultando GAS');
+                try {
+                    const gasResult = await callGAS('get_musicas');
+                    const unwrapped = unwrapGAS(gasResult);
+                    if (unwrapped.success && Array.isArray(unwrapped.data)) {
+                        idx = unwrapped.data.map(m => String(m.id)).filter(Boolean);
+                        console.log(`✅ [valuation_catalogo] GAS: ${idx.length} músicas`);
+                    }
+                } catch (e) {
+                    console.warn('[valuation_catalogo] fallback GAS falhou:', e.message);
+                }
+            }
+
+            // Se ainda vazio, retorna com aviso
+            if (!idx.length) {
+                console.error('❌ [valuation_catalogo] todas as camadas falharam');
+                const resultado = {
+                    valuation_total: 0,
+                    receita_anual_total: 0,
+                    quantidade_musicas: 0,
+                    musicas: [],
+                    aviso: 'Catálogo em atualização — nenhuma música com streams registrados ainda',
+                    atualizado_em: new Date().toISOString()
+                };
+                await Storage.set('valuation_catalogo', resultado);
+                return res.status(200).json({ success: true, data: resultado });
+            }
+
             const valuations = [];
             for (const id of idx) {
                 try {
@@ -2012,6 +2051,7 @@ module.exports = async (req, res) => {
                 atualizado_em: new Date().toISOString()
             };
             await Storage.set('valuation_catalogo', resultado);
+            console.log(`✅ [valuation_catalogo] ${resultado.quantidade_musicas} músicas | total: R$ ${resultado.valuation_total}`);
             return res.status(200).json({ success: true, data: resultado });
         }
 
@@ -3132,7 +3172,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.4',
+            version: '9.8.5',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
