@@ -241,12 +241,11 @@ window.HealthCheck = {
   gas: { online: null },
   mode: 'checking',
 
-  async testVercel() {
+async testVercel() {
     const url = ENDPOINT_URLS.backend + '?action=ping';
     try {
       const c = new AbortController();
-      const t = setTimeout(() => c.abort(), 8000);
-
+      const t = setTimeout(() => c.abort(), 12000);  // 🆕 v8.9.5 — 8s → 12s (cold start)
       const r = await fetch(url, { signal: c.signal });
       clearTimeout(t);
 
