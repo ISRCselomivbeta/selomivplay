@@ -1,4 +1,8 @@
-// BACKEND.JS - VERSÃO 9.8.5
+// 🔧 v9.8.6 — PERFORMANCE
+//   - ✅ get_external_musicas com cache Redis/KV 60s
+//        → evita 504 no GAS quando a API está lenta
+//        → fallback para cache stale se GAS falhar
+// BACKEND.JS - VERSÃO 9.8.6
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -1595,7 +1599,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.5',
+                version: '9.8.6',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -2692,12 +2696,59 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'get_external_musicas') {
-            const gasResult = await callGAS('get_external_musicas', params);
-            const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) return res.status(200).json({ success: true, data: unwrapped.data });
-            return res.status(200).json({ success: true, data: [] });
-        }
+            // 🆕 v9.8.6 — cache Redis/KV 60s (evita 504 no GAS)
+            const cacheKey = 'external_musicas_cache';
+            const cacheTimeKey = 'external_musicas_cache_time';
+            const CACHE_TTL = 60 * 1000; // 60s
 
+            // Tenta cache primeiro
+            try {
+                const cached = await Storage.get(cacheKey);
+                const cachedTime = await Storage.get(cacheTimeKey);
+                if (cached && cachedTime && (Date.now() - cachedTime) < CACHE_TTL) {
+                    console.log('✅ [get_external_musicas] cache hit (60s)');
+                    return res.status(200).json({
+                        success: true,
+                        data: cached,
+                        _via: 'cache',
+                        _cached_at: cachedTime
+                    });
+                }
+            } catch (e) {
+                console.warn('⚠️ [get_external_musicas] cache read falhou:', e.message);
+            }
+
+            // Cache miss — busca do GAS
+            try {
+                const gasResult = await callGAS('get_external_musicas', params);
+                const unwrapped = unwrapGAS(gasResult);
+
+                if (unwrapped.success && Array.isArray(unwrapped.data)) {
+                    // Salva no cache
+                    try {
+                        await Storage.set(cacheKey, unwrapped.data);
+                        await Storage.set(cacheTimeKey, Date.now());
+                    } catch (e) {
+                        console.warn('⚠️ [get_external_musicas] cache write falhou:', e.message);
+                    }
+                    return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
+                }
+            } catch (e) {
+                console.warn('⚠️ [get_external_musicas] GAS falhou:', e.message);
+            }
+
+            // Fallback: cache stale (mesmo se expirado)
+            try {
+                const stale = await Storage.get(cacheKey);
+                if (stale) {
+                    console.warn('⚠️ [get_external_musicas] usando cache stale');
+                    return res.status(200).json({ success: true, data: stale, _via: 'cache_stale' });
+                }
+            } catch (e) {}
+
+            // Nada funcionou — retorna vazio
+            return res.status(200).json({ success: true, data: [], _via: 'empty' });
+        }
         if (action === 'get_top_investments') {
             const gasResult = await callGAS('get_top_investments', params);
             const unwrapped = unwrapGAS(gasResult);
@@ -3172,7 +3223,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.5',
+            version: '9.8.6',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
