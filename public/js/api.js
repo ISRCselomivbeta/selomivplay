@@ -1,5 +1,9 @@
+// MUDANÇAS v8.9.5:
+//   - 🔧 testVercel(): 8s → 12s (evita falso negativo em cold start)
+//   - 🔧 testGAS():    12s → 15s (GAS pode demorar)
+//   - ✅ Elimina o aviso "Offline total" falso positivo
 // ============================================================
-// js/api.js — PLAY MY v8.9.4
+// js/api.js — PLAY MY v8.9.5
 // HealthCheck + callAPI (roteador multi-API + Vercel → GAS → Local).
 // Depende de: config.js, utils.js, state.js
 // DEVE carregar DEPOIS de state.js e ANTES de auth.js.
@@ -284,7 +288,7 @@ async testVercel() {
     const url = CONFIG.GAS_URL + '?action=health';
     try {
       const c = new AbortController();
-      const t = setTimeout(() => c.abort(), 12000);
+      const t = setTimeout(() => c.abort(), 15000);  // 🆕 v8.9.5 — 12s → 15s (GAS lento)
 
       const r = await fetch(url, { signal: c.signal });
       clearTimeout(t);
@@ -783,4 +787,4 @@ window.getFallbackData = function (action) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [api.js] v8.9.4 carregado — TTL por action + invalidate + timeout pesado');
+console.log('✅ [api.js] v8.9.5 carregado — TTL por action + invalidate + timeout pesado + health check 12s/15s');
