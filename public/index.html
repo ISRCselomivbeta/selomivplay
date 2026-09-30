@@ -1062,7 +1062,11 @@ body {
 <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('addExternalMusicModal')">Cancelar</button><button class="btn btn-warning" onclick="submitExternalMusic()" id="submitExternalBtn">Sugerir</button></div>
 </div>
 </div>
-
+<!-- ============================================================ -->
+<!-- AUDIO NATIVO — para reprodução em segundo plano (estilo Spotify) -->
+<!-- O background-play.js detecta automaticamente este elemento       -->
+<!-- ============================================================ -->
+<audio id="playmyAudio" preload="metadata" playsinline crossorigin="anonymous"></audio>
 <!-- ============================================================ -->
 <!-- MODAL CADASTRAR MÚSICA — v9.3.0 (com ISRC + Artista)         -->
 <!-- ============================================================ -->
@@ -1445,23 +1449,44 @@ window.togglePassword = function(fieldId, icon) {
 };
 </script>
 <!-- ============================================================ -->
-<!-- BACKGROUND PLAY — música em segundo plano -->
+<!-- MÓDULOS JS — ORDEM OBRIGATÓRIA                               -->
+<!-- ============================================================ -->
+
+<!-- 1. Configuração base -->
+<script src="/js/logger.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/utils.js"></script>
+
+<!-- 2. Estado global (precisa vir cedo) -->
+<script src="/js/state.js"></script>
+
+<!-- 3. Background Play v1.1.2 — DEPOIS do state.js e do logger.js -->
+<!-- ============================================================ -->
+<!-- CONFIG DO BACKGROUND PLAY — opcional                          -->
+<!-- ============================================================ -->
+<script>
+  window.PM_BG_CONFIG = {
+    debug: true,                 // logs no console (útil em produção pra debugar)
+    checkInterval: 2000,         // checa o player a cada 2s
+    preferNative: true,          // prioriza <audio> sobre YouTube (Spotify-like)
+    aggressiveByDefault: false,  // modo agressivo DESLIGADO (recomendado)
+    waitStateTimeout: 15000      // aguarda window.state por 15s
+  };
+</script>
+
+<!-- ============================================================ -->
+<!-- BACKGROUND PLAY — música em segundo plano                    -->
 <!-- ============================================================ -->
 <script src="/js/background-play.js"></script>
 
-<!-- LOGGER — silencia logs antes do login -->
-<script src="/js/logger.js"></script>
-<!-- ============================================================ -->
-<!-- MÓDULOS JS — ORDEM OBRIGATÓRIA                               -->
-<!-- ============================================================ -->
-<script src="/js/config.js"></script>
-<script src="/js/utils.js"></script>
-<script src="/js/state.js"></script>
+<!-- 4. Player do YouTube + player principal -->
+<script src="/js/youtube.js"></script>
+<script src="/js/player.js"></script>
+
+<!-- 5. Resto dos módulos -->
 <script src="/js/router.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/auth.js"></script>
-<script src="/js/youtube.js"></script>
-<script src="/js/player.js"></script>
 <script src="/js/marketplace.js"></script>
 <script src="/js/portfolio.js"></script>
 <script src="/js/trades.js"></script>
@@ -1478,6 +1503,7 @@ window.togglePassword = function(fieldId, icon) {
 <script src="/js/streams-panel.js"></script>
 <script src="/js/royalties-panel.js"></script>
 
+<!-- 6. App principal por último -->
 <script src="/js/app.js"></script>
   <!-- ============================================================ -->
 <!-- MATRIX BACKGROUND — fundo animado da tela de login            -->
