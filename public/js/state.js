@@ -1,8 +1,14 @@
 // ============================================================
-// js/state.js — PLAY MY v8.5.2
+// js/state.js — PLAY MY v8.5.3
 // Estado global da aplicação + fila de reprodução.
 // Depende de: config.js
 // DEVE carregar DEPOIS de config.js e ANTES de api.js.
+//
+// MUDANÇAS v8.5.3:
+//   - 🆕 playQueue.playCurrent() agora suporta vídeos do YouTube
+//        (item com index:-1 + youtubeData:{videoId, titulo, artista})
+//   - 🔗 Delega Media Session ao background-play.js v1.1.2
+//   - 💾 Integra com player.js v9.3.0 (window.pmPlayer.save)
 //
 // MUDANÇAS v8.5.2:
 //   - FIX: fallback agora inclui 'miv_user' (chave real usada pelo auth.js)
@@ -10,7 +16,6 @@
 //
 // MUDANÇAS v8.5.1:
 //   - FIX: restoreSession() com fallback robusto (v1.0.2)
-//          Agora espera auth.js definir a função antes de envolver
 // ============================================================
 
 // ============ ESTADO GLOBAL ============
@@ -74,10 +79,101 @@ window.playQueue = {
     const c = this.items[this.currentIndex];
     if (!c) return;
 
+    // ============================================================
+    // v8.5.3 — Suporte a vídeos do YouTube na fila
+    // ============================================================
+    // Item pode ser:
+    //   1. { type: 'internal', index: N }           → música do Selo MIV
+    //   2. { type: 'external', index: N }           → música externa
+    //   3. { type: 'internal', index: -1, youtubeData: {...} }
+    //                                                → vídeo do YouTube
+    // ============================================================
+
+    // Caso especial: vídeo do YouTube (index -1 + youtubeData)
+    if (c.index === -1 && c.youtubeData && c.youtubeData.videoId) {
+      const videoId = c.youtubeData.videoId;
+      const titulo = c.youtubeData.titulo || 'Vídeo do YouTube';
+      const artista = c.youtubeData.artista || '';
+
+      console.log('🎵 [playQueue] tocando vídeo do YouTube:', videoId, '-', titulo);
+
+      // Atualiza o mini-player
+      const playerSpotify = document.getElementById('playerSpotify');
+      if (playerSpotify) playerSpotify.style.display = 'flex';
+
+      const playerTitle = document.getElementById('playerTitle');
+      if (playerTitle) playerTitle.textContent = titulo;
+
+      const playerArtist = document.getElementById('playerArtist');
+      if (playerArtist) playerArtist.textContent = artista;
+
+      const playerAlbumArt = document.getElementById('playerAlbumArt');
+      if (playerAlbumArt) {
+        playerAlbumArt.src = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
+      }
+
+      // Atualiza o player expandido
+      const expandedTitle = document.getElementById('expandedTitle');
+      if (expandedTitle) expandedTitle.textContent = titulo;
+
+      const expandedArtist = document.getElementById('expandedArtist');
+      if (expandedArtist) expandedArtist.textContent = artista;
+
+      const expandedAlbumArt = document.getElementById('expandedAlbumArt');
+      if (expandedAlbumArt) {
+        expandedAlbumArt.src = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
+      }
+
+      // Media Session (delega ao background-play se existir)
+      if (window.pmBackgroundPlay && typeof window.pmBackgroundPlay.updateMediaSession === 'function') {
+        try {
+          if (window.state) {
+            window.state.currentTrackTitle = titulo;
+            window.state.currentArtist = artista;
+            window.state.currentArtwork = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
+          }
+          setTimeout(() => {
+            try { window.pmBackgroundPlay.updateMediaSession(); } catch (e) {}
+          }, 50);
+        } catch (e) {}
+      }
+
+      // Atualiza o índice (usa um valor especial para marcar YouTube)
+      state.currentTrackIndex = 2000;
+
+      // Carrega o vídeo no player do YouTube
+      const loading = document.getElementById('playerLoadingExpanded');
+      if (loading) loading.style.display = 'flex';
+
+      if (typeof loadYouTubeAPI === 'function' && typeof initializeYouTubePlayer === 'function') {
+        loadYouTubeAPI(() => {
+          console.log('🎵 [playQueue] YouTube API pronta, inicializando player...');
+          initializeYouTubePlayer(videoId);
+        });
+      } else {
+        console.error('❌ [playQueue] loadYouTubeAPI ou initializeYouTubePlayer não disponível');
+      }
+
+      state.isPlaying = true;
+      if (typeof updatePlayerIcons === 'function') updatePlayerIcons();
+
+      // Persiste o estado (se o player.js v9.3.0 estiver ativo)
+      if (window.pmPlayer && typeof window.pmPlayer.save === 'function') {
+        setTimeout(() => {
+          try { window.pmPlayer.save(); } catch (e) {}
+        }, 500);
+      }
+
+      return;
+    }
+
+    // Caso normal: música interna ou externa
     if (c.type === 'internal') {
       window.playTrack(c.index);
-    } else {
+    } else if (c.type === 'external') {
       window.playExternalTrack(c.index);
+    } else {
+      console.warn('⚠️ [playQueue] tipo de item desconhecido:', c);
     }
   },
 
@@ -130,7 +226,6 @@ window.playQueue = {
 
 // ============================================================
 // FIX v1.0.3 — restoreSession() com fallback robusto
-// ✅ Inclui 'miv_user' (chave real usada pelo auth.js)
 // ============================================================
 (function installRestoreSessionFix() {
   function tryInstall() {
@@ -147,9 +242,8 @@ window.playQueue = {
       }
 
       if (!result || !window.state || !window.state.currentUser) {
-        // ✅ LISTA COMPLETA — inclui 'miv_user' (chave real do auth.js)
         const candidates = [
-          'miv_user',                  // ✅ CHAVE CORRETA
+          'miv_user',
           'user', 'currentUser',
           'playmy_user', 'playmy_current_user',
           'session', 'auth_user',
@@ -206,4 +300,4 @@ window.playQueue = {
 })();
 
 // ============ LOG DE CARREGAMENTO ============
-console.log('✅ [state.js] v8.5.2 carregado — estado global e playQueue prontos');
+console.log('✅ [state.js] v8.5.3 carregado — estado global + playQueue com suporte a YouTube');
