@@ -33,7 +33,7 @@
 //   - install: falha alto com console.error
 // ============================================================
 
-const SW_VERSION = '9.9.9';  // 👈 BUMP manual a cada deploy relevante
+const SW_VERSION = '10.0.0';   // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
@@ -72,7 +72,11 @@ const STATIC_ASSETS = [
   '/css/news.css',
   '/css/responsive.css',
 
-  // JS
+  // 🆕 v10.0.0 — Background Play + Logger (carregam PRIMEIRO)
+  '/js/background-play.js',
+  '/js/logger.js',
+
+  // JS — módulos principais
   '/js/config.js',
   '/js/utils.js',
   '/js/state.js',
@@ -88,7 +92,7 @@ const STATIC_ASSETS = [
   '/js/modals.js',
   '/js/share.js',
   '/js/royalties-panel.js',
-  '/js/news.js',
+  // 🗑️ v10.0.0 — /js/news.js REMOVIDO (legado — só news-unified.js)
   '/js/news-unified.js',
   '/js/stream-tracker.js',
   '/js/valuation-panel.js',
