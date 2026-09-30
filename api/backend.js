@@ -1,4 +1,4 @@
-// 🔧 v9.8.6 — PERFORMANCE
+// 🔧 v9.8.7 — PERFORMANCE
 //   - ✅ get_external_musicas com cache Redis/KV 60s
 //        → evita 504 no GAS quando a API está lenta
 //        → fallback para cache stale se GAS falhar
@@ -1636,7 +1636,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.6',
+                version: '9.8.7',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -3245,7 +3245,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.6',
+            version: '9.8.7',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
