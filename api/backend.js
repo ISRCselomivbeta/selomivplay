@@ -166,7 +166,7 @@ if (!kv) {
 // ============================================================
 // GAS_URL com fallback hard-coded
 // ============================================================
-const GAS_URL_FALLBACK = 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec';
+const GAS_URL_FALLBACK = 'https://script.google.com/macros/s/AKfycbyTH2k2v7IZPTwCoZ3tm_p_ubKDn57hhF50evvQv6PEUKgztZZXZ1LzTlZR5sAgBgU/exec';
 const GAS_URL = process.env.GAS_URL || GAS_URL_FALLBACK;
 
 if (!process.env.GAS_URL) {
