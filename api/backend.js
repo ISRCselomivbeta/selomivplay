@@ -658,6 +658,43 @@ async function callGAS(action, params = {}, retries = 1) {
         }
     }
 }
+// 🆕 v9.8.7 — callGAS com timeout customizável (para ações lentas)   ← 📌 COLAR AQUI
+async function callGASComTimeout(action, params = {}, timeoutMs = 8000, retries = 1) {
+    if (!GAS_URL) {
+        console.error('[callGASComTimeout] GAS_URL não configurada');
+        return { success: false, error: 'GAS_URL não configurada' };
+    }
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const gasUrl = new URL(GAS_URL);
+            gasUrl.searchParams.append('action', action);
+            gasUrl.searchParams.append('_t', Date.now().toString());
+            Object.keys(params).forEach(key => {
+                if (params[key] !== undefined && params[key] !== null) {
+                    const value = typeof params[key] === 'string' ? sanitize(params[key]) : params[key];
+                    if (value !== '' && value !== undefined) gasUrl.searchParams.append(key, value);
+                }
+            });
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), timeoutMs);
+            const response = await fetch(gasUrl.toString(), {
+                method: 'GET',
+                headers: { 'Cache-Control': 'no-cache', 'Accept': 'application/json' },
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const text = await response.text();
+            const data = JSON.parse(text);
+            return { success: true, data };
+        } catch (error) {
+            console.log(`⚠️ [GAS-${timeoutMs}ms] Tentativa ${attempt}/${retries}:`, error.message);
+            if (attempt === retries) return { success: false, error: error.message };
+            await new Promise(r => setTimeout(r, 300 * attempt));
+        }
+    }
+}
 
 function unwrapGAS(gasResult) {
     if (!gasResult || !gasResult.success) {
@@ -2665,89 +2702,74 @@ module.exports = async (req, res) => {
         // MÚSICAS — ROBUSTO
         // ============================================================
         if (action === 'get_musicas') {
+            // 🆕 v9.8.7 — cache Redis 60s + timeout curto + fallback em 3 camadas
+            const cacheKey = 'musicas_cache';
+            const cacheTimeKey = 'musicas_cache_time';
+            const CACHE_TTL = 60 * 1000; // 60s
+
+            // 1. Cache em memória (rápido, mas por instância)
             const cachedL1 = cache.get('musicas');
-            if (cachedL1) return res.status(200).json({ success: true, data: cachedL1, _via: 'cache' });
+            if (cachedL1) return res.status(200).json({ success: true, data: cachedL1, _via: 'cache_l1' });
 
-            const gasResult = await callGAS('get_musicas', params);
-            const unwrapped = unwrapGAS(gasResult);
-
-            let musicas = null;
-
-            if (unwrapped.success) {
-                if (Array.isArray(unwrapped.data)) {
-                    musicas = unwrapped.data;
-                } else if (unwrapped.data && Array.isArray(unwrapped.data.data)) {
-                    musicas = unwrapped.data.data;
-                } else if (unwrapped._raw && Array.isArray(unwrapped._raw.data)) {
-                    musicas = unwrapped._raw.data;
-                } else if (unwrapped._raw && Array.isArray(unwrapped._raw.musicas)) {
-                    musicas = unwrapped._raw.musicas;
+            // 2. Cache Redis (persistente entre instâncias)
+            try {
+                const cachedRedis = await Storage.get(cacheKey);
+                const cachedTimeRedis = await Storage.get(cacheTimeKey);
+                if (cachedRedis && cachedTimeRedis && (Date.now() - cachedTimeRedis) < CACHE_TTL) {
+                    console.log('✅ [get_musicas] cache Redis hit (60s)');
+                    cache.set('musicas', cachedRedis, 60);
+                    return res.status(200).json({ success: true, data: cachedRedis, _via: 'cache_redis' });
                 }
+            } catch (e) {
+                console.warn('⚠️ [get_musicas] cache Redis falhou:', e.message);
             }
 
+            // 3. GAS com timeout CURTO (5s — não estoura o Vercel)
+            let musicas = null;
+            try {
+                const gasResult = await callGASComTimeout('get_musicas', params, 5000);
+                const unwrapped = unwrapGAS(gasResult);
+
+                if (unwrapped.success) {
+                    if (Array.isArray(unwrapped.data)) {
+                        musicas = unwrapped.data;
+                    } else if (unwrapped.data && Array.isArray(unwrapped.data.data)) {
+                        musicas = unwrapped.data.data;
+                    } else if (unwrapped._raw && Array.isArray(unwrapped._raw.data)) {
+                        musicas = unwrapped._raw.data;
+                    } else if (unwrapped._raw && Array.isArray(unwrapped._raw.musicas)) {
+                        musicas = unwrapped._raw.musicas;
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ [get_musicas] GAS timeout/falha:', e.message);
+            }
+
+            // 4. Se conseguiu do GAS, salva em ambos os caches
             if (musicas && musicas.length > 0) {
-                cache.set('musicas', musicas, 300);
+                cache.set('musicas', musicas, 60);
+                try {
+                    await Storage.set(cacheKey, musicas);
+                    await Storage.set(cacheTimeKey, Date.now());
+                } catch (e) {
+                    console.warn('⚠️ [get_musicas] cache write falhou:', e.message);
+                }
                 console.log(`✅ [get_musicas] ${musicas.length} músicas via GAS`);
                 return res.status(200).json({ success: true, data: musicas, _via: 'gas', total: musicas.length });
             }
 
-            console.warn('⚠️ [get_musicas] GAS não retornou array válido:', JSON.stringify(gasResult).substring(0, 200));
-            return res.status(200).json({ success: true, data: FALLBACK_MUSICAS, source: 'fallback' });
-        }
-
-        if (action === 'get_external_musicas') {
-            // 🆕 v9.8.6 — cache Redis/KV 60s (evita 504 no GAS)
-            const cacheKey = 'external_musicas_cache';
-            const cacheTimeKey = 'external_musicas_cache_time';
-            const CACHE_TTL = 60 * 1000; // 60s
-
-            // Tenta cache primeiro
-            try {
-                const cached = await Storage.get(cacheKey);
-                const cachedTime = await Storage.get(cacheTimeKey);
-                if (cached && cachedTime && (Date.now() - cachedTime) < CACHE_TTL) {
-                    console.log('✅ [get_external_musicas] cache hit (60s)');
-                    return res.status(200).json({
-                        success: true,
-                        data: cached,
-                        _via: 'cache',
-                        _cached_at: cachedTime
-                    });
-                }
-            } catch (e) {
-                console.warn('⚠️ [get_external_musicas] cache read falhou:', e.message);
-            }
-
-            // Cache miss — busca do GAS
-            try {
-                const gasResult = await callGAS('get_external_musicas', params);
-                const unwrapped = unwrapGAS(gasResult);
-
-                if (unwrapped.success && Array.isArray(unwrapped.data)) {
-                    // Salva no cache
-                    try {
-                        await Storage.set(cacheKey, unwrapped.data);
-                        await Storage.set(cacheTimeKey, Date.now());
-                    } catch (e) {
-                        console.warn('⚠️ [get_external_musicas] cache write falhou:', e.message);
-                    }
-                    return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
-                }
-            } catch (e) {
-                console.warn('⚠️ [get_external_musicas] GAS falhou:', e.message);
-            }
-
-            // Fallback: cache stale (mesmo se expirado)
+            // 5. Fallback: cache Redis stale
             try {
                 const stale = await Storage.get(cacheKey);
-                if (stale) {
-                    console.warn('⚠️ [get_external_musicas] usando cache stale');
+                if (stale && stale.length) {
+                    console.warn('⚠️ [get_musicas] usando cache stale (Redis)');
                     return res.status(200).json({ success: true, data: stale, _via: 'cache_stale' });
                 }
             } catch (e) {}
 
-            // Nada funcionou — retorna vazio
-            return res.status(200).json({ success: true, data: [], _via: 'empty' });
+            // 6. Último recurso
+            console.warn('⚠️ [get_musicas] todas as camadas falharam — usando FALLBACK_MUSICAS');
+            return res.status(200).json({ success: true, data: FALLBACK_MUSICAS, source: 'fallback_local' });
         }
         if (action === 'get_top_investments') {
             const gasResult = await callGAS('get_top_investments', params);
