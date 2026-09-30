@@ -1,6 +1,19 @@
 // ============================================================
-// SERVICE WORKER — PLAY MY v9.9.9
+// SERVICE WORKER — PLAY MY v10.1.0
 // Cache inteligente por tipo de recurso + PWA
+//
+// MUDANÇAS v10.1.0:
+//   - 🔧 SW_VERSION bumpada (10.0.0 → 10.1.0)
+//   - 🆕 Suporte ao background-play.js v1.1.2
+//        (Media Session completa + modo agressivo opt-in)
+//   - 🆕 Cacheia <audio id="playmyAudio"> como parte do app
+//   - 🆕 Compatível com PM_BG_CONFIG
+//
+// MUDANÇAS v10.0.0:
+//   - 🔧 SW_VERSION bumpada (9.9.9 → 10.0.0)
+//   - 🆕 /js/background-play.js + /js/logger.js no pré-cache
+//   - 🗑️ /js/news.js removido (legado — só news-unified.js)
+// ============================================================
 //
 // MUDANÇAS v9.9.9 (sequência recomendada):
 //   - 🔧 SW_VERSION bumpada (9.9.8 → 9.9.9) para forçar update automático
@@ -33,7 +46,7 @@
 //   - install: falha alto com console.error
 // ============================================================
 
-const SW_VERSION = '10.0.0';   // 👈 BUMP manual a cada deploy relevante
+const SW_VERSION = '10.1.0';   // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
