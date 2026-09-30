@@ -1,10 +1,20 @@
 // ============================================================
-// js/player.js — PLAY MY v9.2.1
+// js/player.js — PLAY MY v9.3.0
 // Player completo: reprodução, controles, progresso, volume.
 // Depende de: config.js, utils.js, state.js, api.js, youtube.js
 // DEVE carregar DEPOIS de youtube.js e ANTES de marketplace.js.
 //
-// MUDANÇAS v9.2.1 (sequência recomendada):
+// MUDANÇAS v9.3.0 (integração com background-play.js v1.1.2):
+//   - 🔗 Media Session DELEGADA ao background-play.js
+//        (elimina conflito de metadata + handlers duplicados)
+//   - 🆕 AUTO-NEXT: quando a faixa termina, toca a próxima
+//        (respeita shuffle + repeat via playNext())
+//   - 🆕 PERSISTÊNCIA: salva playlist + índice no localStorage
+//        (restaura ao reabrir o app)
+//   - 🆕 window.pmPlayer.save() / .restore() / .clear() para debug
+//   - 🔧 Fallback completo se background-play.js não existir
+//
+// MUDANÇAS v9.2.1:
 //   - 🔒 playTrack(): trava anti-duplo-clique (state._loadingTrack)
 //   - 🛡️ extractYouTubeId(): guarda de tipo antes de chamar
 //   - 🛡️ progress bars: validam container antes de getBoundingClientRect
@@ -17,7 +27,6 @@
 //     - playPrevious respeita repeat all
 //     - Visual dos botões (cor + ícone) atualizado
 //   - 🔧 Fonte única de verdade: state.playlist + state.currentTrackIndex
-//     (não depende mais de playQueue.items, que ficava dessincronizado)
 //
 // MUDANÇAS v9.1.0:
 //   - 🆕 MEDIA SESSION API: suporte a segundo plano no celular
@@ -29,7 +38,7 @@
 // ============================================================
 
 // ============================================================
-// 🆕 HELPER INTERNO — resolve o video ID com segurança
+// HELPER INTERNO — resolve o video ID com segurança
 // ============================================================
 function _safeExtractYouTubeId(link) {
   if (!link) return null;
@@ -46,12 +55,42 @@ function _safeExtractYouTubeId(link) {
 }
 
 // ============================================================
-// 🆕 MEDIA SESSION — suporte a segundo plano
+// MEDIA SESSION — DELEGADA ao background-play.js v1.1.2
 // ============================================================
-let _wakeLock = null;
-let _wakeLockRequested = false;
+// O background-play.js já configura:
+//   - metadata (título, artista, capa)
+//   - setActionHandler (play, pause, next, prev, seek, stop)
+//   - playbackState
+//   - setPositionState
+//
+// Aqui só atualizamos window.state e pedimos ao background-play
+// para refazer a Media Session. Se ele não existir, fazemos o
+// básico como fallback.
+// ============================================================
 
 function _setupMediaSession(titulo, artista, capaUrl) {
+  // Atualiza window.state para o background-play detectar
+  try {
+    if (window.state) {
+      window.state.currentTrackTitle = titulo || 'PlayMy';
+      window.state.currentArtist = artista || 'PlayMy';
+      window.state.currentArtwork = capaUrl || '';
+    }
+  } catch (e) {}
+
+  // Pede ao background-play para atualizar
+  if (window.pmBackgroundPlay &&
+      typeof window.pmBackgroundPlay.updateMediaSession === 'function') {
+    setTimeout(function () {
+      try {
+        window.pmBackgroundPlay.updateMediaSession();
+      } catch (e) {}
+    }, 50);
+    console.log('🎵 [MediaSession] delegado ao background-play:', titulo, '-', artista);
+    return;
+  }
+
+  // Fallback: se o background-play não existir, faz o básico
   if (!('mediaSession' in navigator)) {
     console.log('🎵 [MediaSession] não suportado neste navegador');
     return;
@@ -62,14 +101,14 @@ function _setupMediaSession(titulo, artista, capaUrl) {
       title: titulo || 'PLAY MY',
       artist: artista || 'PLAY MY',
       album: 'PLAY MY',
-      artwork: [
-        { src: capaUrl || '/images/logo.png', sizes: '96x96',   type: 'image/png' },
-        { src: capaUrl || '/images/logo.png', sizes: '128x128', type: 'image/png' },
-        { src: capaUrl || '/images/logo.png', sizes: '192x192', type: 'image/png' },
-        { src: capaUrl || '/images/logo.png', sizes: '256x256', type: 'image/png' },
-        { src: capaUrl || '/images/logo.png', sizes: '384x384', type: 'image/png' },
-        { src: capaUrl || '/images/logo.png', sizes: '512x512', type: 'image/png' }
-      ]
+      artwork: capaUrl ? [
+        { src: capaUrl, sizes: '96x96',   type: 'image/png' },
+        { src: capaUrl, sizes: '128x128', type: 'image/png' },
+        { src: capaUrl, sizes: '192x192', type: 'image/png' },
+        { src: capaUrl, sizes: '256x256', type: 'image/png' },
+        { src: capaUrl, sizes: '384x384', type: 'image/png' },
+        { src: capaUrl, sizes: '512x512', type: 'image/png' }
+      ] : []
     });
 
     navigator.mediaSession.setActionHandler('play', () => {
@@ -92,34 +131,24 @@ function _setupMediaSession(titulo, artista, capaUrl) {
     navigator.mediaSession.setActionHandler('nexttrack', () => {
       if (typeof playNext === 'function') playNext();
     });
-    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-      if (state.youtubePlayer && state.youtubePlayer.seekTo) {
-        const skip = details.seekOffset || 10;
-        const t = state.youtubePlayer.getCurrentTime() - skip;
-        state.youtubePlayer.seekTo(Math.max(0, t), true);
-      }
-    });
-    navigator.mediaSession.setActionHandler('seekforward', (details) => {
-      if (state.youtubePlayer && state.youtubePlayer.seekTo) {
-        const skip = details.seekOffset || 10;
-        const t = state.youtubePlayer.getCurrentTime() + skip;
-        state.youtubePlayer.seekTo(t, true);
-      }
-    });
-    navigator.mediaSession.setActionHandler('seekto', (details) => {
-      if (state.youtubePlayer && state.youtubePlayer.seekTo && details.seekTime != null) {
-        state.youtubePlayer.seekTo(details.seekTime, true);
-      }
-    });
 
     navigator.mediaSession.playbackState = 'playing';
-    console.log('🎵 [MediaSession] configurada:', titulo, '-', artista);
+    console.log('🎵 [MediaSession] fallback configurada:', titulo, '-', artista);
   } catch (e) {
     console.warn('⚠️ [MediaSession] erro:', e.message);
   }
 }
 
 function _updateMediaSessionState(isPlaying) {
+  // Delegado
+  if (window.pmBackgroundPlay &&
+      typeof window.pmBackgroundPlay.updatePlaybackState === 'function') {
+    try {
+      window.pmBackgroundPlay.updatePlaybackState();
+    } catch (e) {}
+    return;
+  }
+  // Fallback
   if (!('mediaSession' in navigator)) return;
   try {
     navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
@@ -127,14 +156,19 @@ function _updateMediaSessionState(isPlaying) {
 }
 
 function _updateMediaSessionPosition() {
+  // O background-play atualiza via timeupdate do <audio>.
+  // Aqui só reforçamos quando o player do YouTube está ativo.
   if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
   if (!state.youtubePlayer || !state.youtubePlayer.getCurrentTime) return;
   try {
     const duration = state.youtubePlayer.getDuration();
     const position = state.youtubePlayer.getCurrentTime();
-    const rate = 1;
     if (duration > 0 && position >= 0 && position <= duration) {
-      navigator.mediaSession.setPositionState({ duration, position, playbackRate: rate });
+      navigator.mediaSession.setPositionState({
+        duration,
+        position,
+        playbackRate: 1
+      });
     }
   } catch (e) {}
 }
@@ -148,7 +182,7 @@ function _clearMediaSession() {
 }
 
 // ============================================================
-// 🆕 AUDIO SESSION + WAKE LOCK (iOS + Android)
+// AUDIO SESSION + WAKE LOCK (iOS + Android)
 // ============================================================
 function _setAudioSessionType(type) {
   try {
@@ -185,7 +219,7 @@ function _releaseWakeLock() {
 }
 
 // ============================================================
-// 🆕 HELPERS PARA MOVER O IFRAME DO YOUTUBE
+// HELPERS PARA MOVER O IFRAME DO YOUTUBE
 // ============================================================
 window._moveYouTubeToExpanded = function () {
   const globalContainer = document.getElementById('youtubePlayerGlobal');
@@ -219,7 +253,7 @@ window._moveYouTubeToExpandedIfOpen = function () {
 };
 
 // ============================================================
-// 🆕 PATCH: updatePlayerProgress agora atualiza a posição da Media Session
+// PATCH: updatePlayerProgress agora atualiza a posição da Media Session
 // ============================================================
 const _originalUpdatePlayerProgress = window.updatePlayerProgress;
 
@@ -285,7 +319,7 @@ window.playTrack = function (index) {
     const trackOverlayIcon = document.getElementById('trackOverlayIcon');
     if (trackOverlayIcon) trackOverlayIcon.className = 'bi bi-play-fill';
 
-    // 🆕 MEDIA SESSION — configura título/artista/capa na tela de bloqueio
+    // 🆕 MEDIA SESSION — delegada ao background-play.js
     _setupMediaSession(t.titulo, t.artista, getCoverUrl(t, false));
     _setAudioSessionType('playback');
     _requestWakeLock();
@@ -370,7 +404,7 @@ window.playExternalTrack = function (index) {
   const expandedAvailable = document.getElementById('expandedAvailable');
   if (expandedAvailable) expandedAvailable.textContent = (t.percentual_disponivel || 0) + '%';
 
-  // 🆕 MEDIA SESSION
+  // 🆕 MEDIA SESSION — delegada
   _setupMediaSession(t.titulo, t.artista, getCoverUrl(t, true));
   _setAudioSessionType('playback');
   _requestWakeLock();
@@ -434,7 +468,7 @@ window.playSearchResult = function (type, id) {
     const expandedArtist = document.getElementById('expandedArtist');
     if (expandedArtist) expandedArtist.textContent = 'Resultado da busca';
 
-    // 🆕 MEDIA SESSION
+    // 🆕 MEDIA SESSION — delegada
     _setupMediaSession('YouTube', 'PLAY MY', 'https://img.youtube.com/vi/' + vid + '/hqdefault.jpg');
     _setAudioSessionType('playback');
     _requestWakeLock();
@@ -544,7 +578,7 @@ window.handleExpandedProgressClick = function (e) {
 };
 
 // ============================================================
-// 🆕 v9.2.0 — SHUFFLE / REPEAT / NEXT / PREV
+// SHUFFLE / REPEAT / NEXT / PREV
 // ============================================================
 
 // Inicializa os campos de shuffle/repeat
@@ -772,7 +806,7 @@ window.closePlayerExpanded = function () {
 };
 
 // ============================================================
-// 🆕 LIBERAÇÃO DE RECURSOS
+// LIBERAÇÃO DE RECURSOS
 // ============================================================
 window._onPlayerStop = function () {
   _releaseWakeLock();
@@ -781,14 +815,14 @@ window._onPlayerStop = function () {
 };
 
 // ============================================================
-// 🆕 PATCH: atualiza a posição da Media Session junto com o progresso
+// PATCH: atualiza a posição da Media Session junto com o progresso
 // ============================================================
 const _progressIntervalPatch = setInterval(() => {
   if (state.isPlaying) _updateMediaSessionPosition();
 }, 5000);
 
 // ============================================================
-// 🆕 v9.2.0 — APLICAR ESTADO INICIAL DOS BOTÕES
+// APLICAR ESTADO INICIAL DOS BOTÕES
 // ============================================================
 window._aplicarEstadoShuffleRepeat = function () {
   // Shuffle
@@ -827,6 +861,225 @@ if (document.readyState === 'loading') {
 }
 
 // ============================================================
+// 🆕 v9.3.0 — AUTO-NEXT: quando a faixa termina, toca a próxima
+// ============================================================
+(function bindAutoNext() {
+  var _autoNextBound = false;
+  var _autoNextTimer = null;
+
+  function bindYouTubeAutoNext() {
+    if (_autoNextBound) return;
+    if (!state.youtubePlayer || !state.youtubePlayer.addEventListener) return;
+
+    try {
+      state.youtubePlayer.addEventListener('onStateChange', function (event) {
+        // YT.PlayerState.ENDED = 0
+        if (event.data === 0) {
+          console.log('🎵 [AutoNext] faixa terminou — tocando próxima');
+          if (typeof playNext === 'function') {
+            playNext();
+          }
+        }
+      });
+      _autoNextBound = true;
+      console.log('🎵 [AutoNext] vinculado ao player do YouTube');
+
+      if (_autoNextTimer) {
+        clearInterval(_autoNextTimer);
+        _autoNextTimer = null;
+      }
+    } catch (e) {
+      console.warn('⚠️ [AutoNext] erro ao vincular:', e.message);
+    }
+  }
+
+  // Tenta vincular a cada 1s (o player pode demorar para carregar)
+  _autoNextTimer = setInterval(bindYouTubeAutoNext, 1000);
+
+  // Também vincula quando o player for recriado
+  var _originalInitialize = window.initializeYouTubePlayer;
+  if (typeof _originalInitialize === 'function') {
+    window.initializeYouTubePlayer = function () {
+      _autoNextBound = false;
+      var result = _originalInitialize.apply(this, arguments);
+      setTimeout(bindYouTubeAutoNext, 500);
+      return result;
+    };
+  }
+})();
+
+// ============================================================
+// 🆕 v9.3.0 — PERSISTÊNCIA: salva e restaura playlist atual
+// ============================================================
+(function bindPersistence() {
+  var STORAGE_KEY = 'playmy_player_state_v1';
+
+  // ------------------------------------------------------------
+  // Salva o estado atual
+  // ------------------------------------------------------------
+  function saveState() {
+    try {
+      if (!state.playlist || !state.playlist.length) return;
+      if (typeof state.currentTrackIndex !== 'number') return;
+
+      var track = state.playlist[state.currentTrackIndex];
+      if (!track) return;
+
+      var payload = {
+        // Playlist completa (só os IDs para economizar espaço)
+        playlistIds: state.playlist.map(function (t) { return t.id; }),
+        currentIndex: state.currentTrackIndex,
+        // Snapshot da faixa atual (caso a playlist mude)
+        currentTrack: {
+          id: track.id,
+          titulo: track.titulo,
+          artista: track.artista,
+          link_youtube: track.link_youtube,
+          capa: track.capa || track.cover || ''
+        },
+        // Modo
+        shuffle: state.isShuffle || false,
+        repeatMode: state.repeatMode || 'off',
+        // Timestamp
+        savedAt: Date.now()
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      console.log('💾 [Persist] estado salvo:', track.titulo);
+    } catch (e) {
+      console.warn('⚠️ [Persist] erro ao salvar:', e.message);
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Restaura o estado ao carregar
+  // ------------------------------------------------------------
+  function restoreState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+
+      var payload = JSON.parse(raw);
+
+      // Descarta se passou mais de 7 dias
+      if (Date.now() - payload.savedAt > 7 * 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+
+      console.log('💾 [Persist] estado encontrado:', payload.currentTrack.titulo);
+
+      // Restaura modo
+      state.isShuffle = payload.shuffle || false;
+      state.repeatMode = payload.repeatMode || 'off';
+      state.isRepeat = state.repeatMode !== 'off';
+
+      // Restaura a faixa atual no mini-player (SEM tocar)
+      // — o navegador bloqueia autoplay sem interação
+      var track = payload.currentTrack;
+
+      // Atualiza o mini-player visual
+      var playerSpotify = document.getElementById('playerSpotify');
+      if (playerSpotify) playerSpotify.style.display = 'flex';
+
+      var playerTitle = document.getElementById('playerTitle');
+      if (playerTitle) playerTitle.textContent = track.titulo || '';
+
+      var playerArtist = document.getElementById('playerArtist');
+      if (playerArtist) playerArtist.textContent = track.artista || '';
+
+      var playerAlbumArt = document.getElementById('playerAlbumArt');
+      if (playerAlbumArt && track.capa) playerAlbumArt.src = track.capa;
+
+      // Atualiza player expandido
+      var expandedTitle = document.getElementById('expandedTitle');
+      if (expandedTitle) expandedTitle.textContent = track.titulo || '';
+
+      var expandedArtist = document.getElementById('expandedArtist');
+      if (expandedArtist) expandedArtist.textContent = track.artista || '';
+
+      var expandedAlbumArt = document.getElementById('expandedAlbumArt');
+      if (expandedAlbumArt && track.capa) expandedAlbumArt.src = track.capa;
+
+      // Atualiza Media Session (deixa pronto para o usuário dar play)
+      _setupMediaSession(track.titulo, track.artista, track.capa);
+
+      // Guarda o índice para o usuário poder dar "play" e continuar
+      state._pendingResumeIndex = payload.currentIndex;
+      state._pendingResumePlaylistIds = payload.playlistIds;
+
+      // Aplica estado visual dos botões
+      if (typeof window._aplicarEstadoShuffleRepeat === 'function') {
+        window._aplicarEstadoShuffleRepeat();
+      }
+
+      console.log('💾 [Persist] pronto para retomar no índice:', payload.currentIndex);
+
+    } catch (e) {
+      console.warn('⚠️ [Persist] erro ao restaurar:', e.message);
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Salva automaticamente a cada troca de faixa
+  // ------------------------------------------------------------
+  var _originalPlayTrack = window.playTrack;
+  if (typeof _originalPlayTrack === 'function') {
+    window.playTrack = function () {
+      var result = _originalPlayTrack.apply(this, arguments);
+      // Salva depois de 500ms (dá tempo do state atualizar)
+      setTimeout(saveState, 500);
+      return result;
+    };
+  }
+
+  var _originalPlayExternal = window.playExternalTrack;
+  if (typeof _originalPlayExternal === 'function') {
+    window.playExternalTrack = function () {
+      var result = _originalPlayExternal.apply(this, arguments);
+      setTimeout(saveState, 500);
+      return result;
+    };
+  }
+
+  // ------------------------------------------------------------
+  // Restaura quando o usuário logar
+  // ------------------------------------------------------------
+  function tryRestore() {
+    if (!window.state || !window.state.user) {
+      // Tenta de novo em 1s
+      setTimeout(tryRestore, 1000);
+      return;
+    }
+    restoreState();
+  }
+
+  // ------------------------------------------------------------
+  // API pública para debug
+  // ------------------------------------------------------------
+  window.pmPlayer = {
+    save: saveState,
+    restore: restoreState,
+    clear: function () {
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      console.log('💾 [Persist] estado limpo');
+    }
+  };
+
+  // ------------------------------------------------------------
+  // Boot
+  // ------------------------------------------------------------
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(tryRestore, 2000);
+    });
+  } else {
+    setTimeout(tryRestore, 2000);
+  }
+
+})();
+
+// ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [player.js] v9.2.1 carregado — shuffle + repeat + Media Session + anti-duplo-clique');
+console.log('✅ [player.js] v9.3.0 carregado — shuffle + repeat + Media Session delegada + auto-next + persistência');
