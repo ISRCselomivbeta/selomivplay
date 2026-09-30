@@ -19,7 +19,7 @@ window.CONFIG = {
   // Funciona em playmy.com.br, vercel.app, preview, etc
   VERCEL_URL: '/api/backend',
 
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbwgjor-tLLzVrnJGNHOifL1O2sRBhysKJ3IbVJy_AHgtNqjk-6hazH8xuO6OaDXF_s/exec',
+GAS_URL: 'https://script.google.com/macros/s/AKfycbyTH2k2v7IZPTwCoZ3tm_p_ubKDn57hhF50evvQv6PEUKgztZZXZ1LzTlZR5sAgBgU/exec',
 
   VERSION: '9.8.1',
 
