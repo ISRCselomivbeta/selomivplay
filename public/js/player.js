@@ -1,19 +1,24 @@
 // ============================================================
-// js/player.js — PLAY MY v9.3.1
+// js/player.js — PLAY MY v9.3.2
 // Player completo: reprodução, controles, progresso, volume.
 // Depende de: config.js, utils.js, state.js, api.js, youtube.js
 // DEVE carregar DEPOIS de youtube.js e ANTES de marketplace.js.
 //
+// MUDANÇAS v9.3.2:
+//   - 🐛 FIX: persistência agora funciona com playlists globais (YouTube)
+//        saveState() detecta window.playQueue e salva a fila completa
+//   - 🐛 FIX: restoreState() restaura a fila de playQueue
+//   - 🆕 wrappers em playGlobalPlaylist e playUserPlaylist para salvar
+//   - 🆕 pmPlayer.debug() para diagnóstico
+//
 // MUDANÇAS v9.3.1:
-//   - 🐛 FIX: código órfão no final do arquivo (tryRestore fora de escopo)
-//        → persistência (bindPersistence) restaurada e funcional
-//   - 🎵 AUTO-NEXT robusto (3 camadas: listener + polling + wrapper)
+//   - 🐛 FIX: código órfão no final do arquivo
+//   - 🎵 AUTO-NEXT robusto (3 camadas)
 //
 // MUDANÇAS v9.3.0:
 //   - 🔗 Media Session DELEGADA ao background-play.js
 //   - 🆕 AUTO-NEXT: quando a faixa termina, toca a próxima
 //   - 🆕 PERSISTÊNCIA: salva playlist + índice no localStorage
-//   - 🆕 window.pmPlayer.save() / .restore() / .clear() para debug
 //
 // MUDANÇAS v9.2.x: shuffle/repeat, Media Session, wake lock
 // ============================================================
@@ -603,7 +608,6 @@ window.toggleRepeat = function () {
 };
 
 window.playNext = function () {
-  // Se a playQueue estiver ativa, usa ela (tem prioridade)
   if (window.playQueue &&
       Array.isArray(window.playQueue.items) &&
       window.playQueue.items.length > 0) {
@@ -616,7 +620,6 @@ window.playNext = function () {
     }
   }
 
-  // Fallback: playlist linear
   const playlist = state.playlist || [];
   if (!playlist.length) {
     console.warn('⚠️ playNext: fila vazia');
@@ -650,7 +653,6 @@ window.playNext = function () {
 };
 
 window.playPrevious = function () {
-  // Se a playQueue estiver ativa, usa ela
   if (window.playQueue &&
       Array.isArray(window.playQueue.items) &&
       window.playQueue.items.length > 0 &&
@@ -705,16 +707,10 @@ window._onPlayerStop = function () {
   _setAudioSessionType('auto');
 };
 
-// ============================================================
-// POSITION STATE — reforço periódico
-// ============================================================
 setInterval(() => {
   if (state.isPlaying) _updateMediaSessionPosition();
 }, 5000);
 
-// ============================================================
-// APLICAR ESTADO INICIAL DOS BOTÕES
-// ============================================================
 window._aplicarEstadoShuffleRepeat = function () {
   const btnShuffle = document.getElementById('shuffleBtn');
   if (btnShuffle) {
@@ -846,19 +842,93 @@ if (document.readyState === 'loading') {
 })();
 
 // ============================================================
-// PERSISTÊNCIA — salva e restaura playlist atual
+// PERSISTÊNCIA v9.3.2 — funciona com playlists globais (YouTube)
 // ============================================================
 (function bindPersistence() {
   var STORAGE_KEY = 'playmy_player_state_v1';
 
+  // ----------------------------------------------------------
+  // Salva o estado atual
+  // ----------------------------------------------------------
   function saveState() {
     try {
+      // ============================================================
+      // CASO 1: playQueue ativa (playlist global com YouTube)
+      // ============================================================
+      if (window.playQueue &&
+          Array.isArray(window.playQueue.items) &&
+          window.playQueue.items.length > 0 &&
+          window.playQueue.currentIndex >= 0) {
+
+        var curItem = window.playQueue.items[window.playQueue.currentIndex];
+
+        // Item de YouTube (index -1 + youtubeData)
+        if (curItem && curItem.index === -1 && curItem.youtubeData && curItem.youtubeData.videoId) {
+          var ytPayload = {
+            version: 2,
+            playlistType: 'youtube',
+            queueItems: window.playQueue.items.map(function (it) {
+              return {
+                type: it.type || 'internal',
+                index: (typeof it.index === 'number') ? it.index : -1,
+                youtubeData: it.youtubeData || null
+              };
+            }),
+            currentIndex: window.playQueue.currentIndex,
+            currentTrack: {
+              id: 'yt_' + curItem.youtubeData.videoId,
+              titulo: curItem.youtubeData.titulo,
+              artista: curItem.youtubeData.artista,
+              link_youtube: 'https://www.youtube.com/watch?v=' + curItem.youtubeData.videoId,
+              capa: 'https://img.youtube.com/vi/' + curItem.youtubeData.videoId + '/hqdefault.jpg',
+              is_youtube: true
+            },
+            shuffle: state.isShuffle || false,
+            repeatMode: state.repeatMode || 'off',
+            savedAt: Date.now()
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(ytPayload));
+          console.log('💾 [Persist] salvo (YouTube):', curItem.youtubeData.titulo);
+          return;
+        }
+
+        // Item normal da playQueue
+        if (curItem && (curItem.type === 'internal' || curItem.type === 'external')) {
+          var qPayload = {
+            version: 2,
+            playlistType: 'queue',
+            queueItems: window.playQueue.items.map(function (it) {
+              return {
+                type: it.type || 'internal',
+                index: (typeof it.index === 'number') ? it.index : -1,
+                youtubeData: it.youtubeData || null
+              };
+            }),
+            currentIndex: window.playQueue.currentIndex,
+            currentTrack: null,
+            shuffle: state.isShuffle || false,
+            repeatMode: state.repeatMode || 'off',
+            savedAt: Date.now()
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(qPayload));
+          console.log('💾 [Persist] salvo (queue index ' + window.playQueue.currentIndex + ')');
+          return;
+        }
+      }
+
+      // ============================================================
+      // CASO 2: playlist linear normal
+      // ============================================================
       if (!state.playlist || !state.playlist.length) return;
       if (typeof state.currentTrackIndex !== 'number') return;
+      if (state.currentTrackIndex < 0 || state.currentTrackIndex >= state.playlist.length) return;
+
       var track = state.playlist[state.currentTrackIndex];
       if (!track) return;
 
       var payload = {
+        version: 2,
+        playlistType: 'linear',
         playlistIds: state.playlist.map(function (t) { return t.id; }),
         currentIndex: state.currentTrackIndex,
         currentTrack: {
@@ -873,82 +943,148 @@ if (document.readyState === 'loading') {
         savedAt: Date.now()
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      console.log('💾 [Persist] estado salvo:', track.titulo);
+      console.log('💾 [Persist] salvo (linear):', track.titulo);
     } catch (e) {
       console.warn('⚠️ [Persist] erro ao salvar:', e.message);
     }
   }
 
+  // ----------------------------------------------------------
+  // Restaura o estado ao carregar
+  // ----------------------------------------------------------
   function restoreState() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       var payload = JSON.parse(raw);
+
       if (Date.now() - payload.savedAt > 7 * 24 * 60 * 60 * 1000) {
         localStorage.removeItem(STORAGE_KEY);
         return;
       }
-      console.log('💾 [Persist] estado encontrado:', payload.currentTrack.titulo);
+
+      console.log('💾 [Persist] estado encontrado:', payload.playlistType);
 
       state.isShuffle = payload.shuffle || false;
       state.repeatMode = payload.repeatMode || 'off';
       state.isRepeat = state.repeatMode !== 'off';
 
+      if ((payload.playlistType === 'youtube' || payload.playlistType === 'queue') &&
+          Array.isArray(payload.queueItems)) {
+        if (window.playQueue) {
+          window.playQueue.items = payload.queueItems;
+          window.playQueue.currentIndex = payload.currentIndex || 0;
+          console.log('💾 [Persist] fila restaurada:', payload.queueItems.length, 'itens');
+        }
+      } else if (payload.playlistType === 'linear') {
+        state._pendingResumeIndex = payload.currentIndex;
+        state._pendingResumePlaylistIds = payload.playlistIds;
+      }
+
       var track = payload.currentTrack;
+      if (!track) return;
 
-      var playerSpotify = document.getElementById('playerSpotify');
-      if (playerSpotify) playerSpotify.style.display = 'flex';
+      var ps = document.getElementById('playerSpotify');
+      if (ps) ps.style.display = 'flex';
 
-      var playerTitle = document.getElementById('playerTitle');
-      if (playerTitle) playerTitle.textContent = track.titulo || '';
+      var pt = document.getElementById('playerTitle');
+      if (pt) pt.textContent = track.titulo || '';
 
-      var playerArtist = document.getElementById('playerArtist');
-      if (playerArtist) playerArtist.textContent = track.artista || '';
+      var pa = document.getElementById('playerArtist');
+      if (pa) pa.textContent = track.artista || '';
 
-      var playerAlbumArt = document.getElementById('playerAlbumArt');
-      if (playerAlbumArt && track.capa) playerAlbumArt.src = track.capa;
+      var pai = document.getElementById('playerAlbumArt');
+      if (pai && track.capa) pai.src = track.capa;
 
-      var expandedTitle = document.getElementById('expandedTitle');
-      if (expandedTitle) expandedTitle.textContent = track.titulo || '';
+      var et = document.getElementById('expandedTitle');
+      if (et) et.textContent = track.titulo || '';
 
-      var expandedArtist = document.getElementById('expandedArtist');
-      if (expandedArtist) expandedArtist.textContent = track.artista || '';
+      var ea = document.getElementById('expandedArtist');
+      if (ea) ea.textContent = track.artista || '';
 
-      var expandedAlbumArt = document.getElementById('expandedAlbumArt');
-      if (expandedAlbumArt && track.capa) expandedAlbumArt.src = track.capa;
+      var eai = document.getElementById('expandedAlbumArt');
+      if (eai && track.capa) eai.src = track.capa;
 
       _setupMediaSession(track.titulo, track.artista, track.capa);
-
-      state._pendingResumeIndex = payload.currentIndex;
-      state._pendingResumePlaylistIds = payload.playlistIds;
 
       if (typeof window._aplicarEstadoShuffleRepeat === 'function') {
         window._aplicarEstadoShuffleRepeat();
       }
-      console.log('💾 [Persist] pronto para retomar no índice:', payload.currentIndex);
+
+      console.log('💾 [Persist] pronto para retomar:', track.titulo);
     } catch (e) {
       console.warn('⚠️ [Persist] erro ao restaurar:', e.message);
     }
   }
 
-  var _originalPlayTrack = window.playTrack;
-  if (typeof _originalPlayTrack === 'function') {
+  // ----------------------------------------------------------
+  // Wrappers em playTrack / playExternalTrack
+  // ----------------------------------------------------------
+  var _origPlayTrack = window.playTrack;
+  if (typeof _origPlayTrack === 'function') {
     window.playTrack = function () {
-      var result = _originalPlayTrack.apply(this, arguments);
-      setTimeout(saveState, 500);
-      return result;
+      var r = _origPlayTrack.apply(this, arguments);
+      setTimeout(saveState, 800);
+      return r;
     };
   }
 
-  var _originalPlayExternal = window.playExternalTrack;
-  if (typeof _originalPlayExternal === 'function') {
+  var _origPlayExternal = window.playExternalTrack;
+  if (typeof _origPlayExternal === 'function') {
     window.playExternalTrack = function () {
-      var result = _originalPlayExternal.apply(this, arguments);
-      setTimeout(saveState, 500);
-      return result;
+      var r = _origPlayExternal.apply(this, arguments);
+      setTimeout(saveState, 800);
+      return r;
     };
   }
 
+  // ----------------------------------------------------------
+  // Wrappers em playGlobalPlaylist / playUserPlaylist
+  // ----------------------------------------------------------
+  var _origPlayGlobal = window.playGlobalPlaylist;
+  if (typeof _origPlayGlobal === 'function') {
+    window.playGlobalPlaylist = function () {
+      var r = _origPlayGlobal.apply(this, arguments);
+      setTimeout(saveState, 1500);
+      setTimeout(saveState, 3000);
+      return r;
+    };
+    console.log('💾 [Persist] wrapper em playGlobalPlaylist instalado');
+  }
+
+  var _origPlayUser = window.playUserPlaylist;
+  if (typeof _origPlayUser === 'function') {
+    window.playUserPlaylist = function () {
+      var r = _origPlayUser.apply(this, arguments);
+      setTimeout(saveState, 1500);
+      setTimeout(saveState, 3000);
+      return r;
+    };
+    console.log('💾 [Persist] wrapper em playUserPlaylist instalado');
+  }
+
+  // ----------------------------------------------------------
+  // API pública
+  // ----------------------------------------------------------
+  window.pmPlayer = {
+    save: saveState,
+    restore: restoreState,
+    clear: function () {
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      console.log('💾 [Persist] estado limpo');
+    },
+    debug: function () {
+      console.log('--- pmPlayer.debug() ---');
+      console.log('STORAGE_KEY:', STORAGE_KEY);
+      console.log('Conteúdo:', localStorage.getItem(STORAGE_KEY));
+      console.log('playQueue.items:', window.playQueue ? window.playQueue.items.length : 'sem playQueue');
+      console.log('playQueue.currentIndex:', window.playQueue ? window.playQueue.currentIndex : 'sem playQueue');
+    }
+  };
+
+  // ----------------------------------------------------------
+  // Restaura quando o usuário logar
+  // ----------------------------------------------------------
   function tryRestore() {
     if (!window.state || !window.state.currentUser) {
       setTimeout(tryRestore, 1000);
@@ -956,15 +1092,6 @@ if (document.readyState === 'loading') {
     }
     restoreState();
   }
-
-  window.pmPlayer = {
-    save: saveState,
-    restore: restoreState,
-    clear: function () {
-      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-      console.log('💾 [Persist] estado limpo');
-    }
-  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
@@ -978,4 +1105,4 @@ if (document.readyState === 'loading') {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [player.js] v9.3.1 carregado — shuffle + repeat + Media Session delegada + auto-next robusto + persistência');
+console.log('✅ [player.js] v9.3.2 carregado — auto-next + persistência (YouTube + playlist global)');
