@@ -1,4 +1,4 @@
-// ============================================================
+// ===========================================================
 // js/player.js — PLAY MY v9.3.2
 // Player completo: reprodução, controles, progresso, volume.
 // Depende de: config.js, utils.js, state.js, api.js, youtube.js
