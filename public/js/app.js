@@ -1,5 +1,5 @@
 // ============================================================
-// js/app.js — PLAY MY v9.8.4
+// js/app.js — PLAY MY v9.8.5
 // Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
 // + Detecção de app nativo (Capacitor/TWA)
 // + Safe areas (iPhone notch)
@@ -7,47 +7,21 @@
 // + Splash screen handling
 // + Deep linking (?section=)
 // + INSTALAÇÃO INTELIGENTE via SIDEBAR (sem balão flutuante)
-// + 🆕 v9.8.4 — loadAllData em 4 ETAPAS SEQUENCIAIS
+// + loadAllData em 4 ETAPAS SEQUENCIAIS
 // Depende de TODOS os módulos anteriores.
 // DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
 //
+// MUDANÇAS v9.8.5:
+//   - 🐛 FIX: aliases globais protegidos com typeof (evita ReferenceError
+//        se alguma função não existir — era o que quebrava o app em prod)
+//   - 🐛 FIX: loadArtistData / loadAdminData agora checam typeof antes
+//   - 🐛 FIX: HealthCheck com backoff exponencial (não sobrecarrega)
+//   - ✅ NADA MAIS MUDOU — comportamento idêntico ao v9.8.4
+//
 // MUDANÇAS v9.8.4:
 //   - 🆕 loadAllData() reescrita em 4 etapas (Etapa 1 → Etapa 4)
-//       • Etapa 1 (crítica): saldo + get_musicas + playlists → hideLoading
-//       • Etapa 2 (usuário): carteira + extrato + following
-//       • Etapa 3 (rankings): marketplace (streams/ELO) + artistas
-//       • Etapa 4 (secundário): top investments + tickets + externos + globais
-//   - 🆕 hideLoading movido para depois da Etapa 1 (app fica usável mais rápido)
+//   - 🆕 hideLoading movido para depois da Etapa 1 (app usável mais rápido)
 //   - 🆕 try/catch por etapa (falha de uma não bloqueia as outras)
-//   - 🆕 Logs por etapa para debug
-//   - 🔧 Alinhamento de versão com backend v9.8.3
-//
-// MUDANÇAS v9.8.1:
-//   - FIX: registerServiceWorker() idempotente (não registra 2x)
-//   - FIX: updatefound → SKIP_WAITING automático (SW assume na hora)
-//   - FIX: controllerchange → reload 1x (antes ficava "sem reload")
-//   - FIX: __swRefreshing guard evita loop de reload
-//
-// MUDANÇAS v9.8.0:
-//   - ETAPA 7: verificação periódica de update (30 min)
-//   - ETAPA 7: verificação ao voltar o foco para a aba
-//   - SW detecta nova versão automaticamente
-//
-// MUDANÇAS v9.7.0:
-//   - SERVICE WORKER: detecção de update + toast "Nova versão"
-//   - controllerchange → reload automático após ativação
-//   - Registro do SW centralizado (registerServiceWorker)
-//
-// MUDANÇAS v9.6.0:
-//   - REMOVIDO: balão flutuante do canto inferior direito
-//   - MOVIDO: botão "Instalar App" para o SIDEBAR
-//   - ID mudou de installAppBtn → installNavItem
-//   - setupInstallButton() agora controla o item do menu
-//
-// MUDANÇAS v9.5.0:
-//   - CORRIGIDO: showModal(id) — compatível com modals.js v9.0.0
-//   - CORRIGIDO: installApp sobrescreve a versão do modals.js
-//   - Modal de instruções criado DINAMICAMENTE (com ID fixo)
 // ============================================================
 
 // ============================================================
@@ -149,7 +123,7 @@ function setupStatusBar() {
 }
 
 // ============================================================
-// SPLASH SCREEN (esconder quando o app estiver pronto)
+// SPLASH SCREEN
 // ============================================================
 function hideSplashScreen() {
   const splash = document.getElementById('loadingScreen');
@@ -190,7 +164,7 @@ function blockNativeGestures() {
 }
 
 // ============================================================
-// DEEP LINKING (abrir direto numa seção via URL)
+// DEEP LINKING
 // ============================================================
 function handleDeepLink() {
   const params = new URLSearchParams(window.location.search);
@@ -226,7 +200,7 @@ function handleDeepLink() {
 }
 
 // ============================================================
-// SERVICE WORKER — registro + detecção de update (v9.8.2)
+// SERVICE WORKER — registro + detecção de update
 // ============================================================
 let __swRegistered = false;
 let __swRefreshing = false;
@@ -235,7 +209,6 @@ const __swHadController = !!navigator.serviceWorker.controller;
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
 
-  // 🔒 idempotente: só registra uma vez por sessão de página
   if (__swRegistered) return;
   __swRegistered = true;
 
@@ -246,12 +219,10 @@ function registerServiceWorker() {
     .then((registration) => {
       console.log('✅ [SW] registrado. Scope:', registration.scope);
 
-      // Checa update a cada 30s
       setInterval(() => {
         registration.update().catch(() => {});
       }, 30000);
 
-      // Detecta novo SW sendo instalado
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
         if (!newWorker) return;
@@ -269,7 +240,6 @@ function registerServiceWorker() {
         });
       });
 
-      // Verificação ao voltar o foco para a aba
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
           registration.update().catch(() => {});
@@ -280,7 +250,6 @@ function registerServiceWorker() {
       console.error('❌ [SW] falha no registro:', err);
     });
 
-  // 🔄 quando o novo SW assume o controle → recarrega UMA vez
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (__swRefreshing) return;
 
@@ -305,7 +274,6 @@ window.initializeApp = async function () {
   updateUserInterface();
   await loadAllData();
 
-  // 🔥 re-render das seções após loadAllData
   try {
     if (typeof window.renderMarketplace === 'function') window.renderMarketplace();
     if (typeof window.renderGlobalPlaylists === 'function') window.renderGlobalPlaylists();
@@ -324,21 +292,13 @@ window.initializeApp = async function () {
 };
 
 // ============================================================
-// 🆕 v9.8.4 — CARREGAR DADOS EM 4 ETAPAS SEQUENCIAIS
-// ------------------------------------------------------------
-// Etapa 1 (crítica)   → app fica usável; hideLoading aqui
-// Etapa 2 (usuário)   → dados financeiros do usuário
-// Etapa 3 (rankings)  → marketplace + streams + ELO + artistas
-// Etapa 4 (secundário)→ top investments, tickets, externos, globais
-//
-// Cada etapa roda em paralelo INTERNO (Promise.all),
-// mas as etapas rodam em SEQUÊNCIA para não saturar a Vercel.
+// CARREGAR DADOS EM 4 ETAPAS SEQUENCIAIS
 // ============================================================
 window.loadAllData = async function () {
   showLoading('Carregando dados...');
 
   // ------------------------------------------------------------
-  // ETAPA 1 — CRÍTICA (app fica usável aqui)
+  // ETAPA 1 — CRÍTICA
   // ------------------------------------------------------------
   try {
     console.log('📦 [app] Etapa 1/4 — dados críticos');
@@ -346,7 +306,6 @@ window.loadAllData = async function () {
       updateBalanceDisplay(),
       loadUserPlaylists(),
       (async () => {
-        // get_musicas direto (não depende de loadMarketplace)
         try {
           if (typeof callAPI === 'function') {
             const r = await callAPI('get_musicas');
@@ -366,7 +325,6 @@ window.loadAllData = async function () {
     console.warn('⚠️ [app] Etapa 1 falhou:', e.message);
   }
 
-  // 🔓 Libera a UI AGORA — app usável, resto roda em background
   hideLoading();
 
   // ------------------------------------------------------------
@@ -389,7 +347,7 @@ window.loadAllData = async function () {
   try {
     console.log('📦 [app] Etapa 3/4 — rankings e artistas');
     await Promise.allSettled([
-      loadMarketplace(),  // dispara streams + ELO internamente
+      loadMarketplace(),
       loadArtists()
     ]);
   } catch (e) {
@@ -416,11 +374,17 @@ window.loadAllData = async function () {
   // ------------------------------------------------------------
   try {
     if (state.currentUser && state.currentUser.tipo === 'artista') {
-      await loadArtistData();
+      // 🐛 v9.8.5 — protege contra função inexistente
+      if (typeof loadArtistData === 'function') {
+        await loadArtistData();
+      }
     }
 
     if (state.currentUser && state.currentUser.tipo === 'admin') {
-      await loadAdminData();
+      // 🐛 v9.8.5 — protege contra função inexistente
+      if (typeof loadAdminData === 'function') {
+        await loadAdminData();
+      }
     }
   } catch (e) {
     console.warn('⚠️ [app] pós-etapas falhou:', e.message);
@@ -431,29 +395,94 @@ window.loadAllData = async function () {
 };
 
 // ============================================================
+// 🆕 v9.8.5 — HEALTH CHECK COM BACKOFF EXPONENCIAL
+// ------------------------------------------------------------
+// Antes: rodava a cada 3 min sem backoff.
+// Agora: se falhar, espera 2x mais antes de tentar de novo.
+// Ao voltar a funcionar, volta ao intervalo normal.
+// ============================================================
+(function setupHealthCheckWithBackoff() {
+  var _baseInterval = 180000;   // 3 min (original)
+  var _maxInterval = 1800000;   // 30 min (máximo)
+  var _currentInterval = _baseInterval;
+  var _timer = null;
+  var _consecutiveFails = 0;
+
+  function runCheck() {
+    if (typeof HealthCheck === 'undefined' || typeof HealthCheck.runAll !== 'function') {
+      console.warn('⚠️ [app] HealthCheck não disponível');
+      return;
+    }
+
+    Promise.resolve()
+      .then(function () { return HealthCheck.runAll(); })
+      .then(function (result) {
+        // Se retornou com sucesso, reseta o intervalo
+        if (result && (result.vercel || result.gas)) {
+          if (_consecutiveFails > 0) {
+            console.log('✅ [app] HealthCheck recuperado após', _consecutiveFails, 'falhas');
+          }
+          _consecutiveFails = 0;
+          _currentInterval = _baseInterval;
+        } else {
+          _consecutiveFails++;
+          _currentInterval = Math.min(_baseInterval * Math.pow(2, _consecutiveFails), _maxInterval);
+          console.warn('⚠️ [app] HealthCheck falhou', _consecutiveFails, 'vezes — próximo em', Math.round(_currentInterval / 1000), 's');
+        }
+      })
+      .catch(function () {
+        _consecutiveFails++;
+        _currentInterval = Math.min(_baseInterval * Math.pow(2, _consecutiveFails), _maxInterval);
+        console.warn('⚠️ [app] HealthCheck erro', _consecutiveFails, '— próximo em', Math.round(_currentInterval / 1000), 's');
+      })
+      .finally(function () {
+        scheduleNext();
+      });
+  }
+
+  function scheduleNext() {
+    if (_timer) clearTimeout(_timer);
+    _timer = setTimeout(runCheck, _currentInterval);
+  }
+
+  // Expõe pra debug
+  window._healthCheck = {
+    run: runCheck,
+    stop: function () { if (_timer) clearTimeout(_timer); _timer = null; },
+    getStatus: function () {
+      return {
+        currentInterval: _currentInterval,
+        consecutiveFails: _consecutiveFails,
+        baseInterval: _baseInterval,
+        maxInterval: _maxInterval
+      };
+    }
+  };
+
+  // Primeira execução (após 3s pra não competir com o boot)
+  setTimeout(runCheck, 3000);
+})();
+
+// ============================================================
 // BOOTSTRAP — DISPARA QUANDO O DOM ESTIVER PRONTO
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('🚀 PLAY MY v' + CONFIG.VERSION + ' — Modular');
+  console.log('🚀 PLAY MY v' + (window.CONFIG && window.CONFIG.VERSION ? CONFIG.VERSION : '?') + ' — Modular');
   console.log('📱 Plataforma:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
 
   applySafeAreas();
   setupStatusBar();
   blockNativeGestures();
 
-  // SW com detecção de update (idempotente — pode chamar aqui e no initializeApp)
   registerServiceWorker();
 
-  // 1. Health check inicial
-  HealthCheck.runAll().catch(() => {});
+  // Health check inicial (uma vez)
+  if (typeof HealthCheck !== 'undefined' && typeof HealthCheck.runAll === 'function') {
+    HealthCheck.runAll().catch(() => {});
+  }
 
-  // 2. Health check periódico (a cada 3 minutos)
-  setInterval(() => HealthCheck.runAll(), 180000);
-
-  // 3. Configura item de instalação no sidebar
   setupInstallButton();
 
-  // 4. Restaura sessão salva
   const restored = restoreSession();
 
   if (restored) {
@@ -465,10 +494,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ============================================================
-// PWA — INSTALAÇÃO INTELIGENTE via SIDEBAR (v9.6.0)
+// PWA — INSTALAÇÃO INTELIGENTE via SIDEBAR
 // ============================================================
-
-// Detecta se o app já está instalado
 function isPWAInstalled() {
   return window.matchMedia('(display-mode: standalone)').matches ||
          window.navigator.standalone === true ||
@@ -476,7 +503,6 @@ function isPWAInstalled() {
          (window.Capacitor && window.Capacitor.isNative);
 }
 
-// Mostra/esconde o ITEM DE INSTALAÇÃO NO SIDEBAR
 function setupInstallButton() {
   const navItem = document.getElementById('installNavItem');
   if (!navItem) return;
@@ -489,7 +515,6 @@ function setupInstallButton() {
   navItem.style.display = 'block';
 }
 
-// Prompt nativo disponível (Android Chrome)
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   state.deferredInstallPrompt = e;
@@ -497,7 +522,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
   setupInstallButton();
 });
 
-// App instalado
 window.addEventListener('appinstalled', () => {
   console.log('✅ PWA: app instalado');
   state.deferredInstallPrompt = null;
@@ -511,10 +535,9 @@ window.addEventListener('appinstalled', () => {
 });
 
 // ============================================================
-// INSTALAÇÃO — FLUXO INTELIGENTE (v9.6.0)
+// INSTALAÇÃO — FLUXO INTELIGENTE
 // ============================================================
 window.installApp = async function () {
-  // 1. Já é nativo (Capacitor/TWA)
   if (APP_ENV.isNative) {
     if (typeof showToast === 'function') {
       showToast('Você já está usando o app nativo!', 'success');
@@ -522,7 +545,6 @@ window.installApp = async function () {
     return;
   }
 
-  // 2. Já está instalado como PWA
   if (isPWAInstalled()) {
     if (typeof showToast === 'function') {
       showToast('O app já está instalado! Procure o ícone PLAY MY.', 'success');
@@ -530,7 +552,6 @@ window.installApp = async function () {
     return;
   }
 
-  // 3. Prompt nativo (Android Chrome) — 1 toque
   if (state.deferredInstallPrompt) {
     try {
       state.deferredInstallPrompt.prompt();
@@ -555,12 +576,11 @@ window.installApp = async function () {
     }
   }
 
-  // 4. Fallback: modal com instruções por plataforma
   showInstallInstructions();
 };
 
 // ============================================================
-// MODAL DE INSTRUÇÕES — CRIA DINAMICAMENTE
+// MODAL DE INSTRUÇÕES
 // ============================================================
 function showInstallInstructions() {
   const ua = navigator.userAgent || '';
@@ -659,150 +679,165 @@ function showInstallInstructions() {
 }
 
 // ============================================================
-// ALIASES GLOBAIS (compatibilidade total com HTML inline)
+// 🆕 v9.8.5 — ALIASES GLOBAIS SEGUROS
+// ------------------------------------------------------------
+// ANTES: `window.X = window.X || X;` → se `X` não existir,
+//        lança ReferenceError e QUEBRA o carregamento do app.
+//
+// AGORA: `if (typeof X !== 'undefined') window.X = window.X || X;`
+//        → se `X` não existir, simplesmente não faz nada.
 // ============================================================
+(function installSafeAliases() {
+  function alias(name, fn) {
+    if (typeof fn === 'function') {
+      window[name] = window[name] || fn;
+    }
+  }
 
-// Auth (auth.js)
-window.handleLogin = window.handleLogin || handleLogin;
-window.handleRegister = window.handleRegister || handleRegister;
-window.logout = window.logout || logout;
-window.openResetPasswordModal = window.openResetPasswordModal || openResetPasswordModal;
-window.sendResetEmail = window.sendResetEmail || sendResetEmail;
-window.showRegisterForm = window.showRegisterForm || showRegisterForm;
-window.showLoginForm = window.showLoginForm || showLoginForm;
-window.toggleArtistField = window.toggleArtistField || toggleArtistField;
+  // Auth
+  alias('handleLogin', typeof handleLogin !== 'undefined' ? handleLogin : null);
+  alias('handleRegister', typeof handleRegister !== 'undefined' ? handleRegister : null);
+  alias('logout', typeof logout !== 'undefined' ? logout : null);
+  alias('openResetPasswordModal', typeof openResetPasswordModal !== 'undefined' ? openResetPasswordModal : null);
+  alias('sendResetEmail', typeof sendResetEmail !== 'undefined' ? sendResetEmail : null);
+  alias('showRegisterForm', typeof showRegisterForm !== 'undefined' ? showRegisterForm : null);
+  alias('showLoginForm', typeof showLoginForm !== 'undefined' ? showLoginForm : null);
+  alias('toggleArtistField', typeof toggleArtistField !== 'undefined' ? toggleArtistField : null);
 
-// Modals (modals.js)
-window.showModal = window.showModal || showModal;
-window.closeModal = window.closeModal || closeModal;
-window.updateUserInterface = window.updateUserInterface || updateUserInterface;
-window.updateBalanceDisplay = window.updateBalanceDisplay || updateBalanceDisplay;
-window.openAddBalanceModal = window.openAddBalanceModal || openAddBalanceModal;
-window.setBalanceAmount = window.setBalanceAmount || setBalanceAmount;
-window.processBalanceAdd = window.processBalanceAdd || processBalanceAdd;
-window.openWithdrawalModal = window.openWithdrawalModal || openWithdrawalModal;
-window.requestWithdrawal = window.requestWithdrawal || requestWithdrawal;
+  // Modals
+  alias('showModal', typeof showModal !== 'undefined' ? showModal : null);
+  alias('closeModal', typeof closeModal !== 'undefined' ? closeModal : null);
+  alias('updateUserInterface', typeof updateUserInterface !== 'undefined' ? updateUserInterface : null);
+  alias('updateBalanceDisplay', typeof updateBalanceDisplay !== 'undefined' ? updateBalanceDisplay : null);
+  alias('openAddBalanceModal', typeof openAddBalanceModal !== 'undefined' ? openAddBalanceModal : null);
+  alias('setBalanceAmount', typeof setBalanceAmount !== 'undefined' ? setBalanceAmount : null);
+  alias('processBalanceAdd', typeof processBalanceAdd !== 'undefined' ? processBalanceAdd : null);
+  alias('openWithdrawalModal', typeof openWithdrawalModal !== 'undefined' ? openWithdrawalModal : null);
+  alias('requestWithdrawal', typeof requestWithdrawal !== 'undefined' ? requestWithdrawal : null);
 
-// Marketplace (marketplace.js)
-window.changeSection = window.changeSection || changeSection;
-window.toggleSidebar = window.toggleSidebar || toggleSidebar;
-window.loadMarketplace = window.loadMarketplace || loadMarketplace;
-window.loadExternalMarketplace = window.loadExternalMarketplace || loadExternalMarketplace;
-window.loadTopInvestments = window.loadTopInvestments || loadTopInvestments;
-window.loadUserPlaylists = window.loadUserPlaylists || loadUserPlaylists;
-window.loadGlobalPlaylists = window.loadGlobalPlaylists || loadGlobalPlaylists;
-window.loadArtists = window.loadArtists || loadArtists;
-window.loadFollowing = window.loadFollowing || loadFollowing;
-window.loadTickets = window.loadTickets || loadTickets;
-window.renderMarketplace = window.renderMarketplace || renderMarketplace;
-window.renderRecommended = window.renderRecommended || renderRecommended;
-window.renderExternalMarketplace = window.renderExternalMarketplace || renderExternalMarketplace;
-window.renderTopInvestments = window.renderTopInvestments || renderTopInvestments;
-window.renderArtists = window.renderArtists || renderArtists;
-window.renderFeaturedArtists = window.renderFeaturedArtists || renderFeaturedArtists;
-window.renderPlaylists = window.renderPlaylists || renderPlaylists;
-window.renderFavorites = window.renderFavorites || renderFavorites;
-window.renderGlobalPlaylists = window.renderGlobalPlaylists || renderGlobalPlaylists;
-window.renderAdminGlobalPlaylists = window.renderAdminGlobalPlaylists || renderAdminGlobalPlaylists;
-window.renderTickets = window.renderTickets || renderTickets;
-window.performSearch = window.performSearch || performSearch;
-window.displaySearchResults = window.displaySearchResults || displaySearchResults;
-window.openInvestModal = window.openInvestModal || openInvestModal;
-window.updateInvestmentTotal = window.updateInvestmentTotal || updateInvestmentTotal;
-window.adjustQuantity = window.adjustQuantity || adjustQuantity;
-window.confirmInvestment = window.confirmInvestment || confirmInvestment;
-window.openInvestExternalModal = window.openInvestExternalModal || openInvestExternalModal;
-window.updateExternalInvestmentTotal = window.updateExternalInvestmentTotal || updateExternalInvestmentTotal;
-window.adjustExternalQuantity = window.adjustExternalQuantity || adjustExternalQuantity;
-window.confirmExternalInvestment = window.confirmExternalInvestment || confirmExternalInvestment;
-window.openAddExternalMusicModal = window.openAddExternalMusicModal || openAddExternalMusicModal;
-window.submitExternalMusic = window.submitExternalMusic || submitExternalMusic;
-window.openAddMusicModal = window.openAddMusicModal || openAddMusicModal;
-window.analisarVideoYouTube = window.analisarVideoYouTube || analisarVideoYouTube;
-window.finalizarCadastroComYouTube = window.finalizarCadastroComYouTube || finalizarCadastroComYouTube;
-window.openCreatePlaylistModal = window.openCreatePlaylistModal || openCreatePlaylistModal;
-window.createPlaylist = window.createPlaylist || createPlaylist;
-window.playUserPlaylist = window.playUserPlaylist || playUserPlaylist;
-window.openCreateGlobalPlaylistModal = window.openCreateGlobalPlaylistModal || openCreateGlobalPlaylistModal;
-window.createGlobalPlaylist = window.createGlobalPlaylist || createGlobalPlaylist;
-window.openManageGlobalPlaylist = window.openManageGlobalPlaylist || openManageGlobalPlaylist;
-window.addMusicToGlobalPlaylist = window.addMusicToGlobalPlaylist || addMusicToGlobalPlaylist;
-window.removeMusicFromGlobalPlaylist = window.removeMusicFromGlobalPlaylist || removeMusicFromGlobalPlaylist;
-window.playGlobalPlaylist = window.playGlobalPlaylist || playGlobalPlaylist;
-window.openCreateTicketModal = window.openCreateTicketModal || openCreateTicketModal;
-window.createTicket = window.createTicket || createTicket;
-window.redeemTicket = window.redeemTicket || redeemTicket;
-window.toggleFollow = window.toggleFollow || toggleFollow;
-window.toggleFavoriteMusic = window.toggleFavoriteMusic || toggleFavoriteMusic;
+  // Marketplace
+  alias('changeSection', typeof changeSection !== 'undefined' ? changeSection : null);
+  alias('toggleSidebar', typeof toggleSidebar !== 'undefined' ? toggleSidebar : null);
+  alias('loadMarketplace', typeof loadMarketplace !== 'undefined' ? loadMarketplace : null);
+  alias('loadExternalMarketplace', typeof loadExternalMarketplace !== 'undefined' ? loadExternalMarketplace : null);
+  alias('loadTopInvestments', typeof loadTopInvestments !== 'undefined' ? loadTopInvestments : null);
+  alias('loadUserPlaylists', typeof loadUserPlaylists !== 'undefined' ? loadUserPlaylists : null);
+  alias('loadGlobalPlaylists', typeof loadGlobalPlaylists !== 'undefined' ? loadGlobalPlaylists : null);
+  alias('loadArtists', typeof loadArtists !== 'undefined' ? loadArtists : null);
+  alias('loadFollowing', typeof loadFollowing !== 'undefined' ? loadFollowing : null);
+  alias('loadTickets', typeof loadTickets !== 'undefined' ? loadTickets : null);
+  alias('renderMarketplace', typeof renderMarketplace !== 'undefined' ? renderMarketplace : null);
+  alias('renderRecommended', typeof renderRecommended !== 'undefined' ? renderRecommended : null);
+  alias('renderExternalMarketplace', typeof renderExternalMarketplace !== 'undefined' ? renderExternalMarketplace : null);
+  alias('renderTopInvestments', typeof renderTopInvestments !== 'undefined' ? renderTopInvestments : null);
+  alias('renderArtists', typeof renderArtists !== 'undefined' ? renderArtists : null);
+  alias('renderFeaturedArtists', typeof renderFeaturedArtists !== 'undefined' ? renderFeaturedArtists : null);
+  alias('renderPlaylists', typeof renderPlaylists !== 'undefined' ? renderPlaylists : null);
+  alias('renderFavorites', typeof renderFavorites !== 'undefined' ? renderFavorites : null);
+  alias('renderGlobalPlaylists', typeof renderGlobalPlaylists !== 'undefined' ? renderGlobalPlaylists : null);
+  alias('renderAdminGlobalPlaylists', typeof renderAdminGlobalPlaylists !== 'undefined' ? renderAdminGlobalPlaylists : null);
+  alias('renderTickets', typeof renderTickets !== 'undefined' ? renderTickets : null);
+  alias('performSearch', typeof performSearch !== 'undefined' ? performSearch : null);
+  alias('displaySearchResults', typeof displaySearchResults !== 'undefined' ? displaySearchResults : null);
+  alias('openInvestModal', typeof openInvestModal !== 'undefined' ? openInvestModal : null);
+  alias('updateInvestmentTotal', typeof updateInvestmentTotal !== 'undefined' ? updateInvestmentTotal : null);
+  alias('adjustQuantity', typeof adjustQuantity !== 'undefined' ? adjustQuantity : null);
+  alias('confirmInvestment', typeof confirmInvestment !== 'undefined' ? confirmInvestment : null);
+  alias('openInvestExternalModal', typeof openInvestExternalModal !== 'undefined' ? openInvestExternalModal : null);
+  alias('updateExternalInvestmentTotal', typeof updateExternalInvestmentTotal !== 'undefined' ? updateExternalInvestmentTotal : null);
+  alias('adjustExternalQuantity', typeof adjustExternalQuantity !== 'undefined' ? adjustExternalQuantity : null);
+  alias('confirmExternalInvestment', typeof confirmExternalInvestment !== 'undefined' ? confirmExternalInvestment : null);
+  alias('openAddExternalMusicModal', typeof openAddExternalMusicModal !== 'undefined' ? openAddExternalMusicModal : null);
+  alias('submitExternalMusic', typeof submitExternalMusic !== 'undefined' ? submitExternalMusic : null);
+  alias('openAddMusicModal', typeof openAddMusicModal !== 'undefined' ? openAddMusicModal : null);
+  alias('analisarVideoYouTube', typeof analisarVideoYouTube !== 'undefined' ? analisarVideoYouTube : null);
+  alias('finalizarCadastroComYouTube', typeof finalizarCadastroComYouTube !== 'undefined' ? finalizarCadastroComYouTube : null);
+  alias('openCreatePlaylistModal', typeof openCreatePlaylistModal !== 'undefined' ? openCreatePlaylistModal : null);
+  alias('createPlaylist', typeof createPlaylist !== 'undefined' ? createPlaylist : null);
+  alias('playUserPlaylist', typeof playUserPlaylist !== 'undefined' ? playUserPlaylist : null);
+  alias('openCreateGlobalPlaylistModal', typeof openCreateGlobalPlaylistModal !== 'undefined' ? openCreateGlobalPlaylistModal : null);
+  alias('createGlobalPlaylist', typeof createGlobalPlaylist !== 'undefined' ? createGlobalPlaylist : null);
+  alias('openManageGlobalPlaylist', typeof openManageGlobalPlaylist !== 'undefined' ? openManageGlobalPlaylist : null);
+  alias('addMusicToGlobalPlaylist', typeof addMusicToGlobalPlaylist !== 'undefined' ? addMusicToGlobalPlaylist : null);
+  alias('removeMusicFromGlobalPlaylist', typeof removeMusicFromGlobalPlaylist !== 'undefined' ? removeMusicFromGlobalPlaylist : null);
+  alias('playGlobalPlaylist', typeof playGlobalPlaylist !== 'undefined' ? playGlobalPlaylist : null);
+  alias('openCreateTicketModal', typeof openCreateTicketModal !== 'undefined' ? openCreateTicketModal : null);
+  alias('createTicket', typeof createTicket !== 'undefined' ? createTicket : null);
+  alias('redeemTicket', typeof redeemTicket !== 'undefined' ? redeemTicket : null);
+  alias('toggleFollow', typeof toggleFollow !== 'undefined' ? toggleFollow : null);
+  alias('toggleFavoriteMusic', typeof toggleFavoriteMusic !== 'undefined' ? toggleFavoriteMusic : null);
 
-// Portfolio (portfolio.js)
-window.loadPortfolio = window.loadPortfolio || loadPortfolio;
-window.loadLedger = window.loadLedger || loadLedger;
-window.loadArtistData = window.loadArtistData || loadArtistData;
-window.loadAdminData = window.loadAdminData || loadAdminData;
-window.renderPortfolio = window.renderPortfolio || renderPortfolio;
-window.updatePortfolioValue = window.updatePortfolioValue || updatePortfolioValue;
-window.updatePortfolioMetrics = window.updatePortfolioMetrics || updatePortfolioMetrics;
-window.renderLedger = window.renderLedger || renderLedger;
-window.renderArtistMusic = window.renderArtistMusic || renderArtistMusic;
-window.loadDividends = window.loadDividends || loadDividends;
-window.carregarELOsEValuations = window.carregarELOsEValuations || carregarELOsEValuations;
+  // Portfolio
+  alias('loadPortfolio', typeof loadPortfolio !== 'undefined' ? loadPortfolio : null);
+  alias('loadLedger', typeof loadLedger !== 'undefined' ? loadLedger : null);
+  alias('loadArtistData', typeof loadArtistData !== 'undefined' ? loadArtistData : null);
+  alias('loadAdminData', typeof loadAdminData !== 'undefined' ? loadAdminData : null);
+  alias('renderPortfolio', typeof renderPortfolio !== 'undefined' ? renderPortfolio : null);
+  alias('updatePortfolioValue', typeof updatePortfolioValue !== 'undefined' ? updatePortfolioValue : null);
+  alias('updatePortfolioMetrics', typeof updatePortfolioMetrics !== 'undefined' ? updatePortfolioMetrics : null);
+  alias('renderLedger', typeof renderLedger !== 'undefined' ? renderLedger : null);
+  alias('renderArtistMusic', typeof renderArtistMusic !== 'undefined' ? renderArtistMusic : null);
+  alias('loadDividends', typeof loadDividends !== 'undefined' ? loadDividends : null);
+  alias('carregarELOsEValuations', typeof carregarELOsEValuations !== 'undefined' ? carregarELOsEValuations : null);
 
-// Sell modal (portfolio.js v9.4.0)
-window.openSellModal = window.openSellModal || openSellModal;
-window.updateSellTotal = window.updateSellTotal || updateSellTotal;
-window.adjustSellQuantity = window.adjustSellQuantity || adjustSellQuantity;
-window.setSellPrice = window.setSellPrice || setSellPrice;
-window.confirmSell = window.confirmSell || confirmSell;
+  // Sell modal
+  alias('openSellModal', typeof openSellModal !== 'undefined' ? openSellModal : null);
+  alias('updateSellTotal', typeof updateSellTotal !== 'undefined' ? updateSellTotal : null);
+  alias('adjustSellQuantity', typeof adjustSellQuantity !== 'undefined' ? adjustSellQuantity : null);
+  alias('setSellPrice', typeof setSellPrice !== 'undefined' ? setSellPrice : null);
+  alias('confirmSell', typeof confirmSell !== 'undefined' ? confirmSell : null);
 
-// Trades (trades.js)
-window.openTradeModal = window.openTradeModal || openTradeModal;
-window.createTradeOffer = window.createTradeOffer || createTradeOffer;
-window.loadTradeOffers = window.loadTradeOffers || loadTradeOffers;
-window.renderTrades = window.renderTrades || renderTrades;
-window.renderTradeCard = window.renderTradeCard || renderTradeCard;
-window.acceptTradeOffer = window.acceptTradeOffer || acceptTradeOffer;
-window.declineTradeOffer = window.declineTradeOffer || declineTradeOffer;
-window.cancelTradeOffer = window.cancelTradeOffer || cancelTradeOffer;
+  // Trades
+  alias('openTradeModal', typeof openTradeModal !== 'undefined' ? openTradeModal : null);
+  alias('createTradeOffer', typeof createTradeOffer !== 'undefined' ? createTradeOffer : null);
+  alias('loadTradeOffers', typeof loadTradeOffers !== 'undefined' ? loadTradeOffers : null);
+  alias('renderTrades', typeof renderTrades !== 'undefined' ? renderTrades : null);
+  alias('renderTradeCard', typeof renderTradeCard !== 'undefined' ? renderTradeCard : null);
+  alias('acceptTradeOffer', typeof acceptTradeOffer !== 'undefined' ? acceptTradeOffer : null);
+  alias('declineTradeOffer', typeof declineTradeOffer !== 'undefined' ? declineTradeOffer : null);
+  alias('cancelTradeOffer', typeof cancelTradeOffer !== 'undefined' ? cancelTradeOffer : null);
 
-// Blockchain (blockchain.js)
-window.openBlockchainExplorer = window.openBlockchainExplorer || openBlockchainExplorer;
-window.loadBlockchainData = window.loadBlockchainData || loadBlockchainData;
+  // Blockchain
+  alias('openBlockchainExplorer', typeof openBlockchainExplorer !== 'undefined' ? openBlockchainExplorer : null);
+  alias('loadBlockchainData', typeof loadBlockchainData !== 'undefined' ? loadBlockchainData : null);
 
-// News (news-unified.js)
-window.pmNewsReload = window.pmNewsReload || function () {};
-window.pmNewsLoadMore = window.pmNewsLoadMore || function () {};
+  // News (stub se não existir)
+  window.pmNewsReload = window.pmNewsReload || function () {};
+  window.pmNewsLoadMore = window.pmNewsLoadMore || function () {};
 
-// Player (player.js)
-window.playTrack = window.playTrack || playTrack;
-window.playExternalTrack = window.playExternalTrack || playExternalTrack;
-window.playSearchResult = window.playSearchResult || playSearchResult;
-window.togglePlay = window.togglePlay || togglePlay;
-window.playNext = window.playNext || playNext;
-window.playPrevious = window.playPrevious || playPrevious;
-window.updatePlayerIcons = window.updatePlayerIcons || updatePlayerIcons;
-window.toggleMute = window.toggleMute || toggleMute;
-window.handleVolumeClick = window.handleVolumeClick || handleVolumeClick;
-window.handleProgressClick = window.handleProgressClick || handleProgressClick;
-window.handleExpandedProgressClick = window.handleExpandedProgressClick || handleExpandedProgressClick;
-window.toggleShuffle = window.toggleShuffle || toggleShuffle;
-window.toggleRepeat = window.toggleRepeat || toggleRepeat;
-window.toggleFavorite = window.toggleFavorite || toggleFavorite;
-window.openPlayerExpanded = window.openPlayerExpanded || openPlayerExpanded;
-window.closePlayerExpanded = window.closePlayerExpanded || closePlayerExpanded;
+  // Player
+  alias('playTrack', typeof playTrack !== 'undefined' ? playTrack : null);
+  alias('playExternalTrack', typeof playExternalTrack !== 'undefined' ? playExternalTrack : null);
+  alias('playSearchResult', typeof playSearchResult !== 'undefined' ? playSearchResult : null);
+  alias('togglePlay', typeof togglePlay !== 'undefined' ? togglePlay : null);
+  alias('playNext', typeof playNext !== 'undefined' ? playNext : null);
+  alias('playPrevious', typeof playPrevious !== 'undefined' ? playPrevious : null);
+  alias('updatePlayerIcons', typeof updatePlayerIcons !== 'undefined' ? updatePlayerIcons : null);
+  alias('toggleMute', typeof toggleMute !== 'undefined' ? toggleMute : null);
+  alias('handleVolumeClick', typeof handleVolumeClick !== 'undefined' ? handleVolumeClick : null);
+  alias('handleProgressClick', typeof handleProgressClick !== 'undefined' ? handleProgressClick : null);
+  alias('handleExpandedProgressClick', typeof handleExpandedProgressClick !== 'undefined' ? handleExpandedProgressClick : null);
+  alias('toggleShuffle', typeof toggleShuffle !== 'undefined' ? toggleShuffle : null);
+  alias('toggleRepeat', typeof toggleRepeat !== 'undefined' ? toggleRepeat : null);
+  alias('toggleFavorite', typeof toggleFavorite !== 'undefined' ? toggleFavorite : null);
+  alias('openPlayerExpanded', typeof openPlayerExpanded !== 'undefined' ? openPlayerExpanded : null);
+  alias('closePlayerExpanded', typeof closePlayerExpanded !== 'undefined' ? closePlayerExpanded : null);
 
-// YouTube (youtube.js)
-window.searchYouTubeDirect = window.searchYouTubeDirect || searchYouTubeDirect;
-window.loadYouTubeAPI = window.loadYouTubeAPI || loadYouTubeAPI;
-window.initializeYouTubePlayer = window.initializeYouTubePlayer || initializeYouTubePlayer;
-window.updatePlayerProgress = window.updatePlayerProgress || updatePlayerProgress;
+  // YouTube
+  alias('searchYouTubeDirect', typeof searchYouTubeDirect !== 'undefined' ? searchYouTubeDirect : null);
+  alias('loadYouTubeAPI', typeof loadYouTubeAPI !== 'undefined' ? loadYouTubeAPI : null);
+  alias('initializeYouTubePlayer', typeof initializeYouTubePlayer !== 'undefined' ? initializeYouTubePlayer : null);
+  alias('updatePlayerProgress', typeof updatePlayerProgress !== 'undefined' ? updatePlayerProgress : null);
 
-// API (api.js)
-window.callAPI = window.callAPI || callAPI;
-window.getFallbackData = window.getFallbackData || getFallbackData;
+  // API
+  alias('callAPI', typeof callAPI !== 'undefined' ? callAPI : null);
+  alias('getFallbackData', typeof getFallbackData !== 'undefined' ? getFallbackData : null);
+
+  console.log('✅ [app] aliases globais instalados com segurança');
+})();
 
 // ============================================================
-// DEEP LINK — roda depois do boot
+// DEEP LINK
 // ============================================================
 window.addEventListener('load', () => {
   setTimeout(handleDeepLink, 1000);
@@ -811,7 +846,7 @@ window.addEventListener('load', () => {
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.8.4 carregado — 4 etapas de carregamento sequenciais');
+console.log('✅ [app.js] v9.8.5 carregado — 4 etapas + aliases seguros + health check com backoff');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
-console.log('📲 Instalação via sidebar ativa — v9.8.4');
+console.log('📲 Instalação via sidebar ativa — v9.8.5');
