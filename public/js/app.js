@@ -1,15 +1,22 @@
 // ============================================================
-// js/app.js — PLAY MY v9.8.5
+// js/app.js — PLAY MY v9.8.6
 // Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
 // + Detecção de app nativo (Capacitor/TWA)
 // + Safe areas (iPhone notch)
 // + Status bar dinâmica
 // + Splash screen handling
-// + Deep linking (?section=)
+// + Deep linking (?section=, ?music=ID)
 // + INSTALAÇÃO INTELIGENTE via SIDEBAR (sem balão flutuante)
 // + loadAllData em 4 ETAPAS SEQUENCIAIS
 // Depende de TODOS os módulos anteriores.
 // DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
+//
+// MUDANÇAS v9.8.6:
+//   - 🆕 Deep link ?music=ID integrado na Etapa 1 do loadAllData
+//        (toca automaticamente ao abrir /?music=123)
+//   - 🆕 Fallback de ?music=ID no handleDeepLink
+//        (caso a Etapa 1 falhe ou demore, tenta de novo no window.load)
+//   - ✅ NADA MAIS MUDOU — comportamento idêntico ao v9.8.5
 //
 // MUDANÇAS v9.8.5:
 //   - 🐛 FIX: aliases globais protegidos com typeof (evita ReferenceError
@@ -197,6 +204,36 @@ function handleDeepLink() {
       }
     }, 1000);
   }
+
+  // 🆕 v9.8.6 — Deep link /?music=ID (fallback)
+  // Roda no window.load. Se a Etapa 1 do loadAllData já tocou, este bloco
+  // detecta que a música já está tocando e NÃO retoca (evita duplo playTrack).
+  const musicId = params.get('music');
+  if (musicId && typeof state !== 'undefined' && Array.isArray(state.playlist)) {
+    const idx = state.playlist.findIndex(m => String(m.id) === String(musicId));
+    if (idx >= 0 && typeof playTrack === 'function') {
+      const current = state.playlist[state.currentTrackIndex];
+      const jaTocando = current && String(current.id) === String(musicId);
+
+      if (!jaTocando) {
+        setTimeout(() => {
+          try {
+            playTrack(idx);
+            console.log('🔗 [deep-link/fallback] tocando música', musicId, '→ índice', idx);
+            if (window.history && window.history.replaceState) {
+              window.history.replaceState({}, '', window.location.pathname);
+            }
+          } catch (e) {
+            console.warn('⚠️ [deep-link/fallback] falhou:', e);
+          }
+        }, 500);
+      } else {
+        console.log('🔗 [deep-link/fallback] música', musicId, 'já está tocando — ignorando');
+      }
+    } else {
+      console.warn('⚠️ [deep-link/fallback] música', musicId, 'não encontrada na playlist');
+    }
+  }
 }
 
 // ============================================================
@@ -313,6 +350,31 @@ window.loadAllData = async function () {
               state.playlist = r.data;
               if (typeof window.renderMarketplace === 'function') {
                 window.renderMarketplace();
+              }
+
+              // 🆕 v9.8.6 — Deep link /?music=ID
+              // Executa assim que a playlist existe, garantindo que a música
+              // está disponível para tocar. Limpa a query depois pra não
+              // retocar em refresh.
+              try {
+                const params = new URLSearchParams(window.location.search);
+                const musicId = params.get('music');
+                if (musicId) {
+                  const idx = state.playlist.findIndex(
+                    m => String(m.id) === String(musicId)
+                  );
+                  if (idx >= 0 && typeof playTrack === 'function') {
+                    console.log('🔗 [deep-link] tocando música', musicId, '→ índice', idx);
+                    playTrack(idx);
+                    if (window.history && window.history.replaceState) {
+                      window.history.replaceState({}, '', window.location.pathname);
+                    }
+                  } else {
+                    console.warn('⚠️ [deep-link] música', musicId, 'não encontrada na playlist');
+                  }
+                }
+              } catch (e) {
+                console.warn('⚠️ [deep-link] falhou:', e.message);
               }
             }
           }
@@ -846,7 +908,7 @@ window.addEventListener('load', () => {
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.8.5 carregado — 4 etapas + aliases seguros + health check com backoff');
+console.log('✅ [app.js] v9.8.6 carregado — 4 etapas + aliases seguros + health check com backoff + deep link ?music=ID');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
-console.log('📲 Instalação via sidebar ativa — v9.8.5');
+console.log('📲 Instalação via sidebar ativa — v9.8.6');
