@@ -1,87 +1,86 @@
 // ============================================================
 // api/s.js — PLAY MY
-// Rota canônica de compartilhamento /s/:id
-// Serve HTML com Open Graph tags dinâmicas
+// Rota canônica /s/:id — HTML com Open Graph dinâmico
 // ============================================================
 
-module.exports = async (req, res) => {
-    // Extrai o ID da URL: /s/123 → id = "123"
-    const segments = (req.url || '').split('/').filter(Boolean);
-    const musicId = segments[segments.length - 1] || 'unknown';
+const FALLBACK_ORIGIN = 'https://playmy.com.br';
+const FALLBACK_LOGO   = 'https://playmy.com.br/images/logo.png';
 
-    // Busca dados da música no backend principal
-    // (chamada server-side, rápida, com cache)
+module.exports = async (req, res) => {
+    // /s/123  →  rewrite manda ?id=123
+    // /api/s?id=123  →  query direto
+    const musicId =
+        (req.query && req.query.id) ||
+        (req.url || '').split('?')[0].split('/').filter(Boolean).pop() ||
+        'unknown';
+
+    // Base absoluta: prefere env var explícita, cai no domínio de produção
+    const origin =
+        process.env.PUBLIC_SITE_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : FALLBACK_ORIGIN);
+
     let musica = null;
     try {
-        const baseUrl = process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : 'https://playmy.com.br';
-        const r = await fetch(`${baseUrl}/api/backend?action=get_musicas`);
+        const r = await fetch(`${origin}/api/backend?action=get_musicas`, {
+            headers: { 'Accept': 'application/json' }
+        });
         const j = await r.json();
         if (j && j.success && Array.isArray(j.data)) {
-            musica = j.data.find(m => String(m.id) === String(musicId));
+            musica = j.data.find(m => String(m.id) === String(musicId)) || null;
         }
     } catch (e) {
-        console.warn('[s.js] falha ao buscar musica:', e.message);
+        console.warn('[s.js] fetch falhou:', e.message);
     }
 
-    // Fallback se não achar
-    const titulo   = (musica && musica.titulo)   || 'PLAY MY';
-    const artista  = (musica && musica.artista)  || 'Música sem limites';
-    const capa     = (musica && musica.link_capa) || 'https://playmy.com.br/images/logo.png';
+    const titulo    = (musica && musica.titulo)    || 'PLAY MY';
+    const artista   = (musica && musica.artista)   || 'Música sem limites';
+    const capa      = (musica && musica.link_capa) || FALLBACK_LOGO;
     const descricao = `${artista} — ouça no PLAY MY`;
-    const canonicalUrl = `https://playmy.com.br/s/${musicId}`;
-    const appUrl = `https://playmy.com.br/?music=${encodeURIComponent(musicId)}`;
+    const canonical = `${origin}/s/${encodeURIComponent(musicId)}`;
+    const appUrl    = `${origin}/?music=${encodeURIComponent(musicId)}`;
 
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escapeHtml(titulo)} — ${escapeHtml(artista)} | PLAY MY</title>
-<meta name="description" content="${escapeHtml(descricao)}">
+<title>${esc(titulo)} — ${esc(artista)} | PLAY MY</title>
+<meta name="description" content="${esc(descricao)}">
 
-<!-- Open Graph (WhatsApp / Facebook / LinkedIn) -->
 <meta property="og:type" content="music.song">
 <meta property="og:site_name" content="PLAY MY">
-<meta property="og:title" content="${escapeHtml(titulo)}">
-<meta property="og:description" content="${escapeHtml(descricao)}">
-<meta property="og:url" content="${canonicalUrl}">
-<meta property="og:image" content="${escapeHtml(capa)}">
+<meta property="og:title" content="${esc(titulo)}">
+<meta property="og:description" content="${esc(descricao)}">
+<meta property="og:url" content="${esc(canonical)}">
+<meta property="og:image" content="${esc(capa)}">
 <meta property="og:image:width" content="512">
 <meta property="og:image:height" content="512">
 <meta property="og:locale" content="pt_BR">
-<meta property="music:musician" content="${escapeHtml(artista)}">
 
-<!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${escapeHtml(titulo)}">
-<meta name="twitter:description" content="${escapeHtml(descricao)}">
-<meta name="twitter:image" content="${escapeHtml(capa)}">
+<meta name="twitter:title" content="${esc(titulo)}">
+<meta name="twitter:description" content="${esc(descricao)}">
+<meta name="twitter:image" content="${esc(capa)}">
 
-<!-- Canonical -->
-<link rel="canonical" href="${canonicalUrl}">
-
-<!-- Redirect para o app (com delay para OG crawlers lerem) -->
-<meta http-equiv="refresh" content="0; url=${appUrl}">
+<link rel="canonical" href="${esc(canonical)}">
 <style>
-  body { background:#000; color:#fff; font-family:-apple-system,sans-serif;
-         display:flex; align-items:center; justify-content:center;
-         height:100vh; margin:0; text-align:center; padding:20px; }
-  h1 { font-size:20px; margin-bottom:8px; }
-  p  { color:#8e8e93; }
-  a  { color:#34c759; font-weight:700; text-decoration:none; }
+  body{background:#000;color:#fff;font-family:-apple-system,sans-serif;
+       display:flex;align-items:center;justify-content:center;height:100vh;
+       margin:0;text-align:center;padding:20px}
+  h1{font-size:20px;margin:0 0 8px}
+  p{color:#8e8e93;margin:4px 0}
+  a{color:#34c759;font-weight:700;text-decoration:none}
 </style>
 </head>
 <body>
   <div>
-    <h1>${escapeHtml(titulo)}</h1>
-    <p>${escapeHtml(artista)}</p>
-    <p><a href="${appUrl}">▶ Abrir no PLAY MY</a></p>
+    <h1>${esc(titulo)}</h1>
+    <p>${esc(artista)}</p>
+    <p><a href="${esc(appUrl)}">▶ Abrir no PLAY MY</a></p>
   </div>
   <script>
-    // Redireciona usuários reais; OG crawlers leem o HTML e saem
-    setTimeout(() => { window.location.replace(${JSON.stringify(appUrl)}); }, 100);
+    // Crawlers OG leem o HTML e saem; usuário real é redirecionado.
+    setTimeout(function(){ window.location.replace(${JSON.stringify(appUrl)}); }, 100);
   </script>
 </body>
 </html>`;
@@ -91,7 +90,7 @@ module.exports = async (req, res) => {
     return res.status(200).send(html);
 };
 
-function escapeHtml(str) {
+function esc(str) {
     return String(str == null ? '' : str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
