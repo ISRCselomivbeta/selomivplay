@@ -1,22 +1,25 @@
 // ============================================================
-// js/news-unified.js — PLAY MY v10.3.1
+// js/news-unified.js — PLAY MY v10.4.0
 // Feed de notícias unificado: backend + RSS + og:image enrichment
 // + SVG fallback (inline)
 // + link sempre para Google News
 //
-// MUDANÇAS v10.3.1 (sequência recomendada — paridade com news.js):
-//   - 💾 saveSeen() agora limita state.seen a 1000 entradas
-//        (evita crescer infinito no localStorage)
-//   - ✅ Confirma esc() aplicado em titulo/texto/autor/fonte/link
-//        (XSS já estava coberto desde v10.3.0)
+// MUDANÇAS v10.4.0:
+//   - 🐛 FIX CRÍTICO: enrichWithOgImage agora usa `_linkOriginal || link`
+//        como fonte. Antes só funcionava com RSS (que cria _linkOriginal);
+//        notícias do backend ficavam sem imagem.
+//   - 🆕 enrichWithOgImage filtra links do Google News (não têm og:image)
+//   - 🆕 enrichWithOgImage loga quantas notícias já tinham imagem
+//   - 🆕 renderCard com onerror robusto (data-original-src + warn)
+//   - ✅ Mantém 100% compatibilidade com v10.3.1
+//
+// MUDANÇAS v10.3.1:
+//   - 💾 saveSeen() limita state.seen a 1000 entradas
 //
 // MUDANÇAS v10.3.0:
 //   - 🆕 enrichWithOgImage melhorado (6 padrões de meta tag)
-//   - 🆕 enrichWithOgImage agora roda TAMBÉM nas notícias do backend
-//   - 🆕 renderCard com data-original-src + console.warn no onerror
-//   - 🆕 user_id real (não mais 'anon') quando logado
+//   - 🆕 user_id real (não mais 'anon')
 //   - 🆕 Trava _loadingGuard para evitar chamadas duplicadas
-//   - 🔧 CSP: img-src * data: blob: no vercel.json (fora deste arquivo)
 // ============================================================
 
 (function () {
@@ -28,10 +31,9 @@
   var SEEN_KEY = 'pm_news_seen_v10';
   var SEEN_DATE_KEY = 'pm_news_seen_date_v10';
   var CACHE_TTL = 10 * 60 * 1000;
-  var SEEN_MAX = 1000;  // 🆕 v10.3.1 — cap de entradas em state.seen
+  var SEEN_MAX = 1000;
 
   var RSS_SOURCES = [
-    // Google News (sem imagem — será enriquecido via og:image)
     { url: 'https://news.google.com/rss/search?q=m%C3%BAsica+brasileira&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'musica', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=lan%C3%A7amento+musical&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'lancamentos', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=shows+turn%C3%AA+Brasil&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'shows', fonte: 'Google News' },
@@ -39,7 +41,6 @@
     { url: 'https://news.google.com/rss/search?q=artista+m%C3%BAsica&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'artistas', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=edital+cultural+m%C3%BAsica&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'editais', fonte: 'Google News' },
 
-    // Feeds que SEMPRE trazem imagem (enclosure / media:content)
     { url: 'https://g1.globo.com/rss/g1/pop-arte/musica/', cat: 'musica', fonte: 'G1' },
     { url: 'https://g1.globo.com/rss/g1/pop-arte/', cat: 'musica', fonte: 'G1' },
     { url: 'https://rss.uol.com.br/feed/musica.xml', cat: 'musica', fonte: 'UOL' },
@@ -97,7 +98,6 @@
     source: null
   };
 
-  // 🆕 v10.3.0 — Trava de reentrância
   var _loadingGuard = false;
   var _lastLoadAt = 0;
 
@@ -115,12 +115,10 @@
     } catch (e) { state.seen = {}; }
   }
 
-  // 🆕 v10.3.1 — Limita state.seen a SEEN_MAX entradas mais recentes
   function saveSeen() {
     try {
       var keys = Object.keys(state.seen);
       if (keys.length > SEEN_MAX) {
-        // Ordena por timestamp (valor) e mantém os SEEN_MAX mais recentes
         keys.sort(function (a, b) {
           return (state.seen[b] || 0) - (state.seen[a] || 0);
         });
@@ -151,7 +149,6 @@
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), items: items })); } catch (e) {}
   }
 
-  // 🆕 v10.3.0 — user_id real
   function getCurrentUserId() {
     try {
       if (window.state && window.state.currentUser && window.state.currentUser.id) {
@@ -238,7 +235,6 @@
 
       var id = 'news_' + hashStr(title);
 
-      // Extração agressiva de imagem (8 formatos)
       var imagemReal = null;
       var candidates = [
         x.match(/<enclosure[^>]*url=["']([^"']+)["']/i),
@@ -288,28 +284,40 @@
   }
 
   // ============================================================
-  // 🆕 v10.3.0 — ENRIQUECER COM og:image (6 padrões + suporte backend)
+  // 🆕 v10.4.0 — ENRIQUECER COM og:image (corrigido)
+  // FIX: usa `_linkOriginal || link` como fonte (antes só _linkOriginal)
   // ============================================================
   function enrichWithOgImage(items) {
+    var jaComImagem = 0;
     var semImagem = items.filter(function (n) {
-      return (!n.imagem || n.imagem.indexOf('data:image/svg') === 0) &&
-             n._linkOriginal && n._linkOriginal !== '#' &&
-             n._linkOriginal.indexOf('http') === 0;
+      var temImagem = n.imagem && n.imagem.indexOf('data:image/svg') !== 0;
+      if (temImagem) { jaComImagem++; return false; }
+
+      // FIX v10.4.0: aceita _linkOriginal OU link
+      var link = n._linkOriginal || n.link;
+      if (!link || link === '#' || link.indexOf('http') !== 0) return false;
+      // Google News search não tem og:image
+      if (link.indexOf('news.google.com/search') !== -1) return false;
+      return true;
     }).slice(0, 8);
 
-    if (!semImagem.length) return Promise.resolve(items);
+    console.log('[news] 📊 imagens: ' + jaComImagem + ' OK, ' + semImagem.length + ' sem (tentando og:image)');
 
-    console.log('[news] 🔍 buscando og:image para ' + semImagem.length + ' notícias...');
+    if (!semImagem.length) {
+      console.log('[news] ✅ todas as notícias já têm imagem');
+      return Promise.resolve(items);
+    }
 
     var promises = semImagem.map(function (n) {
       return new Promise(function (resolve) {
+        var link = n._linkOriginal || n.link;
         var ctrl = new AbortController();
         var timer = setTimeout(function () { ctrl.abort(); }, 6000);
-        var proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(n._linkOriginal);
+        var proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(link);
+
         fetch(proxyUrl, { signal: ctrl.signal })
           .then(function (r) { clearTimeout(timer); return r.text(); })
           .then(function (html) {
-            // 6 padrões de meta tag
             var patterns = [
               /<meta[^>]*property=["']og:image:secure_url["'][^>]*content=["']([^"']+)["']/i,
               /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
@@ -322,7 +330,7 @@
               var m = html.match(patterns[i]);
               if (m && m[1] && m[1].indexOf('http') === 0) {
                 n.imagem = m[1];
-                console.log('[news] ✅ og:image achada:', (n.titulo || '').substring(0, 40));
+                console.log('[news] ✅ og:image:', (n.titulo || '').substring(0, 40));
                 break;
               }
             }
@@ -363,20 +371,18 @@
         return new Date(b.timestamp) - new Date(a.timestamp);
       });
 
-      console.log('[news] ✅ RSS OK: ' + unique.length + ' notícias (buscando og:image...)');
+      console.log('[news] ✅ RSS OK: ' + unique.length + ' notícias');
       return enrichWithOgImage(unique);
     });
   }
 
   function loadAllNews(force) {
-    // 🆕 v10.3.0 — Trava de reentrância
     if (_loadingGuard) {
       console.log('[news] ⏳ loadAllNews ignorado (já carregando)');
       return;
     }
     if (state.loading) return;
 
-    // 🆕 Dedup temporal: não recarrega em menos de 2s
     var now = Date.now();
     if (!force && now - _lastLoadAt < 2000) {
       console.log('[news] ⏳ loadAllNews ignorado (dedup 2s)');
@@ -417,10 +423,8 @@
         '</div>';
     }
 
-    // ✅ BACKEND PRIMEIRO, RSS depois
     tryBackend().then(function (backendItems) {
       if (backendItems && backendItems.length) {
-        // 🆕 v10.3.0 — Enriquece TAMBÉM as notícias do backend
         return enrichWithOgImage(backendItems);
       }
       return tryRSS();
@@ -487,7 +491,7 @@
     for (var j = 0; j < slice.length; j++) {
       state.seen[slice[j].id] = Date.now();
     }
-    saveSeen();  // 🆕 v10.3.1 — agora com cap de 1000
+    saveSeen();
 
     state.page++;
     state.hasMore = (start + PAGE_SIZE) < state.items.length;
@@ -509,7 +513,6 @@
     var imgUrl = n.imagem || gerarPlaceholder(n.categoria);
     var fallback = gerarPlaceholder(n.categoria);
 
-    // 🆕 v10.3.0 — data-original-src + console.warn no onerror
     var imgHtml = '<img src="' + imgUrl + '" ' +
       'style="width:100%;height:180px;object-fit:cover;display:block;background:#2c2c2e" ' +
       'loading="lazy" ' +
@@ -629,5 +632,5 @@
     init();
   }
 
-  console.log('✅ [news-unified.js] v10.3.1 carregado — XSS ok + seenIds cap 1000');
+  console.log('✅ [news-unified.js] v10.4.0 carregado — og:image fix (link fallback)');
 })();
