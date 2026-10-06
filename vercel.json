@@ -4,12 +4,13 @@
   "trailingSlash": false,
 
   "rewrites": [
+    { "source": "/n/:id",        "destination": "/api/n?id=:id" },
     { "source": "/s/:id",        "destination": "/api/s?id=:id" },
     { "source": "/css/(.*)",     "destination": "/public/css/$1" },
     { "source": "/js/(.*)",      "destination": "/public/js/$1" },
     { "source": "/images/(.*)",  "destination": "/public/images/$1" },
     {
-      "source": "/((?!api/|manifest\\.json|sw\\.js|images/|css/|js/|favicon\\.ico|robots\\.txt|sitemap\\.xml|s/).*)",
+      "source": "/((?!api/|manifest\\.json|sw\\.js|images/|css/|js/|favicon\\.ico|robots\\.txt|sitemap\\.xml|s/n/).*)",
       "destination": "/index.html"
     }
   ],
