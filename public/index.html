@@ -1380,7 +1380,50 @@ body {
     </div>
   </div>
 </div>
-
+<!-- ============================================================ -->
+<!-- MODAL DE COMPARTILHAMENTO DE NOTÍCIA                          -->
+<!-- ============================================================ -->
+<div id="shareNewsModal" class="modal-overlay">
+  <div class="modal-content" style="max-width:480px">
+    <div class="modal-header">
+      <h5 class="modal-title">
+        <i class="bi bi-share-fill me-2"></i> Compartilhar notícia
+      </h5>
+      <button class="modal-close" onclick="closeModal('shareNewsModal')">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="shareNewsPreview" style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--apple-gray-6); border-radius:var(--radius-md); margin-bottom:20px;">
+        <img id="shareNewsPreviewCover" src="/images/logo.png" alt="Capa" style="width:56px;height:56px;border-radius:var(--radius-sm);object-fit:cover">
+        <div style="flex:1;min-width:0">
+          <div id="shareNewsPreviewTitle" style="color:#fff;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Notícia</div>
+          <div id="shareNewsPreviewFonte" style="color:var(--apple-label-2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Fonte</div>
+        </div>
+      </div>
+      <button id="shareNewsNativeBtn" onclick="shareNewsNative()" style="width:100%; background:var(--apple-green); color:#fff; border:none; border-radius:var(--radius-md); padding:14px; font-weight:600; font-size:15px; cursor:pointer; margin-bottom:16px; display:none; align-items:center; justify-content:center; gap:8px;">
+        <i class="bi bi-phone"></i> Compartilhar via app
+      </button>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(70px, 1fr)); gap:12px;">
+        <button onclick="shareNewsWhatsApp()" style="background:#25D366; color:#fff; border:none; border-radius:var(--radius-md); padding:14px 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; font-weight:600;">
+          <i class="bi bi-whatsapp" style="font-size:24px"></i> WhatsApp
+        </button>
+        <button onclick="shareNewsTwitter()" style="background:#000; color:#fff; border:none; border-radius:var(--radius-md); padding:14px 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; font-weight:600;">
+          <i class="bi bi-twitter-x" style="font-size:24px"></i> X / Twitter
+        </button>
+        <button onclick="shareNewsFacebook()" style="background:#1877F2; color:#fff; border:none; border-radius:var(--radius-md); padding:14px 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; font-weight:600;">
+          <i class="bi bi-facebook" style="font-size:24px"></i> Facebook
+        </button>
+        <button onclick="shareNewsTelegram()" style="background:#0088cc; color:#fff; border:none; border-radius:var(--radius-md); padding:14px 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; font-weight:600;">
+          <i class="bi bi-telegram" style="font-size:24px"></i> Telegram
+        </button>
+        <button onclick="shareNewsCopyLink()" style="background:var(--apple-gray-5); color:#fff; border:none; border-radius:var(--radius-md); padding:14px 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; font-weight:600;">
+          <i class="bi bi-link-45deg" style="font-size:24px"></i> Copiar Link
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- ============================================================ -->
 <!-- MODAL DE EDIÇÃO DE MÚSICA                                    -->
 <!-- ============================================================ -->
@@ -1519,9 +1562,10 @@ window.togglePassword = function(fieldId, icon) {
 <script src="/js/streams-panel.js"></script>
 <script src="/js/royalties-panel.js"></script>
 <script src="/js/artist-news.js"></script>
-<!-- 6. App principal por último -->
+<script src="/js/share-news.js"></script>
 <script src="/js/app.js"></script>
-  <!-- ============================================================ -->
+
+<!-- ============================================================ -->
 <!-- MATRIX BACKGROUND — fundo animado da tela de login            -->
 <!-- Aparece só na tela de login. Some quando o mainApp aparece.   -->
 <!-- ============================================================ -->
