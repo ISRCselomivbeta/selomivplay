@@ -16,39 +16,73 @@ module.exports = async (req, res) => {
         process.env.PUBLIC_SITE_URL ||
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : FALLBACK_ORIGIN);
 
+    // ------------------------------------------------------------
     // Busca notícia no backend
+    // ------------------------------------------------------------
     let noticia = null;
     try {
         const r = await fetch(`${origin}/api/backend?action=get_news&page=1&limit=100&user_id=anon`, {
             headers: { 'Accept': 'application/json' }
         });
         const j = await r.json();
+
         if (j && j.success && Array.isArray(j.data)) {
+            // Match exato pelo ID
             noticia = j.data.find(n => String(n.id) === String(newsId)) || null;
+
+            // Fallback: tenta decodificar e comparar por título
+            if (!noticia && newsId && newsId !== 'unknown') {
+                const decoded = decodeURIComponent(newsId).toLowerCase();
+                noticia = j.data.find(n => {
+                    if (!n.titulo) return false;
+                    const t = String(n.titulo).toLowerCase();
+                    return t.indexOf(decoded) !== -1 || decoded.indexOf(t.substring(0, 20)) !== -1;
+                }) || null;
+            }
         }
     } catch (e) {
         console.warn('[n.js] fetch falhou:', e.message);
     }
 
+    if (!noticia) {
+        console.log('[n.js] ⚠️ notícia não encontrada para id:', newsId);
+    } else {
+        console.log('[n.js] ✅ notícia encontrada:', (noticia.titulo || '').substring(0, 50));
+    }
+
+    // ------------------------------------------------------------
+    // Dados para OG
+    // ------------------------------------------------------------
     const titulo    = (noticia && noticia.titulo)   || 'PLAY MY Notícias';
     const texto     = (noticia && noticia.texto)    || 'Leia no PLAY MY';
     const fonte     = (noticia && noticia.fonte)    || 'PLAY MY';
     const capa      = (noticia && noticia.imagem)   || FALLBACK_LOGO;
-    const descricao = `${fonte} — leia no PLAY MY`;
+    const descricao = texto.substring(0, 160) || `${fonte} — leia no PLAY MY`;
     const canonical = `${origin}/n/${encodeURIComponent(newsId)}`;
     const appUrl    = `${origin}/?news=${encodeURIComponent(newsId)}`;
 
-    // Se capa for placeholder SVG ou URL inválida, usa logo
-    var capaFinal = FALLBACK_LOGO;
-    if (capa && capa.indexOf('data:image') !== 0 && capa.indexOf('http') === 0) {
-        // Só aceita se tiver extensão de imagem válida ou for do Google
-        if (/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(capa) || capa.indexOf('lh3.google') !== -1) {
-            if (capa.indexOf('lh3.google') === -1 && capa.indexOf('news.google') === -1) {
-                capaFinal = capa;
-            }
+    // ------------------------------------------------------------
+    // Valida a capa — se for placeholder/inútil, usa logo
+    // ------------------------------------------------------------
+    let capaFinal = FALLBACK_LOGO;
+
+    if (capa && capa.indexOf('http') === 0) {
+        const ehGoogleGenerica = capa.indexOf('lh3.googleusercontent.com') !== -1;
+        const ehGoogleNews     = capa.indexOf('news.google.com') !== -1;
+        const temExtensao      = /\.(jpg|jpeg|png|webp|gif)(\?|#|$)/i.test(capa);
+
+        // Aceita: URL com extensão válida OU URL do Google que NÃO é genérica
+        if ((temExtensao && !ehGoogleGenerica && !ehGoogleNews) ||
+            (ehGoogleGenerica === false && ehGoogleNews === false && temExtensao)) {
+            capaFinal = capa;
         }
     }
 
+    console.log('[n.js] capa:', capaFinal.substring(0, 80));
+
+    // ------------------------------------------------------------
+    // HTML com OG
+    // ------------------------------------------------------------
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -90,7 +124,10 @@ module.exports = async (req, res) => {
     <p><a href="${esc(appUrl)}">▶ Ler no PLAY MY</a></p>
   </div>
   <script>
-    setTimeout(function(){ window.location.replace(${JSON.stringify(appUrl)}); }, 100);
+    // Redireciona usuários reais; crawlers OG leem o HTML e saem.
+    setTimeout(function(){
+      window.location.replace(${JSON.stringify(appUrl)});
+    }, 100);
   </script>
 </body>
 </html>`;
@@ -100,6 +137,9 @@ module.exports = async (req, res) => {
     return res.status(200).send(html);
 };
 
+// ------------------------------------------------------------
+// Escape HTML para OG tags
+// ------------------------------------------------------------
 function esc(str) {
     return String(str == null ? '' : str)
         .replace(/&/g, '&amp;')
