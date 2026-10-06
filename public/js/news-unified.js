@@ -1,25 +1,17 @@
 // ============================================================
-// js/news-unified.js — PLAY MY v10.4.0
+// js/news-unified.js — PLAY MY v10.5.0
 // Feed de notícias unificado: backend + RSS + og:image enrichment
-// + SVG fallback (inline)
-// + link sempre para Google News
+// + SVG fallback (inline) + compartilhamento por notícia
+//
+// MUDANÇAS v10.5.0:
+//   - 🆕 Filtro de imagens inúteis (Google genérica, URLs truncadas, logo)
+//   - 🆕 window.__pmNewsItems exposto (share-news.js lê daqui)
+//   - 🆕 data-news-id no <article> (deep link ?news=ID)
+//   - 🆕 Botão "Compartilhar" em cada card (chama openNewsShareModal)
 //
 // MUDANÇAS v10.4.0:
-//   - 🐛 FIX CRÍTICO: enrichWithOgImage agora usa `_linkOriginal || link`
-//        como fonte. Antes só funcionava com RSS (que cria _linkOriginal);
-//        notícias do backend ficavam sem imagem.
-//   - 🆕 enrichWithOgImage filtra links do Google News (não têm og:image)
-//   - 🆕 enrichWithOgImage loga quantas notícias já tinham imagem
-//   - 🆕 renderCard com onerror robusto (data-original-src + warn)
-//   - ✅ Mantém 100% compatibilidade com v10.3.1
-//
-// MUDANÇAS v10.3.1:
-//   - 💾 saveSeen() limita state.seen a 1000 entradas
-//
-// MUDANÇAS v10.3.0:
-//   - 🆕 enrichWithOgImage melhorado (6 padrões de meta tag)
-//   - 🆕 user_id real (não mais 'anon')
-//   - 🆕 Trava _loadingGuard para evitar chamadas duplicadas
+//   - 🐛 FIX: enrichWithOgImage usa `_linkOriginal || link`
+//   - 🆕 enrichWithOgImage filtra links do Google News
 // ============================================================
 
 (function () {
@@ -40,7 +32,6 @@
     { url: 'https://news.google.com/rss/search?q=ind%C3%BAstria+musical&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'negocios', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=artista+m%C3%BAsica&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'artistas', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=edital+cultural+m%C3%BAsica&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'editais', fonte: 'Google News' },
-
     { url: 'https://g1.globo.com/rss/g1/pop-arte/musica/', cat: 'musica', fonte: 'G1' },
     { url: 'https://g1.globo.com/rss/g1/pop-arte/', cat: 'musica', fonte: 'G1' },
     { url: 'https://rss.uol.com.br/feed/musica.xml', cat: 'musica', fonte: 'UOL' },
@@ -283,21 +274,24 @@
     return items;
   }
 
-  // ============================================================
-  // 🆕 v10.4.0 — ENRIQUECER COM og:image (corrigido)
-  // FIX: usa `_linkOriginal || link` como fonte (antes só _linkOriginal)
-  // ============================================================
   function enrichWithOgImage(items) {
     var jaComImagem = 0;
     var semImagem = items.filter(function (n) {
-      var temImagem = n.imagem && n.imagem.indexOf('data:image/svg') !== 0;
+      var img = n.imagem || '';
+      var temImagem =
+        img &&
+        img.indexOf('data:image/svg') !== 0 &&
+        img.indexOf('/images/logo') === -1 &&
+        img.indexOf('lh3.googleusercontent.com') === -1 &&
+        img.indexOf('news.google.com') === -1 &&
+        /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(img);
+
       if (temImagem) { jaComImagem++; return false; }
 
-      // FIX v10.4.0: aceita _linkOriginal OU link
       var link = n._linkOriginal || n.link;
       if (!link || link === '#' || link.indexOf('http') !== 0) return false;
-      // Google News search não tem og:image
       if (link.indexOf('news.google.com/search') !== -1) return false;
+      if (link.indexOf('news.google.com/rss/articles') !== -1) return false;
       return true;
     }).slice(0, 8);
 
@@ -410,6 +404,7 @@
         state.hasMore = cached.length > PAGE_SIZE;
         state.loading = false;
         _loadingGuard = false;
+        window.__pmNewsItems = state.items;
         renderFresh();
         return;
       }
@@ -434,6 +429,8 @@
       state.items = items || [];
       state.page = 1;
       state.hasMore = state.items.length > PAGE_SIZE;
+
+      window.__pmNewsItems = state.items;
 
       if (!state.items.length) {
         feed.innerHTML =
@@ -510,16 +507,24 @@
     var inicial = (n.fonte || n.autor || 'N').charAt(0).toUpperCase();
     var tempo = formatRelativeTime(n.timestamp);
 
-    var imgUrl = n.imagem || gerarPlaceholder(n.categoria);
+    // 🆕 v10.5.0 — Detecta imagens inúteis e usa placeholder
+    var imgRaw = n.imagem || '';
+    var inutil =
+      imgRaw.indexOf('data:image/svg') === 0 ||
+      imgRaw.indexOf('/images/logo') !== -1 ||
+      imgRaw.indexOf('lh3.googleusercontent.com') !== -1 ||
+      imgRaw.indexOf('news.google.com') !== -1 ||
+      (imgRaw.indexOf('http') === 0 && !/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(imgRaw));
+
+    var imgUrl = (imgRaw && !inutil) ? imgRaw : gerarPlaceholder(n.categoria);
     var fallback = gerarPlaceholder(n.categoria);
 
     var imgHtml = '<img src="' + imgUrl + '" ' +
       'style="width:100%;height:180px;object-fit:cover;display:block;background:#2c2c2e" ' +
       'loading="lazy" ' +
-      'data-original-src="' + esc(imgUrl.substring(0, 120)) + '" ' +
-      'onerror="console.warn(\'[news] ⚠️ img falhou:\', this.src.substring(0,80)); this.onerror=null; this.src=\'' + fallback + '\'">';
+      'onerror="this.onerror=null;this.src=\'' + fallback + '\'">';
 
-    return '<article style="background:#1c1c1e;border:0.5px solid #38383a;border-radius:16px;margin-bottom:16px;overflow:hidden;animation:pmFadeIn 0.4s ease">' +
+    return '<article data-news-id="' + esc(n.id) + '" style="background:#1c1c1e;border:0.5px solid #38383a;border-radius:16px;margin-bottom:16px;overflow:hidden;animation:pmFadeIn 0.4s ease">' +
       imgHtml +
       '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px">' +
         '<div style="width:28px;height:28px;border-radius:50%;background:#ffcc00;color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">' + esc(inicial) + '</div>' +
@@ -533,10 +538,13 @@
         '<div style="color:#fff;font-weight:700;font-size:16px;margin-bottom:6px;line-height:1.3">' + esc(n.titulo) + '</div>' +
         '<div style="color:#8e8e93;font-size:14px;line-height:1.5">' + esc(n.texto) + '</div>' +
       '</div>' +
-      '<div style="padding:10px 14px 14px;border-top:0.5px solid #38383a">' +
+      '<div style="padding:10px 14px 14px;border-top:0.5px solid #38383a;display:flex;gap:8px;flex-wrap:wrap">' +
         '<a href="' + esc(n.link) + '" target="_blank" rel="noopener" style="display:inline-block;background:#ffcc00;color:#000;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none">' +
           'Ler no Google News →' +
         '</a>' +
+        '<button onclick="event.stopPropagation(); window.openNewsShareModal(\'' + esc(n.id) + '\')" style="background:rgba(255,204,0,0.15);color:#ffcc00;border:1px solid rgba(255,204,0,0.3);padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">' +
+          '<i class="bi bi-share-fill"></i> Compartilhar' +
+        '</button>' +
       '</div>' +
     '</article>';
   }
@@ -632,5 +640,5 @@
     init();
   }
 
-  console.log('✅ [news-unified.js] v10.4.0 carregado — og:image fix (link fallback)');
+  console.log('✅ [news-unified.js] v10.5.0 carregado — imagens + compartilhar + deep link');
 })();
