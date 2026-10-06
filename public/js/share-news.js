@@ -1,5 +1,5 @@
 // ============================================================
-// js/share-news.js — PLAY MY v1.0.0
+// js/share-news.js — PLAY MY v1.0.1
 // Compartilhamento de notícias (link canônico /n/<id> + preview OG)
 // Depende de: news-unified.js (window.__pmNewsItems), modals.js
 // Carrega DEPOIS de news-unified.js e ANTES de app.js
@@ -142,4 +142,4 @@ window.shareNewsCopyLink = async function () {
     }
 };
 
-console.log('✅ [share-news.js] v1.0.0 carregado');
+console.log('✅ [share-news.js] v1.0.1 carregado');
