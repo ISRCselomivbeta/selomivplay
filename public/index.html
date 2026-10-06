@@ -770,6 +770,20 @@ body {
     <div id="pm-feed"></div>
     <div id="pm-sentinel" style="height:1px"></div>
   </div>
+
+  <!-- 🆕 NOTÍCIAS DO ARTISTA ATUAL -->
+  <div id="pm-artist-news-container" style="display:none;margin-top:32px">
+    <div class="section-header" style="margin-bottom:16px">
+      <h2 class="section-title" style="font-size:18px">
+        <i class="bi bi-mic-fill me-2" style="color:#ffcc00"></i>
+        <span id="pm-artist-news-title">Notícias do artista</span>
+      </h2>
+      <button class="btn btn-sm btn-outline-warning" onclick="pmArtistNewsReload()">
+        <i class="bi bi-arrow-clockwise"></i> Atualizar
+      </button>
+    </div>
+    <div id="pm-artist-news-feed"></div>
+  </div>
 </section>
 
 <section id="portfolioSection" class="section">
