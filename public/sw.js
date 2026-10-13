@@ -84,6 +84,8 @@ const STATIC_ASSETS = [
   '/css/blockchain.css',
   '/css/news.css',
   '/css/responsive.css',
+  '/css/discovery.css',
+
 
   // 🆕 v10.0.0 — Background Play + Logger (carregam PRIMEIRO)
   '/js/background-play.js',
@@ -99,6 +101,7 @@ const STATIC_ASSETS = [
   '/js/youtube.js',
   '/js/player.js',
   '/js/marketplace.js',
+  '/js/discovery.js',
   '/js/portfolio.js',
   '/js/trades.js',
   '/js/blockchain.js',
