@@ -1,5 +1,5 @@
 /* ============================================================
-   css/discovery.css — PLAY MY v1.0.0
+   css/discovery.css — PLAY MY v1.0.1
    Feed Vertical de Descoberta (estilo TikTok/Resso)
    Tema Rolex: verde + ouro + preto profundo
    ============================================================ */
@@ -43,7 +43,7 @@ body.discovery-open {
   justify-content: space-between;
   padding: 16px 20px;
   padding-top: calc(16px + env(safe-area-inset-top));
-  z-index: 10;
+  z-index: 100;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
   pointer-events: none;
 }
@@ -67,6 +67,8 @@ body.discovery-open {
   transition: background 0.2s ease;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 10;
 }
 
 .discovery-close:hover {
@@ -136,6 +138,7 @@ body.discovery-open {
   background-position: center;
   background-color: #000;
   filter: brightness(0.9);
+  pointer-events: none;
 }
 
 .discovery-cover-overlay {
@@ -144,6 +147,7 @@ body.discovery-open {
   background:
     linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 30%),
     linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 30%, transparent 70%);
+  pointer-events: none;
 }
 
 /* ----- INFO ----- */
@@ -153,8 +157,9 @@ body.discovery-open {
   right: 24px;
   bottom: 200px;
   color: #fff;
-  z-index: 2;
+  z-index: 50;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
 }
 
 .discovery-genero {
@@ -220,7 +225,8 @@ body.discovery-open {
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr 1fr;
   gap: 10px;
-  z-index: 3;
+  z-index: 100;
+  pointer-events: auto;
 }
 
 .discovery-action {
@@ -240,6 +246,9 @@ body.discovery-open {
   font-family: inherit;
   text-align: center;
   min-height: 68px;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
 }
 
 .discovery-action:active {
@@ -316,7 +325,7 @@ body.discovery-open {
   right: 0;
   height: 3px;
   background: rgba(255, 255, 255, 0.1);
-  z-index: 20;
+  z-index: 200;
 }
 
 .discovery-progress-bar {
