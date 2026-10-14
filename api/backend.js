@@ -1,8 +1,8 @@
-// 🔧 v9.8.7 — PERFORMANCE
-//   - ✅ get_external_musicas com cache Redis/KV 60s
-//        → evita 504 no GAS quando a API está lenta
-//        → fallback para cache stale se GAS falhar
-// BACKEND.JS - VERSÃO 9.8.6
+// 🔧 v9.8.8 — EVENTOS + HISTÓRICO (discovery cumulativo)
+//   - ✅ register_event: registra play/favorite/share/invest/follow
+//   - ✅ get_history: retorna eventos + stats agregadas (7d/30d)
+//   - ✅ Storage em KV (Redis/@vercel/kv)
+// BACKEND.JS - VERSÃO 9.8.8
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -10,10 +10,10 @@
 // + VENDA DIRETA AO MERCADO (sell_to_market)
 // + VENDA P2P COM EMAIL (create_trade robusto)
 // + IMAGENS REAIS NOS FEEDS (extração agressiva + og:image)
+// + HISTÓRICO DE EVENTOS (register_event + get_history)
 //
 // 🔒 v9.8.4 (consolidação Opção A) — COMPATIBILIDADE STREAMS
 //   - ✅ register_streaming agora grava TAMBÉM em stream_<id> (formato antigo)
-//        para compatibilidade com /api/streams.js (agora read-only)
 //   - ✅ Mantém gravação em streams_<id> (formato novo — fonte de verdade)
 //   - ✅ streams_global compartilhado entre os dois
 //   - ✅ Escrita consolidada aqui (Stream Guard ativo)
@@ -22,23 +22,9 @@
 //   - ✅ STREAM_INTERVAL_MS (30 min) + STREAM_MIN_DURATION (30s)
 //   - ✅ _checkStreamAllowed(user_id, music_id, ip, duration)
 //   - ✅ register_streaming valida IP + usuário + timestamp
-//   - ✅ 1 stream válido por música a cada 30 minutos por usuário+IP
-//   - ✅ registra ip e timestamp no bloco e no GAS
 //
 // 🔒 v9.8.2 — MELHORIAS DE IMAGEM E ROBUSTEZ
-//   - ✅ FIX: getFonteLogo com URLs reais
-//   - ✅ FIX: extração de imagem em 8 formatos (igual ao front)
-//   - ✅ FIX: enriquecimento og:image para notícias sem imagem
-//   - ✅ FIX: get_trades com fallback multi-formato
-//   - ✅ FIX: create_trade valida posse antes de chamar GAS
-//   - ✅ FIX: content-type aceita text/plain (Google News)
-//   - ✅ ADD: feeds diretos faltantes
-//   - ✅ ADD: log de timeout no aggregateNews
-//
 // 🔒 v9.8.1 — 100% DROP-IN (SEM BLOQUEIO)
-//   - ✅ ADMIN_REQUIRED_ACTIONS vazio → nada bloqueia
-//   - ✅ Sessão server-side pronta, mas dormente
-//   - ✅ Compatibilidade total com frontend atual
 // ============================================================
 
 // ============================================================
@@ -68,6 +54,7 @@ const COMPAT_ALLOW_BODY_USER_ID = process.env.COMPAT_ALLOW_BODY_USER_ID !== 'fal
 const AUTH_REQUIRED_ACTIONS = new Set([
     'get_saldo', 'get_carteira', 'get_extrato', 'get_user_profile',
     'get_playlists', 'get_following',
+    'register_event', 'get_history',
     'buy', 'sell_to_market', 'buy_external', 'request_withdrawal',
     'create_trade', 'accept_trade', 'decline_trade', 'cancel_trade',
     'confirm_investment', 'confirm_external_investment',
@@ -87,6 +74,16 @@ const ADMIN_REQUIRED_ACTIONS = new Set([
 const STREAM_INTERVAL_MS = 30 * 60 * 1000;   // 30 minutos
 const STREAM_MIN_DURATION = 30;              // segundos mínimos ouvidos
 const STREAM_PREFIX = 'stream_guard:';
+
+// ============================================================
+// 🆕 v9.8.8 — HISTÓRICO DE EVENTOS
+// ============================================================
+const EVENTS_PREFIX = 'events_';
+const EVENTS_MAX = 500;
+const EVENTS_VALID_TYPES = new Set([
+    'play', 'favorite', 'unfavorite', 'share', 'invest',
+    'follow', 'unfollow', 'play_youtube', 'skip'
+]);
 
 async function _checkStreamAllowed(userId, musicId, ip, duration) {
     if (!userId || !musicId) {
@@ -113,6 +110,98 @@ async function _checkStreamAllowed(userId, musicId, ip, duration) {
 
     await Storage.set(guardKey, now);
     return { ok: true, ts: now };
+}
+
+// ============================================================
+// 🆕 v9.8.8 — REGISTRAR EVENTO
+// ============================================================
+async function _registrarEvento(userId, eventType, payload) {
+    if (!userId || !eventType) return { ok: false, reason: 'userId e eventType obrigatórios' };
+    if (!EVENTS_VALID_TYPES.has(eventType)) {
+        return { ok: false, reason: 'eventType inválido: ' + eventType };
+    }
+
+    try {
+        const key = EVENTS_PREFIX + userId;
+        let events = await Storage.get(key) || [];
+
+        const evento = {
+            type: eventType,
+            music_id: payload.music_id || null,
+            artist: payload.artist || null,
+            genero: payload.genero || null,
+            titulo: payload.titulo || null,
+            ts: Date.now()
+        };
+
+        events.push(evento);
+
+        if (events.length > EVENTS_MAX) {
+            events = events.slice(-EVENTS_MAX);
+        }
+
+        await Storage.set(key, events);
+        return { ok: true, total: events.length };
+    } catch (e) {
+        console.warn('[register_event] erro:', e.message);
+        return { ok: false, reason: e.message };
+    }
+}
+
+// ============================================================
+// 🆕 v9.8.8 — GET HISTÓRICO AGREGADO
+// ============================================================
+async function _getHistorico(userId, limit) {
+    if (!userId) return { ok: false, reason: 'userId obrigatório' };
+
+    try {
+        const key = EVENTS_PREFIX + userId;
+        const events = await Storage.get(key) || [];
+
+        const stats = {
+            artistas7d: {},
+            artistas30d: {},
+            generos7d: {},
+            generos30d: {},
+            musicas: {},
+            total_eventos: events.length
+        };
+
+        const agora = Date.now();
+        const SETE_DIAS = 7 * 24 * 60 * 60 * 1000;
+        const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
+
+        events.forEach(ev => {
+            const idade = agora - (ev.ts || 0);
+            const is7d = idade <= SETE_DIAS;
+            const is30d = idade <= TRINTA_DIAS;
+
+            if (ev.artist) {
+                if (is7d) stats.artistas7d[ev.artist] = (stats.artistas7d[ev.artist] || 0) + 1;
+                if (is30d) stats.artistas30d[ev.artist] = (stats.artistas30d[ev.artist] || 0) + 1;
+            }
+            if (ev.genero) {
+                if (is7d) stats.generos7d[ev.genero] = (stats.generos7d[ev.genero] || 0) + 1;
+                if (is30d) stats.generos30d[ev.genero] = (stats.generos30d[ev.genero] || 0) + 1;
+            }
+            if (ev.music_id) {
+                stats.musicas[ev.music_id] = (stats.musicas[ev.music_id] || 0) + 1;
+            }
+        });
+
+        const lim = parseInt(limit) || 100;
+        const recentes = events.slice(-lim);
+
+        return {
+            ok: true,
+            total: events.length,
+            eventos: recentes,
+            stats: stats
+        };
+    } catch (e) {
+        console.warn('[get_history] erro:', e.message);
+        return { ok: false, reason: e.message };
+    }
 }
 
 // ============================================================
@@ -204,6 +293,7 @@ const GAS_ACTIONS = new Set([
     'add_transaction', 'transfer_shares',
     'get_news', 'mark_news_seen', 'track_news_interaction',
     'calcular_elo', 'ver_elo', 'get_elo_ranking', 'atualizar_todos_elos',
+    'register_event', 'get_history',
     'calcular_valuation', 'ver_valuation', 'valuation_catalogo',
     'validar_isrc', 'buscar_isrc', 'vincular_isrc', 'ver_isrc', 'listar_isrcs',
     'add_block'
@@ -570,7 +660,6 @@ function normalizePlaylistFromKV(pl) {
         created_at: pl.created_at || new Date().toISOString()
     };
 }
-
 // ============================================================
 // PASSWORD HASHING (scrypt, nativo)
 // ============================================================
@@ -658,7 +747,7 @@ async function callGAS(action, params = {}, retries = 1) {
         }
     }
 }
-// 🆕 v9.8.7 — callGAS com timeout customizável (para ações lentas)   ← 📌 COLAR AQUI
+// 🆕 v9.8.7 — callGAS com timeout customizável (para ações lentas)
 async function callGASComTimeout(action, params = {}, timeoutMs = 8000, retries = 1) {
     if (!GAS_URL) {
         console.error('[callGASComTimeout] GAS_URL não configurada');
@@ -1596,9 +1685,8 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
         console.warn('⚠️ [migração] falha:', e.message);
     }
 })();
-
 // ============================================================
-// HANDLER PRINCIPAL — v9.8.4
+// HANDLER PRINCIPAL — v9.8.8
 // ============================================================
 module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1636,7 +1724,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.7',
+                version: '9.8.8',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -1652,6 +1740,8 @@ module.exports = async (req, res) => {
                 stream_interval_min: STREAM_INTERVAL_MS / 60000,
                 stream_min_duration_s: STREAM_MIN_DURATION,
                 streams_compat_legacy: true,
+                events_enabled: true,
+                events_max: EVENTS_MAX,
                 timestamp: new Date().toISOString()
             });
         }
@@ -2034,17 +2124,14 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'valuation_catalogo') {
-            // 🆕 v9.8.5 — FALLBACK em 3 camadas para o índice
             let idx = await Storage.get('streams_index') || [];
 
-            // Camada 2: musicas_all (KV local)
             if (!idx.length) {
                 console.warn('⚠️ [valuation_catalogo] streams_index vazio — tentando musicas_all');
                 const musicasAll = await Storage.get('musicas_all') || [];
                 idx = musicasAll.map(m => String(m.id)).filter(Boolean);
             }
 
-            // Camada 3: get_musicas do GAS
             if (!idx.length) {
                 console.warn('⚠️ [valuation_catalogo] musicas_all vazio — consultando GAS');
                 try {
@@ -2059,7 +2146,6 @@ module.exports = async (req, res) => {
                 }
             }
 
-            // Se ainda vazio, retorna com aviso
             if (!idx.length) {
                 console.error('❌ [valuation_catalogo] todas as camadas falharam');
                 const resultado = {
@@ -2567,6 +2653,70 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
+        // 🆕 v9.8.8 — EVENTOS + HISTÓRICO
+        // ============================================================
+        if (action === 'register_event') {
+            const userId = auth ? auth.user_id : (params.user_id || params.userId);
+            const eventType = sanitize(params.event_type || params.eventType || '');
+            const musicId = params.music_id ? sanitize(params.music_id) : null;
+            const artist = params.artist ? sanitize(params.artist) : null;
+            const genero = params.genero ? sanitize(params.genero) : null;
+            const titulo = params.titulo ? sanitize(params.titulo) : null;
+
+            if (!userId || !eventType) {
+                return res.status(200).json({ success: false, message: 'user_id e event_type obrigatórios' });
+            }
+
+            const result = await _registrarEvento(userId, eventType, {
+                music_id: musicId,
+                artist: artist,
+                genero: genero,
+                titulo: titulo
+            });
+
+            if (result.ok) {
+                return res.status(200).json({
+                    success: true,
+                    data: { total: result.total, event_type: eventType },
+                    _via: 'kv'
+                });
+            } else {
+                return res.status(200).json({
+                    success: false,
+                    message: result.reason || 'Erro ao registrar evento'
+                });
+            }
+        }
+
+        if (action === 'get_history') {
+            const userId = auth ? auth.user_id : (params.user_id || params.userId);
+            const limit = parseInt(params.limit) || 100;
+
+            if (!userId) {
+                return res.status(200).json({ success: false, message: 'user_id obrigatório' });
+            }
+
+            const result = await _getHistorico(userId, limit);
+
+            if (result.ok) {
+                return res.status(200).json({
+                    success: true,
+                    data: {
+                        total: result.total,
+                        eventos: result.eventos,
+                        stats: result.stats
+                    },
+                    _via: 'kv'
+                });
+            } else {
+                return res.status(200).json({
+                    success: false,
+                    message: result.reason || 'Erro ao buscar histórico'
+                });
+            }
+        }
+
+        // ============================================================
         // STREAMING — 🔒 v9.8.4 COM ANTI-FRAUDE + COMPAT LEGACY
         // ============================================================
         if (action === 'register_streaming') {
@@ -2576,7 +2726,6 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: false, message: 'Dados incompletos' });
             }
 
-            // 🔒 v9.8.3 — IP + validação de fraude
             const clientIP = _getClientIP(req);
             const check = await _checkStreamAllowed(userId, music_id, clientIP, duration);
             if (!check.ok) {
@@ -2601,7 +2750,6 @@ module.exports = async (req, res) => {
 
             const hoje = new Date().toISOString().slice(0, 10);
 
-            // ---------- FORMATO NOVO (fonte de verdade) ----------
             const key = 'streams_' + music_id;
             let contador = await Storage.get(key) || { music_id, total: 0, hoje: 0, ultima_data: '', ultima_atualizacao: '' };
             if (contador.ultima_data !== hoje) { contador.hoje = 0; contador.ultima_data = hoje; }
@@ -2610,8 +2758,6 @@ module.exports = async (req, res) => {
             contador.ultima_atualizacao = new Date().toISOString();
             await Storage.set(key, contador);
 
-            // 🆕 v9.8.4 — COMPATIBILIDADE: grava também no formato antigo
-            // (/api/streams.js read-only lê de stream_<id> singular)
             const keyAntiga = 'stream_' + music_id;
             let contadorAntigo = await Storage.get(keyAntiga) || {
                 music_id: music_id, titulo: titulo || '', total: 0, hoje: 0,
@@ -2629,18 +2775,15 @@ module.exports = async (req, res) => {
             if (titulo && !contadorAntigo.titulo) contadorAntigo.titulo = titulo;
             await Storage.set(keyAntiga, contadorAntigo);
 
-            // ---------- ÍNDICE (compartilhado) ----------
             let idx = await Storage.get('streams_index') || [];
             if (!idx.includes(music_id)) { idx.push(music_id); await Storage.set('streams_index', idx); }
 
-            // ---------- GLOBAL (compartilhado) ----------
             const globalKey = 'streams_global';
             let globalCont = await Storage.get(globalKey) || { total: 0, hoje: 0, ultima_data: '' };
             if (globalCont.ultima_data !== hoje) { globalCont.hoje = 0; globalCont.ultima_data = hoje; }
             globalCont.total++; globalCont.hoje++;
             await Storage.set(globalKey, globalCont);
 
-            // ---------- POR USUÁRIO ----------
             const userKey = 'streams_user_' + userId;
             let userContador = await Storage.get(userKey) || { user_id: userId, total: 0, musicas: {} };
             userContador.total++;
@@ -2702,16 +2845,13 @@ module.exports = async (req, res) => {
         // MÚSICAS — ROBUSTO
         // ============================================================
         if (action === 'get_musicas') {
-            // 🆕 v9.8.7 — cache Redis 60s + timeout curto + fallback em 3 camadas
             const cacheKey = 'musicas_cache';
             const cacheTimeKey = 'musicas_cache_time';
-            const CACHE_TTL = 60 * 1000; // 60s
+            const CACHE_TTL = 60 * 1000;
 
-            // 1. Cache em memória (rápido, mas por instância)
             const cachedL1 = cache.get('musicas');
             if (cachedL1) return res.status(200).json({ success: true, data: cachedL1, _via: 'cache_l1' });
 
-            // 2. Cache Redis (persistente entre instâncias)
             try {
                 const cachedRedis = await Storage.get(cacheKey);
                 const cachedTimeRedis = await Storage.get(cacheTimeKey);
@@ -2724,7 +2864,6 @@ module.exports = async (req, res) => {
                 console.warn('⚠️ [get_musicas] cache Redis falhou:', e.message);
             }
 
-            // 3. GAS com timeout CURTO (5s — não estoura o Vercel)
             let musicas = null;
             try {
                 const gasResult = await callGASComTimeout('get_musicas', params, 5000);
@@ -2745,7 +2884,6 @@ module.exports = async (req, res) => {
                 console.warn('⚠️ [get_musicas] GAS timeout/falha:', e.message);
             }
 
-            // 4. Se conseguiu do GAS, salva em ambos os caches
             if (musicas && musicas.length > 0) {
                 cache.set('musicas', musicas, 60);
                 try {
@@ -2758,7 +2896,6 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: true, data: musicas, _via: 'gas', total: musicas.length });
             }
 
-            // 5. Fallback: cache Redis stale
             try {
                 const stale = await Storage.get(cacheKey);
                 if (stale && stale.length) {
@@ -2767,7 +2904,6 @@ module.exports = async (req, res) => {
                 }
             } catch (e) {}
 
-            // 6. Último recurso
             console.warn('⚠️ [get_musicas] todas as camadas falharam — usando FALLBACK_MUSICAS');
             return res.status(200).json({ success: true, data: FALLBACK_MUSICAS, source: 'fallback_local' });
         }
@@ -3245,7 +3381,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.7',
+            version: '9.8.8',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
