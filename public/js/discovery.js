@@ -1,8 +1,17 @@
 // ============================================================
-// js/discovery.js — PLAY MY v2.1.1
+// js/discovery.js — PLAY MY v2.2.0
 // Feed Vertical de Descoberta (estilo TikTok/Resso) + Personalização
 // + Load More Infinito (Bolsa Externa + YouTube)
 // + Ações Robustas (favoritar, compartilhar, seguir)
+// + 🆕 Feed PERSONALIZADO via get_history (plays + favorites + follows)
+//
+// MUDANÇAS v2.2.0:
+//   - 🆕 buildPersonalizedFeed(): lê get_history e monta feed personalizado
+//   - 🆕 stats.artistas7d/generos7d/musicasTop são usadas para ranquear
+//   - 🆕 Card ganha label "✨ Porque você ouve X" quando vem do histórico
+//   - 🆕 Fallback automático para o feed v2.1.1 se histórico estiver vazio
+//   - 🆕 Histórico é cacheado por 60s (_historyCache)
+//   - ✅ NADA MAIS MUDOU — todas as ações v2.1.1 continuam idênticas
 //
 // MUDANÇAS v2.1.1:
 //   - 🐛 FIX: discoveryFav — 3 fallbacks (toggleFavoriteMusic → toggleFavorite → API)
@@ -19,7 +28,7 @@
 (function () {
   'use strict';
 
-  var DISCOVERY_VERSION = '2.1.1';
+  var DISCOVERY_VERSION = '2.2.0';
 
   var _discoveryState = {
     active: false,
@@ -32,8 +41,13 @@
     cardsIdsUsados: {},
     loadingMore: false,
     cacheYouTube: {},
-    queriesUsadas: []
+    queriesUsadas: [],
+    // 🆕 v2.2.0 — cache do histórico (60s)
+    historyStats: null,
+    historyCacheAt: 0
   };
+
+  var HISTORY_CACHE_MS = 60000;
 
   function log() {
     try {
@@ -102,7 +116,50 @@
   }
 
   // ============================================================
-  // PERFIL
+  // 🆕 v2.2.0 — HISTÓRICO
+  // ============================================================
+  function getHistoryStats() {
+    var agora = Date.now();
+    if (_discoveryState.historyStats &&
+        agora - _discoveryState.historyCacheAt < HISTORY_CACHE_MS) {
+      return Promise.resolve(_discoveryState.historyStats);
+    }
+
+    if (typeof callAPI !== 'function') {
+      return Promise.resolve(null);
+    }
+
+    return callAPI('get_history')
+      .then(function (r) {
+        if (r && r.success && r.data && r.data.stats) {
+          _discoveryState.historyStats = r.data.stats;
+          _discoveryState.historyCacheAt = agora;
+          log('Histórico carregado:', {
+            artistas: Object.keys(r.data.stats.artistas7d || {}).length,
+            generos: Object.keys(r.data.stats.generos7d || {}).length,
+            total: r.data.total || 0
+          });
+          return r.data.stats;
+        }
+        return null;
+      })
+      .catch(function (e) {
+        console.warn('[Discovery] Erro get_history:', e && e.message);
+        return null;
+      });
+  }
+
+  // Extrai top N de um objeto { chave: contagem } ordenado desc
+  function topN(obj, n) {
+    if (!obj || typeof obj !== 'object') return [];
+    return Object.keys(obj)
+      .map(function (k) { return { chave: k, count: obj[k] }; })
+      .sort(function (a, b) { return b.count - a.count; })
+      .slice(0, n);
+  }
+
+  // ============================================================
+  // PERFIL (v2.1.1) — usado como fallback
   // ============================================================
   function coletarPerfilUsuario() {
     var perfil = {
@@ -156,12 +213,16 @@
   }
 
   // ============================================================
-  // RANKING DE ARTISTAS
+  // RANKING DE ARTISTAS (v2.1.1) — agora aceita histórico como bônus
   // ============================================================
-  function ranquearArtistas(perfil) {
+  function ranquearArtistas(perfil, historyStats) {
     var playlist = (window.state && window.state.playlist) || [];
     var eloMap = (window.state && window.state.eloMap) || {};
     var streamsMap = (window.state && window.state.streamsMap) || {};
+
+    // 🆕 v2.2.0 — bônus do histórico
+    var historicoArtistas = (historyStats && historyStats.artistas7d) || {};
+    var historicoGeneros = (historyStats && historyStats.generos7d) || {};
 
     var artistas = {};
     playlist.forEach(function (m) {
@@ -186,6 +247,7 @@
       a.eloMedio = a.musicas.length ? Math.round(a.eloMedio / a.musicas.length) : 1000;
 
       var score = 0;
+      // Fallbacks v2.1.1
       if (perfil.following.indexOf(nome) !== -1) score += 100;
       if (perfil.artistasInteragidos[nome]) score += perfil.artistasInteragidos[nome] * 20;
 
@@ -197,6 +259,18 @@
 
       score += Math.floor(a.eloMedio / 100);
       score += Math.floor(a.streams / 100);
+
+      // 🆕 v2.2.0 — bônus do histórico (peso alto)
+      if (historicoArtistas[nome]) {
+        score += historicoArtistas[nome] * 50;
+      }
+      // 🆕 v2.2.0 — gênero do artista no histórico
+      a.musicas.forEach(function (m) {
+        if (m.genero && historicoGeneros[m.genero]) {
+          score += historicoGeneros[m.genero] * 5;
+        }
+      });
+
       a.score = score;
     });
 
@@ -204,12 +278,114 @@
   }
 
   // ============================================================
-  // CONSTRUIR CARDS
+  // 🆕 v2.2.0 — CONSTRUIR CARDS PERSONALIZADOS
+  // ============================================================
+  function construirCardsComHistorico(historyStats) {
+    var perfil = coletarPerfilUsuario();
+    var playlist = (window.state && window.state.playlist) || [];
+    var artistasRankeados = ranquearArtistas(perfil, historyStats);
+
+    var historicoArtistas = (historyStats && historyStats.artistas7d) || {};
+    var historicoGeneros = (historyStats && historyStats.generos7d) || {};
+    var historicoMusicas = (historyStats && historyStats.musicasTop) || {};
+
+    var topArtistas = topN(historicoArtistas, 5).map(function (x) { return x.chave; });
+    var topGeneros = topN(historicoGeneros, 3).map(function (x) { return x.chave; });
+
+    log('Personalização: top artistas =', topArtistas, '| top gêneros =', topGeneros);
+
+    var musicasValidas = playlist.filter(function (m) {
+      return m && m.status !== 'deleted' && m.status !== 'paused';
+    });
+
+    // Classifica músicas em tiers
+    var musicasHistoricoArtista = [];   // tier 1: artista no histórico
+    var musicasHistoricoGenero = [];    // tier 2: gênero no histórico
+    var musicasPrioritarias = [];       // tier 3: favoritas/portfolio (v2.1.1)
+    var musicasNormais = [];            // tier 4: resto
+
+    musicasValidas.forEach(function (m) {
+      var sid = String(m.id);
+      var artista = m.artista || '';
+      var genero = m.genero || '';
+
+      var isFav = perfil.favoritos.indexOf(sid) !== -1;
+      var isPortfolio = perfil.portfolio.some(function (a) { return String(a.music_id) === sid; });
+      var noHistoricoArtista = historicoArtistas[artista] > 0;
+      var noHistoricoGenero = historicoGeneros[genero] > 0;
+      var musicaJaOuvida = historicoMusicas[sid] > 0;
+
+      m._personalizado = {
+        artista: noHistoricoArtista,
+        genero: noHistoricoGenero,
+        jaOuvida: musicaJaOuvida
+      };
+
+      if (noHistoricoArtista) {
+        musicasHistoricoArtista.push(m);
+      } else if (noHistoricoGenero) {
+        musicasHistoricoGenero.push(m);
+      } else if (isFav || isPortfolio) {
+        musicasPrioritarias.push(m);
+      } else {
+        musicasNormais.push(m);
+      }
+    });
+
+    // Ordena cada tier por "força" (mais plays/favorites primeiro)
+    musicasHistoricoArtista.sort(function (a, b) {
+      return (historicoArtistas[b.artista] || 0) - (historicoArtistas[a.artista] || 0);
+    });
+    musicasHistoricoGenero.sort(function (a, b) {
+      return (historicoGeneros[b.genero] || 0) - (historicoGeneros[a.genero] || 0);
+    });
+
+    var musicasOrdenadas = []
+      .concat(musicasHistoricoArtista)
+      .concat(musicasHistoricoGenero)
+      .concat(shuffle(musicasPrioritarias))
+      .concat(shuffle(musicasNormais));
+
+    var userPlaylists = (window.state && window.state.userPlaylists) || [];
+    var globalPlaylists = (window.state && window.state.globalPlaylists) || [];
+    var playlistsMisturadas = shuffle(userPlaylists.concat(globalPlaylists));
+
+    var cards = [];
+    var musicasIdx = 0, artistasIdx = 0, playlistsIdx = 0;
+
+    while (musicasIdx < musicasOrdenadas.length ||
+           artistasIdx < artistasRankeados.length ||
+           playlistsIdx < playlistsMisturadas.length) {
+
+      if (musicasIdx < musicasOrdenadas.length) {
+        cards.push({ tipo: 'musica', dados: musicasOrdenadas[musicasIdx++] });
+      }
+      if (cards.length % 3 === 0 && artistasIdx < artistasRankeados.length) {
+        cards.push({ tipo: 'artista', dados: artistasRankeados[artistasIdx++] });
+      }
+      if (cards.length % 5 === 0 && playlistsIdx < playlistsMisturadas.length) {
+        cards.push({ tipo: 'playlist', dados: playlistsMisturadas[playlistsIdx++] });
+      }
+    }
+
+    log('Cards PERSONALIZADOS montados:', cards.length,
+        '| hist-artista:', musicasHistoricoArtista.length,
+        '| hist-genero:', musicasHistoricoGenero.length,
+        '| fav/portfolio:', musicasPrioritarias.length,
+        '| normais:', musicasNormais.length,
+        '| artistas:', artistasRankeados.length,
+        '| playlists:', playlistsMisturadas.length);
+
+    return cards;
+  }
+
+  // ============================================================
+  // CONSTRUIR CARDS (v2.1.1) — fallback
   // ============================================================
   function construirCards() {
     var perfil = coletarPerfilUsuario();
     var playlist = (window.state && window.state.playlist) || [];
-    var artistasRankeados = ranquearArtistas(perfil);
+    var artistasRankeados = ranquearArtistas(perfil, null);
     var cards = [];
 
     var musicasValidas = playlist.filter(function (m) {
@@ -250,7 +426,7 @@
       }
     }
 
-    log('Cards montados:', cards.length,
+    log('Cards montados (fallback v2.1.1):', cards.length,
         '| músicas:', musicasOrdenadas.length,
         '| artistas:', artistasRankeados.length,
         '| playlists:', playlistsMisturadas.length);
@@ -392,6 +568,16 @@
       ? '<div class="discovery-card-badge tipo-youtube"><i class="bi bi-youtube"></i> YouTube</div>'
       : '<div class="discovery-card-badge tipo-musica"><i class="bi bi-music-note-beamed"></i> Música</div>';
 
+    // 🆕 v2.2.0 — badge de personalização
+    var badgePersonalizado = '';
+    if (isInterna && musica._personalizado) {
+      if (musica._personalizado.artista) {
+        badgePersonalizado = '<div class="discovery-personalizado-badge">✨ Porque você ouve ' + escapeHtml(musica.artista) + '</div>';
+      } else if (musica._personalizado.genero) {
+        badgePersonalizado = '<div class="discovery-personalizado-badge">✨ Mais de ' + escapeHtml(musica.genero) + '</div>';
+      }
+    }
+
     var statsHtml = isInterna
       ? '<div class="discovery-stats">' +
           '<span><i class="bi bi-eye"></i> ' + views + '</span>' +
@@ -447,6 +633,7 @@
           '<div class="discovery-cover-overlay"></div>' +
         '</div>' +
         badgeOrigem +
+        badgePersonalizado +
         '<div class="discovery-info">' +
           '<div class="discovery-genero">' + genero + '</div>' +
           '<h1 class="discovery-track-title">' + titulo + '</h1>' +
@@ -465,12 +652,15 @@
   // ============================================================
   // RENDER — CARD DE ARTISTA
   // ============================================================
-  function renderCardArtista(artista, idx, total, perfil) {
+  function renderCardArtista(artista, idx, total, perfil, historyStats) {
     var nome = escapeHtml(artista.nome);
     var totalMusicas = artista.musicas.length;
     var elo = artista.eloMedio;
     var streams = formatarNumero(artista.streams);
     var jaSegue = perfil.following.indexOf(artista.nome) !== -1;
+
+    var historicoArtistas = (historyStats && historyStats.artistas7d) || {};
+    var playsDoArtista = historicoArtistas[artista.nome] || 0;
 
     var primeiraMusica = artista.musicas[0];
     var cover = primeiraMusica ? getCoverMusica(primeiraMusica) : '/images/logo.png';
@@ -478,6 +668,10 @@
     var idxPrimeiraMusica = window.state.playlist.findIndex(function (m) {
       return String(m.id) === String(primeiraMusica && primeiraMusica.id);
     });
+
+    var badgePersonalizado = playsDoArtista > 0
+      ? '<div class="discovery-personalizado-badge">✨ Você ouviu ' + playsDoArtista + 'x</div>'
+      : '';
 
     return '' +
       '<div class="discovery-card discovery-card-artista" data-index="' + idx + '">' +
@@ -487,6 +681,7 @@
         '<div class="discovery-card-badge tipo-artista">' +
           '<i class="bi bi-mic-fill"></i> Artista' +
         '</div>' +
+        badgePersonalizado +
         '<div class="discovery-info">' +
           '<div class="discovery-genero">Artista</div>' +
           '<h1 class="discovery-track-title">' + nome + '</h1>' +
@@ -581,7 +776,7 @@
       if (c.tipo === 'musica') {
         html += renderCardMusica(c.dados, i, total);
       } else if (c.tipo === 'artista') {
-        html += renderCardArtista(c.dados, i, total, perfil);
+        html += renderCardArtista(c.dados, i, total, perfil, _discoveryState.historyStats);
       } else if (c.tipo === 'playlist') {
         html += renderCardPlaylist(c.dados, i, total, c.dados.isGlobal === true);
       }
@@ -816,21 +1011,18 @@
     try {
       log('Favoritar →', musicId);
 
-      // 1. toggleFavoriteMusic (nome atual do marketplace.js)
       if (typeof toggleFavoriteMusic === 'function') {
         toggleFavoriteMusic(musicId);
         if (typeof showToast === 'function') showToast('❤️ Favorito atualizado', 'success');
         return;
       }
 
-      // 2. toggleFavorite (nome alternativo)
       if (typeof toggleFavorite === 'function') {
         toggleFavorite(musicId);
         if (typeof showToast === 'function') showToast('❤️ Favorito atualizado', 'success');
         return;
       }
 
-      // 3. Chama API direto
       if (typeof callAPI === 'function' && state.currentUser && state.currentUser.id) {
         var isFav = (state.favoriteMusicIds || []).map(String).indexOf(String(musicId)) !== -1;
         callAPI('toggle_favorite', {
@@ -867,13 +1059,11 @@
     try {
       log('Compartilhar →', musicId);
 
-      // 1. shareMusic (nome atual do marketplace.js)
       if (typeof shareMusic === 'function') {
         shareMusic(musicId);
         return;
       }
 
-      // 2. openShareModal (precisa do currentShareTrack)
       if (typeof openShareModal === 'function') {
         var musica = (state.playlist || []).find(function (m) {
           return String(m.id) === String(musicId);
@@ -887,7 +1077,6 @@
             link: window.location.origin + '/?music=' + musica.id
           };
 
-          // Atualiza o preview do modal
           var cover = document.getElementById('sharePreviewCover');
           var title = document.getElementById('sharePreviewTitle');
           var artist = document.getElementById('sharePreviewArtist');
@@ -899,7 +1088,6 @@
         return;
       }
 
-      // 3. Web Share API / clipboard
       var track = (state.playlist || []).find(function (m) {
         return String(m.id) === String(musicId);
       });
@@ -935,12 +1123,10 @@
 
       var artists = (window.state && window.state.artists) || [];
 
-      // 1. Procura por nome EXATO
       var artista = artists.find(function (a) {
         return String(a.nome) === String(artistName);
       });
 
-      // 2. Fallback: case-insensitive
       if (!artista) {
         var nomeLower = String(artistName).toLowerCase();
         artista = artists.find(function (a) {
@@ -948,7 +1134,6 @@
         });
       }
 
-      // 3. Se achou, usa o ID real
       if (artista) {
         if (typeof toggleFollow === 'function') {
           toggleFollow(artista.id || artista.nome);
@@ -981,7 +1166,6 @@
         }
       }
 
-      // 4. Não achou nos state.artists — usa o nome como ID
       if (typeof callAPI === 'function' && state.currentUser) {
         var isFollowing2 = (state.followingArtists || []).map(String).indexOf(String(artistName)) !== -1;
         callAPI('toggle_follow', {
@@ -1084,13 +1268,11 @@
     }
   };
 
-  // Favoritar YouTube (só salva local)
   window.discoveryFavYouTube = function (videoId) {
     try {
       var vid = String(videoId).replace('yt_', '');
       log('Fav YouTube →', vid);
 
-      // Salva na lista local (state.favoriteMusicIds)
       if (!Array.isArray(state.favoriteMusicIds)) state.favoriteMusicIds = [];
       var sid = 'yt_' + vid;
       var isFav = state.favoriteMusicIds.map(String).indexOf(sid) !== -1;
@@ -1110,15 +1292,35 @@
   };
 
   // ============================================================
-  // ABRIR / FECHAR
+  // 🆕 v2.2.0 — ABRIR (com histórico)
   // ============================================================
   window.openDiscoveryFeed = function () {
     _discoveryState.cardsIdsUsados = {};
     _discoveryState.loadingMore = false;
     _discoveryState.queriesUsadas = [];
 
-    _discoveryState.cards = construirCards();
+    // 🆕 v2.2.0 — tenta carregar o histórico primeiro
+    getHistoryStats().then(function (stats) {
+      if (stats && (
+          Object.keys(stats.artistas7d || {}).length > 0 ||
+          Object.keys(stats.generos7d || {}).length > 0
+      )) {
+        log('Usando feed PERSONALIZADO (histórico disponível)');
+        _discoveryState.cards = construirCardsComHistorico(stats);
+      } else {
+        log('Histórico vazio — usando feed padrão v2.1.1');
+        _discoveryState.cards = construirCards();
+      }
 
+      _abrirFeed();
+    }).catch(function () {
+      log('Erro ao carregar histórico — usando feed padrão');
+      _discoveryState.cards = construirCards();
+      _abrirFeed();
+    });
+  };
+
+  function _abrirFeed() {
     _discoveryState.cards.forEach(function (c) {
       if (c.tipo === 'musica' && c.dados && c.dados.id) {
         _discoveryState.cardsIdsUsados[String(c.dados.id)] = true;
@@ -1151,7 +1353,7 @@
     render();
 
     log('Feed aberto com', _discoveryState.cards.length, 'cards');
-  };
+  }
 
   window.closeDiscoveryFeed = function () {
     try {
@@ -1180,6 +1382,13 @@
 
   window.discoveryNext = discoveryNext;
   window.discoveryPrev = discoveryPrev;
+
+  // 🆕 v2.2.0 — utilidade pra forçar refresh do histórico
+  window.discoveryClearHistoryCache = function () {
+    _discoveryState.historyStats = null;
+    _discoveryState.historyCacheAt = 0;
+    log('Cache de histórico limpo');
+  };
 
   log('v' + DISCOVERY_VERSION + ' carregado');
 
