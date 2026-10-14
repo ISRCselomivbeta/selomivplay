@@ -10,7 +10,7 @@
     { "source": "/js/(.*)",      "destination": "/public/js/$1" },
     { "source": "/images/(.*)",  "destination": "/public/images/$1" },
     {
-      "source": "/((?!api/|manifest\\.json|sw\\.js|images/|css/|js/|favicon\\.ico|robots\\.txt|sitemap\\.xml|s/n/).*)",
+      "source": "/((?!api/|manifest\\.json|sw\\.js|images/|css/|js/|favicon\\.ico|robots\\.txt|sitemap\\.xml|s/|n/).*)",
       "destination": "/index.html"
     }
   ],
@@ -50,6 +50,8 @@
     { "source": "/js/state.js", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] },
     { "source": "/js/news.js", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] },
     { "source": "/js/news-unified.js", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] },
+    { "source": "/js/discovery.js", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] },
+    { "source": "/css/discovery.css", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] },
     { "source": "/images/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
     { "source": "/css/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }] },
     { "source": "/js/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }] },
@@ -70,13 +72,7 @@
   ],
 
   "functions": {
-    "api/backend.js":   { "maxDuration": 10 },
-    "api/elo.js":       { "maxDuration": 10 },
-    "api/valuation.js": { "maxDuration": 10 },
-    "api/isrc.js":      { "maxDuration": 10 },
-    "api/royalties.js": { "maxDuration": 10 },
-    "api/streams.js":   { "maxDuration": 10 },
-    "api/s.js":         { "maxDuration": 10 }
+    "api/*.js": { "maxDuration": 10 }
   },
 
   "regions": ["gru1"]
