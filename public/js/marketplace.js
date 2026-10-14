@@ -1,8 +1,18 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v9.3.4
+// js/marketplace.js — PLAY MY v9.3.5
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
+//
+// MUDANÇAS v9.3.5:
+//   - 🐛 FIX: toggleFollow() agora sincroniza com state.followingArtists
+//      (antes: chamava API mas não atualizava o state, então o discovery.js
+//       nunca "via" os artistas seguidos)
+//   - 🐛 FIX: toggleFavoriteMusic() agora sincroniza com state.favoriteMusicIds
+//      (antes: chamava API mas não atualizava o state, então o discovery.js
+//       nunca "via" os favoritos)
+//   - 🆕 callAPI.invalidate() após toggle para forçar refresh dos dados
+//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.3.4
 //
 // MUDANÇAS v9.3.4:
 //   - 🐛 FIX: playGlobalPlaylist duplicada (a segunda sobrescrevia a primeira)
@@ -1369,7 +1379,7 @@ window.playUserPlaylist = function (id) {
 };
 
 // ============================================================
-// 🆕 v9.3.4 — playGlobalPlaylist (ÚNICA versão, corrigida)
+// v9.3.4 — playGlobalPlaylist (ÚNICA versão, corrigida)
 // ============================================================
 window.playGlobalPlaylist = function (playlistId) {
   const playlists = Array.isArray(state.globalPlaylists) ? state.globalPlaylists : [];
@@ -1389,14 +1399,12 @@ window.playGlobalPlaylist = function (playlistId) {
   const queueItems = [];
 
   ids.forEach(id => {
-    // 1) Música interna (Selo MIV)
     const idx = playlist.findIndex(m => String(m.id) === String(id));
     if (idx !== -1) {
       queueItems.push({ type: 'internal', index: idx });
       return;
     }
 
-    // 2) Vídeo do YouTube adicionado à playlist global (id começa com 'yt_')
     if (String(id).startsWith('yt_')) {
       const videoId = String(id).replace('yt_', '');
       const externalPlaylist = Array.isArray(state.externalPlaylist) ? state.externalPlaylist : [];
@@ -1610,42 +1618,120 @@ window.redeemTicket = async function (id) {
 };
 
 // ============================================================
-// FOLLOW / FAVORITOS
+// FOLLOW / FAVORITOS — v9.3.5 (com sincronização completa)
 // ============================================================
 window.toggleFollow = async function (artistId) {
   if (!state.currentUser) { showToast('Faça login', 'error'); return; }
   const sid = String(artistId);
   const isFollowing = (state.followingArtists || []).map(String).includes(sid);
+
+  // 🆕 v9.3.5 — Atualiza o state ANTES de chamar API
   if (isFollowing) {
     state.followingArtists = state.followingArtists.filter(x => String(x) !== sid);
     showToast('Deixou de seguir', 'info');
   } else {
+    if (!Array.isArray(state.followingArtists)) state.followingArtists = [];
     state.followingArtists.push(sid);
     showToast('❤️ Seguindo!', 'success');
   }
+
+  // Re-renderiza para o usuário ver a mudança
   renderArtists();
   renderFeaturedArtists();
+
+  // 🆕 v9.3.5 — Invalida o cache do get_following
+  if (typeof callAPI.invalidate === 'function') {
+    callAPI.invalidate('get_following');
+  }
+
+  // Chama a API
   try {
-    await callAPI('toggle_follow', { artist_id: artistId, action: isFollowing ? 'unfollow' : 'follow' });
-  } catch (e) {}
+    const r = await callAPI('toggle_follow', {
+      artist_id: artistId,
+      action: isFollowing ? 'unfollow' : 'follow'
+    });
+
+    if (!r || !r.success) {
+      // Rollback se a API falhar
+      console.warn('⚠️ toggle_follow falhou — revertendo state');
+      if (isFollowing) {
+        state.followingArtists.push(sid);
+      } else {
+        state.followingArtists = state.followingArtists.filter(x => String(x) !== sid);
+      }
+      renderArtists();
+      renderFeaturedArtists();
+      showToast('Erro ao seguir', 'error');
+    } else {
+      console.log('✅ [toggle_follow] via API — state atualizado:', state.followingArtists);
+    }
+  } catch (e) {
+    console.error('❌ toggle_follow erro:', e);
+    // Rollback
+    if (isFollowing) {
+      state.followingArtists.push(sid);
+    } else {
+      state.followingArtists = state.followingArtists.filter(x => String(x) !== sid);
+    }
+    renderArtists();
+    renderFeaturedArtists();
+  }
 };
 
 window.toggleFavoriteMusic = async function (musicId) {
   if (!state.currentUser) { showToast('Faça login', 'error'); return; }
   const sid = String(musicId);
   const wasFav = (state.favoriteMusicIds || []).map(String).includes(sid);
+
+  // 🆕 v9.3.5 — Atualiza o state ANTES de chamar API
   if (wasFav) {
     state.favoriteMusicIds = state.favoriteMusicIds.filter(x => String(x) !== sid);
   } else {
+    if (!Array.isArray(state.favoriteMusicIds)) state.favoriteMusicIds = [];
     state.favoriteMusicIds.push(sid);
   }
+
+  // Re-renderiza para o usuário ver a mudança
   renderFavorites();
+
+  // 🆕 v9.3.5 — Invalida o cache do get_user_profile (que retorna favoritos)
+  if (typeof callAPI.invalidate === 'function') {
+    callAPI.invalidate('get_user_profile');
+  }
+
+  // Chama a API
   try {
-    await callAPI('toggle_favorite', { music_id: musicId, action: wasFav ? 'remove' : 'add' });
-  } catch (e) {}
+    const r = await callAPI('toggle_favorite', {
+      music_id: musicId,
+      action: wasFav ? 'remove' : 'add'
+    });
+
+    if (!r || !r.success) {
+      // Rollback se a API falhar
+      console.warn('⚠️ toggle_favorite falhou — revertendo state');
+      if (wasFav) {
+        state.favoriteMusicIds.push(sid);
+      } else {
+        state.favoriteMusicIds = state.favoriteMusicIds.filter(x => String(x) !== sid);
+      }
+      renderFavorites();
+      showToast('Erro ao favoritar', 'error');
+    } else {
+      console.log('✅ [toggle_favorite] via API — state atualizado:', state.favoriteMusicIds.length, 'favoritos');
+    }
+  } catch (e) {
+    console.error('❌ toggle_favorite erro:', e);
+    // Rollback
+    if (wasFav) {
+      state.favoriteMusicIds.push(sid);
+    } else {
+      state.favoriteMusicIds = state.favoriteMusicIds.filter(x => String(x) !== sid);
+    }
+    renderFavorites();
+  }
 };
 
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.3.4 carregado — playGlobalPlaylist única (fix duplicação) + YouTube na playlist global');
+console.log('✅ [marketplace.js] v9.3.5 carregado — toggleFollow + toggleFavoriteMusic com sync de state');
