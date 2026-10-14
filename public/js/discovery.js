@@ -1,9 +1,13 @@
 // ============================================================
-// js/discovery.js — PLAY MY v1.0.0
+// js/discovery.js — PLAY MY v1.0.1
 // Feed Vertical de Descoberta (estilo TikTok/Resso)
 //
 // ADITIVO — não altera player.js, state.js ou qualquer arquivo existente.
 // Só adiciona uma nova tela de descoberta.
+//
+// MUDANÇAS v1.0.1:
+//   - 🐛 FIX: anexar no documentElement em vez do body
+//        (resolve o feed aparecer no final do rodapé desconfigurado)
 //
 // API pública:
 //   window.openDiscoveryFeed()    — abre o feed
@@ -18,7 +22,7 @@
 (function () {
   'use strict';
 
-  var DISCOVERY_VERSION = '1.0.0';
+  var DISCOVERY_VERSION = '1.0.1';
 
   // ============================================================
   // ESTADO INTERNO
@@ -143,7 +147,12 @@
         '<i class="bi bi-arrow-down"></i> Deslize ou use ↑ ↓' +
       '</div>';
 
-    document.body.appendChild(el);
+    // ============================================================
+    // 🆕 v1.0.1 — Anexa DIRETO no <html> (documentElement)
+    // Isso garante que o `position: fixed` se refira à janela,
+    // não ao <body> que pode ter position:relative.
+    // ============================================================
+    document.documentElement.appendChild(el);
     _discoveryState.container = el;
 
     // Bind dos eventos de navegação
