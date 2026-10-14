@@ -1,8 +1,13 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v9.3.5
+// js/marketplace.js — PLAY MY v9.3.6
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
+//
+// MUDANÇAS v9.3.6:
+//   - 🆕 toggleFollow() registra evento 'follow'/'unfollow' no histórico
+//   - 🆕 toggleFavoriteMusic() registra evento 'favorite'/'unfavorite' no histórico
+//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.3.5
 //
 // MUDANÇAS v9.3.5:
 //   - 🐛 FIX: toggleFollow() agora sincroniza com state.followingArtists
@@ -1618,14 +1623,14 @@ window.redeemTicket = async function (id) {
 };
 
 // ============================================================
-// FOLLOW / FAVORITOS — v9.3.5 (com sincronização completa)
+// FOLLOW / FAVORITOS — v9.3.6 (com register_event no histórico)
 // ============================================================
 window.toggleFollow = async function (artistId) {
   if (!state.currentUser) { showToast('Faça login', 'error'); return; }
   const sid = String(artistId);
   const isFollowing = (state.followingArtists || []).map(String).includes(sid);
 
-  // 🆕 v9.3.5 — Atualiza o state ANTES de chamar API
+  // v9.3.5 — Atualiza o state ANTES de chamar API
   if (isFollowing) {
     state.followingArtists = state.followingArtists.filter(x => String(x) !== sid);
     showToast('Deixou de seguir', 'info');
@@ -1635,16 +1640,34 @@ window.toggleFollow = async function (artistId) {
     showToast('❤️ Seguindo!', 'success');
   }
 
-  // Re-renderiza para o usuário ver a mudança
+  // Re-renderiza
   renderArtists();
   renderFeaturedArtists();
 
-  // 🆕 v9.3.5 — Invalida o cache do get_following
+  // Invalida cache
   if (typeof callAPI.invalidate === 'function') {
     callAPI.invalidate('get_following');
   }
 
-  // Chama a API
+  // 🆕 v9.3.6 — Registra evento no histórico (fire-and-forget)
+  try {
+    var artista = (state.artists || []).find(function (a) {
+      return String(a.id) === String(artistId);
+    });
+    callAPI('register_event', {
+      event_type: isFollowing ? 'unfollow' : 'follow',
+      artist: artista ? artista.nome : String(artistId),
+      genero: null,
+      music_id: null,
+      titulo: null
+    }).then(function (r) {
+      if (r && r.success) {
+        console.log('📊 [event] registrado: ' + (isFollowing ? 'unfollow' : 'follow') + ' — ' + (artista ? artista.nome : artistId));
+      }
+    }).catch(function () {});
+  } catch (e) {}
+
+  // Chama API do toggle_follow
   try {
     const r = await callAPI('toggle_follow', {
       artist_id: artistId,
@@ -1652,7 +1675,7 @@ window.toggleFollow = async function (artistId) {
     });
 
     if (!r || !r.success) {
-      // Rollback se a API falhar
+      // Rollback
       console.warn('⚠️ toggle_follow falhou — revertendo state');
       if (isFollowing) {
         state.followingArtists.push(sid);
@@ -1667,7 +1690,6 @@ window.toggleFollow = async function (artistId) {
     }
   } catch (e) {
     console.error('❌ toggle_follow erro:', e);
-    // Rollback
     if (isFollowing) {
       state.followingArtists.push(sid);
     } else {
@@ -1683,7 +1705,7 @@ window.toggleFavoriteMusic = async function (musicId) {
   const sid = String(musicId);
   const wasFav = (state.favoriteMusicIds || []).map(String).includes(sid);
 
-  // 🆕 v9.3.5 — Atualiza o state ANTES de chamar API
+  // v9.3.5 — Atualiza o state ANTES de chamar API
   if (wasFav) {
     state.favoriteMusicIds = state.favoriteMusicIds.filter(x => String(x) !== sid);
   } else {
@@ -1691,15 +1713,35 @@ window.toggleFavoriteMusic = async function (musicId) {
     state.favoriteMusicIds.push(sid);
   }
 
-  // Re-renderiza para o usuário ver a mudança
+  // Re-renderiza
   renderFavorites();
 
-  // 🆕 v9.3.5 — Invalida o cache do get_user_profile (que retorna favoritos)
+  // Invalida cache
   if (typeof callAPI.invalidate === 'function') {
     callAPI.invalidate('get_user_profile');
   }
 
-  // Chama a API
+  // 🆕 v9.3.6 — Registra evento no histórico (fire-and-forget)
+  try {
+    var musica = (state.playlist || []).find(function (m) {
+      return String(m.id) === String(musicId);
+    });
+    if (musica) {
+      callAPI('register_event', {
+        event_type: wasFav ? 'unfavorite' : 'favorite',
+        music_id: musica.id,
+        artist: musica.artista || null,
+        genero: musica.genero || null,
+        titulo: musica.titulo || null
+      }).then(function (r) {
+        if (r && r.success) {
+          console.log('📊 [event] registrado: ' + (wasFav ? 'unfavorite' : 'favorite') + ' — ' + (musica.titulo || musica.id));
+        }
+      }).catch(function () {});
+    }
+  } catch (e) {}
+
+  // Chama API do toggle_favorite
   try {
     const r = await callAPI('toggle_favorite', {
       music_id: musicId,
@@ -1707,7 +1749,7 @@ window.toggleFavoriteMusic = async function (musicId) {
     });
 
     if (!r || !r.success) {
-      // Rollback se a API falhar
+      // Rollback
       console.warn('⚠️ toggle_favorite falhou — revertendo state');
       if (wasFav) {
         state.favoriteMusicIds.push(sid);
@@ -1721,7 +1763,6 @@ window.toggleFavoriteMusic = async function (musicId) {
     }
   } catch (e) {
     console.error('❌ toggle_favorite erro:', e);
-    // Rollback
     if (wasFav) {
       state.favoriteMusicIds.push(sid);
     } else {
@@ -1734,4 +1775,4 @@ window.toggleFavoriteMusic = async function (musicId) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.3.5 carregado — toggleFollow + toggleFavoriteMusic com sync de state');
+console.log('✅ [marketplace.js] v9.3.6 carregado — toggleFollow + toggleFavoriteMusic com register_event');
