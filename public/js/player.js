@@ -1,5 +1,5 @@
 // ============================================================
-// js/player.js — PLAY MY v9.3.3
+// js/player.js — PLAY MY v9.3.4
 // Player completo: reprodução, controles, progresso, volume.
 // Depende de: config.js, utils.js, state.js, api.js, youtube.js
 // DEVE carregar DEPOIS de youtube.js e ANTES de marketplace.js.
@@ -1137,7 +1137,39 @@ if (document.readyState === 'loading') {
     setTimeout(tryRestore, 2000);
   }
 })();
+// ============================================================
+// 🆕 v9.3.4 — SALVA TRACK ATUAL DO YOUTUBE PURO
+// ============================================================
+// Necessário pro share-universal.js saber o que está tocando
+// quando o usuário pesquisa algo no YouTube e toca.
+// ============================================================
 
+// Wrapper no playSearchResult pra salvar o track de YouTube
+(function bindYouTubeTrackCapture() {
+  var _originalPlaySearchResult = window.playSearchResult;
+  if (typeof _originalPlaySearchResult !== 'function') return;
+
+  window.playSearchResult = function (type, id) {
+    if (type === 'youtube') {
+      var vid = String(id).replace('yt_', '');
+      // Salva o track atual
+      state._currentYouTubeTrack = {
+        id: 'yt_' + vid,
+        titulo: 'Vídeo do YouTube',
+        artista: 'YouTube',
+        link_youtube: 'https://www.youtube.com/watch?v=' + vid,
+        link_capa: 'https://img.youtube.com/vi/' + vid + '/hqdefault.jpg',
+        youtube: true,
+        externa: true,
+        genero: 'YouTube'
+      };
+      console.log('🎵 [player v9.3.4] YouTube track salvo em state._currentYouTubeTrack:', vid);
+    }
+    return _originalPlaySearchResult.apply(this, arguments);
+  };
+
+  console.log('✅ [player v9.3.4] wrapper em playSearchResult instalado');
+})();
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
