@@ -1,26 +1,25 @@
 // ============================================================
-// js/discovery.js — PLAY MY v2.1.0
+// js/discovery.js — PLAY MY v2.1.1
 // Feed Vertical de Descoberta (estilo TikTok/Resso) + Personalização
 // + Load More Infinito (Bolsa Externa + YouTube)
+// + Ações Robustas (favoritar, compartilhar, seguir)
+//
+// MUDANÇAS v2.1.1:
+//   - 🐛 FIX: discoveryFav — 3 fallbacks (toggleFavoriteMusic → toggleFavorite → API)
+//   - 🐛 FIX: discoveryShare — 3 fallbacks (shareMusic → openShareModal → Web Share)
+//   - 🐛 FIX: discoveryFollow — 3 fallbacks (nome exato → case-insensitive → API)
+//   - 🆕 showToast de feedback em cada ação (sucesso/erro)
 //
 // MUDANÇAS v2.1.0:
 //   - 🆕 Feed INFINITO: quando chega perto do fim, carrega mais
-//   - 🆕 PASSO 1: músicas da Bolsa Externa (state.externalPlaylist)
-//   - 🆕 PASSO 2: quando acaba, busca no YouTube por gênero do usuário
-//   - 🆕 Botões adaptados: música interna (Investir+Ouvir+Fav+Share)
-//      ou YouTube (Ouvir+Salvar+Compartilhar)
-//   - 🆕 Cache de queries YouTube (5 min) + lista de queries usadas
-//   - 🎨 Badge e cores diferentes para YouTube
-//
-// MUDANÇAS v2.0.1:
-//   - 🐛 FIX: reset display/opacity/transform ao abrir
-//   - 🐛 FIX: destrava app ao fechar
+//   - 🆕 PASSO 1: Bolsa Externa | PASSO 2: YouTube Search
+//   - 🆕 Botões adaptados: interna vs YouTube
 // ============================================================
 
 (function () {
   'use strict';
 
-  var DISCOVERY_VERSION = '2.1.0';
+  var DISCOVERY_VERSION = '2.1.1';
 
   var _discoveryState = {
     active: false,
@@ -30,7 +29,6 @@
     touchStartY: 0,
     touchStartX: 0,
     animating: false,
-    // v2.1.0 — load more
     cardsIdsUsados: {},
     loadingMore: false,
     cacheYouTube: {},
@@ -206,7 +204,7 @@
   }
 
   // ============================================================
-  // CONSTRUIR CARDS (inicial)
+  // CONSTRUIR CARDS
   // ============================================================
   function construirCards() {
     var perfil = coletarPerfilUsuario();
@@ -431,7 +429,7 @@
           '<i class="bi bi-play-fill"></i>' +
           '<span>Ouvir no YouTube</span>' +
         '</button>' +
-        '<button class="discovery-action fav" onclick="discoveryFav(\'' + musica.id + '\')">' +
+        '<button class="discovery-action fav" onclick="discoveryFavYouTube(\'' + musica.id + '\')">' +
           '<i class="bi bi-heart"></i>' +
           '<span>Salvar</span>' +
         '</button>' +
@@ -610,7 +608,7 @@
   }
 
   // ============================================================
-  // NAVEGAÇÃO (com load more)
+  // NAVEGAÇÃO
   // ============================================================
   function irPara(index) {
     var total = _discoveryState.cards.length;
@@ -625,7 +623,6 @@
     atualizarVisibilidade();
     atualizarCounter();
 
-    // v2.1.0 — se está a 5 cards do fim, carrega mais
     if (index >= total - 5) {
       carregarMaisCards();
     }
@@ -646,7 +643,7 @@
   }
 
   // ============================================================
-  // v2.1.0 — LOAD MORE INFINITO
+  // LOAD MORE
   // ============================================================
   function carregarMaisCards() {
     if (_discoveryState.loadingMore) return;
@@ -654,7 +651,6 @@
 
     log('Carregando mais cards...');
 
-    // PASSO 1 — Bolsa Externa
     var externas = (window.state && window.state.externalPlaylist) || [];
     var usados = _discoveryState.cardsIdsUsados;
 
@@ -686,7 +682,6 @@
       return;
     }
 
-    // PASSO 2 — YouTube
     buscarMaisNoYouTube();
   }
 
@@ -799,7 +794,7 @@
   }
 
   // ============================================================
-  // AÇÕES
+  // AÇÕES — v2.1.1 (robustas com fallbacks)
   // ============================================================
   window.discoveryPlay = function (idx) {
     if (typeof playTrack !== 'function') return;
@@ -816,31 +811,205 @@
     openInvestModal(idx);
   };
 
+  // ----- FAVORITAR (3 fallbacks) -----
   window.discoveryFav = function (musicId) {
-    if (typeof toggleFavoriteMusic === 'function') {
-      toggleFavoriteMusic(musicId);
+    try {
       log('Favoritar →', musicId);
+
+      // 1. toggleFavoriteMusic (nome atual do marketplace.js)
+      if (typeof toggleFavoriteMusic === 'function') {
+        toggleFavoriteMusic(musicId);
+        if (typeof showToast === 'function') showToast('❤️ Favorito atualizado', 'success');
+        return;
+      }
+
+      // 2. toggleFavorite (nome alternativo)
+      if (typeof toggleFavorite === 'function') {
+        toggleFavorite(musicId);
+        if (typeof showToast === 'function') showToast('❤️ Favorito atualizado', 'success');
+        return;
+      }
+
+      // 3. Chama API direto
+      if (typeof callAPI === 'function' && state.currentUser && state.currentUser.id) {
+        var isFav = (state.favoriteMusicIds || []).map(String).indexOf(String(musicId)) !== -1;
+        callAPI('toggle_favorite', {
+          music_id: musicId,
+          user_id: state.currentUser.id,
+          action: isFav ? 'remove' : 'add'
+        }).then(function (r) {
+          if (r && r.success) {
+            if (isFav) {
+              state.favoriteMusicIds = state.favoriteMusicIds.filter(function (x) {
+                return String(x) !== String(musicId);
+              });
+            } else {
+              state.favoriteMusicIds.push(musicId);
+            }
+            if (typeof showToast === 'function') showToast('❤️ Favorito atualizado', 'success');
+          } else {
+            if (typeof showToast === 'function') showToast('Erro ao favoritar', 'error');
+          }
+        }).catch(function () {
+          if (typeof showToast === 'function') showToast('Erro ao favoritar', 'error');
+        });
+        return;
+      }
+
+      if (typeof showToast === 'function') showToast('Faça login para favoritar', 'warning');
+    } catch (e) {
+      console.error('[Discovery] Erro favoritar:', e);
     }
   };
 
+  // ----- COMPARTILHAR (3 fallbacks) -----
   window.discoveryShare = function (musicId) {
-    if (typeof shareMusic === 'function') {
-      shareMusic(musicId);
+    try {
       log('Compartilhar →', musicId);
+
+      // 1. shareMusic (nome atual do marketplace.js)
+      if (typeof shareMusic === 'function') {
+        shareMusic(musicId);
+        return;
+      }
+
+      // 2. openShareModal (precisa do currentShareTrack)
+      if (typeof openShareModal === 'function') {
+        var musica = (state.playlist || []).find(function (m) {
+          return String(m.id) === String(musicId);
+        });
+        if (musica) {
+          window.currentShareTrack = {
+            id: musica.id,
+            titulo: musica.titulo,
+            artista: musica.artista || 'Artista',
+            capa: musica.link_capa || '/images/logo.png',
+            link: window.location.origin + '/?music=' + musica.id
+          };
+
+          // Atualiza o preview do modal
+          var cover = document.getElementById('sharePreviewCover');
+          var title = document.getElementById('sharePreviewTitle');
+          var artist = document.getElementById('sharePreviewArtist');
+          if (cover) cover.src = window.currentShareTrack.capa;
+          if (title) title.textContent = window.currentShareTrack.titulo;
+          if (artist) artist.textContent = window.currentShareTrack.artista;
+        }
+        openShareModal();
+        return;
+      }
+
+      // 3. Web Share API / clipboard
+      var track = (state.playlist || []).find(function (m) {
+        return String(m.id) === String(musicId);
+      });
+      if (!track) {
+        if (typeof showToast === 'function') showToast('Música não encontrada', 'error');
+        return;
+      }
+
+      var url = window.location.origin + '/?music=' + track.id;
+
+      if (navigator.share) {
+        navigator.share({
+          title: track.titulo,
+          text: 'Ouça no PLAY MY',
+          url: url
+        }).catch(function () {});
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(function () {
+          if (typeof showToast === 'function') showToast('Link copiado!', 'success');
+        });
+      } else {
+        if (typeof showToast === 'function') showToast('Compartilhamento indisponível', 'warning');
+      }
+    } catch (e) {
+      console.error('[Discovery] Erro compartilhar:', e);
     }
   };
 
+  // ----- SEGUIR (3 fallbacks) -----
   window.discoveryFollow = function (artistName) {
-    var artista = (window.state.artists || []).find(function (a) {
-      return String(a.nome) === String(artistName);
-    });
-
-    if (artista && typeof toggleFollow === 'function') {
-      toggleFollow(artista.id);
+    try {
       log('Follow →', artistName);
-      setTimeout(render, 300);
-    } else if (typeof showToast === 'function') {
-      showToast('Siga pelo card do artista', 'info');
+
+      var artists = (window.state && window.state.artists) || [];
+
+      // 1. Procura por nome EXATO
+      var artista = artists.find(function (a) {
+        return String(a.nome) === String(artistName);
+      });
+
+      // 2. Fallback: case-insensitive
+      if (!artista) {
+        var nomeLower = String(artistName).toLowerCase();
+        artista = artists.find(function (a) {
+          return String(a.nome || '').toLowerCase() === nomeLower;
+        });
+      }
+
+      // 3. Se achou, usa o ID real
+      if (artista) {
+        if (typeof toggleFollow === 'function') {
+          toggleFollow(artista.id || artista.nome);
+          log('Follow OK →', artista.nome);
+          setTimeout(render, 300);
+          return;
+        }
+
+        if (typeof callAPI === 'function' && state.currentUser) {
+          var isFollowing = (state.followingArtists || []).map(String).indexOf(String(artista.id)) !== -1;
+          callAPI('toggle_follow', {
+            artist_id: artista.id,
+            user_id: state.currentUser.id,
+            action: isFollowing ? 'unfollow' : 'follow'
+          }).then(function (r) {
+            if (r && r.success) {
+              if (isFollowing) {
+                state.followingArtists = state.followingArtists.filter(function (x) {
+                  return String(x) !== String(artista.id);
+                });
+                if (typeof showToast === 'function') showToast('Deixou de seguir', 'info');
+              } else {
+                state.followingArtists.push(artista.id);
+                if (typeof showToast === 'function') showToast('❤️ Seguindo!', 'success');
+              }
+              setTimeout(render, 300);
+            }
+          });
+          return;
+        }
+      }
+
+      // 4. Não achou nos state.artists — usa o nome como ID
+      if (typeof callAPI === 'function' && state.currentUser) {
+        var isFollowing2 = (state.followingArtists || []).map(String).indexOf(String(artistName)) !== -1;
+        callAPI('toggle_follow', {
+          artist_id: artistName,
+          user_id: state.currentUser.id,
+          action: isFollowing2 ? 'unfollow' : 'follow'
+        }).then(function (r) {
+          if (r && r.success) {
+            if (isFollowing2) {
+              state.followingArtists = state.followingArtists.filter(function (x) {
+                return String(x) !== String(artistName);
+              });
+              if (typeof showToast === 'function') showToast('Deixou de seguir', 'info');
+            } else {
+              state.followingArtists.push(artistName);
+              if (typeof showToast === 'function') showToast('❤️ Seguindo!', 'success');
+            }
+            setTimeout(render, 300);
+          }
+        });
+        return;
+      }
+
+      if (typeof showToast === 'function') {
+        showToast('Faça login para seguir', 'warning');
+      }
+    } catch (e) {
+      console.error('[Discovery] Erro follow:', e);
     }
   };
 
@@ -863,13 +1032,12 @@
   };
 
   // ============================================================
-  // v2.1.0 — Ações para YouTube
+  // AÇÕES YOUTUBE
   // ============================================================
   window.discoveryPlayYouTube = function (videoId) {
     var vid = String(videoId).replace('yt_', '');
     log('Play YouTube →', vid);
 
-    // Atualiza mini-player visualmente
     var ps = document.getElementById('playerSpotify');
     if (ps) ps.style.display = 'flex';
 
@@ -882,7 +1050,6 @@
     var pai = document.getElementById('playerAlbumArt');
     if (pai) pai.src = 'https://img.youtube.com/vi/' + vid + '/hqdefault.jpg';
 
-    // Toca via player do YouTube
     if (typeof loadYouTubeAPI === 'function' &&
         typeof initializeYouTubePlayer === 'function') {
       loadYouTubeAPI(function () {
@@ -917,11 +1084,35 @@
     }
   };
 
+  // Favoritar YouTube (só salva local)
+  window.discoveryFavYouTube = function (videoId) {
+    try {
+      var vid = String(videoId).replace('yt_', '');
+      log('Fav YouTube →', vid);
+
+      // Salva na lista local (state.favoriteMusicIds)
+      if (!Array.isArray(state.favoriteMusicIds)) state.favoriteMusicIds = [];
+      var sid = 'yt_' + vid;
+      var isFav = state.favoriteMusicIds.map(String).indexOf(sid) !== -1;
+
+      if (isFav) {
+        state.favoriteMusicIds = state.favoriteMusicIds.filter(function (x) {
+          return String(x) !== sid;
+        });
+        if (typeof showToast === 'function') showToast('Removido dos salvos', 'info');
+      } else {
+        state.favoriteMusicIds.push(sid);
+        if (typeof showToast === 'function') showToast('⭐ Salvo!', 'success');
+      }
+    } catch (e) {
+      console.error('[Discovery] Erro favoritar YouTube:', e);
+    }
+  };
+
   // ============================================================
   // ABRIR / FECHAR
   // ============================================================
   window.openDiscoveryFeed = function () {
-    // Reset do load more
     _discoveryState.cardsIdsUsados = {};
     _discoveryState.loadingMore = false;
     _discoveryState.queriesUsadas = [];
