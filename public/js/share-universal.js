@@ -1,5 +1,5 @@
 // ============================================================
-// js/share-universal.js — PLAY MY v1.1.0
+// js/share-universal.js — PLAY MY v1.1.1
 // Compartilhamento universal: TUDO leva ao PLAY MY
 //
 // MUDANÇAS v1.1.0:
@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  const SHARE_VERSION = '1.1.0';
+  const SHARE_VERSION = '1.1.1';
 
   function _extractYouTubeId(url) {
     if (!url) return null;
@@ -108,20 +108,23 @@
   // 🆕 MONTA LINK — TUDO VAI PRO PLAY MY
   // ============================================================
   function _buildUniversalLink(track) {
-    const tipo = _detectTrackType(track);
-    const origin = window.location.origin;
+  const tipo = _detectTrackType(track);
+  const origin = window.location.origin;
 
-    // YouTube puro → ?yt=VIDEO_ID (PLAY MY toca o vídeo)
-    if (tipo === 'youtube') {
-      const vid = _extractYouTubeId(track.link_youtube) ||
-                  String(track.id || '').replace('yt_', '');
-      if (vid) return origin + '/?yt=' + encodeURIComponent(vid);
-      return null;
-    }
+  // 🆕 v1.1.1 — Link universal /s/ID (página com OG dinâmico)
+  // O servidor /api/s.js monta o HTML com meta tags específicas
+  // e depois redireciona o humano pro app (?music= ou ?yt=)
 
-    // Interna OU externa → ?music=ID
-    return origin + '/?music=' + encodeURIComponent(track.id);
+  if (tipo === 'youtube') {
+    const vid = _extractYouTubeId(track.link_youtube) ||
+                String(track.id || '').replace('yt_', '');
+    if (vid) return origin + '/s/yt_' + encodeURIComponent(vid);
+    return null;
   }
+
+  // Interna OU externa
+  return origin + '/s/' + encodeURIComponent(track.id);
+}
 
   // ============================================================
   // 🆕 MONTA TEXTO — SEMPRE PLAY MY
