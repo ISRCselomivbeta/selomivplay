@@ -1,47 +1,36 @@
 // ============================================================
-// js/discovery.js — PLAY MY v2.0.0
+// js/discovery.js — PLAY MY v2.0.1
 // Feed Vertical de Descoberta (estilo TikTok/Resso) + Personalização
 //
-// ADITIVO — não altera player.js, state.js ou qualquer arquivo existente.
+// MUDANÇAS v2.0.1:
+//   - 🐛 FIX: openDiscoveryFeed agora reseta display/opacity/transform
+//        (resolve bug de travar o app após fechar o feed)
+//   - 🐛 FIX: closeDiscoveryFeed limpa pointer-events do body/html
+//   - 🐛 FIX: destrava interação completamente ao fechar
 //
 // MUDANÇAS v2.0.0:
 //   - 🆕 Cards de ARTISTA no feed (baseado no perfil do usuário)
 //   - 🆕 Cards de PLAYLIST no feed (globais + do usuário)
-//   - 🆕 Cards de ESCOLHAS (favoritas, mais tocadas, recomendadas)
-//   - 🆕 Feed personalizado: prioriza artistas que o usuário segue/interage
-//   - 🐛 FIX: botão X e Esc fecham corretamente (destrava o app)
-//   - 🐛 FIX: pointer-events e z-index do header reforçados
+//   - 🆕 Feed personalizado: prioriza artistas que o usuário segue
 //   - 🎨 Animação de entrada do título (slide up)
 //   - 🎨 Border dourada + glow no card ativo
-//
-// API pública:
-//   window.openDiscoveryFeed()
-//   window.closeDiscoveryFeed()
-//   window.discoveryNext()
-//   window.discoveryPrev()
 // ============================================================
 
 (function () {
   'use strict';
 
-  var DISCOVERY_VERSION = '2.0.0';
+  var DISCOVERY_VERSION = '2.0.1';
 
-  // ============================================================
-  // ESTADO INTERNO
-  // ============================================================
   var _discoveryState = {
     active: false,
     currentIndex: 0,
-    cards: [],          // lista mista: música, artista, playlist, escolha
+    cards: [],
     container: null,
     touchStartY: 0,
     touchStartX: 0,
     animating: false
   };
 
-  // ============================================================
-  // LOG
-  // ============================================================
   function log() {
     try {
       var args = Array.prototype.slice.call(arguments);
@@ -50,9 +39,6 @@
     } catch (e) {}
   }
 
-  // ============================================================
-  // HELPERS
-  // ============================================================
   function escapeHtml(str) {
     return String(str || '')
       .replace(/&/g, '&amp;')
@@ -85,11 +71,6 @@
     return '/images/logo.png';
   }
 
-  function getCoverArtista(nome) {
-    // placeholder de artista baseado no nome (iniciais)
-    return null;
-  }
-
   function formatarMoeda(v) {
     try {
       if (typeof formatCurrency === 'function') return formatCurrency(v);
@@ -108,7 +89,7 @@
   }
 
   // ============================================================
-  // PERSONALIZAÇÃO — coleta dados do perfil do usuário
+  // PERSONALIZAÇÃO
   // ============================================================
   function coletarPerfilUsuario() {
     var perfil = {
@@ -120,22 +101,16 @@
     };
 
     try {
-      // 1. Artistas que o usuário segue
       if (window.state && Array.isArray(window.state.followingArtists)) {
         perfil.following = window.state.followingArtists.map(String);
       }
-
-      // 2. Músicas favoritas
       if (window.state && Array.isArray(window.state.favoriteMusicIds)) {
         perfil.favoritos = window.state.favoriteMusicIds.map(String);
       }
-
-      // 3. Carteira (músicas investidas)
       if (window.state && Array.isArray(window.state.portfolioAssets)) {
         perfil.portfolio = window.state.portfolioAssets;
       }
 
-      // 4. Analisar gêneros e artistas das músicas favoritas + carteira
       var playlist = (window.state && window.state.playlist) || [];
 
       function analisarMusica(musica) {
@@ -154,14 +129,12 @@
         var m = playlist.find(function (x) { return String(x.id) === String(id); });
         if (m) analisarMusica(m);
       });
-
       perfil.portfolio.forEach(function (a) {
         if (a && a.music_id) {
           var m = playlist.find(function (x) { return String(x.id) === String(a.music_id); });
           if (m) analisarMusica(m);
         }
       });
-
     } catch (e) {
       console.warn('[Discovery] Erro ao coletar perfil:', e.message);
     }
@@ -170,14 +143,13 @@
   }
 
   // ============================================================
-  // RANKING DE ARTISTAS — baseado no perfil do usuário
+  // RANKING DE ARTISTAS
   // ============================================================
   function ranquearArtistas(perfil) {
     var playlist = (window.state && window.state.playlist) || [];
     var eloMap = (window.state && window.state.eloMap) || {};
     var streamsMap = (window.state && window.state.streamsMap) || {};
 
-    // Agrupa músicas por artista
     var artistas = {};
     playlist.forEach(function (m) {
       if (!m || !m.artista) return;
@@ -186,59 +158,40 @@
       var nome = m.artista;
       if (!artistas[nome]) {
         artistas[nome] = {
-          nome: nome,
-          musicas: [],
-          eloMedio: 0,
-          streams: 0,
-          score: 0
+          nome: nome, musicas: [], eloMedio: 0, streams: 0, score: 0
         };
       }
       artistas[nome].musicas.push(m);
 
       var eloInfo = eloMap[String(m.id)];
-      if (eloInfo && eloInfo.elo) {
-        artistas[nome].eloMedio += eloInfo.elo;
-      }
+      if (eloInfo && eloInfo.elo) artistas[nome].eloMedio += eloInfo.elo;
       artistas[nome].streams += streamsMap[String(m.id)] || 0;
     });
 
-    // Calcula score de personalização
     Object.keys(artistas).forEach(function (nome) {
       var a = artistas[nome];
       a.eloMedio = a.musicas.length ? Math.round(a.eloMedio / a.musicas.length) : 1000;
 
       var score = 0;
-
-      // Prioridade 1: usuário segue este artista
       if (perfil.following.indexOf(nome) !== -1) score += 100;
-
-      // Prioridade 2: usuário interagiu (favoritou/investiu) com este artista
       if (perfil.artistasInteragidos[nome]) score += perfil.artistasInteragidos[nome] * 20;
 
-      // Prioridade 3: gênero predominante das músicas do artista
       a.musicas.forEach(function (m) {
         if (m.genero && perfil.generosPrediletos[m.genero]) {
           score += perfil.generosPrediletos[m.genero] * 2;
         }
       });
 
-      // Prioridade 4: ELO alto
       score += Math.floor(a.eloMedio / 100);
-
-      // Prioridade 5: streams
       score += Math.floor(a.streams / 100);
-
       a.score = score;
     });
 
-    // Ordena por score desc
-    return Object.values(artistas).sort(function (a, b) {
-      return b.score - a.score;
-    });
+    return Object.values(artistas).sort(function (a, b) { return b.score - a.score; });
   }
 
   // ============================================================
-  // CONSTRUIR A LISTA MISTA DE CARDS
+  // CONSTRUIR CARDS
   // ============================================================
   function construirCards() {
     var perfil = coletarPerfilUsuario();
@@ -246,12 +199,10 @@
     var artistasRankeados = ranquearArtistas(perfil);
     var cards = [];
 
-    // Filtra músicas válidas
     var musicasValidas = playlist.filter(function (m) {
       return m && m.status !== 'deleted' && m.status !== 'paused';
     });
 
-    // Distribui as músicas priorizando as favoritas/investidas
     var musicasPrioritarias = [];
     var musicasNormais = [];
 
@@ -263,7 +214,6 @@
       else musicasNormais.push(m);
     });
 
-    // Embaralha levemente para não ficar repetitivo
     function shuffle(arr) {
       var a = arr.slice();
       for (var i = a.length - 1; i > 0; i--) {
@@ -275,31 +225,22 @@
 
     var musicasOrdenadas = shuffle(musicasPrioritarias).concat(shuffle(musicasNormais));
 
-    // Playlists do usuário
     var userPlaylists = (window.state && window.state.userPlaylists) || [];
     var globalPlaylists = (window.state && window.state.globalPlaylists) || [];
     var playlistsMisturadas = shuffle(userPlaylists.concat(globalPlaylists));
 
-    // Intercala: música, artista, música, playlist, música, artista...
-    var musicasIdx = 0;
-    var artistasIdx = 0;
-    var playlistsIdx = 0;
+    var musicasIdx = 0, artistasIdx = 0, playlistsIdx = 0;
 
     while (musicasIdx < musicasOrdenadas.length ||
            artistasIdx < artistasRankeados.length ||
            playlistsIdx < playlistsMisturadas.length) {
 
-      // 1 música
       if (musicasIdx < musicasOrdenadas.length) {
         cards.push({ tipo: 'musica', dados: musicasOrdenadas[musicasIdx++] });
       }
-
-      // A cada 3 músicas, 1 artista
       if (cards.length % 3 === 0 && artistasIdx < artistasRankeados.length) {
         cards.push({ tipo: 'artista', dados: artistasRankeados[artistasIdx++] });
       }
-
-      // A cada 5 cards, 1 playlist
       if (cards.length % 5 === 0 && playlistsIdx < playlistsMisturadas.length) {
         cards.push({ tipo: 'playlist', dados: playlistsMisturadas[playlistsIdx++] });
       }
@@ -314,7 +255,7 @@
   }
 
   // ============================================================
-  // CRIAR CONTAINER (uma única vez)
+  // CONTAINER
   // ============================================================
   function garantirContainer() {
     var existing = document.getElementById('discoveryFeed');
@@ -344,7 +285,6 @@
         '<i class="bi bi-arrow-down"></i> Deslize ou use ↑ ↓' +
       '</div>';
 
-    // Anexa direto no <html> para o fixed se referir à viewport
     document.documentElement.appendChild(el);
     _discoveryState.container = el;
 
@@ -356,7 +296,7 @@
   }
 
   // ============================================================
-  // KEYBOARD — setas ↑ ↓ + Escape (em captura, para garantir)
+  // KEYBOARD
   // ============================================================
   function bindKeyboard() {
     if (window._discoveryKeyboardBound) return;
@@ -375,11 +315,11 @@
 
       if (e.key === 'ArrowDown') { e.preventDefault(); discoveryNext(); }
       if (e.key === 'ArrowUp') { e.preventDefault(); discoveryPrev(); }
-    }, true);  // CAPTURA: pega o evento antes de outros handlers
+    }, true);
   }
 
   // ============================================================
-  // TOUCH — swipe vertical
+  // TOUCH
   // ============================================================
   function bindTouch(el) {
     if (el._discoveryTouchBound) return;
@@ -403,7 +343,7 @@
   }
 
   // ============================================================
-  // WHEEL — scroll do mouse
+  // WHEEL
   // ============================================================
   function bindWheel(el) {
     if (el._discoveryWheelBound) return;
@@ -423,7 +363,7 @@
   }
 
   // ============================================================
-  // RENDER — CARD DE MÚSICA
+  // RENDER
   // ============================================================
   function renderCardMusica(musica, idx, total) {
     var cover = getCoverMusica(musica);
@@ -482,9 +422,6 @@
       '</div>';
   }
 
-  // ============================================================
-  // RENDER — CARD DE ARTISTA
-  // ============================================================
   function renderCardArtista(artista, idx, total, perfil) {
     var nome = escapeHtml(artista.nome);
     var totalMusicas = artista.musicas.length;
@@ -492,11 +429,9 @@
     var streams = formatarNumero(artista.streams);
     var jaSegue = perfil.following.indexOf(artista.nome) !== -1;
 
-    // Usa a capa da primeira música como "foto" do artista
     var primeiraMusica = artista.musicas[0];
     var cover = primeiraMusica ? getCoverMusica(primeiraMusica) : '/images/logo.png';
 
-    // Índice real da primeira música do artista para tocar
     var idxPrimeiraMusica = window.state.playlist.findIndex(function (m) {
       return String(m.id) === String(primeiraMusica && primeiraMusica.id);
     });
@@ -537,9 +472,6 @@
       '</div>';
   }
 
-  // ============================================================
-  // RENDER — CARD DE PLAYLIST
-  // ============================================================
   function renderCardPlaylist(playlist, idx, total, isGlobal) {
     var nome = escapeHtml(playlist.nome || 'Playlist');
     var desc = escapeHtml(playlist.descricao || (isGlobal ? 'Playlist global' : 'Minha playlist'));
@@ -577,9 +509,6 @@
       '</div>';
   }
 
-  // ============================================================
-  // RENDER — despacha por tipo
-  // ============================================================
   function render() {
     var cards = document.getElementById('discoveryCards');
     if (!cards) return;
@@ -661,7 +590,7 @@
   }
 
   // ============================================================
-  // AÇÕES DOS CARDS
+  // AÇÕES
   // ============================================================
   window.discoveryPlay = function (idx) {
     if (typeof playTrack !== 'function') return;
@@ -693,7 +622,6 @@
   };
 
   window.discoveryFollow = function (artistName) {
-    // Procura o ID do artista na lista state.artists
     var artista = (window.state.artists || []).find(function (a) {
       return String(a.nome) === String(artistName);
     });
@@ -701,7 +629,6 @@
     if (artista && typeof toggleFollow === 'function') {
       toggleFollow(artista.id);
       log('Follow →', artistName);
-      // Atualiza o card
       setTimeout(render, 300);
     } else if (typeof showToast === 'function') {
       showToast('Siga pelo card do artista', 'info');
@@ -727,7 +654,7 @@
   };
 
   // ============================================================
-  // ABRIR / FECHAR (com correção do travamento)
+  // ABRIR / FECHAR (v2.0.1 — com reset completo)
   // ============================================================
   window.openDiscoveryFeed = function () {
     _discoveryState.cards = construirCards();
@@ -740,10 +667,19 @@
     }
 
     var el = garantirContainer();
-    el.classList.add('visible');
+
+    // RESET COMPLETO — restaura o feed ao estado visível
+    el.style.display = 'flex';
+    el.style.opacity = '1';
+    el.style.transform = '';
     el.style.pointerEvents = 'auto';
+    el.classList.add('visible');
+
     document.body.classList.add('discovery-open');
     document.body.style.overflow = 'hidden';
+    document.body.style.pointerEvents = '';
+    document.documentElement.style.pointerEvents = '';
+
     _discoveryState.active = true;
     _discoveryState.currentIndex = 0;
 
@@ -755,31 +691,30 @@
   window.closeDiscoveryFeed = function () {
     try {
       var el = document.getElementById('discoveryFeed');
+
       if (el) {
         el.classList.remove('visible');
-        setTimeout(function () {
-          if (!el.classList.contains('visible')) {
-            el.style.pointerEvents = 'none';
-          }
-        }, 400);
+        el.style.pointerEvents = 'none';
+        el.style.display = 'none';
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(-9999px)';
       }
 
-      // Destrava o scroll
       document.body.classList.remove('discovery-open');
       document.body.style.overflow = '';
+      document.body.style.pointerEvents = '';
+      document.documentElement.style.pointerEvents = '';
 
       _discoveryState.active = false;
-      if (el) el.style.pointerEvents = 'none';
 
-      log('Feed fechado');
+      console.log('[Discovery] ✅ Feed fechado. body.class:', document.body.className);
+      console.log('[Discovery] ✅ body.style.overflow:', document.body.style.overflow);
+      console.log('[Discovery] ✅ feed.display:', el ? el.style.display : 'sem feed');
     } catch (e) {
       console.error('[Discovery] Erro ao fechar:', e);
     }
   };
 
-  // ============================================================
-  // API pública
-  // ============================================================
   window.discoveryNext = discoveryNext;
   window.discoveryPrev = discoveryPrev;
 
