@@ -1,34 +1,36 @@
 // ============================================================
-// js/app.js — PLAY MY v9.8.6
+// js/app.js — PLAY MY v9.8.7
 // Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
 // + Detecção de app nativo (Capacitor/TWA)
 // + Safe areas (iPhone notch)
 // + Status bar dinâmica
 // + Splash screen handling
-// + Deep linking (?section=, ?music=ID)
+// + Deep linking (?section=, ?music=ID, ?yt=VIDEO_ID, /s/ID)
 // + INSTALAÇÃO INTELIGENTE via SIDEBAR (sem balão flutuante)
 // + loadAllData em 4 ETAPAS SEQUENCIAIS
 // Depende de TODOS os módulos anteriores.
 // DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
 //
+// MUDANÇAS v9.8.7:
+//   - 🆕 Deep link /s/ID (vindo de compartilhamento universal)
+//   - 🆕 Deep link /?yt=VIDEO_ID (YouTube puro via PLAY MY)
+//   - 🐛 FIX: removida duplicação de handleDeepLink (a 2ª
+//        sobrescrevia a 1ª, anulando o patch /s/ID)
+//   - ✅ NADA MAIS MUDOU — comportamento idêntico ao v9.8.6
+//
 // MUDANÇAS v9.8.6:
 //   - 🆕 Deep link ?music=ID integrado na Etapa 1 do loadAllData
-//        (toca automaticamente ao abrir /?music=123)
 //   - 🆕 Fallback de ?music=ID no handleDeepLink
-//        (caso a Etapa 1 falhe ou demore, tenta de novo no window.load)
-//   - ✅ NADA MAIS MUDOU — comportamento idêntico ao v9.8.5
 //
 // MUDANÇAS v9.8.5:
-//   - 🐛 FIX: aliases globais protegidos com typeof (evita ReferenceError
-//        se alguma função não existir — era o que quebrava o app em prod)
-//   - 🐛 FIX: loadArtistData / loadAdminData agora checam typeof antes
-//   - 🐛 FIX: HealthCheck com backoff exponencial (não sobrecarrega)
-//   - ✅ NADA MAIS MUDOU — comportamento idêntico ao v9.8.4
+//   - 🐛 FIX: aliases globais protegidos com typeof
+//   - 🐛 FIX: loadArtistData / loadAdminData checam typeof
+//   - 🐛 FIX: HealthCheck com backoff exponencial
 //
 // MUDANÇAS v9.8.4:
-//   - 🆕 loadAllData() reescrita em 4 etapas (Etapa 1 → Etapa 4)
-//   - 🆕 hideLoading movido para depois da Etapa 1 (app usável mais rápido)
-//   - 🆕 try/catch por etapa (falha de uma não bloqueia as outras)
+//   - 🆕 loadAllData() reescrita em 4 etapas
+//   - 🆕 hideLoading movido para depois da Etapa 1
+//   - 🆕 try/catch por etapa
 // ============================================================
 
 // ============================================================
@@ -171,10 +173,41 @@ function blockNativeGestures() {
 }
 
 // ============================================================
-// DEEP LINKING
+// DEEP LINKING — v9.8.7 (sem duplicação)
+// Processa:
+//   /s/ID              → redireciona pra ?music=ID ou ?yt=VIDEO_ID
+//   ?music=ID          → toca música interna
+//   ?yt=VIDEO_ID       → toca YouTube puro
+//   ?section=X         → muda de seção
+//   ?url=...&title=... → compartilhamento externo
 // ============================================================
 function handleDeepLink() {
+  // ────────────────────────────────────────────────────────
+  // 1. Detecta /s/ID na URL (vindo de compartilhamento universal)
+  // ────────────────────────────────────────────────────────
+  const pathMatch = window.location.pathname.match(/^\/s\/(.+)$/);
+  if (pathMatch) {
+    const sharedId = decodeURIComponent(pathMatch[1]);
+    console.log('🔗 [deep-link] /s/' + sharedId + ' detectado');
+
+    // Redireciona pra ?music=ID ou ?yt=VIDEO_ID
+    if (sharedId.startsWith('yt_')) {
+      window.history.replaceState({}, '', '/?yt=' + encodeURIComponent(sharedId.replace('yt_', '')));
+    } else {
+      window.history.replaceState({}, '', '/?music=' + encodeURIComponent(sharedId));
+    }
+    // Re-processa com os params atualizados
+    return handleDeepLink();
+  }
+
+  // ────────────────────────────────────────────────────────
+  // 2. Lê os query params
+  // ────────────────────────────────────────────────────────
   const params = new URLSearchParams(window.location.search);
+
+  // ────────────────────────────────────────────────────────
+  // 3. ?section=X — navegação
+  // ────────────────────────────────────────────────────────
   const section = params.get('section');
   if (section && typeof changeSection === 'function') {
     setTimeout(() => {
@@ -187,6 +220,9 @@ function handleDeepLink() {
     }, 500);
   }
 
+  // ────────────────────────────────────────────────────────
+  // 4. ?url=&title=&text= — compartilhamento externo
+  // ────────────────────────────────────────────────────────
   const sharedUrl = params.get('url');
   const sharedTitle = params.get('title');
   const sharedText = params.get('text');
@@ -205,9 +241,9 @@ function handleDeepLink() {
     }, 1000);
   }
 
-  // 🆕 v9.8.6 — Deep link /?music=ID (fallback)
-  // Roda no window.load. Se a Etapa 1 do loadAllData já tocou, este bloco
-  // detecta que a música já está tocando e NÃO retoca (evita duplo playTrack).
+  // ────────────────────────────────────────────────────────
+  // 5. ?music=ID — toca música interna (fallback)
+  // ────────────────────────────────────────────────────────
   const musicId = params.get('music');
   if (musicId && typeof state !== 'undefined' && Array.isArray(state.playlist)) {
     const idx = state.playlist.findIndex(m => String(m.id) === String(musicId));
@@ -233,6 +269,24 @@ function handleDeepLink() {
     } else {
       console.warn('⚠️ [deep-link/fallback] música', musicId, 'não encontrada na playlist');
     }
+  }
+
+  // ────────────────────────────────────────────────────────
+  // 6. 🆕 v9.8.7 — ?yt=VIDEO_ID — toca YouTube puro
+  // ────────────────────────────────────────────────────────
+  const ytId = params.get('yt');
+  if (ytId && typeof playSearchResult === 'function') {
+    console.log('🔗 [deep-link] YouTube via PLAY MY:', ytId);
+    setTimeout(() => {
+      try {
+        playSearchResult('youtube', ytId);
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      } catch (e) {
+        console.warn('⚠️ [deep-link] yt falhou:', e.message);
+      }
+    }, 500);
   }
 }
 
@@ -352,10 +406,7 @@ window.loadAllData = async function () {
                 window.renderMarketplace();
               }
 
-              // 🆕 v9.8.6 — Deep link /?music=ID
-              // Executa assim que a playlist existe, garantindo que a música
-              // está disponível para tocar. Limpa a query depois pra não
-              // retocar em refresh.
+              // Deep link ?music=ID — executa assim que a playlist existe
               try {
                 const params = new URLSearchParams(window.location.search);
                 const musicId = params.get('music');
@@ -436,14 +487,12 @@ window.loadAllData = async function () {
   // ------------------------------------------------------------
   try {
     if (state.currentUser && state.currentUser.tipo === 'artista') {
-      // 🐛 v9.8.5 — protege contra função inexistente
       if (typeof loadArtistData === 'function') {
         await loadArtistData();
       }
     }
 
     if (state.currentUser && state.currentUser.tipo === 'admin') {
-      // 🐛 v9.8.5 — protege contra função inexistente
       if (typeof loadAdminData === 'function') {
         await loadAdminData();
       }
@@ -457,15 +506,11 @@ window.loadAllData = async function () {
 };
 
 // ============================================================
-// 🆕 v9.8.5 — HEALTH CHECK COM BACKOFF EXPONENCIAL
-// ------------------------------------------------------------
-// Antes: rodava a cada 3 min sem backoff.
-// Agora: se falhar, espera 2x mais antes de tentar de novo.
-// Ao voltar a funcionar, volta ao intervalo normal.
+// HEALTH CHECK COM BACKOFF EXPONENCIAL
 // ============================================================
 (function setupHealthCheckWithBackoff() {
-  var _baseInterval = 180000;   // 3 min (original)
-  var _maxInterval = 1800000;   // 30 min (máximo)
+  var _baseInterval = 180000;   // 3 min
+  var _maxInterval = 1800000;   // 30 min
   var _currentInterval = _baseInterval;
   var _timer = null;
   var _consecutiveFails = 0;
@@ -479,7 +524,6 @@ window.loadAllData = async function () {
     Promise.resolve()
       .then(function () { return HealthCheck.runAll(); })
       .then(function (result) {
-        // Se retornou com sucesso, reseta o intervalo
         if (result && (result.vercel || result.gas)) {
           if (_consecutiveFails > 0) {
             console.log('✅ [app] HealthCheck recuperado após', _consecutiveFails, 'falhas');
@@ -507,7 +551,6 @@ window.loadAllData = async function () {
     _timer = setTimeout(runCheck, _currentInterval);
   }
 
-  // Expõe pra debug
   window._healthCheck = {
     run: runCheck,
     stop: function () { if (_timer) clearTimeout(_timer); _timer = null; },
@@ -521,7 +564,6 @@ window.loadAllData = async function () {
     }
   };
 
-  // Primeira execução (após 3s pra não competir com o boot)
   setTimeout(runCheck, 3000);
 })();
 
@@ -538,7 +580,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   registerServiceWorker();
 
-  // Health check inicial (uma vez)
   if (typeof HealthCheck !== 'undefined' && typeof HealthCheck.runAll === 'function') {
     HealthCheck.runAll().catch(() => {});
   }
@@ -741,13 +782,7 @@ function showInstallInstructions() {
 }
 
 // ============================================================
-// 🆕 v9.8.5 — ALIASES GLOBAIS SEGUROS
-// ------------------------------------------------------------
-// ANTES: `window.X = window.X || X;` → se `X` não existir,
-//        lança ReferenceError e QUEBRA o carregamento do app.
-//
-// AGORA: `if (typeof X !== 'undefined') window.X = window.X || X;`
-//        → se `X` não existir, simplesmente não faz nada.
+// ALIASES GLOBAIS SEGUROS
 // ============================================================
 (function installSafeAliases() {
   function alias(name, fn) {
@@ -863,7 +898,7 @@ function showInstallInstructions() {
   alias('openBlockchainExplorer', typeof openBlockchainExplorer !== 'undefined' ? openBlockchainExplorer : null);
   alias('loadBlockchainData', typeof loadBlockchainData !== 'undefined' ? loadBlockchainData : null);
 
-  // News (stub se não existir)
+  // News
   window.pmNewsReload = window.pmNewsReload || function () {};
   window.pmNewsLoadMore = window.pmNewsLoadMore || function () {};
 
@@ -899,7 +934,7 @@ function showInstallInstructions() {
 })();
 
 // ============================================================
-// DEEP LINK
+// DEEP LINK — dispara no window.load
 // ============================================================
 window.addEventListener('load', () => {
   setTimeout(handleDeepLink, 1000);
@@ -908,7 +943,7 @@ window.addEventListener('load', () => {
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.8.6 carregado — 4 etapas + aliases seguros + health check com backoff + deep link ?music=ID');
+console.log('✅ [app.js] v9.8.7 carregado — 4 etapas + aliases seguros + health check + deep link ?music=ID + ?yt= + /s/ID');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
-console.log('📲 Instalação via sidebar ativa — v9.8.6');
+console.log('📲 Instalação via sidebar ativa — v9.8.7');
