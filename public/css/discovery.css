@@ -1,5 +1,5 @@
 /* ============================================================
-   css/discovery.css — PLAY MY v1.0.1
+   css/discovery.css — PLAY MY v1.0.2
    Feed Vertical de Descoberta (estilo TikTok/Resso)
    Tema Rolex: verde + ouro + preto profundo
    ============================================================ */
@@ -10,7 +10,7 @@
 .discovery-feed {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 999999;
   background: #000;
   display: flex;
   flex-direction: column;
@@ -43,7 +43,7 @@ body.discovery-open {
   justify-content: space-between;
   padding: 16px 20px;
   padding-top: calc(16px + env(safe-area-inset-top));
-  z-index: 100;
+  z-index: 999999;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
   pointer-events: none;
 }
@@ -122,12 +122,14 @@ body.discovery-open {
   transition: opacity 0.4s ease, transform 0.4s ease;
   pointer-events: none;
   overflow: hidden;
+  z-index: 999998;
 }
 
 .discovery-card.active {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
+  z-index: 999999;
 }
 
 /* ----- CAPA ----- */
@@ -157,7 +159,7 @@ body.discovery-open {
   right: 24px;
   bottom: 200px;
   color: #fff;
-  z-index: 50;
+  z-index: 999990;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
   pointer-events: none;
 }
@@ -225,7 +227,7 @@ body.discovery-open {
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr 1fr;
   gap: 10px;
-  z-index: 100;
+  z-index: 999999;
   pointer-events: auto;
 }
 
@@ -325,7 +327,7 @@ body.discovery-open {
   right: 0;
   height: 3px;
   background: rgba(255, 255, 255, 0.1);
-  z-index: 200;
+  z-index: 999999;
 }
 
 .discovery-progress-bar {
@@ -350,7 +352,7 @@ body.discovery-open {
   display: flex;
   align-items: center;
   gap: 6px;
-  z-index: 15;
+  z-index: 999999;
   animation: discoveryHintPulse 2s ease-in-out infinite;
   pointer-events: none;
 }
@@ -447,4 +449,28 @@ body.discovery-open {
   .discovery-actions {
     padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+/* ============================================================
+   FORÇA MÁXIMA — o feed SEMPRE ganha de qualquer elemento do app
+   ============================================================ */
+#discoveryFeed.discovery-feed {
+  z-index: 999999 !important;
+}
+
+/* Quando o feed está aberto, empurra tudo do app pra trás */
+body.discovery-open .app-header,
+body.discovery-open #sidebar,
+body.discovery-open .sidebar,
+body.discovery-open #playerSpotify,
+body.discovery-open .player-miv,
+body.discovery-open #loadingScreen,
+body.discovery-open .loading-screen,
+body.discovery-open #toastContainer {
+  z-index: 1 !important;
+}
+
+/* Esconde o mini-player quando o feed está aberto */
+body.discovery-open #playerSpotify {
+  display: none !important;
 }
