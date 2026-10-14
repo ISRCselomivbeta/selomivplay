@@ -1,3 +1,6 @@
+// MUDANÇAS v10.2.0:
+//   - 🔧 SW_VERSION bumpada (10.1.0 → 10.2.0)
+//   - 🐛 discovery.js v1.0.1 — anexar no documentElement (fixed correto)
 // ============================================================
 // SERVICE WORKER — PLAY MY v10.1.0
 // Cache inteligente por tipo de recurso + PWA
@@ -46,7 +49,7 @@
 //   - install: falha alto com console.error
 // ============================================================
 
-const SW_VERSION = '10.1.0';   // 👈 BUMP manual a cada deploy relevante
+const SW_VERSION = '10.2.0';   // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
