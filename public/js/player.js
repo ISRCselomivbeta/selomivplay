@@ -1,24 +1,18 @@
-// ===========================================================
-// js/player.js — PLAY MY v9.3.2
+// ============================================================
+// js/player.js — PLAY MY v9.3.3
 // Player completo: reprodução, controles, progresso, volume.
 // Depende de: config.js, utils.js, state.js, api.js, youtube.js
 // DEVE carregar DEPOIS de youtube.js e ANTES de marketplace.js.
+//
+// MUDANÇAS v9.3.3:
+//   - 📊 _registrarPlay(): dispara register_event quando toca
+//      (alimenta o histórico do discovery cumulativo)
 //
 // MUDANÇAS v9.3.2 (por cima do v9.3.1 que funciona):
 //   - 💾 saveState() agora salva playlists globais (YouTube)
 //   - 💾 restoreState() restaura a fila de playQueue
 //   - 🆕 wrappers em playGlobalPlaylist e playUserPlaylist
 //   - 🆕 pmPlayer.debug() para diagnóstico
-//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.3.1
-//
-// MUDANÇAS v9.3.1:
-//   - 🐛 FIX: código órfão no final do arquivo
-//   - 🎵 AUTO-NEXT robusto (3 camadas: listener + polling + wrapper)
-//
-// MUDANÇAS v9.3.0:
-//   - 🔗 Media Session DELEGADA ao background-play.js
-//   - 🆕 AUTO-NEXT: quando a faixa termina, toca a próxima
-//   - 🆕 PERSISTÊNCIA: salva playlist + índice no localStorage
 // ============================================================
 
 // ============================================================
@@ -36,6 +30,35 @@ function _safeExtractYouTubeId(link) {
   }
   console.warn('⚠️ extractYouTubeId não está disponível');
   return null;
+}
+
+// ============================================================
+// 🆕 v9.3.3 — REGISTRAR EVENTO DE PLAY
+// ============================================================
+// Fire-and-forget: não bloqueia o player.
+// Envia para /api/backend?action=register_event
+// Alimenta o histórico do discovery cumulativo.
+// ============================================================
+function _registrarPlay(musica) {
+  if (!musica) return;
+  if (!window.state || !window.state.currentUser) return;
+  if (typeof callAPI !== 'function') return;
+
+  try {
+    var payload = {
+      event_type: musica.is_youtube ? 'play_youtube' : 'play',
+      music_id: musica.id || null,
+      artist: musica.artista || null,
+      genero: musica.genero || null,
+      titulo: musica.titulo || null
+    };
+
+    callAPI('register_event', payload).then(function (r) {
+      if (r && r.success) {
+        console.log('📊 [event] registrado:', payload.event_type, '—', payload.titulo);
+      }
+    }).catch(function () {});
+  } catch (e) {}
 }
 
 // ============================================================
@@ -232,6 +255,9 @@ window.playTrack = function (index) {
 
     state.currentTrackIndex = index;
 
+    // 🆕 v9.3.3 — registra evento de play (para discovery cumulativo)
+    _registrarPlay(t);
+
     const playerSpotify = document.getElementById('playerSpotify');
     if (playerSpotify) playerSpotify.style.display = 'flex';
 
@@ -323,6 +349,9 @@ window.playExternalTrack = function (index) {
 
   state.currentTrackIndex = 1000 + index;
 
+  // 🆕 v9.3.3 — registra evento de play (externa)
+  _registrarPlay(t);
+
   const playerSpotify = document.getElementById('playerSpotify');
   if (playerSpotify) playerSpotify.style.display = 'flex';
 
@@ -392,6 +421,15 @@ window.playSearchResult = function (type, id) {
   } else if (type === 'youtube') {
     const vid = String(id).replace('yt_', '');
     state.currentTrackIndex = 2000;
+
+    // 🆕 v9.3.3 — registra evento de play (YouTube)
+    _registrarPlay({
+      id: 'yt_' + vid,
+      titulo: 'Vídeo do YouTube',
+      artista: 'YouTube',
+      genero: 'YouTube',
+      is_youtube: true
+    });
 
     const playerSpotify = document.getElementById('playerSpotify');
     if (playerSpotify) playerSpotify.style.display = 'flex';
@@ -741,7 +779,6 @@ if (document.readyState === 'loading') {
 } else {
   setTimeout(window._aplicarEstadoShuffleRepeat, 200);
 }
-
 // ============================================================
 // AUTO-NEXT ROBUSTO (3 camadas)
 // ============================================================
@@ -1104,4 +1141,4 @@ if (document.readyState === 'loading') {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [player.js] v9.3.2 carregado — auto-next + persistência (YouTube + playlist global)');
+console.log('✅ [player.js] v9.3.3 carregado — auto-next + persistência + registra play no histórico');
