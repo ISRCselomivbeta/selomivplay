@@ -682,3 +682,20 @@ body.discovery-open #toastContainer {
 body.discovery-open #playerSpotify {
   display: none !important;
 }
+/* ============================================================
+   v2.1.0 — Cards do YouTube
+   ============================================================ */
+.discovery-card-badge.tipo-youtube {
+  background: linear-gradient(135deg, #FF0000 0%, #CC0000 100%);
+  color: #fff;
+  border: 1px solid rgba(255, 0, 0, 0.5);
+  box-shadow: 0 4px 20px rgba(255, 0, 0, 0.4);
+}
+
+.discovery-actions.youtube {
+  grid-template-columns: 1.8fr 1fr 1fr;
+}
+
+.discovery-action.play.big {
+  grid-column: span 1;
+}
