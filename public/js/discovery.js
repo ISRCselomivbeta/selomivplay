@@ -1,25 +1,26 @@
 // ============================================================
-// js/discovery.js — PLAY MY v2.0.1
+// js/discovery.js — PLAY MY v2.1.0
 // Feed Vertical de Descoberta (estilo TikTok/Resso) + Personalização
+// + Load More Infinito (Bolsa Externa + YouTube)
+//
+// MUDANÇAS v2.1.0:
+//   - 🆕 Feed INFINITO: quando chega perto do fim, carrega mais
+//   - 🆕 PASSO 1: músicas da Bolsa Externa (state.externalPlaylist)
+//   - 🆕 PASSO 2: quando acaba, busca no YouTube por gênero do usuário
+//   - 🆕 Botões adaptados: música interna (Investir+Ouvir+Fav+Share)
+//      ou YouTube (Ouvir+Salvar+Compartilhar)
+//   - 🆕 Cache de queries YouTube (5 min) + lista de queries usadas
+//   - 🎨 Badge e cores diferentes para YouTube
 //
 // MUDANÇAS v2.0.1:
-//   - 🐛 FIX: openDiscoveryFeed agora reseta display/opacity/transform
-//        (resolve bug de travar o app após fechar o feed)
-//   - 🐛 FIX: closeDiscoveryFeed limpa pointer-events do body/html
-//   - 🐛 FIX: destrava interação completamente ao fechar
-//
-// MUDANÇAS v2.0.0:
-//   - 🆕 Cards de ARTISTA no feed (baseado no perfil do usuário)
-//   - 🆕 Cards de PLAYLIST no feed (globais + do usuário)
-//   - 🆕 Feed personalizado: prioriza artistas que o usuário segue
-//   - 🎨 Animação de entrada do título (slide up)
-//   - 🎨 Border dourada + glow no card ativo
+//   - 🐛 FIX: reset display/opacity/transform ao abrir
+//   - 🐛 FIX: destrava app ao fechar
 // ============================================================
 
 (function () {
   'use strict';
 
-  var DISCOVERY_VERSION = '2.0.1';
+  var DISCOVERY_VERSION = '2.1.0';
 
   var _discoveryState = {
     active: false,
@@ -28,7 +29,12 @@
     container: null,
     touchStartY: 0,
     touchStartX: 0,
-    animating: false
+    animating: false,
+    // v2.1.0 — load more
+    cardsIdsUsados: {},
+    loadingMore: false,
+    cacheYouTube: {},
+    queriesUsadas: []
   };
 
   function log() {
@@ -88,8 +94,17 @@
     return String(n);
   }
 
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
   // ============================================================
-  // PERSONALIZAÇÃO
+  // PERFIL
   // ============================================================
   function coletarPerfilUsuario() {
     var perfil = {
@@ -136,7 +151,7 @@
         }
       });
     } catch (e) {
-      console.warn('[Discovery] Erro ao coletar perfil:', e.message);
+      console.warn('[Discovery] Erro perfil:', e.message);
     }
 
     return perfil;
@@ -191,7 +206,7 @@
   }
 
   // ============================================================
-  // CONSTRUIR CARDS
+  // CONSTRUIR CARDS (inicial)
   // ============================================================
   function construirCards() {
     var perfil = coletarPerfilUsuario();
@@ -213,15 +228,6 @@
       if (isFav || isPortfolio) musicasPrioritarias.push(m);
       else musicasNormais.push(m);
     });
-
-    function shuffle(arr) {
-      var a = arr.slice();
-      for (var i = a.length - 1; i > 0; i--) {
-        var j = Math.floor(Math.random() * (i + 1));
-        var t = a[i]; a[i] = a[j]; a[j] = t;
-      }
-      return a;
-    }
 
     var musicasOrdenadas = shuffle(musicasPrioritarias).concat(shuffle(musicasNormais));
 
@@ -308,7 +314,6 @@
       if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
         e.preventDefault();
         e.stopPropagation();
-        console.log('[Discovery] Escape pressionado — fechando');
         closeDiscoveryFeed();
         return;
       }
@@ -363,7 +368,7 @@
   }
 
   // ============================================================
-  // RENDER
+  // RENDER — CARD DE MÚSICA
   // ============================================================
   function renderCardMusica(musica, idx, total) {
     var cover = getCoverMusica(musica);
@@ -375,46 +380,83 @@
     var investidores = formatarNumero(musica.total_investidores || 0);
     var views = formatarNumero(musica.visualizacoes || 0);
     var curtidas = formatarNumero(musica.curtidas || 0);
-    var idxReal = window.state.playlist.findIndex(function (m) {
-      return String(m.id) === String(musica.id);
-    });
+
+    var isYouTube = musica.youtube === true || musica.externa === true;
+    var isInterna = !isYouTube;
+
+    var idxReal = isInterna
+      ? window.state.playlist.findIndex(function (m) {
+          return String(m.id) === String(musica.id);
+        })
+      : -1;
+
+    var badgeOrigem = isYouTube
+      ? '<div class="discovery-card-badge tipo-youtube"><i class="bi bi-youtube"></i> YouTube</div>'
+      : '<div class="discovery-card-badge tipo-musica"><i class="bi bi-music-note-beamed"></i> Música</div>';
+
+    var statsHtml = isInterna
+      ? '<div class="discovery-stats">' +
+          '<span><i class="bi bi-eye"></i> ' + views + '</span>' +
+          '<span><i class="bi bi-heart"></i> ' + curtidas + '</span>' +
+          '<span><i class="bi bi-people"></i> ' + investidores + '</span>' +
+        '</div>'
+      : '<div class="discovery-stats">' +
+          '<span><i class="bi bi-youtube"></i> Descoberta</span>' +
+        '</div>';
+
+    var botoesHtml = '';
+
+    if (isInterna) {
+      botoesHtml =
+        '<button class="discovery-action invest" onclick="discoveryInvest(' + idxReal + ')">' +
+          '<i class="bi bi-currency-dollar"></i>' +
+          '<span>' + valor + '</span>' +
+          '<small>' + disponivel + '% disp.</small>' +
+        '</button>' +
+        '<button class="discovery-action play" onclick="discoveryPlay(' + idxReal + ')">' +
+          '<i class="bi bi-play-fill"></i>' +
+          '<span>Ouvir</span>' +
+        '</button>' +
+        '<button class="discovery-action fav" onclick="discoveryFav(\'' + musica.id + '\')">' +
+          '<i class="bi bi-heart"></i>' +
+          '<span>Favoritar</span>' +
+        '</button>' +
+        '<button class="discovery-action share" onclick="discoveryShare(\'' + musica.id + '\')">' +
+          '<i class="bi bi-share"></i>' +
+          '<span>Compartilhar</span>' +
+        '</button>';
+    } else {
+      botoesHtml =
+        '<button class="discovery-action play big" onclick="discoveryPlayYouTube(\'' + musica.id + '\')">' +
+          '<i class="bi bi-play-fill"></i>' +
+          '<span>Ouvir no YouTube</span>' +
+        '</button>' +
+        '<button class="discovery-action fav" onclick="discoveryFav(\'' + musica.id + '\')">' +
+          '<i class="bi bi-heart"></i>' +
+          '<span>Salvar</span>' +
+        '</button>' +
+        '<button class="discovery-action share" onclick="discoveryShareYouTube(\'' + musica.id + '\')">' +
+          '<i class="bi bi-share"></i>' +
+          '<span>Compartilhar</span>' +
+        '</button>';
+    }
+
+    var actionsClass = isYouTube ? 'discovery-actions youtube' : 'discovery-actions';
 
     return '' +
       '<div class="discovery-card discovery-card-musica" data-index="' + idx + '">' +
         '<div class="discovery-cover" style="background-image:url(\'' + cover + '\')">' +
           '<div class="discovery-cover-overlay"></div>' +
         '</div>' +
-        '<div class="discovery-card-badge tipo-musica">' +
-          '<i class="bi bi-music-note-beamed"></i> Música' +
-        '</div>' +
+        badgeOrigem +
         '<div class="discovery-info">' +
           '<div class="discovery-genero">' + genero + '</div>' +
           '<h1 class="discovery-track-title">' + titulo + '</h1>' +
           '<p class="discovery-track-artist">' + artista + '</p>' +
-          '<div class="discovery-stats">' +
-            '<span><i class="bi bi-eye"></i> ' + views + '</span>' +
-            '<span><i class="bi bi-heart"></i> ' + curtidas + '</span>' +
-            '<span><i class="bi bi-people"></i> ' + investidores + '</span>' +
-          '</div>' +
+          statsHtml +
         '</div>' +
-        '<div class="discovery-actions">' +
-          '<button class="discovery-action invest" onclick="discoveryInvest(' + idxReal + ')">' +
-            '<i class="bi bi-currency-dollar"></i>' +
-            '<span>' + valor + '</span>' +
-            '<small>' + disponivel + '% disp.</small>' +
-          '</button>' +
-          '<button class="discovery-action play" onclick="discoveryPlay(' + idxReal + ')">' +
-            '<i class="bi bi-play-fill"></i>' +
-            '<span>Ouvir</span>' +
-          '</button>' +
-          '<button class="discovery-action fav" onclick="discoveryFav(\'' + musica.id + '\')">' +
-            '<i class="bi bi-heart"></i>' +
-            '<span>Favoritar</span>' +
-          '</button>' +
-          '<button class="discovery-action share" onclick="discoveryShare(\'' + musica.id + '\')">' +
-            '<i class="bi bi-share"></i>' +
-            '<span>Compartilhar</span>' +
-          '</button>' +
+        '<div class="' + actionsClass + '">' +
+          botoesHtml +
         '</div>' +
         '<div class="discovery-progress">' +
           '<div class="discovery-progress-bar" style="width:' + (((idx + 1) / total) * 100) + '%"></div>' +
@@ -422,6 +464,9 @@
       '</div>';
   }
 
+  // ============================================================
+  // RENDER — CARD DE ARTISTA
+  // ============================================================
   function renderCardArtista(artista, idx, total, perfil) {
     var nome = escapeHtml(artista.nome);
     var totalMusicas = artista.musicas.length;
@@ -472,6 +517,9 @@
       '</div>';
   }
 
+  // ============================================================
+  // RENDER — CARD DE PLAYLIST
+  // ============================================================
   function renderCardPlaylist(playlist, idx, total, isGlobal) {
     var nome = escapeHtml(playlist.nome || 'Playlist');
     var desc = escapeHtml(playlist.descricao || (isGlobal ? 'Playlist global' : 'Minha playlist'));
@@ -509,6 +557,9 @@
       '</div>';
   }
 
+  // ============================================================
+  // RENDER
+  // ============================================================
   function render() {
     var cards = document.getElementById('discoveryCards');
     if (!cards) return;
@@ -559,7 +610,7 @@
   }
 
   // ============================================================
-  // NAVEGAÇÃO
+  // NAVEGAÇÃO (com load more)
   // ============================================================
   function irPara(index) {
     var total = _discoveryState.cards.length;
@@ -574,6 +625,11 @@
     atualizarVisibilidade();
     atualizarCounter();
 
+    // v2.1.0 — se está a 5 cards do fim, carrega mais
+    if (index >= total - 5) {
+      carregarMaisCards();
+    }
+
     setTimeout(function () {
       _discoveryState.animating = false;
     }, 500);
@@ -587,6 +643,159 @@
   function discoveryPrev() {
     if (_discoveryState.animating) return;
     irPara(_discoveryState.currentIndex - 1);
+  }
+
+  // ============================================================
+  // v2.1.0 — LOAD MORE INFINITO
+  // ============================================================
+  function carregarMaisCards() {
+    if (_discoveryState.loadingMore) return;
+    _discoveryState.loadingMore = true;
+
+    log('Carregando mais cards...');
+
+    // PASSO 1 — Bolsa Externa
+    var externas = (window.state && window.state.externalPlaylist) || [];
+    var usados = _discoveryState.cardsIdsUsados;
+
+    var externasNaoUsadas = externas.filter(function (m) {
+      if (!m) return false;
+      var id = String(m.id || m.external_id || '');
+      return id && !usados[id];
+    });
+
+    if (externasNaoUsadas.length >= 2) {
+      externasNaoUsadas.slice(0, 3).forEach(function (m) {
+        var id = String(m.id || m.external_id);
+        usados[id] = true;
+        _discoveryState.cards.push({
+          tipo: 'musica',
+          dados: m,
+          externa: true
+        });
+      });
+
+      render();
+      log('Bolsa Externa: +' + Math.min(3, externasNaoUsadas.length) +
+          ' cards (total:', _discoveryState.cards.length, ')');
+
+      atualizarVisibilidade();
+      atualizarCounter();
+
+      _discoveryState.loadingMore = false;
+      return;
+    }
+
+    // PASSO 2 — YouTube
+    buscarMaisNoYouTube();
+  }
+
+  function buscarMaisNoYouTube() {
+    var perfil = coletarPerfilUsuario();
+    var generos = Object.keys(perfil.generosPrediletos);
+
+    generos.sort(function (a, b) {
+      return perfil.generosPrediletos[b] - perfil.generosPrediletos[a];
+    });
+
+    var queries = [];
+
+    generos.slice(0, 3).forEach(function (g) {
+      queries.push(g + ' brasileiro 2026');
+      queries.push(g + ' nacional');
+    });
+
+    perfil.following.slice(0, 2).forEach(function (a) {
+      queries.push(a + ' música');
+    });
+
+    ['ROCK', 'POP', 'HIPHOP', 'MPB', 'FUNK', 'ELETRONICA', 'SERTANEJO'].forEach(function (g) {
+      queries.push(g + ' brasileiro');
+    });
+
+    var queriesNovas = queries.filter(function (q) {
+      return _discoveryState.queriesUsadas.indexOf(q) === -1;
+    });
+
+    if (queriesNovas.length === 0) {
+      _discoveryState.queriesUsadas = [];
+      queriesNovas = queries;
+    }
+
+    var query = queriesNovas[0];
+    _discoveryState.queriesUsadas.push(query);
+
+    log('Buscando no YouTube:', query);
+
+    var agora = Date.now();
+    if (_discoveryState.cacheYouTube[query] &&
+        agora - _discoveryState.cacheYouTube[query].at < 5 * 60 * 1000) {
+      adicionarCardsYouTube(_discoveryState.cacheYouTube[query].resultados);
+      _discoveryState.loadingMore = false;
+      return;
+    }
+
+    if (typeof searchYouTubeDirect !== 'function') {
+      console.warn('[Discovery] searchYouTubeDirect não disponível');
+      _discoveryState.loadingMore = false;
+      return;
+    }
+
+    searchYouTubeDirect(query).then(function (resultados) {
+      _discoveryState.cacheYouTube[query] = {
+        at: agora,
+        resultados: resultados || []
+      };
+      adicionarCardsYouTube(resultados);
+      _discoveryState.loadingMore = false;
+    }).catch(function (e) {
+      console.warn('[Discovery] Erro YouTube:', e.message);
+      _discoveryState.loadingMore = false;
+    });
+  }
+
+  function adicionarCardsYouTube(resultados) {
+    if (!resultados || !resultados.length) {
+      log('YouTube: 0 resultados');
+      return;
+    }
+
+    var usados = _discoveryState.cardsIdsUsados;
+    var add = 0;
+
+    resultados.forEach(function (r) {
+      if (add >= 5) return;
+
+      var vid = String(r.id || '').replace('yt_', '');
+      if (!vid) return;
+      if (usados[vid]) return;
+
+      usados[vid] = true;
+      add++;
+
+      _discoveryState.cards.push({
+        tipo: 'musica',
+        dados: {
+          id: 'yt_' + vid,
+          titulo: r.titulo || 'Vídeo do YouTube',
+          artista: r.artista || '',
+          link_youtube: 'https://www.youtube.com/watch?v=' + vid,
+          link_capa: 'https://img.youtube.com/vi/' + vid + '/hqdefault.jpg',
+          youtube: true,
+          externa: true,
+          genero: 'YouTube'
+        },
+        externa: true
+      });
+    });
+
+    if (add > 0) {
+      render();
+      atualizarVisibilidade();
+      atualizarCounter();
+    }
+
+    log('YouTube: +' + add + ' cards (total:', _discoveryState.cards.length, ')');
   }
 
   // ============================================================
@@ -654,10 +863,76 @@
   };
 
   // ============================================================
-  // ABRIR / FECHAR (v2.0.1 — com reset completo)
+  // v2.1.0 — Ações para YouTube
+  // ============================================================
+  window.discoveryPlayYouTube = function (videoId) {
+    var vid = String(videoId).replace('yt_', '');
+    log('Play YouTube →', vid);
+
+    // Atualiza mini-player visualmente
+    var ps = document.getElementById('playerSpotify');
+    if (ps) ps.style.display = 'flex';
+
+    var pt = document.getElementById('playerTitle');
+    if (pt) pt.textContent = 'YouTube';
+
+    var pa = document.getElementById('playerArtist');
+    if (pa) pa.textContent = 'Vídeo do YouTube';
+
+    var pai = document.getElementById('playerAlbumArt');
+    if (pai) pai.src = 'https://img.youtube.com/vi/' + vid + '/hqdefault.jpg';
+
+    // Toca via player do YouTube
+    if (typeof loadYouTubeAPI === 'function' &&
+        typeof initializeYouTubePlayer === 'function') {
+      loadYouTubeAPI(function () {
+        initializeYouTubePlayer(vid);
+      });
+      state.currentTrackIndex = 2000;
+      state.isPlaying = true;
+      if (typeof updatePlayerIcons === 'function') updatePlayerIcons();
+    } else if (typeof showToast === 'function') {
+      showToast('Player do YouTube indisponível', 'warning');
+    }
+
+    setTimeout(closeDiscoveryFeed, 400);
+  };
+
+  window.discoveryShareYouTube = function (videoId) {
+    var vid = String(videoId).replace('yt_', '');
+    var url = 'https://www.youtube.com/watch?v=' + vid;
+
+    if (navigator.share) {
+      navigator.share({
+        title: 'PLAY MY',
+        text: 'Descobri esta música no PLAY MY',
+        url: url
+      }).catch(function () {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(function () {
+        if (typeof showToast === 'function') {
+          showToast('Link copiado!', 'success');
+        }
+      });
+    }
+  };
+
+  // ============================================================
+  // ABRIR / FECHAR
   // ============================================================
   window.openDiscoveryFeed = function () {
+    // Reset do load more
+    _discoveryState.cardsIdsUsados = {};
+    _discoveryState.loadingMore = false;
+    _discoveryState.queriesUsadas = [];
+
     _discoveryState.cards = construirCards();
+
+    _discoveryState.cards.forEach(function (c) {
+      if (c.tipo === 'musica' && c.dados && c.dados.id) {
+        _discoveryState.cardsIdsUsados[String(c.dados.id)] = true;
+      }
+    });
 
     if (!_discoveryState.cards.length) {
       if (typeof showToast === 'function') {
@@ -668,7 +943,6 @@
 
     var el = garantirContainer();
 
-    // RESET COMPLETO — restaura o feed ao estado visível
     el.style.display = 'flex';
     el.style.opacity = '1';
     el.style.transform = '';
@@ -707,9 +981,7 @@
 
       _discoveryState.active = false;
 
-      console.log('[Discovery] ✅ Feed fechado. body.class:', document.body.className);
-      console.log('[Discovery] ✅ body.style.overflow:', document.body.style.overflow);
-      console.log('[Discovery] ✅ feed.display:', el ? el.style.display : 'sem feed');
+      log('Feed fechado');
     } catch (e) {
       console.error('[Discovery] Erro ao fechar:', e);
     }
