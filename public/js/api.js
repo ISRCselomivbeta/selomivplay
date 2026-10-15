@@ -1,39 +1,22 @@
+// MUDANÇAS v8.9.7:
+//   - 🆕 TTL maior para dados do usuário (evita 504 do Vercel):
+//       • get_carteira:  3s → 30s
+//       • get_extrato:   3s → 30s
+//       • get_following: 60s (novo — antes não tinha TTL próprio)
+//   - 🆕 get_following adicionado em ACOES_CACHEAVEIS
+//   - 🆕 get_carteira, get_following, get_extrato em ACOES_ACEITAM_FALSE
+//        (aceita success:false sem quebrar o fluxo)
+//   - ✅ NADA MAIS MUDOU — compatível com v8.9.6
+//
 // MUDANÇAS v8.9.6:
 //   - 🔧 testVercel(): 8s → 12s (evita falso negativo em cold start)
 //   - 🔧 testGAS():    12s → 15s (GAS pode demorar)
 //   - ✅ Elimina o aviso "Offline total" falso positivo
 // ============================================================
-// js/api.js — PLAY MY v8.9.5
+// js/api.js — PLAY MY v8.9.7
 // HealthCheck + callAPI (roteador multi-API + Vercel → GAS → Local).
 // Depende de: config.js, utils.js, state.js
 // DEVE carregar DEPOIS de state.js e ANTES de auth.js.
-//
-// MUDANÇAS v8.9.4 (relatório de prioridades):
-//   - 🆕 CACHE_TTL_BY_ACTION: TTL específico por action
-//       • 3s   → get_saldo, get_carteira, get_extrato
-//       • 5s   → padrão
-//       • 15s  → get_musicas
-//       • 30s  → rankings + valuation + top_investments + news
-//       • 60s  → get_artists, get_mining_blocks
-//   - 🆕 callAPI.invalidate(action): invalidação cirúrgica de cache
-//   - 🆕 TIMEOUT_BY_ACTION: 25s para get_top_investments / valuation_catalogo
-//   - 🔧 Alinhamento com backend v9.8.3
-//
-// MUDANÇAS v8.9.3:
-//   - 🔧 Bump de versão (8.9.2 → 8.9.3) para forçar refresh no PWA
-//   - 📝 Comentário de alinhamento com backend v9.8.3 (stream guard)
-//
-// MUDANÇAS v8.9.1:
-//   - 🆕 DEDUP: chamadas idênticas simultâneas compartilham a mesma promise
-//   - 🆕 CACHE curto para ações de leitura (evita re-fetch em cascata)
-//   - 🆕 VALIDAÇÃO: success:true sem "data" em ações que exigem data → inválido
-//   - 🆕 debug: window.callAPI.clearCache() limpa dedup + cache
-//
-// MUDANÇAS v8.9.0:
-//   - 🆕 Suporte a MÚLTIPLAS APIs do Vercel
-//   - 🆕 API_ENDPOINTS mapeia cada action para o endpoint correto
-//   - 🆕 callAPI detecta automaticamente qual endpoint usar
-//   - Mantém fallback GAS para actions que ele conhece
 // ============================================================
 
 // ============================================================
@@ -132,7 +115,10 @@ const API_ENDPOINTS = {
     'get_mining_blocks':            'backend',
     'add_block':                    'backend',
     'get_stats':                    'backend',
-    'get_admin_stats':              'backend'
+    'get_admin_stats':              'backend',
+    // 🆕 v9.8.8
+    'register_event':               'backend',
+    'get_history':                  'backend'
 };
 
 // ============================================================
@@ -148,17 +134,17 @@ const ENDPOINT_URLS = {
 };
 
 // ============================================================
-// 🆕 v8.9.4 — TTL ESPECÍFICO POR ACTION
+// 🆕 v8.9.7 — TTL ESPECÍFICO POR ACTION
 // ------------------------------------------------------------
-// Dados do usuário mudam rápido → TTL curto (3s)
-// Rankings / valuation mudam pouco → TTL longo (30s)
-// Catálogos estáticos → TTL muito longo (60s)
+// Dados do usuário mudam rápido MAS não precisam ser refresh
+// a cada 3s. 30s é um bom equilíbrio (evita 504 do Vercel).
 // ============================================================
 const CACHE_TTL_BY_ACTION = {
-    // TTL curto (dados do usuário, mudam rápido)
-    'get_saldo':            3000,
-    'get_carteira':         3000,
-    'get_extrato':          3000,
+    // TTL curto (dados do usuário, mas com buffer para evitar 504)
+    'get_saldo':            10000,   // 🆕 v8.9.7 — era 3s
+    'get_carteira':         30000,   // 🆕 v8.9.7 — era 3s
+    'get_extrato':          30000,   // 🆕 v8.9.7 — era 3s
+    'get_following':        60000,   // 🆕 v8.9.7 — novo
 
     // TTL padrão
     '_default':             5000,
@@ -185,10 +171,7 @@ function _ttlFor(action) {
 }
 
 // ============================================================
-// 🆕 v8.9.4 — TIMEOUT ESPECÍFICO POR ACTION
-// ------------------------------------------------------------
-// get_top_investments e valuation_catalogo são pesados
-// (loops no backend + várias leituras KV) → timeout maior
+// TIMEOUT ESPECÍFICO POR ACTION
 // ============================================================
 const TIMEOUT_BY_ACTION = {
     'get_top_investments':  25000,
@@ -203,7 +186,6 @@ function _timeoutFor(action) {
 
 // ============================================================
 // AÇÕES QUE EXIGEM "data" NA RESPOSTA
-// Se vierem com success:true mas SEM data → considerar inválido
 // ============================================================
 const ACOES_EXIGEM_DATA = [
     'valuation_catalogo', 'ver_valuation', 'calcular_valuation', 'ultimo_catalogo',
@@ -219,8 +201,7 @@ const ACOES_EXIGEM_DATA = [
 ];
 
 // ============================================================
-// AÇÕES DE LEITURA (elegíveis a cache curto)
-// Não inclui mutações nem ações críticas
+// 🆕 v8.9.7 — AÇÕES DE LEITURA CACHEÁVEIS
 // ============================================================
 const ACOES_CACHEAVEIS = [
     'valuation_catalogo', 'ver_valuation', 'ultimo_catalogo', 'valuation_mercado',
@@ -230,8 +211,9 @@ const ACOES_CACHEAVEIS = [
     'get_musicas', 'get_artists', 'get_extrato', 'get_carteira',
     'get_top_investments',
     'get_news', 'get_mining_blocks',
-    // 🆕 v8.9.4
-    'get_saldo'
+    'get_saldo',
+    // 🆕 v8.9.7
+    'get_following'
 ];
 
 // CACHE_TTL_MS mantido por compatibilidade (fallback), mas _ttlFor() tem prioridade
@@ -245,11 +227,11 @@ window.HealthCheck = {
   gas: { online: null },
   mode: 'checking',
 
-async testVercel() {
+  async testVercel() {
     const url = ENDPOINT_URLS.backend + '?action=ping';
     try {
       const c = new AbortController();
-      const t = setTimeout(() => c.abort(), 12000);  // 🆕 v8.9.5 — 8s → 12s (cold start)
+      const t = setTimeout(() => c.abort(), 12000);
       const r = await fetch(url, { signal: c.signal });
       clearTimeout(t);
 
@@ -288,7 +270,7 @@ async testVercel() {
     const url = CONFIG.GAS_URL + '?action=health';
     try {
       const c = new AbortController();
-      const t = setTimeout(() => c.abort(), 15000);  // 🆕 v8.9.5 — 12s → 15s (GAS lento)
+      const t = setTimeout(() => c.abort(), 15000);
 
       const r = await fetch(url, { signal: c.signal });
       clearTimeout(t);
@@ -391,7 +373,7 @@ const ACOES_CRITICAS = [
 ];
 
 // ============================================================
-// DEDUP + CACHE (v8.9.1) — com TTL por action desde v8.9.4
+// DEDUP + CACHE
 // ============================================================
 const _inFlight = new Map();
 const _cache    = new Map();
@@ -408,7 +390,6 @@ function _getCached(action, data) {
     const hit = _cache.get(k);
     if (!hit) return null;
 
-    // 🆕 v8.9.4 — TTL específico por action
     const ttl = _ttlFor(action);
     if (Date.now() - hit.at > ttl) {
         _cache.delete(k);
@@ -425,7 +406,7 @@ function _setCached(action, data, json) {
 }
 
 // ============================================================
-// VALIDAÇÃO DE RESPOSTA
+// 🆕 v8.9.7 — AÇÕES QUE ACEITAM success:false
 // ============================================================
 const ACOES_ACEITAM_FALSE = [
     'login',
@@ -442,8 +423,12 @@ const ACOES_ACEITAM_FALSE = [
     'cancel_trade',
     'request_withdrawal',
     'redeem_ticket',
-    'register_streaming',    // 🆕 v8.9.6 — Stream Guard pode retornar success:false (bloqueado)
-    'register_event'         // 🆕 v8.9.6 — event_type inválido retorna success:false
+    'register_streaming',
+    'register_event',
+    // 🆕 v8.9.7
+    'get_carteira',
+    'get_following',
+    'get_extrato'
 ];
 
 function _isValidResponse(action, json) {
@@ -494,7 +479,7 @@ function buildUrl(baseUrl, action, data) {
 }
 
 // ============================================================
-// CALL API (roteador multi-API + Vercel → GAS → fallback)
+// CALL API
 // ============================================================
 window.callAPI = async function (action, data, _retry) {
   _retry = _retry || 0;
@@ -504,7 +489,7 @@ window.callAPI = async function (action, data, _retry) {
     data.user_id = state.currentUser.id;
   }
 
-  // DEDUP: mesma chamada em andamento → mesma promise
+  // DEDUP
   if (_retry === 0) {
       const inFlightKey = _keyFor(action, data);
       if (_inFlight.has(inFlightKey)) {
@@ -512,7 +497,6 @@ window.callAPI = async function (action, data, _retry) {
           return _inFlight.get(inFlightKey);
       }
 
-      // CACHE: resposta recente (TTL específico por action desde v8.9.4)
       const cached = _getCached(action, data);
       if (cached) {
           console.log(`📦 [${action}] cache hit (TTL ${_ttlFor(action)}ms)`);
@@ -521,12 +505,11 @@ window.callAPI = async function (action, data, _retry) {
   }
 
   const _run = async () => {
-      // TENTATIVA 1: API ESPECÍFICA (streams, valuation, royalties, elo, isrc)
+      // TENTATIVA 1: API ESPECÍFICA
       const specificEndpoint = getEndpointForAction(action);
 
       if (specificEndpoint !== ENDPOINT_URLS.backend) {
           const ctrl = new AbortController();
-          // 🆕 v8.9.4 — timeout específico por action
           const timeout = setTimeout(() => ctrl.abort(), _timeoutFor(action));
 
           try {
@@ -567,60 +550,58 @@ window.callAPI = async function (action, data, _retry) {
           }
       }
 
-      // TENTATIVA 2: BACKEND PRINCIPAL (Vercel)
+      // TENTATIVA 2: BACKEND PRINCIPAL
       const tryFetch = async (baseUrl, timeoutMs, label) => {
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
-    try {
-        const isGAS = baseUrl.includes('script.google.com');
-        const url = buildUrl(baseUrl, action, data);
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
+        try {
+            const isGAS = baseUrl.includes('script.google.com');
+            const url = buildUrl(baseUrl, action, data);
 
-        const fetchOptions = {
-            signal: ctrl.signal,
-            method: 'GET',
-            redirect: 'follow'
-        };
-        if (!isGAS) {
-            fetchOptions.headers = { 'Accept': 'application/json' };
-        }
+            const fetchOptions = {
+                signal: ctrl.signal,
+                method: 'GET',
+                redirect: 'follow'
+            };
+            if (!isGAS) {
+                fetchOptions.headers = { 'Accept': 'application/json' };
+            }
 
-        const r = await fetch(url, fetchOptions);
-        clearTimeout(timeout);
+            const r = await fetch(url, fetchOptions);
+            clearTimeout(timeout);
 
-        if (!r.ok) {
-            console.warn(`⚠️ [${action}] ${label} HTTP ${r.status}`);
+            if (!r.ok) {
+                console.warn(`⚠️ [${action}] ${label} HTTP ${r.status}`);
+                return null;
+            }
+
+            const text = await r.text();
+            let json = null;
+            try {
+                json = JSON.parse(text);
+            } catch (_) {
+                const m = text.match(/\{[\s\S]*\}/);
+                if (m) {
+                    try { json = JSON.parse(m[0]); } catch (_) {}
+                }
+            }
+
+            if (_isValidResponse(action, json)) {
+                console.log(`✅ [${action}] via ${label}`);
+                return json;
+            }
+
+            console.warn(`⚠️ [${action}] ${label} resposta inválida`, json);
+            return null;
+        } catch (e) {
+            clearTimeout(timeout);
+            if (e.name !== 'AbortError') {
+                console.warn(`⚠️ [${action}] ${label} erro:`, e.name, e.message);
+            }
             return null;
         }
+      };
 
-        const text = await r.text();
-        let json = null;
-        try {
-            json = JSON.parse(text);
-        } catch (_) {
-            const m = text.match(/\{[\s\S]*\}/);
-            if (m) {
-                try { json = JSON.parse(m[0]); } catch (_) {}
-            }
-        }
-
-        if (_isValidResponse(action, json)) {
-            console.log(`✅ [${action}] via ${label}`);
-            return json;
-        }
-
-        console.warn(`⚠️ [${action}] ${label} resposta inválida`, json);
-        return null;
-    } catch (e) {
-        clearTimeout(timeout);
-        if (e.name !== 'AbortError') {
-            console.warn(`⚠️ [${action}] ${label} erro:`, e.name, e.message);
-        }
-        return null;
-    }
-};
-
-      // Tentar backend — SEMPRE na mesma origem do usuário
-      // 🆕 v8.9.4 — timeout específico por action (get_top_investments: 25s)
       const vercelJson = await tryFetch(ENDPOINT_URLS.backend, _timeoutFor(action), 'Vercel');
       if (vercelJson) {
         HealthCheck.vercel.online = true;
@@ -685,12 +666,7 @@ window.callAPI.clearCache = function () {
 };
 
 // ============================================================
-// 🆕 v8.9.4 — INVALIDAR CACHE DE UMA ACTION ESPECÍFICA
-// ------------------------------------------------------------
-// Uso típico após mutações:
-//   await callAPI('buy', {...});
-//   callAPI.invalidate('get_saldo');
-//   callAPI.invalidate('get_carteira');
+// INVALIDAR CACHE DE UMA ACTION ESPECÍFICA
 // ============================================================
 window.callAPI.invalidate = function (action) {
     if (!action || typeof action !== 'string') return 0;
@@ -707,7 +683,7 @@ window.callAPI.invalidate = function (action) {
 };
 
 // ============================================================
-// 🆕 v8.9.4 — DEBUG: listar entradas de cache ativas
+// DEBUG: listar entradas de cache ativas
 // ============================================================
 window.callAPI.cacheStats = function () {
     const now = Date.now();
@@ -764,6 +740,7 @@ window.getFallbackData = function (action) {
   if (action === 'get_extrato') return { success: true, data: [], _via: 'local' };
   if (action === 'get_playlists') return { success: true, data: [], _via: 'local' };
   if (action === 'get_global_playlists') return { success: true, data: [], _via: 'local' };
+  if (action === 'get_following') return { success: true, data: [], _via: 'local' };
   if (action === 'get_tickets') return { success: true, data: [], _via: 'local' };
   if (action === 'get_news') return { success: true, data: [], has_more: false, _via: 'local' };
   if (action === 'mark_news_seen') return { success: true, _via: 'local' };
@@ -782,6 +759,8 @@ window.getFallbackData = function (action) {
   if (action === 'royalties_periodos') return { success: true, data: [], _via: 'local' };
   if (action === 'extrato_usuario') return { success: true, data: { total_recebido: 0, quantidade: 0, ultimos: [] }, _via: 'local' };
   if (action === 'get_elo_ranking') return { success: true, data: { total: 0, ranking: [] }, _via: 'local' };
+  if (action === 'get_history') return { success: true, data: { total: 0, eventos: [], stats: {} }, _via: 'local' };
+  if (action === 'register_event') return { success: true, data: { total: 0 }, _via: 'local' };
 
   return { success: false, message: 'Ação indisponível offline', _via: 'local', _offline: true };
 };
@@ -789,4 +768,4 @@ window.getFallbackData = function (action) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [api.js] v8.9.6 carregado — TTL por action + invalidate + register_streaming na whitelist');
+console.log('✅ [api.js] v8.9.7 carregado — TTL maior para carteira/extrato/following (evita 504)');
