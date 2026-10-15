@@ -1,22 +1,26 @@
 // ============================================================
-// js/share-universal.js — PLAY MY v1.1.1
+// js/share-universal.js — PLAY MY v1.2.2
 // Compartilhamento universal: TUDO leva ao PLAY MY
 //
-// MUDANÇAS v1.1.0:
-//   - 🔗 YouTube puro agora compartilha via PLAY MY (?yt=VIDEO_ID)
-//   - 🎯 Aquisição: TODO link compartilhado leva ao site
-//   - ✅ NADA MAIS MUDOU
+// MUDANÇAS v1.2.2:
+//   - 🔒 BLINDAGEM: nunca deixa link do YouTube vazar
+//        (se detectar youtube.com/youtu.be, reconstrói com /s/yt_)
+//   - 🔒 BLINDAGEM: força PLAY MY em qualquer link compartilhado
+//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v1.2.1
 //
-// MUDANÇAS v1.0.0:
-//   - 🆕 getCurrentTrackUniversal(): resolve o track atual
-//   - 🆕 Detecta tipo (interna / youtube / externa)
-//   - 🆕 Corrige bug do share.js com YouTube (index 2000)
+// MUDANÇAS v1.2.1:
+//   - 🐛 FIX: getCurrentTrackUniversal agora cobre 8 fallbacks
+//   - 🐛 FIX: card "Ouvindo" do Discovery agora compartilha OK
+//
+// MUDANÇAS v1.2.0:
+//   - 🆕 shareArtistUniversal(): compartilha link do artista
+//   - 🆕 Suporte a ?artist=ID na URL
 // ============================================================
 
 (function () {
   'use strict';
 
-  const SHARE_VERSION = '1.1.1';
+  const SHARE_VERSION = '1.2.2';
 
   function _extractYouTubeId(url) {
     if (!url) return null;
@@ -28,11 +32,28 @@
     return m ? m[1] : null;
   }
 
+  function _makeYouTubeTrack(obj) {
+    if (!obj) return null;
+    const vid = _extractYouTubeId(obj.link_youtube) ||
+                String(obj.id || '').replace('yt_', '');
+    if (!vid) return null;
+    return {
+      id: 'yt_' + vid,
+      titulo: obj.titulo || 'Vídeo do YouTube',
+      artista: obj.artista || 'YouTube',
+      link_youtube: 'https://www.youtube.com/watch?v=' + vid,
+      youtube: true,
+      externa: true,
+      genero: 'YouTube'
+    };
+  }
+
   // ============================================================
-  // RESOLVE O TRACK ATUAL
+  // RESOLVE O TRACK ATUAL — v1.2.2
   // ============================================================
   window.getCurrentTrackUniversal = function () {
     try {
+      // Fallback 1: playQueue
       if (window.playQueue &&
           Array.isArray(playQueue.items) &&
           playQueue.items.length > 0 &&
@@ -42,16 +63,12 @@
         const item = playQueue.items[playQueue.currentIndex];
         if (item) {
           if (item.index === -1 && item.youtubeData) {
-            const vid = item.youtubeData.videoId;
-            return {
-              id: 'yt_' + vid,
-              titulo: item.youtubeData.titulo || 'Vídeo do YouTube',
-              artista: item.youtubeData.artista || 'YouTube',
-              link_youtube: 'https://www.youtube.com/watch?v=' + vid,
-              youtube: true,
-              externa: true,
-              genero: 'YouTube'
-            };
+            return _makeYouTubeTrack({
+              id: 'yt_' + item.youtubeData.videoId,
+              titulo: item.youtubeData.titulo,
+              artista: item.youtubeData.artista,
+              link_youtube: 'https://www.youtube.com/watch?v=' + item.youtubeData.videoId
+            });
           }
           if (item.type === 'internal' && item.index >= 0 && state.playlist[item.index]) {
             return state.playlist[item.index];
@@ -63,11 +80,27 @@
         }
       }
 
-      if (typeof state.currentTrackIndex === 'number' &&
-          state.currentTrackIndex >= 2000) {
-        return state._currentYouTubeTrack || null;
+      // Fallback 2: _currentYouTubeTrack
+      if (state._currentYouTubeTrack) {
+        const yt = _makeYouTubeTrack(state._currentYouTubeTrack);
+        if (yt) return yt;
       }
 
+      // Fallback 3: _lastYouTubeTrack
+      if (state._lastYouTubeTrack) {
+        const yt = _makeYouTubeTrack(state._lastYouTubeTrack);
+        if (yt) return yt;
+      }
+
+      // Fallback 4: currentTrackIndex >= 2000 (YouTube)
+      if (typeof state.currentTrackIndex === 'number' &&
+          state.currentTrackIndex >= 2000) {
+        const yt = _makeYouTubeTrack(state._currentYouTubeTrack) ||
+                   _makeYouTubeTrack(state._lastYouTubeTrack);
+        if (yt) return yt;
+      }
+
+      // Fallback 5: currentTrackIndex 1000-2000 (externa)
       if (typeof state.currentTrackIndex === 'number' &&
           state.currentTrackIndex >= 1000 &&
           state.currentTrackIndex < 2000 &&
@@ -76,6 +109,7 @@
         return state.externalPlaylist[extIdx] || null;
       }
 
+      // Fallback 6: currentTrackIndex normal (interna)
       if (typeof state.currentTrackIndex === 'number' &&
           state.currentTrackIndex >= 0 &&
           state.playlist &&
@@ -83,7 +117,34 @@
         return state.playlist[state.currentTrackIndex];
       }
 
-      return window.currentTrack || null;
+      // Fallback 7: window.currentTrack
+      if (window.currentTrack) return window.currentTrack;
+
+      // Fallback 8: DOM do player
+      try {
+        const selectors = [
+          '#expandedPlayerTitle',
+          '#playerTitle',
+          '#pm-player-title',
+          '[data-current-title]',
+          '.expanded-player-title',
+          '.player-title'
+        ];
+        for (const sel of selectors) {
+          const el = document.querySelector(sel);
+          if (el && el.textContent && el.textContent.trim()) {
+            return {
+              id: 'unknown_' + Date.now(),
+              titulo: el.textContent.trim(),
+              artista: '',
+              youtube: false,
+              externa: false
+            };
+          }
+        }
+      } catch (e) {}
+
+      return null;
     } catch (e) {
       console.warn('[ShareUniversal] erro getCurrentTrackUniversal:', e.message);
       return null;
@@ -105,38 +166,87 @@
   }
 
   // ============================================================
-  // 🆕 MONTA LINK — TUDO VAI PRO PLAY MY
+  // MONTA LINK — TUDO VAI PRO PLAY MY
   // ============================================================
   function _buildUniversalLink(track) {
-  const tipo = _detectTrackType(track);
-  const origin = window.location.origin;
+    const tipo = _detectTrackType(track);
+    const origin = window.location.origin;
 
-  // 🆕 v1.1.1 — Link universal /s/ID (página com OG dinâmico)
-  // O servidor /api/s.js monta o HTML com meta tags específicas
-  // e depois redireciona o humano pro app (?music= ou ?yt=)
+    if (tipo === 'youtube') {
+      const vid = _extractYouTubeId(track.link_youtube) ||
+                  String(track.id || '').replace('yt_', '');
+      if (vid) return origin + '/s/yt_' + encodeURIComponent(vid);
+      return null;
+    }
 
-  if (tipo === 'youtube') {
-    const vid = _extractYouTubeId(track.link_youtube) ||
-                String(track.id || '').replace('yt_', '');
-    if (vid) return origin + '/s/yt_' + encodeURIComponent(vid);
+    // Interna OU externa
+    if (track.id && !String(track.id).startsWith('unknown_')) {
+      return origin + '/s/' + encodeURIComponent(track.id);
+    }
+
+    // Fallback: se só tem titulo
+    if (track.titulo) {
+      return origin + '/?share=' + encodeURIComponent(track.titulo);
+    }
+
     return null;
   }
 
-  // Interna OU externa
-  return origin + '/s/' + encodeURIComponent(track.id);
-}
+  // ============================================================
+  // 🆕 v1.2.2 — BLINDAGEM: força link PLAY MY
+  // ============================================================
+  function _forcePlayMyLink(link, track) {
+    // Se link já é do PLAY MY, retorna como está
+    if (link &&
+        link.indexOf('playmy.com.br') !== -1 &&
+        link.indexOf('youtube.com') === -1 &&
+        link.indexOf('youtu.be') === -1) {
+      return link;
+    }
 
-  // ============================================================
-  // 🆕 MONTA TEXTO — SEMPRE PLAY MY
-  // ============================================================
-  function _buildUniversalText(track, tipo) {
-    const titulo = track.titulo || 'Música';
-    const artista = track.artista || '';
-    return '🎵 ' + titulo + (artista ? '\n' + artista : '') + '\n\nOuça no PLAY MY:';
+    console.warn('[ShareUniversal] 🚨 link inválido detectado:', link, '— reconstruindo...');
+
+    const origin = window.location.origin;
+
+    // Se é YouTube, reconstrói como /s/yt_XXX
+    if (track) {
+      const vid = _extractYouTubeId(track.link_youtube) ||
+                  String(track.id || '').replace('yt_', '');
+      if (vid) {
+        return origin + '/s/yt_' + encodeURIComponent(vid);
+      }
+
+      // Se tem ID, usa como /s/ID
+      if (track.id && !String(track.id).startsWith('unknown_')) {
+        return origin + '/s/' + encodeURIComponent(track.id);
+      }
+
+      // Se só tem título, usa /?share=titulo
+      if (track.titulo) {
+        return origin + '/?share=' + encodeURIComponent(track.titulo);
+      }
+    }
+
+    // Último recurso: home
+    return origin;
   }
 
   // ============================================================
-  // FUNÇÃO PRINCIPAL
+  // MONTA LINK DO ARTISTA
+  // ============================================================
+  function _buildArtistLink(artistId, nome) {
+    if (!artistId) return null;
+    const origin = window.location.origin;
+    const id = String(artistId).startsWith('artist_')
+      ? String(artistId)
+      : 'artist_' + String(artistId).toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    return origin + '/s/' + encodeURIComponent(id);
+  }
+
+  // ============================================================
+  // COMPARTILHAR MÚSICA — v1.2.2 BLINDADO
   // ============================================================
   window.shareMusicUniversal = function (track) {
     if (!track) track = getCurrentTrackUniversal();
@@ -157,7 +267,11 @@
     }
 
     const tipo = _detectTrackType(track);
-    const link = _buildUniversalLink(track);
+    let link = _buildUniversalLink(track);
+
+    // 🆕 v1.2.2 — BLINDAGEM: se link não for PLAY MY, força
+    link = _forcePlayMyLink(link, track);
+
     const capa = track.link_capa ||
                  (track.link_youtube ? 'https://img.youtube.com/vi/' +
                    _extractYouTubeId(track.link_youtube) + '/hqdefault.jpg' : '/images/logo.png');
@@ -194,6 +308,50 @@
   };
 
   // ============================================================
+  // COMPARTILHAR ARTISTA
+  // ============================================================
+  window.shareArtistUniversal = function (artistId, nome, avatar) {
+    if (!artistId || !nome) {
+      if (typeof showToast === 'function') {
+        showToast('Artista inválido', 'warning');
+      }
+      return;
+    }
+
+    const link = _buildArtistLink(artistId, nome);
+    const capa = avatar || '/images/logo.png';
+
+    window.currentShareTrack = {
+      id: artistId,
+      titulo: nome,
+      artista: 'Artista no PLAY MY',
+      capa: capa,
+      link: link,
+      tipo: 'artista'
+    };
+
+    console.log('[ShareUniversal v' + SHARE_VERSION + '] ARTISTA:', nome, '| link:', link);
+
+    const cover = document.getElementById('sharePreviewCover');
+    const title = document.getElementById('sharePreviewTitle');
+    const artist = document.getElementById('sharePreviewArtist');
+
+    if (cover) cover.src = capa;
+    if (title) title.textContent = nome;
+    if (artist) artist.textContent = '⭐ Seguir no PLAY MY';
+
+    const nativeBtn = document.getElementById('shareNativeBtn');
+    if (nativeBtn) nativeBtn.style.display = navigator.share ? 'flex' : 'none';
+
+    if (typeof showModal === 'function') {
+      showModal('shareModal');
+    } else {
+      const modal = document.getElementById('shareModal');
+      if (modal) modal.classList.add('show');
+    }
+  };
+
+  // ============================================================
   // SOBRESCREVE openShareModal
   // ============================================================
   window.openShareModal = function (track) {
@@ -215,7 +373,7 @@
   };
 
   // ============================================================
-  // WRAPPER PRA CARDS
+  // WRAPPER PRA CARDS DE MÚSICA
   // ============================================================
   window.shareMusicUniversalById = function (musicId) {
     if (!musicId) return;
@@ -228,15 +386,18 @@
 
     if (String(musicId).startsWith('yt_')) {
       const vid = String(musicId).replace('yt_', '');
-      track = {
+      track = _makeYouTubeTrack({
         id: 'yt_' + vid,
         titulo: 'Vídeo do YouTube',
         artista: 'YouTube',
-        link_youtube: 'https://www.youtube.com/watch?v=' + vid,
-        youtube: true,
-        externa: true
-      };
-      return shareMusicUniversal(track);
+        link_youtube: 'https://www.youtube.com/watch?v=' + vid
+      });
+      if (track) return shareMusicUniversal(track);
+    }
+
+    const current = getCurrentTrackUniversal();
+    if (current && String(current.id) === String(musicId)) {
+      return shareMusicUniversal(current);
     }
 
     if (typeof showToast === 'function') {
@@ -245,11 +406,34 @@
   };
 
   // ============================================================
-  // 🆕 FUNÇÕES DE SHARE — SEMPRE PLAY MY
+  // WRAPPER PRA CARDS DE ARTISTA
+  // ============================================================
+  window.shareArtistUniversalById = function (artistId) {
+    if (!artistId) return;
+
+    const artist = (state.artists || []).find(a => String(a.id) === String(artistId));
+    if (artist) {
+      return shareArtistUniversal(artist.id, artist.nome, artist.avatar);
+    }
+
+    const nome = String(artistId)
+      .replace(/^artist_/, '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+
+    return shareArtistUniversal(artistId, nome, null);
+  };
+
+  // ============================================================
+  // FUNÇÕES DE SHARE — SEMPRE PLAY MY
   // ============================================================
   window.shareNative = async function () {
     const t = window.currentShareTrack;
     if (!t || !t.link) return;
+
+    // 🆕 v1.2.2 — blinda antes de compartilhar
+    t.link = _forcePlayMyLink(t.link, t);
+
     try {
       await navigator.share({
         title: t.titulo + (t.artista ? ' — ' + t.artista : ''),
@@ -264,6 +448,7 @@
   window.shareWhatsApp = function () {
     const t = window.currentShareTrack;
     if (!t || !t.link) return;
+    t.link = _forcePlayMyLink(t.link, t);
     const texto = '🎵 ' + t.titulo + ' — ' + t.artista + '\n\nOuça no PLAY MY: ' + t.link;
     window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank', 'noopener');
   };
@@ -271,6 +456,7 @@
   window.shareTwitter = function () {
     const t = window.currentShareTrack;
     if (!t || !t.link) return;
+    t.link = _forcePlayMyLink(t.link, t);
     const text = encodeURIComponent(
       '🎵 Ouvindo "' + t.titulo + '" de ' + t.artista + ' no @PLAYMY!'
     );
@@ -283,6 +469,7 @@
   window.shareFacebook = function () {
     const t = window.currentShareTrack;
     if (!t || !t.link) return;
+    t.link = _forcePlayMyLink(t.link, t);
     window.open(
       'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(t.link),
       '_blank', 'noopener'
@@ -292,6 +479,7 @@
   window.shareTelegram = function () {
     const t = window.currentShareTrack;
     if (!t || !t.link) return;
+    t.link = _forcePlayMyLink(t.link, t);
     const texto = '🎵 ' + t.titulo + ' — ' + t.artista + '\n\nOuça no PLAY MY';
     window.open(
       'https://t.me/share/url?url=' + encodeURIComponent(t.link) +
@@ -303,6 +491,9 @@
   window.shareCopyLink = async function () {
     const t = window.currentShareTrack;
     if (!t || !t.link) return;
+
+    // 🆕 v1.2.2 — blinda antes de copiar
+    t.link = _forcePlayMyLink(t.link, t);
 
     try {
       await navigator.clipboard.writeText(t.link);
@@ -333,6 +524,8 @@
   window.shareInstagram = async function () {
     const t = window.currentShareTrack;
     if (!t || !t.link) return;
+
+    t.link = _forcePlayMyLink(t.link, t);
 
     try {
       await navigator.clipboard.writeText(t.link);
@@ -370,9 +563,13 @@
     getCurrentTrack: getCurrentTrackUniversal,
     share: shareMusicUniversal,
     shareById: shareMusicUniversalById,
+    shareArtist: shareArtistUniversal,
+    shareArtistById: shareArtistUniversalById,
+    buildArtistLink: _buildArtistLink,
+    forcePlayMyLink: _forcePlayMyLink,
     detectType: _detectTrackType,
     buildLink: _buildUniversalLink
   };
 
-  console.log('✅ [share-universal.js] v' + SHARE_VERSION + ' carregado — TODO link leva ao PLAY MY');
+  console.log('✅ [share-universal.js] v' + SHARE_VERSION + ' carregado — TODO link leva ao PLAY MY (blindado)');
 })();
