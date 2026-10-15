@@ -1716,7 +1716,16 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     const params = req.method === 'POST' ? (req.body || {}) : (req.query || {});
-    const { action } = params;
+    let { action } = params;
+
+    // 🆕 v9.8.11 — normaliza action se chegou como array (URL duplicada)
+    if (Array.isArray(action)) {
+        console.warn('[handler] ⚠️ action chegou como array:', action, '— usando primeiro item');
+        // Salva o 2º item como "sub_action" para uso posterior
+        params._sub_action = action[1];
+        action = action[0];
+        params.action = action;
+    }
 
     console.log(`🚀 [${action}]`);
 
@@ -2629,41 +2638,60 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'toggle_follow') {
-            const userId = auth ? auth.user_id : params.user_id;
-            const artistId = String(params.artist_id);
-            const actionType = params.action;
-            if (!userId || !artistId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+    const userId = auth ? auth.user_id : params.user_id;
+    const artistId = String(params.artist_id);
+    // 🆕 v9.8.11 — aceita action OU _sub_action OU action_type
+    const actionType = params._sub_action || params.action_type || params.action;
+    if (!userId || !artistId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-            await callGAS('toggle_follow', { user_id: userId, artist_id: artistId, action: actionType });
+    // 🆕 v9.8.11 — grava no KV PRIMEIRO (não depende do GAS)
+    const all = await Storage.get('following') || {};
+    all[userId] = all[userId] || [];
+    if (actionType === 'follow') {
+        if (!all[userId].includes(artistId)) all[userId].push(artistId);
+    } else {
+        all[userId] = all[userId].filter(id => id !== artistId);
+    }
+    await Storage.set('following', all);
 
-            const all = await Storage.get('following') || {};
-            all[userId] = all[userId] || [];
-            if (actionType === 'follow') {
-                if (!all[userId].includes(artistId)) all[userId].push(artistId);
-            } else {
-                all[userId] = all[userId].filter(id => id !== artistId);
-            }
-            await Storage.set('following', all);
+    // 🆕 v9.8.11 — GAS em background (fire-and-forget)
+    callGAS('toggle_follow', { user_id: userId, artist_id: artistId, action: actionType })
+        .catch(e => console.warn('[toggle_follow] GAS falhou (não bloqueia):', e.message));
 
-            return res.status(200).json({ success: true, data: { following: all[userId] } });
-        }
+    return res.status(200).json({ success: true, data: { following: all[userId] } });
+}
 
         if (action === 'toggle_favorite') {
-            const userId = auth ? auth.user_id : params.user_id;
-            const { music_id } = params;
-            if (!userId || !music_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+    const userId = auth ? auth.user_id : params.user_id;
+    const { music_id } = params;
+    if (!userId || !music_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-            const all = await Storage.get('favorites') || {};
-            all[userId] = all[userId] || [];
-            const sid = String(music_id);
-            let actionType;
-            if (all[userId].includes(sid)) {
-                all[userId] = all[userId].filter(x => x !== sid);
-                actionType = 'remove';
-            } else {
-                all[userId].push(sid);
-                actionType = 'add';
-            }
+    // 🆕 v9.8.11 — normaliza action
+    const subAction = params._sub_action || params.action_type || params.action;
+
+    const all = await Storage.get('favorites') || {};
+    all[userId] = all[userId] || [];
+    const sid = String(music_id);
+
+    let actionType;
+    // 🆕 v9.8.11 — respeita o subAction se vier explícito
+    if (subAction === 'add' || subAction === 'remove') {
+        actionType = subAction;
+        if (actionType === 'add') {
+            if (!all[userId].includes(sid)) all[userId].push(sid);
+        } else {
+            all[userId] = all[userId].filter(x => x !== sid);
+        }
+    } else {
+        // Fallback: alterna com base no estado atual
+        if (all[userId].includes(sid)) {
+            all[userId] = all[userId].filter(x => x !== sid);
+            actionType = 'remove';
+        } else {
+            all[userId].push(sid);
+            actionType = 'add';
+        }
+    }
             await Storage.set('favorites', all);
 
             await callGAS('toggle_favorite', { user_id: userId, music_id, action: actionType });
