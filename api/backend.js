@@ -1,12 +1,14 @@
-// 🔧 v9.8.8 — EVENTOS + HISTÓRICO (discovery cumulativo)
-//   - ✅ register_event: registra play/favorite/share/invest/follow
-//   - ✅ get_history: retorna eventos + stats agregadas (7d/30d)
-//   - ✅ Storage em KV (Redis/@vercel/kv)
-// BACKEND.JS - VERSÃO 9.8.8
+// 🔧 v9.8.9 — COMPAT COM DISCOVERY v2.2.1
+//   - 🆕 EVENTS_VALID_TYPES aceita 'view', 'discovery_view', 'search'
+//   - 🆕 _registrarEvento trunca campos longos (KV otimizado)
+//   - 🆕 _getHistorico retorna stats.musicasTop (compat discovery)
+//   - 🆕 _getHistorico retorna stats.musicas7d + musicas30d
+//   - ✅ NADA MAIS MUDOU — compatibilidade total com v9.8.8
+// BACKEND.JS - VERSÃO 9.8.9
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
-// + COMPATIBILIDADE TOTAL COM GAS 7.0.1
+// + COMPATIBILIDADE TOTAL COM GAS 7.0.2
 // + VENDA DIRETA AO MERCADO (sell_to_market)
 // + VENDA P2P COM EMAIL (create_trade robusto)
 // + IMAGENS REAIS NOS FEEDS (extração agressiva + og:image)
@@ -76,13 +78,14 @@ const STREAM_MIN_DURATION = 30;              // segundos mínimos ouvidos
 const STREAM_PREFIX = 'stream_guard:';
 
 // ============================================================
-// 🆕 v9.8.8 — HISTÓRICO DE EVENTOS
+// 🆕 v9.8.9 — HISTÓRICO DE EVENTOS (compat discovery v2.2.1)
 // ============================================================
 const EVENTS_PREFIX = 'events_';
 const EVENTS_MAX = 500;
 const EVENTS_VALID_TYPES = new Set([
     'play', 'favorite', 'unfavorite', 'share', 'invest',
-    'follow', 'unfollow', 'play_youtube', 'skip'
+    'follow', 'unfollow', 'play_youtube', 'skip',
+    'view', 'discovery_view', 'search'   // 🆕 v9.8.9
 ]);
 
 async function _checkStreamAllowed(userId, musicId, ip, duration) {
@@ -113,7 +116,7 @@ async function _checkStreamAllowed(userId, musicId, ip, duration) {
 }
 
 // ============================================================
-// 🆕 v9.8.8 — REGISTRAR EVENTO
+// 🆕 v9.8.9 — REGISTRAR EVENTO (com truncamento)
 // ============================================================
 async function _registrarEvento(userId, eventType, payload) {
     if (!userId || !eventType) return { ok: false, reason: 'userId e eventType obrigatórios' };
@@ -125,12 +128,13 @@ async function _registrarEvento(userId, eventType, payload) {
         const key = EVENTS_PREFIX + userId;
         let events = await Storage.get(key) || [];
 
+        // 🆕 v9.8.9 — trunca campos longos pra economizar KV
         const evento = {
             type: eventType,
-            music_id: payload.music_id || null,
-            artist: payload.artist || null,
-            genero: payload.genero || null,
-            titulo: payload.titulo || null,
+            music_id: payload.music_id ? String(payload.music_id).slice(0, 64) : null,
+            artist: payload.artist ? String(payload.artist).slice(0, 120) : null,
+            genero: payload.genero ? String(payload.genero).slice(0, 40) : null,
+            titulo: payload.titulo ? String(payload.titulo).slice(0, 200) : null,
             ts: Date.now()
         };
 
@@ -149,7 +153,7 @@ async function _registrarEvento(userId, eventType, payload) {
 }
 
 // ============================================================
-// 🆕 v9.8.8 — GET HISTÓRICO AGREGADO
+// 🆕 v9.8.9 — GET HISTÓRICO AGREGADO (compat discovery v2.2.1)
 // ============================================================
 async function _getHistorico(userId, limit) {
     if (!userId) return { ok: false, reason: 'userId obrigatório' };
@@ -164,6 +168,9 @@ async function _getHistorico(userId, limit) {
             generos7d: {},
             generos30d: {},
             musicas: {},
+            musicas7d: {},     // 🆕 v9.8.9
+            musicas30d: {},    // 🆕 v9.8.9
+            musicasTop: {},    // 🆕 v9.8.9 — compat discovery
             total_eventos: events.length
         };
 
@@ -186,8 +193,13 @@ async function _getHistorico(userId, limit) {
             }
             if (ev.music_id) {
                 stats.musicas[ev.music_id] = (stats.musicas[ev.music_id] || 0) + 1;
+                if (is7d) stats.musicas7d[ev.music_id] = (stats.musicas7d[ev.music_id] || 0) + 1;
+                if (is30d) stats.musicas30d[ev.music_id] = (stats.musicas30d[ev.music_id] || 0) + 1;
             }
         });
+
+        // 🆕 v9.8.9 — espelha musicas em musicasTop (compat discovery.js v2.2.1)
+        stats.musicasTop = stats.musicas;
 
         const lim = parseInt(limit) || 100;
         const recentes = events.slice(-lim);
@@ -269,7 +281,7 @@ const EMAIL_FROM = 'selomivplay@gmail.com';
 const EMAIL_NAME = 'PLAY MY';
 
 // ============================================================
-// AÇÕES QUE EXISTEM NO GAS 7.0.1
+// AÇÕES QUE EXISTEM NO GAS 7.0.2
 // ============================================================
 const GAS_ACTIONS = new Set([
     'health', 'ping', 'login', 'register', 'confirm_email', 'resend_confirmation',
@@ -1685,8 +1697,9 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
         console.warn('⚠️ [migração] falha:', e.message);
     }
 })();
+
 // ============================================================
-// HANDLER PRINCIPAL — v9.8.8
+// HANDLER PRINCIPAL — v9.8.9
 // ============================================================
 module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1724,7 +1737,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.8',
+                version: '9.8.9',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -2653,7 +2666,7 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // 🆕 v9.8.8 — EVENTOS + HISTÓRICO
+        // 🆕 v9.8.9 — EVENTOS + HISTÓRICO
         // ============================================================
         if (action === 'register_event') {
             const userId = auth ? auth.user_id : (params.user_id || params.userId);
@@ -3381,7 +3394,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.8',
+            version: '9.8.9',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
