@@ -1,7 +1,13 @@
 // ============================================================
-// js/news-unified.js — PLAY MY v10.5.0
+// js/news-unified.js — PLAY MY v10.5.1
 // Feed de notícias unificado: backend + RSS + og:image enrichment
 // + SVG fallback (inline) + compartilhamento por notícia
+//
+// MUDANÇAS v10.5.1:
+//   - 🐛 FIX CRÍTICO: filtro de imagem estava rejeitando URLs reais
+//        (com query string, extensão no meio, CDN sem extensão)
+//        → agora só rejeita o que é EXPLICITAMENTE inútil
+//   - ✅ NADA MAIS MUDOU
 //
 // MUDANÇAS v10.5.0:
 //   - 🆕 Filtro de imagens inúteis (Google genérica, URLs truncadas, logo)
@@ -494,63 +500,68 @@
     state.hasMore = (start + PAGE_SIZE) < state.items.length;
   }
 
+  // ============================================================
+  // 🆕 v10.5.1 — RENDER CARD (FIX do filtro de imagem)
+  // ============================================================
   function renderCard(n) {
-  var catLabel = {
-    musica: '🎵 Música',
-    lancamentos: '🚀 Lançamento',
-    shows: '🎤 Shows',
-    negocios: '💰 Negócios',
-    artistas: '⭐ Artistas',
-    editais: '📜 Edital'
-  }[n.categoria] || '📰';
+    var catLabel = {
+      musica: '🎵 Música',
+      lancamentos: '🚀 Lançamento',
+      shows: '🎤 Shows',
+      negocios: '💰 Negócios',
+      artistas: '⭐ Artistas',
+      editais: '📜 Edital'
+    }[n.categoria] || '📰';
 
-  var inicial = (n.fonte || n.autor || 'N').charAt(0).toUpperCase();
-  var tempo = formatRelativeTime(n.timestamp);
+    var inicial = (n.fonte || n.autor || 'N').charAt(0).toUpperCase();
+    var tempo = formatRelativeTime(n.timestamp);
 
-  // 🆕 v10.5.1 — Filtro robusto (pega todas as variações do logo)
-  var imgRaw = String(n.imagem || '').trim();
-  var inutil =
-    !imgRaw ||
-    imgRaw.indexOf('data:image/svg') === 0 ||
-    /\/logo[.\-_]/i.test(imgRaw) ||
-    /\/images\/logo\./i.test(imgRaw) ||
-    imgRaw.indexOf('playmy.com.br/images/logo') !== -1 ||
-    imgRaw.indexOf('lh3.googleusercontent.com') !== -1 ||
-    imgRaw.indexOf('news.google.com') !== -1 ||
-    (imgRaw.indexOf('http') === 0 && !/\.(jpg|jpeg|png|webp|gif)(\?|#|$)/i.test(imgRaw));
+    // 🆕 v10.5.1 — Filtro robusto: só rejeita o que é EXPLICITAMENTE inútil
+    var imgRaw = String(n.imagem || '').trim();
 
-  var placeholder = gerarPlaceholder(n.categoria);
-  var imgUrl = (imgRaw && !inutil) ? imgRaw : placeholder;
+    var inutil =
+      !imgRaw ||
+      imgRaw.indexOf('data:image/svg') === 0 ||
+      imgRaw.indexOf('playmy.com.br/images/logo') !== -1 ||
+      imgRaw.indexOf('lh3.googleusercontent.com') !== -1 ||
+      imgRaw.indexOf('news.google.com') !== -1 ||
+      /\/images\/logo\./i.test(imgRaw);
 
-  var imgHtml = '<img src="' + imgUrl + '" ' +
-    'style="width:100%;height:180px;object-fit:cover;display:block;background:#2c2c2e" ' +
-    'loading="lazy" ' +
-    'onerror="this.onerror=null;this.src=\'' + placeholder + '\'">';
+    var isHttp = imgRaw.indexOf('http://') === 0 || imgRaw.indexOf('https://') === 0;
+    var isData = imgRaw.indexOf('data:image/') === 0;
 
-  return '<article data-news-id="' + esc(n.id) + '" style="background:#1c1c1e;border:0.5px solid #38383a;border-radius:16px;margin-bottom:16px;overflow:hidden;animation:pmFadeIn 0.4s ease">' +
-    imgHtml +
-    '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px">' +
-      '<div style="width:28px;height:28px;border-radius:50%;background:#ffcc00;color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">' + esc(inicial) + '</div>' +
-      '<div style="flex:1;min-width:0">' +
-        '<div style="color:#fff;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(n.fonte || n.autor || 'PLAY MY') + '</div>' +
-        '<div style="color:#8e8e93;font-size:12px">' + tempo + '</div>' +
+    var placeholder = gerarPlaceholder(n.categoria);
+    var imgUrl = (imgRaw && !inutil && (isHttp || isData)) ? imgRaw : placeholder;
+
+    var imgHtml = '<img src="' + imgUrl + '" ' +
+      'style="width:100%;height:180px;object-fit:cover;display:block;background:#2c2c2e" ' +
+      'loading="lazy" ' +
+      'onerror="this.onerror=null;this.src=\'' + placeholder + '\'">';
+
+    return '<article data-news-id="' + esc(n.id) + '" style="background:#1c1c1e;border:0.5px solid #38383a;border-radius:16px;margin-bottom:16px;overflow:hidden;animation:pmFadeIn 0.4s ease">' +
+      imgHtml +
+      '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px">' +
+        '<div style="width:28px;height:28px;border-radius:50%;background:#ffcc00;color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">' + esc(inicial) + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="color:#fff;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(n.fonte || n.autor || 'PLAY MY') + '</div>' +
+          '<div style="color:#8e8e93;font-size:12px">' + tempo + '</div>' +
+        '</div>' +
+        '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(255,204,0,0.15);color:#ffcc00;white-space:nowrap;flex-shrink:0">' + catLabel + '</span>' +
       '</div>' +
-      '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(255,204,0,0.15);color:#ffcc00;white-space:nowrap;flex-shrink:0">' + catLabel + '</span>' +
-    '</div>' +
-    '<div style="padding:12px 14px">' +
-      '<div style="color:#fff;font-weight:700;font-size:16px;margin-bottom:6px;line-height:1.3">' + esc(n.titulo) + '</div>' +
-      '<div style="color:#8e8e93;font-size:14px;line-height:1.5">' + esc(n.texto) + '</div>' +
-    '</div>' +
-    '<div style="padding:10px 14px 14px;border-top:0.5px solid #38383a;display:flex;gap:8px;flex-wrap:wrap">' +
-      '<a href="' + esc(n.link) + '" target="_blank" rel="noopener" style="display:inline-block;background:#ffcc00;color:#000;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none">' +
-        'Ler no Google News →' +
-      '</a>' +
-      '<button onclick="event.stopPropagation(); window.openNewsShareModal(\'' + esc(n.id) + '\')" style="background:rgba(255,204,0,0.15);color:#ffcc00;border:1px solid rgba(255,204,0,0.3);padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">' +
-        '<i class="bi bi-share-fill"></i> Compartilhar' +
-      '</button>' +
-    '</div>' +
-  '</article>';
-}
+      '<div style="padding:12px 14px">' +
+        '<div style="color:#fff;font-weight:700;font-size:16px;margin-bottom:6px;line-height:1.3">' + esc(n.titulo) + '</div>' +
+        '<div style="color:#8e8e93;font-size:14px;line-height:1.5">' + esc(n.texto) + '</div>' +
+      '</div>' +
+      '<div style="padding:10px 14px 14px;border-top:0.5px solid #38383a;display:flex;gap:8px;flex-wrap:wrap">' +
+        '<a href="' + esc(n.link) + '" target="_blank" rel="noopener" style="display:inline-block;background:#ffcc00;color:#000;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none">' +
+          'Ler no Google News →' +
+        '</a>' +
+        '<button onclick="event.stopPropagation(); window.openNewsShareModal(\'' + esc(n.id) + '\')" style="background:rgba(255,204,0,0.15);color:#ffcc00;border:1px solid rgba(255,204,0,0.3);padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">' +
+          '<i class="bi bi-share-fill"></i> Compartilhar' +
+        '</button>' +
+      '</div>' +
+    '</article>';
+  }
 
   function esc(s) {
     if (!s) return '';
@@ -643,5 +654,5 @@
     init();
   }
 
-  console.log('✅ [news-unified.js] v10.5.0 carregado — imagens + compartilhar + deep link');
+  console.log('✅ [news-unified.js] v10.5.1 carregado — imagens + compartilhar + deep link (FIX imagens)');
 })();
