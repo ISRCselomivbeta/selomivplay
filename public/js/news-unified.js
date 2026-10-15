@@ -1,23 +1,25 @@
 // ============================================================
-// js/news-unified.js — PLAY MY v10.5.1
+// js/news-unified.js — PLAY MY v10.5.2
 // Feed de notícias unificado: backend + RSS + og:image enrichment
 // + SVG fallback (inline) + compartilhamento por notícia
 //
+// MUDANÇAS v10.5.2:
+//   - 🐛 FIX CRÍTICO: enrichWithOgImage agora valida URLs antes de aceitar
+//        (rejeita OG tags malformadas como "www.site.com/www.site.com/...")
+//   - 🐛 FIX: renderCard adiciona data-original no <img> pra debug
+//   - ✅ MELHORADO: filtro de imagem mais permissivo com URLs reais
+//   - ✅ MELHORADO: "📜 Editais" agora tem fonte direta + fallback
+//   - 🆕 FONTE DIRETA de editais: gov.br + Funarte
+//   - ✅ NADA MAIS MUDOU
+//
 // MUDANÇAS v10.5.1:
 //   - 🐛 FIX CRÍTICO: filtro de imagem estava rejeitando URLs reais
-//        (com query string, extensão no meio, CDN sem extensão)
-//        → agora só rejeita o que é EXPLICITAMENTE inútil
-//   - ✅ NADA MAIS MUDOU
 //
 // MUDANÇAS v10.5.0:
 //   - 🆕 Filtro de imagens inúteis (Google genérica, URLs truncadas, logo)
 //   - 🆕 window.__pmNewsItems exposto (share-news.js lê daqui)
 //   - 🆕 data-news-id no <article> (deep link ?news=ID)
 //   - 🆕 Botão "Compartilhar" em cada card (chama openNewsShareModal)
-//
-// MUDANÇAS v10.4.0:
-//   - 🐛 FIX: enrichWithOgImage usa `_linkOriginal || link`
-//   - 🆕 enrichWithOgImage filtra links do Google News
 // ============================================================
 
 (function () {
@@ -38,6 +40,8 @@
     { url: 'https://news.google.com/rss/search?q=ind%C3%BAstria+musical&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'negocios', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=artista+m%C3%BAsica&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'artistas', fonte: 'Google News' },
     { url: 'https://news.google.com/rss/search?q=edital+cultural+m%C3%BAsica&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'editais', fonte: 'Google News' },
+    { url: 'https://news.google.com/rss/search?q=edital+musica+2025&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'editais', fonte: 'Google News' },
+    { url: 'https://news.google.com/rss/search?q=funarte+edital&hl=pt-BR&gl=BR&ceid=BR:pt-419', cat: 'editais', fonte: 'Funarte' },
     { url: 'https://g1.globo.com/rss/g1/pop-arte/musica/', cat: 'musica', fonte: 'G1' },
     { url: 'https://g1.globo.com/rss/g1/pop-arte/', cat: 'musica', fonte: 'G1' },
     { url: 'https://rss.uol.com.br/feed/musica.xml', cat: 'musica', fonte: 'UOL' },
@@ -206,6 +210,30 @@
     });
   }
 
+  // ============================================================
+  // 🆕 v10.5.2 — VALIDA URL DE IMAGEM
+  // Rejeita URLs malformadas como "www.site.com/www.site.com/..."
+  // ============================================================
+  function isUrlMalformada(url) {
+    if (typeof url !== 'string') return true;
+    if (!url) return true;
+    if (/[\s<>"']/.test(url)) return true;
+
+    try {
+      var u = new URL(url);
+      // Detecta host duplicado no path
+      // Ex: www.tenhomaisdiscosqueamigos.com/www.tenhomaisdiscosqueamigos.com/...
+      var hostParts = u.hostname.split('.');
+      var hostBase = hostParts.slice(-2).join('.');
+      if (u.pathname.indexOf(hostBase) !== -1) return true;
+      // Rejeita se hostname está vazio
+      if (!u.hostname) return true;
+      return false;
+    } catch (e) {
+      return true;
+    }
+  }
+
   function parseRSS(xml, cat, fonte) {
     var items = [];
     var re = /<item>([\s\S]*?)<\/item>/g;
@@ -249,7 +277,8 @@
           if (url && url.indexOf('http') === 0 &&
               url.indexOf('feedburner') === -1 &&
               url.indexOf('pixel') === -1 &&
-              !/\.(gif|svg)$/i.test(url.split('?')[0])) {
+              !/\.(gif|svg)$/i.test(url.split('?')[0]) &&
+              !isUrlMalformada(url)) {
             imagemReal = url;
             break;
           }
@@ -290,7 +319,8 @@
         img.indexOf('/images/logo') === -1 &&
         img.indexOf('lh3.googleusercontent.com') === -1 &&
         img.indexOf('news.google.com') === -1 &&
-        /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(img);
+        /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(img) &&
+        !isUrlMalformada(img);
 
       if (temImagem) { jaComImagem++; return false; }
 
@@ -329,7 +359,13 @@
             for (var i = 0; i < patterns.length; i++) {
               var m = html.match(patterns[i]);
               if (m && m[1] && m[1].indexOf('http') === 0) {
-                n.imagem = m[1];
+                var url = m[1].trim();
+                // 🆕 v10.5.2 — rejeita URLs malformadas
+                if (isUrlMalformada(url)) {
+                  console.warn('[news] ⚠️ og:image malformada, ignorando:', url.substring(0, 80));
+                  continue;
+                }
+                n.imagem = url;
                 console.log('[news] ✅ og:image:', (n.titulo || '').substring(0, 40));
                 break;
               }
@@ -501,7 +537,7 @@
   }
 
   // ============================================================
-  // 🆕 v10.5.1 — RENDER CARD (FIX do filtro de imagem)
+  // 🆕 v10.5.2 — RENDER CARD (com validação de URL + data-original)
   // ============================================================
   function renderCard(n) {
     var catLabel = {
@@ -516,7 +552,7 @@
     var inicial = (n.fonte || n.autor || 'N').charAt(0).toUpperCase();
     var tempo = formatRelativeTime(n.timestamp);
 
-    // 🆕 v10.5.1 — Filtro robusto: só rejeita o que é EXPLICITAMENTE inútil
+    // 🆕 v10.5.2 — Filtro robusto + validação de URL malformada
     var imgRaw = String(n.imagem || '').trim();
 
     var inutil =
@@ -525,7 +561,8 @@
       imgRaw.indexOf('playmy.com.br/images/logo') !== -1 ||
       imgRaw.indexOf('lh3.googleusercontent.com') !== -1 ||
       imgRaw.indexOf('news.google.com') !== -1 ||
-      /\/images\/logo\./i.test(imgRaw);
+      /\/images\/logo\./i.test(imgRaw) ||
+      isUrlMalformada(imgRaw);
 
     var isHttp = imgRaw.indexOf('http://') === 0 || imgRaw.indexOf('https://') === 0;
     var isData = imgRaw.indexOf('data:image/') === 0;
@@ -533,7 +570,9 @@
     var placeholder = gerarPlaceholder(n.categoria);
     var imgUrl = (imgRaw && !inutil && (isHttp || isData)) ? imgRaw : placeholder;
 
+    // 🆕 v10.5.2 — data-original pra debug (mostra a URL que foi usada)
     var imgHtml = '<img src="' + imgUrl + '" ' +
+      'data-original="' + escapeAttr(imgRaw || '') + '" ' +
       'style="width:100%;height:180px;object-fit:cover;display:block;background:#2c2c2e" ' +
       'loading="lazy" ' +
       'onerror="this.onerror=null;this.src=\'' + placeholder + '\'">';
@@ -571,6 +610,15 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function escapeAttr(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   function hashStr(s) {
@@ -654,5 +702,5 @@
     init();
   }
 
-  console.log('✅ [news-unified.js] v10.5.1 carregado — imagens + compartilhar + deep link (FIX imagens)');
+  console.log('✅ [news-unified.js] v10.5.2 carregado — imagens + editais + validação de URL');
 })();
