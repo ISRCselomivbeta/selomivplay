@@ -1,8 +1,4 @@
-// 🔧 v9.8.10 — PROXY DE IMAGEM
-//   - 🆕 action=proxy_image (proxy de imagens externas das notícias)
-//   - 🆕 SSRF bloqueado (localhost + IPs privados)
-//   - 🆕 Só aceita content-type image/*
-//   - ✅ NADA MAIS MUDOU — compatibilidade total com v9.8.9
+// ============================================================
 // BACKEND.JS - VERSÃO 9.8.10
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
@@ -12,6 +8,20 @@
 // + VENDA P2P COM EMAIL (create_trade robusto)
 // + IMAGENS REAIS NOS FEEDS (extração agressiva + og:image)
 // + HISTÓRICO DE EVENTOS (register_event + get_history)
+// + PROXY DE IMAGEM (proxy_image com SSRF guard)
+//
+// MUDANÇAS v9.8.10:
+//   - 🆕 action=proxy_image (proxy de imagens externas das notícias)
+//   - 🆕 SSRF bloqueado (localhost + IPs privados)
+//   - 🆕 Só aceita content-type image/*
+//   - ✅ NADA MAIS MUDOU — compatibilidade total com v9.8.9
+//
+// MUDANÇAS v9.8.9:
+//   - 🆕 EVENTS_VALID_TYPES aceita 'view', 'discovery_view', 'search'
+//   - 🆕 _registrarEvento trunca campos longos (KV otimizado)
+//   - 🆕 _getHistorico retorna stats.musicasTop (compat discovery)
+//   - 🆕 _getHistorico retorna stats.musicas7d + musicas30d
+//   - ✅ NADA MAIS MUDOU — compatibilidade total com v9.8.8
 //
 // 🔒 v9.8.4 (consolidação Opção A) — COMPATIBILIDADE STREAMS
 //   - ✅ register_streaming agora grava TAMBÉM em stream_<id> (formato antigo)
@@ -671,6 +681,7 @@ function normalizePlaylistFromKV(pl) {
         created_at: pl.created_at || new Date().toISOString()
     };
 }
+
 // ============================================================
 // PASSWORD HASHING (scrypt, nativo)
 // ============================================================
@@ -758,6 +769,7 @@ async function callGAS(action, params = {}, retries = 1) {
         }
     }
 }
+
 // 🆕 v9.8.7 — callGAS com timeout customizável (para ações lentas)
 async function callGASComTimeout(action, params = {}, timeoutMs = 8000, retries = 1) {
     if (!GAS_URL) {
@@ -1698,7 +1710,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 })();
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.8.9
+// HANDLER PRINCIPAL — v9.8.10
 // ============================================================
 module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1754,6 +1766,7 @@ module.exports = async (req, res) => {
                 streams_compat_legacy: true,
                 events_enabled: true,
                 events_max: EVENTS_MAX,
+                proxy_image_enabled: true,
                 timestamp: new Date().toISOString()
             });
         }
@@ -2919,6 +2932,7 @@ module.exports = async (req, res) => {
             console.warn('⚠️ [get_musicas] todas as camadas falharam — usando FALLBACK_MUSICAS');
             return res.status(200).json({ success: true, data: FALLBACK_MUSICAS, source: 'fallback_local' });
         }
+
         if (action === 'get_top_investments') {
             const gasResult = await callGAS('get_top_investments', params);
             const unwrapped = unwrapGAS(gasResult);
@@ -3387,7 +3401,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({ success: true, data: prefs });
         }
 
-          // ============================================================
+        // ============================================================
         // 🆕 v9.8.10 — PROXY DE IMAGEM
         // /api/backend?action=proxy_image&url=https://exemplo.com/img.jpg
         // ============================================================
@@ -3398,6 +3412,7 @@ module.exports = async (req, res) => {
                 return res.status(400).send('URL inválida');
             }
 
+            // Bloqueio SSRF (localhost + IPs privados)
             try {
                 const parsed = new URL(url);
                 const host = parsed.hostname;
@@ -3454,7 +3469,7 @@ module.exports = async (req, res) => {
             }
         }
 
-             // ============================================================
+        // ============================================================
         // DEFAULT
         // ============================================================
         return res.status(200).json({
