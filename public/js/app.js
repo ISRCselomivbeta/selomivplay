@@ -1,5 +1,5 @@
 // ============================================================
-// js/app.js — PLAY MY v9.8.7
+// js/app.js — PLAY MY v9.8.8
 // Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
 // + Detecção de app nativo (Capacitor/TWA)
 // + Safe areas (iPhone notch)
@@ -11,12 +11,17 @@
 // Depende de TODOS os módulos anteriores.
 // DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
 //
+// MUDANÇAS v9.8.8:
+//   - 🐛 FIX: HealthCheck.runAll() retorna STRING ('vercel'|'gas'|'fallback'),
+//        não objeto. A versão antiga fazia `result.vercel` (undefined) e
+//        SEMPRE contava como falha — inflando o backoff até 30 min sem motivo.
+//   - ✅ NADA MAIS MUDOU — comportamento idêntico ao v9.8.7
+//
 // MUDANÇAS v9.8.7:
 //   - 🆕 Deep link /s/ID (vindo de compartilhamento universal)
 //   - 🆕 Deep link /?yt=VIDEO_ID (YouTube puro via PLAY MY)
 //   - 🐛 FIX: removida duplicação de handleDeepLink (a 2ª
 //        sobrescrevia a 1ª, anulando o patch /s/ID)
-//   - ✅ NADA MAIS MUDOU — comportamento idêntico ao v9.8.6
 //
 // MUDANÇAS v9.8.6:
 //   - 🆕 Deep link ?music=ID integrado na Etapa 1 do loadAllData
@@ -25,7 +30,6 @@
 // MUDANÇAS v9.8.5:
 //   - 🐛 FIX: aliases globais protegidos com typeof
 //   - 🐛 FIX: loadArtistData / loadAdminData checam typeof
-//   - 🐛 FIX: HealthCheck com backoff exponencial
 //
 // MUDANÇAS v9.8.4:
 //   - 🆕 loadAllData() reescrita em 4 etapas
@@ -173,7 +177,7 @@ function blockNativeGestures() {
 }
 
 // ============================================================
-// DEEP LINKING — v9.8.7 (sem duplicação)
+// DEEP LINKING — v9.8.8
 // Processa:
 //   /s/ID              → redireciona pra ?music=ID ou ?yt=VIDEO_ID
 //   ?music=ID          → toca música interna
@@ -272,7 +276,7 @@ function handleDeepLink() {
   }
 
   // ────────────────────────────────────────────────────────
-  // 6. 🆕 v9.8.7 — ?yt=VIDEO_ID — toca YouTube puro
+  // 6. ?yt=VIDEO_ID — toca YouTube puro
   // ────────────────────────────────────────────────────────
   const ytId = params.get('yt');
   if (ytId && typeof playSearchResult === 'function') {
@@ -506,7 +510,11 @@ window.loadAllData = async function () {
 };
 
 // ============================================================
-// HEALTH CHECK COM BACKOFF EXPONENCIAL
+// 🆕 v9.8.8 — HEALTH CHECK COM BACKOFF EXPONENCIAL (CORRIGIDO)
+// ------------------------------------------------------------
+// 🐛 FIX: HealthCheck.runAll() retorna STRING ('vercel'|'gas'|'fallback'),
+//         não objeto. A versão antiga fazia `result.vercel` (undefined)
+//         e SEMPRE contava como falha — inflando o backoff até 30 min.
 // ============================================================
 (function setupHealthCheckWithBackoff() {
   var _baseInterval = 180000;   // 3 min
@@ -524,7 +532,9 @@ window.loadAllData = async function () {
     Promise.resolve()
       .then(function () { return HealthCheck.runAll(); })
       .then(function (result) {
-        if (result && (result.vercel || result.gas)) {
+        // 🐛 v9.8.8 — FIX: result é 'vercel' | 'gas' | 'fallback'
+        var isOk = (result === 'vercel' || result === 'gas');
+        if (isOk) {
           if (_consecutiveFails > 0) {
             console.log('✅ [app] HealthCheck recuperado após', _consecutiveFails, 'falhas');
           }
@@ -943,7 +953,7 @@ window.addEventListener('load', () => {
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.8.7 carregado — 4 etapas + aliases seguros + health check + deep link ?music=ID + ?yt= + /s/ID');
+console.log('✅ [app.js] v9.8.8 carregado — 4 etapas + aliases seguros + health check (fix) + deep link /s/ID + ?music=ID + ?yt=VIDEO_ID');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
-console.log('📲 Instalação via sidebar ativa — v9.8.7');
+console.log('📲 Instalação via sidebar ativa — v9.8.8');
