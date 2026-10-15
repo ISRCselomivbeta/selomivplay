@@ -1,5 +1,5 @@
 // ============================================================
-// BACKEND.JS - VERSÃO 9.8.10
+// BACKEND.JS - VERSÃO 9.8.12
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -1710,7 +1710,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 })();
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.8.10
+// HANDLER PRINCIPAL — v9.8.12
 // ============================================================
 module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1757,7 +1757,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.10',
+                version: '9.8.12',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -2622,16 +2622,41 @@ module.exports = async (req, res) => {
             if (!userId) return res.status(200).json({ success: true, data: [] });
 
             const all = await Storage.get('following') || {};
-            if (all[userId] && all[userId].length) {
-                return res.status(200).json({ success: true, data: all[userId], _via: 'kv' });
+            let userList = all[userId];
+
+            // 🆕 v9.8.12 — normaliza pra array SEMPRE
+            if (!Array.isArray(userList)) {
+                if (typeof userList === 'string' && userList.length) {
+                    console.warn('[get_following] normalizando string CSV → array:', userList);
+                    userList = userList.split(',').map(s => s.trim()).filter(Boolean);
+                    all[userId] = userList;
+                    await Storage.set('following', all);
+                } else if (userList && typeof userList === 'object') {
+                    console.warn('[get_following] normalizando objeto → array:', userList);
+                    userList = Object.keys(userList).filter(k => userList[k]);
+                    all[userId] = userList;
+                    await Storage.set('following', all);
+                } else {
+                    userList = [];
+                }
             }
 
-            const gasResult = await callGAS('get_following', { user_id: userId });
-            const unwrapped = unwrapGAS(gasResult);
-            if (unwrapped.success) {
-                all[userId] = unwrapped.data;
-                await Storage.set('following', all);
-                return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
+            if (userList.length) {
+                return res.status(200).json({ success: true, data: userList, _via: 'kv' });
+            }
+
+            // 🆕 v9.8.12 — GAS com validação estrita
+            try {
+                const gasResult = await callGAS('get_following', { user_id: userId });
+                const unwrapped = unwrapGAS(gasResult);
+                if (unwrapped.success && Array.isArray(unwrapped.data)) {
+                    all[userId] = unwrapped.data;
+                    await Storage.set('following', all);
+                    return res.status(200).json({ success: true, data: unwrapped.data, _via: 'gas' });
+                }
+                console.warn('[get_following] GAS retornou payload inválido:', typeof unwrapped.data);
+            } catch (e) {
+                console.warn('[get_following] GAS falhou:', e.message);
             }
 
             return res.status(200).json({ success: true, data: [], _via: 'local' });
@@ -2644,21 +2669,36 @@ module.exports = async (req, res) => {
     const actionType = params._sub_action || params.action_type || params.action;
     if (!userId || !artistId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-    // 🆕 v9.8.11 — grava no KV PRIMEIRO (não depende do GAS)
+    // 🆕 v9.8.12 — normaliza following pra array SEMPRE
     const all = await Storage.get('following') || {};
-    all[userId] = all[userId] || [];
-    if (actionType === 'follow') {
-        if (!all[userId].includes(artistId)) all[userId].push(artistId);
-    } else {
-        all[userId] = all[userId].filter(id => id !== artistId);
+    let userList = all[userId];
+
+    if (!Array.isArray(userList)) {
+        if (typeof userList === 'string' && userList.length) {
+            console.warn('[toggle_follow] normalizando string CSV → array:', userList);
+            userList = userList.split(',').map(s => s.trim()).filter(Boolean);
+        } else if (userList && typeof userList === 'object') {
+            console.warn('[toggle_follow] normalizando objeto → array:', userList);
+            userList = Object.keys(userList).filter(k => userList[k]);
+        } else {
+            userList = [];
+        }
     }
+
+    // 🆕 v9.8.11 — grava no KV PRIMEIRO (não depende do GAS)
+    if (actionType === 'follow') {
+        if (!userList.includes(artistId)) userList.push(artistId);
+    } else {
+        userList = userList.filter(id => id !== artistId);
+    }
+    all[userId] = userList;
     await Storage.set('following', all);
 
     // 🆕 v9.8.11 — GAS em background (fire-and-forget)
     callGAS('toggle_follow', { user_id: userId, artist_id: artistId, action: actionType })
         .catch(e => console.warn('[toggle_follow] GAS falhou (não bloqueia):', e.message));
 
-    return res.status(200).json({ success: true, data: { following: all[userId] } });
+    return res.status(200).json({ success: true, data: { following: userList } });
 }
 
         if (action === 'toggle_favorite') {
@@ -3503,7 +3543,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.10',
+            version: '9.8.12',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
