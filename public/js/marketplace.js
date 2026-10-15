@@ -198,20 +198,43 @@ window.loadArtists = async function () {
     state.artists = [];
   }
   if (!Array.isArray(state.artists)) state.artists = [];
+
+  // ✅ v9.3.8 — garante que following está carregado ANTES de renderizar
+  if (state.currentUser && state.currentUser.id && typeof loadFollowing === 'function') {
+    await loadFollowing();
+  }
+
   renderArtists();
   renderFeaturedArtists();
 };
 
 window.loadFollowing = async function () {
-  if (!state.currentUser) return;
+  // 🆕 v9.3.8 — se user ainda não está pronto, zera e re-renderiza
+  if (!state.currentUser || !state.currentUser.id) {
+    state.followingArtists = [];
+    if (typeof renderArtists === 'function') renderArtists();
+    if (typeof renderFeaturedArtists === 'function') renderFeaturedArtists();
+    console.log('⏭️ [loadFollowing] sem user — following zerado');
+    return;
+  }
+
   try {
     const r = await callAPI('get_following');
     if (r && r.success) {
       state.followingArtists = ensureArray(r.data).map(String);
+    } else {
+      state.followingArtists = [];
     }
   } catch (e) {
+    console.warn('⚠️ loadFollowing:', e.message);
     state.followingArtists = [];
   }
+
+  // ✅ v9.3.8 — re-renderiza DEPOIS de carregar
+  if (typeof renderArtists === 'function') renderArtists();
+  if (typeof renderFeaturedArtists === 'function') renderFeaturedArtists();
+
+  console.log('✅ [loadFollowing] state atualizado:', state.followingArtists);
 };
 
 window.loadTickets = async function () {
