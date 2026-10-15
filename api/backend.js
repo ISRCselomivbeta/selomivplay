@@ -1,10 +1,9 @@
-// 🔧 v9.8.9 — COMPAT COM DISCOVERY v2.2.1
-//   - 🆕 EVENTS_VALID_TYPES aceita 'view', 'discovery_view', 'search'
-//   - 🆕 _registrarEvento trunca campos longos (KV otimizado)
-//   - 🆕 _getHistorico retorna stats.musicasTop (compat discovery)
-//   - 🆕 _getHistorico retorna stats.musicas7d + musicas30d
-//   - ✅ NADA MAIS MUDOU — compatibilidade total com v9.8.8
-// BACKEND.JS - VERSÃO 9.8.9
+// 🔧 v9.8.10 — PROXY DE IMAGEM
+//   - 🆕 action=proxy_image (proxy de imagens externas das notícias)
+//   - 🆕 SSRF bloqueado (localhost + IPs privados)
+//   - 🆕 Só aceita content-type image/*
+//   - ✅ NADA MAIS MUDOU — compatibilidade total com v9.8.9
+// BACKEND.JS - VERSÃO 9.8.10
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -1737,7 +1736,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.9',
+                version: '9.8.10',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -3388,22 +3387,77 @@ module.exports = async (req, res) => {
             return res.status(200).json({ success: true, data: prefs });
         }
 
+          // ============================================================
+        // 🆕 v9.8.10 — PROXY DE IMAGEM
+        // /api/backend?action=proxy_image&url=https://exemplo.com/img.jpg
+        // ============================================================
+        if (action === 'proxy_image') {
+            const url = params.url;
+
+            if (!url || typeof url !== 'string' || url.indexOf('http') !== 0) {
+                return res.status(400).send('URL inválida');
+            }
+
+            try {
+                const parsed = new URL(url);
+                const host = parsed.hostname;
+                if (
+                    host === 'localhost' ||
+                    host === '127.0.0.1' ||
+                    host.startsWith('10.') ||
+                    host.startsWith('192.168.') ||
+                    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+                    host.endsWith('.local')
+                ) {
+                    return res.status(400).send('URL não permitida');
+                }
+            } catch (e) {
+                return res.status(400).send('URL inválida');
+            }
+
+            try {
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), 8000);
+
+                const origin = new URL(url).origin;
+                const r = await fetch(url, {
+                    signal: ctrl.signal,
+                    redirect: 'follow',
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Referer': origin + '/',
+                        'Accept': 'image/*,*/*;q=0.8'
+                    }
+                });
+                clearTimeout(timer);
+
+                if (!r.ok) {
+                    return res.status(r.status).send('Erro ao buscar imagem');
+                }
+
+                const contentType = r.headers.get('content-type') || 'image/jpeg';
+
+                if (contentType.indexOf('image/') !== 0) {
+                    return res.status(415).send('Conteúdo não é imagem');
+                }
+
+                const arrayBuffer = await r.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+
+                res.setHeader('Content-Type', contentType);
+                res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+                return res.status(200).send(buffer);
+
+            } catch (e) {
+                console.error('[proxy_image] erro:', e.message);
+                return res.status(500).send('Erro no proxy');
+            }
+        }
+
         // ============================================================
         // DEFAULT
         // ============================================================
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.9',
-            kv_enabled: !!kv,
-            nodemailer_enabled: !!nodemailer,
-            youtube_enabled: !!YOUTUBE_API_KEY,
-            action: action || 'nenhuma',
-            timestamp: new Date().toISOString()
-        });
-
-    } catch (error) {
-        console.error('❌ Erro no handler:', error);
-        return res.status(200).json({ success: false, message: 'Erro interno: ' + error.message });
-    }
-};
+            version: '9.8.10',
