@@ -116,9 +116,11 @@ const API_ENDPOINTS = {
     'add_block':                    'backend',
     'get_stats':                    'backend',
     'get_admin_stats':              'backend',
-    // 🆕 v9.8.8
+       // 🆕 v9.8.8
     'register_event':               'backend',
-    'get_history':                  'backend'
+    'get_history':                  'backend',
+    // 🆕 v9.8.10
+    'proxy_image':                  'backend'
 };
 
 // ============================================================
@@ -768,4 +770,4 @@ window.getFallbackData = function (action) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [api.js] v8.9.7 carregado — TTL maior para carteira/extrato/following (evita 504)');
+console.log('✅ [api.js] v8.9.8 carregado — proxy_image no roteador');
