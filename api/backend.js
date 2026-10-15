@@ -1,5 +1,5 @@
 // ============================================================
-// BACKEND.JS - VERSÃO 9.8.12
+// BACKEND.JS - VERSÃO 9.8.13
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
@@ -1710,7 +1710,7 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 })();
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.8.12
+// HANDLER PRINCIPAL — v9.8.13
 // ============================================================
 module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1757,7 +1757,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.12',
+                version: '9.8.13',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -3367,22 +3367,70 @@ module.exports = async (req, res) => {
             });
         }
 
-        // ============================================================
+              // ============================================================
         // ARTISTAS
         // ============================================================
         if (action === 'get_artists') {
             const gasResult = await callGAS('get_artists', params);
             const unwrapped = unwrapGAS(gasResult);
+            let artists = [];
+
             if (unwrapped.success) {
-                let artists = unwrapped.data;
-                if (!Array.isArray(artists)) {
-                    if (artists && Array.isArray(artists.artists)) artists = artists.artists;
-                    else if (artists && Array.isArray(artists.data)) artists = artists.data;
-                    else artists = [];
+                let raw = unwrapped.data;
+                if (!Array.isArray(raw)) {
+                    if (raw && Array.isArray(raw.artists)) raw = raw.artists;
+                    else if (raw && Array.isArray(raw.data)) raw = raw.data;
+                    else raw = [];
                 }
-                return res.status(200).json({ success: true, data: artists, _via: 'gas' });
+                artists = raw;
             }
-            return res.status(200).json({ success: true, data: [] });
+
+            // 🆕 v9.8.13 — fallback: deriva artistas das músicas do catálogo
+            if (artists.length === 0) {
+                console.warn('[get_artists] GAS vazio — derivando do catálogo de músicas');
+
+                // 1. Tenta pegar do cache/Redis
+                let musicas = await Storage.get('musicas_all') || [];
+
+                // 2. Se vazio, busca do GAS
+                if (!musicas.length) {
+                    try {
+                        const g = await callGAS('get_musicas');
+                        const u = unwrapGAS(g);
+                        if (u.success && Array.isArray(u.data)) {
+                            musicas = u.data;
+                        }
+                    } catch (e) {}
+                }
+
+                // 3. Monta lista única de artistas
+                const mapa = {};
+                for (const m of musicas) {
+                    const nome = (m.artista || m.artist || '').trim();
+                    if (!nome) continue;
+                    const id = 'artist_' + nome.toLowerCase()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                    if (!mapa[id]) {
+                        mapa[id] = {
+                            id,
+                            nome,
+                            avatar: null,
+                            followers: 0,
+                            _derivado: true
+                        };
+                    }
+                }
+                artists = Object.values(mapa);
+                console.log('[get_artists] derivados:', artists.length, 'artistas do catálogo');
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: artists,
+                _via: artists.length > 0 && artists[0]._derivado ? 'derivado' : 'gas',
+                total: artists.length
+            });
         }
 
         // ============================================================
@@ -3543,7 +3591,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.12',
+            version: '9.8.13',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
