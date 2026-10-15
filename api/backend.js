@@ -3454,10 +3454,22 @@ module.exports = async (req, res) => {
             }
         }
 
-        // ============================================================
+             // ============================================================
         // DEFAULT
         // ============================================================
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
             version: '9.8.10',
+            kv_enabled: !!kv,
+            nodemailer_enabled: !!nodemailer,
+            youtube_enabled: !!YOUTUBE_API_KEY,
+            action: action || 'nenhuma',
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('❌ Erro no handler:', error);
+        return res.status(200).json({ success: false, message: 'Erro interno: ' + error.message });
+    }
+};
