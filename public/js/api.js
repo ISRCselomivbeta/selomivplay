@@ -1,4 +1,4 @@
-// MUDANÇAS v8.9.5:
+// MUDANÇAS v8.9.6:
 //   - 🔧 testVercel(): 8s → 12s (evita falso negativo em cold start)
 //   - 🔧 testGAS():    12s → 15s (GAS pode demorar)
 //   - ✅ Elimina o aviso "Offline total" falso positivo
@@ -441,7 +441,9 @@ const ACOES_ACEITAM_FALSE = [
     'decline_trade',
     'cancel_trade',
     'request_withdrawal',
-    'redeem_ticket'
+    'redeem_ticket',
+    'register_streaming',    // 🆕 v8.9.6 — Stream Guard pode retornar success:false (bloqueado)
+    'register_event'         // 🆕 v8.9.6 — event_type inválido retorna success:false
 ];
 
 function _isValidResponse(action, json) {
@@ -787,4 +789,4 @@ window.getFallbackData = function (action) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [api.js] v8.9.5 carregado — TTL por action + invalidate + timeout pesado + health check 12s/15s');
+console.log('✅ [api.js] v8.9.6 carregado — TTL por action + invalidate + register_streaming na whitelist');
