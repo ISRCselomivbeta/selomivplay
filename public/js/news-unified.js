@@ -1,5 +1,10 @@
 // ============================================================
-// js/news-unified.js — PLAY MY v10.5.2
+// js/news-unified.js — PLAY MY v10.5.3
+// MUDANÇAS v10.5.3:
+//   - 🆕 renderCard agora usa proxy_image para URLs externas
+//        (evita CORS/hotlink protection que quebrava os cards)
+//   - ✅ NADA MAIS MUDOU
+//
 // Feed de notícias unificado: backend + RSS + og:image enrichment
 // + SVG fallback (inline) + compartilhamento por notícia
 //
@@ -537,7 +542,7 @@
   }
 
   // ============================================================
-  // 🆕 v10.5.2 — RENDER CARD (com validação de URL + data-original)
+  // 🆕 v10.5.3 — RENDER CARD (com proxy de imagem)
   // ============================================================
   function renderCard(n) {
     var catLabel = {
@@ -570,8 +575,16 @@
     var placeholder = gerarPlaceholder(n.categoria);
     var imgUrl = (imgRaw && !inutil && (isHttp || isData)) ? imgRaw : placeholder;
 
+    // 🆕 v10.5.3 — PROXY para imagens externas (evita CORS/hotlink)
+    var proxied = imgUrl;
+    if (imgUrl.indexOf('http') === 0 &&
+        imgUrl.indexOf(location.origin) !== 0 &&
+        imgUrl.indexOf('data:') !== 0) {
+      proxied = BACKEND_URL + '?action=proxy_image&url=' + encodeURIComponent(imgUrl);
+    }
+
     // 🆕 v10.5.2 — data-original pra debug (mostra a URL que foi usada)
-    var imgHtml = '<img src="' + imgUrl + '" ' +
+    var imgHtml = '<img src="' + proxied + '" ' +
       'data-original="' + escapeAttr(imgRaw || '') + '" ' +
       'style="width:100%;height:180px;object-fit:cover;display:block;background:#2c2c2e" ' +
       'loading="lazy" ' +
@@ -702,5 +715,5 @@
     init();
   }
 
-  console.log('✅ [news-unified.js] v10.5.2 carregado — imagens + editais + validação de URL');
+  console.log('✅ [news-unified.js] v10.5.3 carregado — proxy de imagem ativo');
 })();
