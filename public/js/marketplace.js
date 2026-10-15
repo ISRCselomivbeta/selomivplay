@@ -1,8 +1,14 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v9.3.6
+// js/marketplace.js — PLAY MY v9.3.7
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
+//
+// MUDANÇAS v9.3.7:
+//   - 🆕 Aba Artistas com filtro: 🎵 Todos | ⭐ Seguindo
+//   - 🆕 filtrarArtistas(modo) exposto globalmente
+//   - 🆕 Contador de seguidos em cada botão
+//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.3.6
 //
 // MUDANÇAS v9.3.6:
 //   - 🆕 toggleFollow() registra evento 'follow'/'unfollow' no histórico
@@ -11,17 +17,11 @@
 //
 // MUDANÇAS v9.3.5:
 //   - 🐛 FIX: toggleFollow() agora sincroniza com state.followingArtists
-//      (antes: chamava API mas não atualizava o state, então o discovery.js
-//       nunca "via" os artistas seguidos)
 //   - 🐛 FIX: toggleFavoriteMusic() agora sincroniza com state.favoriteMusicIds
-//      (antes: chamava API mas não atualizava o state, então o discovery.js
-//       nunca "via" os favoritos)
 //   - 🆕 callAPI.invalidate() após toggle para forçar refresh dos dados
-//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.3.4
 //
 // MUDANÇAS v9.3.4:
 //   - 🐛 FIX: playGlobalPlaylist duplicada (a segunda sobrescrevia a primeira)
-//        → agora só existe UMA versão, corrigida (usa playQueue.items + playCurrent)
 //   - 🆕 playGlobalPlaylist agora toca vídeos do YouTube (id começa com 'yt_')
 //
 // MUDANÇAS v9.3.3:
@@ -35,6 +35,9 @@
 // ============================================================
 const _cacheMark = { elo: 0, streams: 0 };
 const CACHE_MS = 30000;
+
+// 🆕 v9.3.7 — filtro da aba Artistas: 'todos' | 'seguindo'
+let _filtroArtistas = 'todos';
 
 function _cacheFresh(chave) {
   return (Date.now() - _cacheMark[chave]) < CACHE_MS;
@@ -679,18 +682,54 @@ window.renderTopInvestments = function () {
 };
 
 // ============================================================
-// RENDERIZAÇÃO — ARTISTAS
+// RENDERIZAÇÃO — ARTISTAS (v9.3.7 com filtro)
 // ============================================================
 window.renderArtists = function () {
   const c = document.getElementById('artistsContent');
   if (!c) return;
-  const artists = Array.isArray(state.artists) ? state.artists : [];
-  if (!artists.length) {
+  const todos = Array.isArray(state.artists) ? state.artists : [];
+  const seguindoIds = (state.followingArtists || []).map(String);
+  const totalSeguindo = todos.filter(a => seguindoIds.includes(String(a.id))).length;
+
+  if (!todos.length) {
     c.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--apple-label-2)">Nenhum artista</div>';
     return;
   }
-  c.innerHTML = artists.map(a => {
-    const isFollowing = (state.followingArtists || []).map(String).includes(String(a.id));
+
+  // 🆕 v9.3.7 — filtro
+  const filtro = (typeof _filtroArtistas !== 'undefined') ? _filtroArtistas : 'todos';
+  const artists = filtro === 'seguindo'
+    ? todos.filter(a => seguindoIds.includes(String(a.id)))
+    : todos;
+
+  // 🆕 v9.3.7 — barra de filtros
+  const filtrosHtml =
+    '<div style="grid-column:1/-1;display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">' +
+      '<button onclick="window.filtrarArtistas(\'todos\')" ' +
+        'style="padding:8px 16px;border-radius:20px;border:1px solid ' + (filtro === 'todos' ? '#ffcc00' : '#38383a') + ';' +
+        'background:' + (filtro === 'todos' ? '#ffcc00' : 'transparent') + ';' +
+        'color:' + (filtro === 'todos' ? '#000' : '#fff') + ';font-weight:600;font-size:13px;cursor:pointer">' +
+        '🎵 Todos (' + todos.length + ')' +
+      '</button>' +
+      '<button onclick="window.filtrarArtistas(\'seguindo\')" ' +
+        'style="padding:8px 16px;border-radius:20px;border:1px solid ' + (filtro === 'seguindo' ? '#ffcc00' : '#38383a') + ';' +
+        'background:' + (filtro === 'seguindo' ? '#ffcc00' : 'transparent') + ';' +
+        'color:' + (filtro === 'seguindo' ? '#000' : '#fff') + ';font-weight:600;font-size:13px;cursor:pointer">' +
+        '⭐ Seguindo (' + totalSeguindo + ')' +
+      '</button>' +
+    '</div>';
+
+  if (!artists.length) {
+    c.innerHTML = filtrosHtml +
+      '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--apple-label-2)">' +
+        '<i class="bi bi-star" style="font-size:48px;opacity:0.4"></i>' +
+        '<p style="margin-top:12px">Você ainda não segue nenhum artista</p>' +
+      '</div>';
+    return;
+  }
+
+  c.innerHTML = filtrosHtml + artists.map(a => {
+    const isFollowing = seguindoIds.includes(String(a.id));
     const avatar = a.avatar && a.avatar.startsWith('http') ? a.avatar : PLACEHOLDERS.ARTIST;
     return '<div class="artist-card">' +
       '<img src="' + avatar + '" class="artist-avatar" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.ARTIST + '\'">' +
@@ -701,6 +740,12 @@ window.renderArtists = function () {
       '</button>' +
     '</div>';
   }).join('');
+};
+
+// 🆕 v9.3.7 — troca o filtro da aba Artistas
+window.filtrarArtistas = function (modo) {
+  _filtroArtistas = (modo === 'seguindo') ? 'seguindo' : 'todos';
+  renderArtists();
 };
 
 window.renderFeaturedArtists = function () {
@@ -1775,4 +1820,4 @@ window.toggleFavoriteMusic = async function (musicId) {
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.3.6 carregado — toggleFollow + toggleFavoriteMusic com register_event');
+console.log('✅ [marketplace.js] v9.3.7 carregado — filtro "Seguindo" na aba Artistas');
