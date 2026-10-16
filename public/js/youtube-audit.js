@@ -2,7 +2,7 @@
  * youtube-audit.js
  * Módulo de análise de audiência e receita a partir de link do YouTube.
  * 
- * Dependências: window.PM.api (para chamadas ao backend)
+ * Dependências: window.PM.api (opcional), window.pmLogger (opcional)
  * Expõe: window.PM.youtubeAudit
  * 
  * Fluxo:
@@ -40,20 +40,10 @@
 
   // ---------- Utilitários ----------
 
-  /**
-   * Extrai o videoId de qualquer formato de URL do YouTube.
-   * Suporta:
-   *   - https://www.youtube.com/watch?v=VIDEOID
-   *   - https://youtu.be/VIDEOID
-   *   - https://www.youtube.com/embed/VIDEOID
-   *   - https://www.youtube.com/shorts/VIDEOID
-   *   - https://music.youtube.com/watch?v=VIDEOID
-   */
   function extractVideoId(input) {
     if (!input || typeof input !== 'string') return null;
     const trimmed = input.trim();
 
-    // Se já for um ID puro (11 caracteres)
     if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
 
     const patterns = [
@@ -71,9 +61,6 @@
     return null;
   }
 
-  /**
-   * Verifica cache antes de chamar o backend.
-   */
   function getFromCache(videoId) {
     const entry = state.cache.get(videoId);
     if (!entry) return null;
@@ -88,9 +75,6 @@
     state.cache.set(videoId, { data, timestamp: Date.now() });
   }
 
-  /**
-   * Fetch com retry e timeout.
-   */
   async function fetchWithRetry(url, options = {}, retries = CONFIG.maxRetries) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
@@ -114,10 +98,6 @@
 
   // ---------- Chamadas ao backend ----------
 
-  /**
-   * Busca dados públicos do vídeo (título, canal, views, data).
-   * NUNCA retorna receita — apenas o que é publicamente visível.
-   */
   async function fetchPublicStats(videoId) {
     const cached = getFromCache(videoId);
     if (cached && cached.public) return cached.public;
@@ -126,25 +106,19 @@
       `${CONFIG.endpointStats}?videoId=${encodeURIComponent(videoId)}`
     );
 
-    // Validação mínima do formato esperado
-    if (!data || typeof data.views !== 'number') {
-      throw new Error('Resposta inválida do servidor');
-    }
-
+    // views pode ser null (versão sem API oficial do YouTube)
+    // Não lançar erro por isso — o painel trata o caso
     return {
       videoId,
       title: data.title || 'Sem título',
       channel: data.channel || 'Canal desconhecido',
-      views: data.views,
+      views: typeof data.views === 'number' ? data.views : null,
       publishedAt: data.publishedAt || null,
-      thumbnail: data.thumbnail || null
+      thumbnail: data.thumbnail || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+      source: data.source || 'fallback'
     };
   }
 
-  /**
-   * Envia dados públicos + (opcional) relatório financeiro para análise.
-   * O backend retorna findings, histórico confirmado e projeção.
-   */
   async function fetchAudit(publicData, financialData = null) {
     const payload = {
       videoId: publicData.videoId,
@@ -161,25 +135,26 @@
 
   // ---------- Renderização ----------
 
-  /**
-   * Formata número com separador de milhar (pt-BR).
-   */
   function formatNumber(n) {
     if (typeof n !== 'number' || isNaN(n)) return '—';
     return n.toLocaleString('pt-BR');
   }
 
-  /**
-   * Formata valor em USD.
-   */
   function formatUSD(n) {
     if (typeof n !== 'number' || isNaN(n)) return '—';
     return 'US$ ' + n.toFixed(2).replace('.', ',');
   }
 
-  /**
-   * Cria o container do painel se não existir.
-   */
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function ensurePanel() {
     let panel = document.getElementById('yt-audit-panel');
     if (panel) return panel;
@@ -208,7 +183,6 @@
 
     document.body.appendChild(panel);
 
-    // Listeners
     panel.querySelector('.yt-audit-close').addEventListener('click', () => {
       panel.classList.remove('open');
     });
@@ -225,10 +199,13 @@
   }
 
   /**
-   * Renderiza o resultado no painel.
+   * Renderiza o resultado. Lê os campos exatamente como o backend retorna:
+   *   - audit.confirmed         (pode ser null)
+   *   - audit.estimates.scenarios (sempre presente)
+   *   - audit.findings          (pode ser [])
    */
   function renderResult(container, publicData, audit) {
-    const confirmed = audit.financial_confirmed || null;
+    const confirmed = audit.confirmed || null;
     const estimates = audit.estimates || null;
     const findings = audit.findings || [];
 
@@ -240,7 +217,16 @@
         <h4>Dados públicos</h4>
         <div class="yt-audit-row"><span>Título</span><strong>${escapeHtml(publicData.title)}</strong></div>
         <div class="yt-audit-row"><span>Canal</span><strong>${escapeHtml(publicData.channel)}</strong></div>
-        <div class="yt-audit-row"><span>Visualizações</span><strong>${formatNumber(publicData.views)}</strong></div>
+        <div class="yt-audit-row">
+          <span>Visualizações</span>
+          <strong>${publicData.views != null ? formatNumber(publicData.views) : 'Não disponível'}</strong>
+        </div>
+        ${publicData.views == null ? `
+          <p class="yt-audit-note">
+            Não foi possível obter as visualizações automaticamente.
+            Você pode informar o número manualmente para melhorar a análise.
+          </p>
+        ` : ''}
       </div>
     `;
 
@@ -252,7 +238,7 @@
           <div class="yt-audit-row"><span>Receita bruta</span><strong>${formatUSD(confirmed.gross)}</strong></div>
           <div class="yt-audit-row"><span>Receita líquida</span><strong>${formatUSD(confirmed.net)}</strong></div>
           <div class="yt-audit-row"><span>Fonte</span><strong>${escapeHtml(confirmed.source || '—')}</strong></div>
-          <p class="yt-audit-note">Valores reportados pelo titular ou distribuidora.</p>
+          <p class="yt-audit-note">${escapeHtml(confirmed.note || 'Valores reportados pelo titular ou distribuidora.')}</p>
         </div>
       `;
     } else {
@@ -264,19 +250,20 @@
       `;
     }
 
-    // --- Bloco 3: projeção ---
-    if (estimates) {
+    // --- Bloco 3: estimativas em faixa ---
+    if (estimates && Array.isArray(estimates.scenarios)) {
       const isSimulation = !confirmed;
       html += `
         <div class="yt-audit-block yt-audit-estimate">
           <h4>${isSimulation ? 'Simulação' : 'Projeção'}</h4>
+          ${estimates.note ? `<p class="yt-audit-note">${escapeHtml(estimates.note)}</p>` : ''}
           ${isSimulation ? '<p class="yt-audit-warning">Esta é uma simulação baseada em premissas. Não representa receita efetiva.</p>' : ''}
-          ${estimates.quarterly_projection ? estimates.quarterly_projection.map(q => `
+          ${estimates.scenarios.map(s => `
             <div class="yt-audit-row">
-              <span>${escapeHtml(q.period)}</span>
-              <strong>${formatUSD(q.value)}</strong>
+              <span>${escapeHtml(s.label)} <small>(RPM ${s.rpm})</small></span>
+              <strong>${formatUSD(s.value)}</strong>
             </div>
-          `).join('') : '<p class="yt-audit-note">Projeção indisponível.</p>'}
+          `).join('')}
         </div>
       `;
     }
@@ -297,16 +284,6 @@
     }
 
     container.innerHTML = html;
-  }
-
-  function escapeHtml(str) {
-    if (str == null) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
   }
 
   function showLoading(container, message = 'Analisando...') {
@@ -356,44 +333,30 @@
   // ---------- API pública do módulo ----------
 
   const youtubeAudit = {
-    /**
-     * Abre o painel (usado por botões externos).
-     */
     open() {
       const panel = ensurePanel();
       panel.classList.add('open');
     },
 
-    /**
-     * Analisa diretamente um link (usado programaticamente).
-     */
     async analyze(url) {
       const panel = ensurePanel();
       panel.classList.add('open');
       return runAnalysis(url);
     },
 
-    /**
-     * Retorna o último resultado (útil para debug ou integração).
-     */
     getLastResult() {
       return state.lastResult;
     },
 
-    /**
-     * Limpa o cache interno.
-     */
     clearCache() {
       state.cache.clear();
     },
 
-    // Expõe utilitários para testes
     _extractVideoId: extractVideoId
   };
 
   window.PM.youtubeAudit = youtubeAudit;
 
-  // Registro no logger, se existir
   if (window.pmLogger && typeof window.pmLogger.log === 'function') {
     window.pmLogger.log('✅ [youtube-audit.js] carregado — análise de audiência e receita');
   } else {
