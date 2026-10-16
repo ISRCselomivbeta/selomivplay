@@ -643,16 +643,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   registerServiceWorker();
 
-  // 🆕 v9.8.9 — HealthCheck inicial protegido (runAll pode retornar string)
-  if (typeof HealthCheck !== 'undefined' &&
-      typeof HealthCheck.runAll === 'function') {
-    Promise.resolve()
-      .then(() => HealthCheck.runAll())
-      .catch((err) => {
-        console.warn('[app] HealthCheck inicial falhou:', err);
-      });
-  }
-
   setupInstallButton();
 
   const restored = restoreSession();
