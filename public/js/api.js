@@ -309,35 +309,47 @@ window.HealthCheck = {
   },
 
   async runAll() {
-    console.log('🔍 Health Check...');
-    this.mode = 'checking';
-    this.updateBadge();
+    // 🆕 v8.9.9 — lock contra chamadas concorrentes
+    if (this._running) {
+      console.log('⏳ Health Check já em andamento — reutilizando');
+      return this.mode;
+    }
+    this._running = true;
 
-    const vercelOk = await this.testVercel();
+    try {
+      console.log('🔍 Health Check...');
+      this.mode = 'checking';
+      this.updateBadge();
 
-    if (vercelOk) {
-      this.testGAS().catch(() => {});
-      this.mode = 'vercel';
-      console.log('✅ Vercel online — modo vercel');
-    } else {
-      const gasOk = await this.testGAS();
-      if (gasOk) {
-        this.mode = 'gas';
-        console.warn('⚠️ Vercel offline — usando GAS direto');
-        if (typeof showToast === 'function') {
-          showToast('⚠️ Usando GAS direto', 'warning', 4000);
-        }
+      const vercelOk = await this.testVercel();
+
+      if (vercelOk) {
+        // 🆕 NÃO chamar testGAS aqui — economiza tempo e evita conflito.
+        // Só testa GAS se Vercel estiver offline.
+        this.mode = 'vercel';
+        console.log('✅ Vercel online — modo vercel');
       } else {
-        this.mode = 'fallback';
-        console.error('❌ Offline total — usando fallback local');
-        if (typeof showToast === 'function') {
-          showToast('❌ Sem conexão', 'error', 6000);
+        const gasOk = await this.testGAS();
+        if (gasOk) {
+          this.mode = 'gas';
+          console.warn('⚠️ Vercel offline — usando GAS direto');
+          if (typeof showToast === 'function') {
+            showToast('⚠️ Usando GAS direto', 'warning', 4000);
+          }
+        } else {
+          this.mode = 'fallback';
+          console.error('❌ Offline total — usando fallback local');
+          if (typeof showToast === 'function') {
+            showToast('❌ Sem conexão', 'error', 6000);
+          }
         }
       }
-    }
 
-    this.updateBadge();
-    return this.mode;
+      this.updateBadge();
+      return this.mode;
+    } finally {
+      this._running = false;
+    }
   },
 
   updateBadge() {
@@ -607,6 +619,7 @@ window.callAPI = async function (action, data, _retry) {
       const vercelJson = await tryFetch(ENDPOINT_URLS.backend, _timeoutFor(action), 'Vercel');
       if (vercelJson) {
         HealthCheck.vercel.online = true;
+        HealthCheck._consecutiveFailures = 0;   // 🆕 reset do contador
         if (HealthCheck.mode !== 'vercel') {
           HealthCheck.mode = 'vercel';
           HealthCheck.updateBadge();
@@ -614,7 +627,6 @@ window.callAPI = async function (action, data, _retry) {
         _setCached(action, data, vercelJson);
         return vercelJson;
       }
-
       const isCritica = ACOES_CRITICAS.includes(action);
 
       if (!isCritica && _retry < 1) {
@@ -622,11 +634,18 @@ window.callAPI = async function (action, data, _retry) {
         return callAPI(action, data, _retry + 1);
       }
 
-      if (HealthCheck.vercel.online !== false) {
-        HealthCheck.vercel.online = false;
-        HealthCheck.mode = 'gas';
-        HealthCheck.updateBadge();
-        console.warn('⚠️ Vercel marcada offline — tentando GAS');
+      // 🆕 v8.9.9 — só marca Vercel offline após 3 falhas consecutivas.
+      // 1 timeout isolado NÃO derruba o modo 'vercel'.
+      if (HealthCheck.mode === 'vercel') {
+        HealthCheck._consecutiveFailures = (HealthCheck._consecutiveFailures || 0) + 1;
+        if (HealthCheck._consecutiveFailures >= 3) {
+          HealthCheck.vercel.online = false;
+          HealthCheck.mode = 'gas';
+          HealthCheck.updateBadge();
+          console.warn(`⚠️ Vercel marcada offline após ${HealthCheck._consecutiveFailures} falhas — tentando GAS`);
+        } else {
+          console.warn(`⚠️ [${action}] Vercel falhou (${HealthCheck._consecutiveFailures}/3) — mantendo modo vercel`);
+        }
       }
 
       // TENTATIVA 3: GAS
