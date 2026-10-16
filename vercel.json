@@ -9,9 +9,18 @@
     { "source": "/css/(.*)",     "destination": "/public/css/$1" },
     { "source": "/js/(.*)",      "destination": "/public/js/$1" },
     { "source": "/images/(.*)",  "destination": "/public/images/$1" },
+    { "source": "/manifest.json","destination": "/public/manifest.json" },
+    { "source": "/sw.js",        "destination": "/public/sw.js" },
+    { "source": "/offline.html", "destination": "/public/offline.html" },
+    { "source": "/robots.txt",   "destination": "/public/robots.txt" },
+    { "source": "/sitemap.xml",  "destination": "/public/sitemap.xml" },
+    { "source": "/confirm-email","destination": "/public/confirm-email.html" },
+    { "source": "/confirm-email.html","destination": "/public/confirm-email.html" },
+    { "source": "/reset-password","destination": "/public/reset-password.html" },
+    { "source": "/reset-password.html","destination": "/public/reset-password.html" },
     {
-      "source": "/((?!api/|manifest\\.json|sw\\.js|images/|css/|js/|favicon\\.ico|robots\\.txt|sitemap\\.xml|s/|n/).*)",
-      "destination": "/index.html"
+      "source": "/((?!api/|manifest\\.json|sw\\.js|images/|css/|js/|favicon\\.ico|robots\\.txt|sitemap\\.xml|s/|n/|reset-password|confirm-email|offline\\.html).*)",
+      "destination": "/public/index.html"
     }
   ],
 
