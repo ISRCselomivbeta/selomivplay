@@ -1,0 +1,36 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ============================================================ -->
+<!-- SITEMAP XML — PLAY MY                                        -->
+<!-- Música independente, artistas e descoberta musical          -->
+<!-- Atualizado em: 2026-10-16                                    -->
+<!-- ============================================================ -->
+
+<urlset
+    xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+    <!-- Página inicial -->
+    <url>
+        <loc>https://playmy.com.br/</loc>
+        <lastmod>2026-10-16</lastmod>
+    </url>
+
+    <!-- Descoberta musical -->
+    <url>
+        <loc>https://playmy.com.br/?section=discovery</loc>
+        <lastmod>2026-10-16</lastmod>
+    </url>
+
+    <!-- Notícias e conteúdo editorial -->
+    <url>
+        <loc>https://playmy.com.br/?section=news</loc>
+        <lastmod>2026-10-16</lastmod>
+    </url>
+
+    <!-- Artistas independentes -->
+    <url>
+        <loc>https://playmy.com.br/?section=artists</loc>
+        <lastmod>2026-10-16</lastmod>
+    </url>
+
+</urlset>
