@@ -1,0 +1,31 @@
+# robots.txt — PLAY MY
+# Plataforma de participação em royalties de música
+# Última atualização: 2026-10-16
+
+# ============================================================
+# PERMISSÕES GERAIS
+# ============================================================
+User-agent: *
+Allow: /
+
+# ============================================================
+# ÁREAS PRIVADAS / ADMINISTRATIVAS — NÃO INDEXAR
+# ============================================================
+Disallow: /api/
+Disallow: /admin/
+Disallow: /reset-password.html
+Disallow: /offline.html
+
+# ============================================================
+# PARÂMETROS QUE GERAM CONTEÚDO DUPLICADO — NÃO INDEXAR
+# ============================================================
+Disallow: /*?share=
+Disallow: /*?music=
+Disallow: /*?yt=
+Disallow: /*?section=
+Disallow: /*?artist=
+
+# ============================================================
+# SITEMAP OFICIAL
+# ============================================================
+Sitemap: https://playmy.com.br/sitemap.xml
