@@ -228,6 +228,8 @@ window.HealthCheck = {
   vercel: { online: null },
   gas: { online: null },
   mode: 'checking',
+  _running: false,              // 🆕 lock do runAll
+  _consecutiveFailures: 0,      // 🆕 contador de falhas Vercel
 
   async testVercel() {
     const url = ENDPOINT_URLS.backend + '?action=ping';
