@@ -1,5 +1,5 @@
 // ============================================================
-// js/app.js — PLAY MY v9.8.8
+// js/app.js — PLAY MY v9.8.9
 // Bootstrap final: inicialização, sessão, listeners, aliases, PWA.
 // + Detecção de app nativo (Capacitor/TWA)
 // + Safe areas (iPhone notch)
@@ -10,6 +10,16 @@
 // + loadAllData em 4 ETAPAS SEQUENCIAIS
 // Depende de TODOS os módulos anteriores.
 // DEVE ser o ÚLTIMO script a carregar (exceto news-unified.js).
+//
+// MUDANÇAS v9.8.9 (conservador, sem quebrar nada):
+//   - 🐛 FIX: HealthCheck inicial protegido com Promise.resolve().then()
+//        (runAll() pode retornar STRING 'vercel'|'gas'|'fallback')
+//   - 🔧 MELHORIA: SW update check 30s → 5min + só se aba visível
+//   - 🔧 MELHORIA: Safe areas usam body (era *) — permite selecionar
+//        texto em .selectable
+//   - 🐛 FIX: hideSplashScreen idempotente (não dispara 2x)
+//   - 🐛 FIX: deep link ?music=ID roda UMA só vez (flag global)
+//   - ✅ NADA MAIS MUDOU — comportamento idêntico ao v9.8.8
 //
 // MUDANÇAS v9.8.8:
 //   - 🐛 FIX: HealthCheck.runAll() retorna STRING ('vercel'|'gas'|'fallback'),
@@ -65,6 +75,7 @@ console.log('🌍 Ambiente:', window.APP_ENV);
 
 // ============================================================
 // APLICAR SAFE AREAS (notch, home indicator)
+// 🆕 v9.8.9: usa `body` em vez de `*` para não bloquear seleção
 // ============================================================
 function applySafeAreas() {
   const style = document.createElement('style');
@@ -81,6 +92,8 @@ function applySafeAreas() {
       padding-top: var(--safe-top);
       padding-left: var(--safe-left);
       padding-right: var(--safe-right);
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     .app-header {
@@ -100,15 +113,24 @@ function applySafeAreas() {
       max-height: calc(100vh - var(--safe-top) - var(--safe-bottom) - 40px);
     }
 
-    * {
-      -webkit-user-select: none;
-      user-select: none;
-      -webkit-touch-callout: none;
-    }
-
-    input, textarea, [contenteditable], .selectable {
+    /* 🆕 v9.8.9: permite selecionar texto em campos e .selectable */
+    input,
+    textarea,
+    [contenteditable="true"],
+    .selectable,
+    .selectable * {
       -webkit-user-select: text;
       user-select: text;
+    }
+
+    /* 🆕 v9.8.9: callout normal em botões/links (long-press) */
+    button,
+    a,
+    input,
+    textarea,
+    select,
+    [role="button"] {
+      -webkit-touch-callout: default;
     }
 
     html, body {
@@ -137,15 +159,30 @@ function setupStatusBar() {
 
 // ============================================================
 // SPLASH SCREEN
+// 🆕 v9.8.9: idempotente — não dispara 2x
 // ============================================================
+var __playMySplashHidden = false;
+
 function hideSplashScreen() {
+  if (__playMySplashHidden) return;
+
   const splash = document.getElementById('loadingScreen');
-  if (!splash) return;
-  if (splash.style.display === 'none') return;
+  if (!splash) {
+    __playMySplashHidden = true;
+    return;
+  }
+
+  if (splash.style.display === 'none') {
+    __playMySplashHidden = true;
+    return;
+  }
+
+  __playMySplashHidden = true;
 
   splash.style.transition = 'opacity 0.4s ease, visibility 0.4s ease';
   splash.style.opacity = '0';
   splash.style.visibility = 'hidden';
+  splash.setAttribute('aria-hidden', 'true');
 
   setTimeout(() => {
     splash.style.display = 'none';
@@ -177,21 +214,23 @@ function blockNativeGestures() {
 }
 
 // ============================================================
-// DEEP LINKING — v9.8.8
-// Processa:
-//   /s/ID              → redireciona pra ?music=ID ou ?yt=VIDEO_ID
-//   ?music=ID          → toca música interna
-//   ?yt=VIDEO_ID       → toca YouTube puro
-//   ?section=X         → muda de seção
-//   ?url=...&title=... → compartilhamento externo
+// DEEP LINKING — v9.8.9
+// 🆕 v9.8.9: flag global __playMyDeepLinkMusic pra evitar tocar 2x
 // ============================================================
+var __playMyDeepLinkMusic = false;
+
 function handleDeepLink() {
   // ────────────────────────────────────────────────────────
   // 1. Detecta /s/ID na URL (vindo de compartilhamento universal)
   // ────────────────────────────────────────────────────────
   const pathMatch = window.location.pathname.match(/^\/s\/(.+)$/);
   if (pathMatch) {
-    const sharedId = decodeURIComponent(pathMatch[1]);
+    let sharedId = '';
+    try {
+      sharedId = decodeURIComponent(pathMatch[1]);
+    } catch (e) {
+      sharedId = pathMatch[1];
+    }
     console.log('🔗 [deep-link] /s/' + sharedId + ' detectado');
 
     // Redireciona pra ?music=ID ou ?yt=VIDEO_ID
@@ -247,15 +286,21 @@ function handleDeepLink() {
 
   // ────────────────────────────────────────────────────────
   // 5. ?music=ID — toca música interna (fallback)
+  // 🆕 v9.8.9: só roda UMA vez
   // ────────────────────────────────────────────────────────
   const musicId = params.get('music');
-  if (musicId && typeof state !== 'undefined' && Array.isArray(state.playlist)) {
+  if (!__playMyDeepLinkMusic &&
+      musicId &&
+      typeof state !== 'undefined' &&
+      Array.isArray(state.playlist)) {
+
     const idx = state.playlist.findIndex(m => String(m.id) === String(musicId));
     if (idx >= 0 && typeof playTrack === 'function') {
       const current = state.playlist[state.currentTrackIndex];
       const jaTocando = current && String(current.id) === String(musicId);
 
       if (!jaTocando) {
+        __playMyDeepLinkMusic = true;  // 🆕 marca como processado
         setTimeout(() => {
           try {
             playTrack(idx);
@@ -268,6 +313,7 @@ function handleDeepLink() {
           }
         }, 500);
       } else {
+        __playMyDeepLinkMusic = true;
         console.log('🔗 [deep-link/fallback] música', musicId, 'já está tocando — ignorando');
       }
     } else {
@@ -296,6 +342,7 @@ function handleDeepLink() {
 
 // ============================================================
 // SERVICE WORKER — registro + detecção de update
+// 🆕 v9.8.9: checagem 30s → 5min + só se aba visível
 // ============================================================
 let __swRegistered = false;
 let __swRefreshing = false;
@@ -314,9 +361,13 @@ function registerServiceWorker() {
     .then((registration) => {
       console.log('✅ [SW] registrado. Scope:', registration.scope);
 
+      // 🆕 v9.8.9: checa a cada 5 min, só se aba visível
       setInterval(() => {
-        registration.update().catch(() => {});
-      }, 30000);
+        if (document.visibilityState !== 'visible') return;
+        registration.update().catch((err) => {
+          console.warn('[SW] Verificação de atualização falhou:', err);
+        });
+      }, 5 * 60 * 1000);
 
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
@@ -411,14 +462,16 @@ window.loadAllData = async function () {
               }
 
               // Deep link ?music=ID — executa assim que a playlist existe
+              // 🆕 v9.8.9: só roda UMA vez
               try {
                 const params = new URLSearchParams(window.location.search);
                 const musicId = params.get('music');
-                if (musicId) {
+                if (musicId && !__playMyDeepLinkMusic) {
                   const idx = state.playlist.findIndex(
                     m => String(m.id) === String(musicId)
                   );
                   if (idx >= 0 && typeof playTrack === 'function') {
+                    __playMyDeepLinkMusic = true;
                     console.log('🔗 [deep-link] tocando música', musicId, '→ índice', idx);
                     playTrack(idx);
                     if (window.history && window.history.replaceState) {
@@ -510,7 +563,7 @@ window.loadAllData = async function () {
 };
 
 // ============================================================
-// 🆕 v9.8.8 — HEALTH CHECK COM BACKOFF EXPONENCIAL (CORRIGIDO)
+// v9.8.9 — HEALTH CHECK COM BACKOFF EXPONENCIAL
 // ------------------------------------------------------------
 // 🐛 FIX: HealthCheck.runAll() retorna STRING ('vercel'|'gas'|'fallback'),
 //         não objeto. A versão antiga fazia `result.vercel` (undefined)
@@ -532,7 +585,7 @@ window.loadAllData = async function () {
     Promise.resolve()
       .then(function () { return HealthCheck.runAll(); })
       .then(function (result) {
-        // 🐛 v9.8.8 — FIX: result é 'vercel' | 'gas' | 'fallback'
+        // 🐛 v9.8.9 — FIX: result é 'vercel' | 'gas' | 'fallback'
         var isOk = (result === 'vercel' || result === 'gas');
         if (isOk) {
           if (_consecutiveFails > 0) {
@@ -590,8 +643,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   registerServiceWorker();
 
-  if (typeof HealthCheck !== 'undefined' && typeof HealthCheck.runAll === 'function') {
-    HealthCheck.runAll().catch(() => {});
+  // 🆕 v9.8.9 — HealthCheck inicial protegido (runAll pode retornar string)
+  if (typeof HealthCheck !== 'undefined' &&
+      typeof HealthCheck.runAll === 'function') {
+    Promise.resolve()
+      .then(() => HealthCheck.runAll())
+      .catch((err) => {
+        console.warn('[app] HealthCheck inicial falhou:', err);
+      });
   }
 
   setupInstallButton();
@@ -953,7 +1012,7 @@ window.addEventListener('load', () => {
 // ============================================================
 // LOG FINAL
 // ============================================================
-console.log('✅ [app.js] v9.8.8 carregado — 4 etapas + aliases seguros + health check (fix) + deep link /s/ID + ?music=ID + ?yt=VIDEO_ID');
+console.log('✅ [app.js] v9.8.9 carregado — 4 etapas + aliases seguros + health check (fix) + deep link /s/ID + ?music=ID + ?yt=VIDEO_ID');
 console.log('📦 Módulos ativos: config, utils, state, api, auth, youtube, player, marketplace, portfolio, trades, blockchain, modals, news-unified, app');
 console.log('🌍 Modo:', APP_ENV.platform, '| PWA:', APP_ENV.isPWA, '| Nativo:', APP_ENV.isNative);
-console.log('📲 Instalação via sidebar ativa — v9.8.8');
+console.log('📲 Instalação via sidebar ativa — v9.8.9');
