@@ -1713,7 +1713,19 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 // HANDLER PRINCIPAL — v9.8.13
 // ============================================================
 module.exports = async (req, res) => {
-    if (req.method === 'OPTIONS') return res.status(200).end();
+    // ============================================================
+    // CORS — sempre (necessário para o navegador permitir a leitura)
+    // ============================================================
+    res.setHeader('Access-Control-Allow-Origin', 'https://playmy.com.br');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
+    res.setHeader('Vary', 'Origin');
+
+    if (req.method === 'OPTIONS') {
+        res.setHeader('Access-Control-Max-Age', '86400');
+        return res.status(200).end();
+    }
 
     const params = req.method === 'POST' ? (req.body || {}) : (req.query || {});
     let { action } = params;
