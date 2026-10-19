@@ -1003,10 +1003,15 @@ window.displaySearchResults = function (all) {
     } else {
       clickAction = 'playSearchResult(\'' + item._type + '\', \'' + item.id + '\')';
     }
-    const rawTitle = safeStr(item.titulo).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    const rawArtist = safeStr(item.artista).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+    // 🆕 FIX v9.3.8 — data-* em vez de onclick inline (imune a aspas/apóstrofos)
     const addBtn = isYT
-      ? '<button class="search-result-add" title="Adicionar à playlist" onclick="event.stopPropagation(); addYouTubeToPlaylistUI(\'' + String(item.id || '').replace('yt_', '') + '\', \'' + rawTitle + '\', \'' + rawArtist + '\')"><i class="bi bi-plus-square"></i></button>'
+      ? '<button class="search-result-add" title="Adicionar à playlist" ' +
+          'data-yt-id="' + escapeHtml(String(item.id || '').replace('yt_', '')) + '" ' +
+          'data-yt-title="' + escapeHtml(safeStr(item.titulo)) + '" ' +
+          'data-yt-artist="' + escapeHtml(safeStr(item.artista)) + '">' +
+          '<i class="bi bi-plus-square"></i>' +
+        '</button>'
       : '';
     return '<div class="search-result-item" onclick="' + clickAction + '">' +
       '<img src="' + cover + '" class="search-result-cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_56 + '\'">' +
@@ -1020,6 +1025,25 @@ window.displaySearchResults = function (all) {
       badge +
     '</div>';
   }).join('') + '</div>';
+
+  // 🆕 FIX v9.3.8 — vincula listeners após render (imune a aspas/apóstrofos)
+  setTimeout(function () {
+    var addBtns = c.querySelectorAll('.search-result-add');
+    for (var i = 0; i < addBtns.length; i++) {
+      (function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          var ytId = btn.getAttribute('data-yt-id');
+          var ytTitle = btn.getAttribute('data-yt-title');
+          var ytArtist = btn.getAttribute('data-yt-artist');
+          if (ytId && typeof window.addYouTubeToPlaylistUI === 'function') {
+            window.addYouTubeToPlaylistUI(ytId, ytTitle, ytArtist);
+          }
+        });
+      })(addBtns[i]);
+    }
+  }, 0);
 };
 
 // ============================================================
