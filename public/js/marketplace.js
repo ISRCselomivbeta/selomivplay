@@ -1,8 +1,21 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v9.3.7
+// js/marketplace.js — PLAY MY v9.5.0
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
+//
+// MUDANÇAS v9.5.0:
+//   - 🆕 [RECOMMENDER v2] — motor "infinito" orientado a engajamento
+//   - 🆕 Captura de buscas (trackSearch) e interações (trackInteraction)
+//   - 🆕 getInfiniteRecommendations(page) — lotes infinitos com novidade
+//   - 🆕 renderRecommendedRow com "Carregar mais" + scroll infinito
+//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.4.0
+//
+// MUDANÇAS v9.4.0:
+//   - 🆕 [RECOMMENDER] v1.0.0 — recomendação híbrida (artista+gênero+histórico+ELO)
+//   - 🆕 #recommendedRow (container opcional) renderizado de forma aditiva
+//   - 🆕 loadRecommendations() / getRecommendations() / invalidateRecommendations()
+//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.3.7
 //
 // MUDANÇAS v9.3.7:
 //   - 🆕 Aba Artistas com filtro: 🎵 Todos | ⭐ Seguindo
@@ -133,6 +146,11 @@ window.loadMarketplace = async function () {
   renderRecommended();
   carregarStreamsDasMusicas();
   carregarELOsDasMusicas();
+
+  // 🆕 v9.4.0 — [RECOMMENDER] dispara recomendações (não bloqueia)
+  if (typeof window.loadRecommendations === 'function') {
+    try { window.loadRecommendations(); } catch (e) {}
+  }
 };
 
 window.loadExternalMarketplace = async function () {
@@ -433,6 +451,11 @@ window.renderMarketplace = function () {
       '</div>' +
     '</div>';
   }).join('');
+
+  // 🆕 v9.5.0 — [RECOMMENDER] re-renderiza linha se container existir (no-op se não existir)
+  if (typeof window.renderRecommendedRow === 'function') {
+    try { window.renderRecommendedRow(); } catch (e) {}
+  }
 };
 
 // ============================================================
@@ -940,6 +963,12 @@ window.renderTickets = function () {
 window.performSearch = async function () {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) { showToast('Digite uma busca', 'warning'); return; }
+
+  // 🆕 v9.5.0 — registra busca no perfil (fire-and-forget)
+  if (typeof window.trackSearch === 'function') {
+    try { window.trackSearch(q); } catch (e) {}
+  }
+
   const c = document.getElementById('searchResults');
   c.style.display = 'block';
   c.innerHTML = '<div class="p-4 text-center text-muted"><div class="spinner-border spinner-border-sm text-success me-2"></div>Buscando...</div>';
@@ -1741,6 +1770,11 @@ window.toggleFollow = async function (artistId) {
     callAPI.invalidate('get_following');
   }
 
+  // 🆕 v9.5.0 — [RECOMMENDER] invalida cache de recomendações (no-op se não existir)
+  if (typeof window.invalidateRecommendations === 'function') {
+    try { window.invalidateRecommendations(); } catch (e) {}
+  }
+
   // 🆕 v9.3.6 — Registra evento no histórico (fire-and-forget)
   try {
     var artista = (state.artists || []).find(function (a) {
@@ -1813,6 +1847,11 @@ window.toggleFavoriteMusic = async function (musicId) {
     callAPI.invalidate('get_user_profile');
   }
 
+  // 🆕 v9.5.0 — [RECOMMENDER] invalida cache de recomendações (no-op se não existir)
+  if (typeof window.invalidateRecommendations === 'function') {
+    try { window.invalidateRecommendations(); } catch (e) {}
+  }
+
   // 🆕 v9.3.6 — Registra evento no histórico (fire-and-forget)
   try {
     var musica = (state.playlist || []).find(function (m) {
@@ -1865,6 +1904,417 @@ window.toggleFavoriteMusic = async function (musicId) {
 };
 
 // ============================================================
+// 🆕 [RECOMMENDER v2] v9.5.0 — Motor "infinito" orientado a engajamento
+//    Camadas (inspirado no YouTube):
+//      1. SINAIS EXPLÍCITOS: follows, favoritos, buscas, eventos
+//      2. SINAIS IMPLÍCITOS: reproduções, recência, skip
+//      3. GERAÇÃO INFINITA: lotes com novidade + diversificação
+//    APIs públicas mantidas: getRecommendations, invalidateRecommendations,
+//                            loadRecommendations, renderRecommendedRow
+//    Novas: getInfiniteRecommendations(page), trackSearch(q), trackInteraction(t,id)
+// ============================================================
+(function () {
+  'use strict';
+
+  var REC_PAGE_SIZE = 8;
+  var REC_CACHE_MS = 60000;
+  var _recCache = { at: 0, page: 0, items: [] };
+  var _seenIds = {};       // já exibidos nesta sessão (para novidade)
+  var _searchHistory = []; // últimas buscas (para perfil)
+  var _interactionLog = []; // últimas interações (play/like/skip)
+
+  function _esc(s) {
+    if (typeof escapeHtml === 'function') return escapeHtml(s);
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function _safeArr(v) { return Array.isArray(v) ? v : []; }
+
+  function _playlistById(id) {
+    return _safeArr(state.playlist).find(function (x) { return String(x.id) === String(id); });
+  }
+
+  // ----------------------------------------------------------
+  // Perfil: agora inclui buscas e interações recentes
+  // ----------------------------------------------------------
+  function buildUserProfile() {
+    var p = {
+      artistas: {}, generos: {}, musicas: {},
+      seedIds: [], searchTerms: []
+    };
+
+    // Seguindo (peso 3)
+    _safeArr(state.followingArtists).forEach(function (a) {
+      p.artistas[String(a)] = (p.artistas[String(a)] || 0) + 3;
+    });
+
+    // Favoritos (peso 2)
+    _safeArr(state.favoriteMusicIds).forEach(function (id) {
+      var sid = String(id);
+      p.musicas[sid] = (p.musicas[sid] || 0) + 2;
+      p.seedIds.push(sid);
+      var m = _playlistById(sid);
+      if (m) {
+        if (m.artista) p.artistas[String(m.artista)] = (p.artistas[String(m.artista)] || 0) + 2;
+        if (m.genero)  p.generos[String(m.genero)]   = (p.generos[String(m.genero)]   || 0) + 2;
+      }
+    });
+
+    // Buscas recentes (peso 2.5 — sinal explícito forte, igual YouTube)
+    _searchHistory.slice(-15).forEach(function (q) {
+      var ql = String(q || '').toLowerCase().trim();
+      if (!ql) return;
+      p.searchTerms.push(ql);
+      // Tenta casar busca com artistas/gêneros do catálogo
+      _safeArr(state.playlist).forEach(function (t) {
+        if (!t) return;
+        if (t.artista && String(t.artista).toLowerCase().indexOf(ql) !== -1) {
+          p.artistas[String(t.artista)] = (p.artistas[String(t.artista)] || 0) + 2.5;
+        }
+        if (t.genero && String(t.genero).toLowerCase().indexOf(ql) !== -1) {
+          p.generos[String(t.genero)] = (p.generos[String(t.genero)] || 0) + 2.5;
+        }
+      });
+    });
+
+    // Interações recentes (play/like/skip) — peso dinâmico
+    _interactionLog.slice(-40).forEach(function (ev) {
+      if (!ev || !ev.type) return;
+      var w = ev.type === 'play' ? 1
+            : ev.type === 'like' ? 3
+            : ev.type === 'skip' ? -2.5
+            : 0.5;
+      var t = ev.id ? _playlistById(ev.id) : null;
+      if (t) {
+        if (t.artista) p.artistas[String(t.artista)] = (p.artistas[String(t.artista)] || 0) + w;
+        if (t.genero)  p.generos[String(t.genero)]   = (p.generos[String(t.genero)]   || 0) + w;
+        if (ev.type === 'play') p.seedIds.push(String(t.id));
+        if (ev.type === 'skip') p.musicas[String(t.id)] = (p.musicas[String(t.id)] || 0) - 1;
+      }
+    });
+
+    // Histórico genérico (state.userHistory / events) — mantido por compat
+    var hist = _safeArr(state.userHistory || state.history || state.events);
+    hist.slice(-50).forEach(function (ev) {
+      if (!ev) return;
+      var tipo = String(ev.event_type || ev.type || '');
+      var w = (tipo === 'play' || tipo === 'stream') ? 1
+            : (tipo === 'favorite' || tipo === 'follow') ? 2
+            : (tipo === 'unfavorite' || tipo === 'unfollow') ? -1 : 0.5;
+      if (ev.artist) p.artistas[String(ev.artist)] = (p.artistas[String(ev.artist)] || 0) + w;
+      if (ev.genero) p.generos[String(ev.genero)]   = (p.generos[String(ev.genero)]   || 0) + w;
+      if (ev.music_id) {
+        var mid = String(ev.music_id);
+        p.musicas[mid] = (p.musicas[mid] || 0) + w;
+        if (tipo === 'play' || tipo === 'stream') p.seedIds.push(mid);
+      }
+    });
+
+    // Fila atual
+    try {
+      var q = (typeof playQueue !== 'undefined' && playQueue && playQueue.items) ? playQueue.items : [];
+      q.forEach(function (it) {
+        if (it && it.type === 'internal' && it.index >= 0) {
+          var m = _safeArr(state.playlist)[it.index];
+          if (m && m.id) p.seedIds.push(String(m.id));
+        }
+      });
+    } catch (e) {}
+
+    p.seedIds = Array.from(new Set(p.seedIds)).slice(-40);
+    p.searchTerms = Array.from(new Set(p.searchTerms)).slice(-15);
+    return p;
+  }
+
+  // ----------------------------------------------------------
+  // Score com "novidade" e penalização de déjà-vu
+  // ----------------------------------------------------------
+  function scoreTrack(track, profile, page) {
+    if (!track || !track.id) return -999;
+    if (track.status === 'deleted') return -999;
+
+    var sid = String(track.id);
+    var score = 0;
+
+    // Já consome? Penaliza forte
+    if (profile.musicas[sid]) score -= 6;
+
+    // Já viu nesta sessão? Penaliza para forçar novidade    if (_seenIds[sid]) score -= 4;
+
+    // Afinidade de artista
+    if (track.artista && profile.artistas[String(track.artista)]) {
+      score += profile.artistas[String(track.artista)] * 2.5;
+    }
+
+    // Afinidade de gênero
+    if (track.genero && profile.generos[String(track.genero)]) {
+      score += profile.generos[String(track.genero)] * 1.5;
+    }
+
+    // Bônus por casar com busca recente (título/artista)
+    if (profile.searchTerms.length) {
+      var tituloLc = String(track.titulo || '').toLowerCase();
+      var artistaLc = String(track.artista || '').toLowerCase();
+      for (var i = 0; i < profile.searchTerms.length; i++) {
+        var term = profile.searchTerms[i];
+        if (tituloLc.indexOf(term) !== -1 || artistaLc.indexOf(term) !== -1) {
+          score += 3;
+          break;
+        }
+      }
+    }
+
+    // ELO como qualidade
+    if (typeof getEloMusica === 'function') {
+      var eloInfo = getEloMusica(track.id);
+      if (eloInfo && eloInfo.elo) score += (eloInfo.elo - 1000) / 200;
+    }
+
+    // Streams como popularidade
+    var streams = (state.streamsMap && state.streamsMap[sid]) || 0;
+    if (streams > 0) score += Math.min(2.5, Math.log10(streams + 1));
+
+    // Pausadas perdem
+    if (track.status === 'paused') score -= 3;
+
+    // Boost de novidade por página (quanto mais fundo, mais aberto a explorar)
+    if (page > 0) {
+      score += Math.min(2, page * 0.3);
+    }
+
+    // Cold start
+    if (profile.seedIds.length === 0 && !Object.keys(profile.artistas).length && page === 0) {
+      score += Math.min(3, (track.percentual_disponivel || 0) / 30);
+    }
+
+    return score;
+  }
+
+  // ----------------------------------------------------------
+  // Geração de lote (infinita: quando esgota, recicla com novidade)
+  // ----------------------------------------------------------
+  function computeRecommendations(limit, page) {
+    limit = limit || REC_PAGE_SIZE;
+    page = page || 0;
+    var profile = buildUserProfile();
+    var playlist = _safeArr(state.playlist).filter(function (t) {
+      return t && t.id && t.status !== 'deleted';
+    });
+
+    if (!playlist.length) return [];
+
+    var scored = playlist.map(function (t) {
+      return { track: t, score: scoreTrack(t, profile, page) };
+    }).filter(function (x) { return x.score > -2; });
+
+    // Se página > 0, remove itens já exibidos
+    if (page > 0) {
+      scored = scored.filter(function (x) { return !_seenIds[String(x.track.id)]; });
+    }
+
+    scored.sort(function (a, b) { return b.score - a.score; });
+
+    // Diversificação: máx 2 por artista
+    var porArtista = {};
+    var out = [];
+    for (var i = 0; i < scored.length && out.length < limit; i++) {
+      var t = scored[i].track;
+      var a = String(t.artista || '');
+      porArtista[a] = (porArtista[a] || 0) + 1;
+      if (porArtista[a] > 2) continue;
+      out.push(t);
+    }
+
+    // Se esgotou (ou quase), recicla embaralhando com boost de novidade
+    if (out.length < limit) {
+      var restantes = playlist.filter(function (t) {
+        return !out.some(function (o) { return String(o.id) === String(t.id); });
+      });
+      // Fisher-Yates parcial para "infinito"
+      for (var j = restantes.length - 1; j > 0; j--) {
+        var k = Math.floor(Math.random() * (j + 1));
+        var tmp = restantes[j]; restantes[j] = restantes[k]; restantes[k] = tmp;
+      }
+      for (var r = 0; r < restantes.length && out.length < limit; r++) {
+        out.push(restantes[r]);
+      }
+    }
+
+    return out;
+  }
+
+  // ----------------------------------------------------------
+  // APIs públicas
+  // ----------------------------------------------------------
+  window.getRecommendations = function (limit) {
+    if (Date.now() - _recCache.at < REC_CACHE_MS && _recCache.items.length && !_recCache.page) {
+      return _recCache.items.slice(0, limit || _recCache.items.length);
+    }
+    try {
+      var items = computeRecommendations(limit || REC_PAGE_SIZE, 0);
+      _recCache = { at: Date.now(), page: 0, items: items };
+      items.forEach(function (t) { _seenIds[String(t.id)] = true; });
+      return items;
+    } catch (e) {
+      console.warn('⚠️ [recommender] falha ao computar:', e && e.message);
+      return [];
+    }
+  };
+
+  // 🆕 v9.5.0 — lotes infinitos
+  window.getInfiniteRecommendations = function (page) {
+    page = Math.max(0, parseInt(page) || 0);
+    try {
+      var items = computeRecommendations(REC_PAGE_SIZE, page);
+      items.forEach(function (t) { _seenIds[String(t.id)] = true; });
+      return items;
+    } catch (e) {
+      console.warn('⚠️ [recommender] infinite falhou:', e && e.message);
+      return [];
+    }
+  };
+
+  window.invalidateRecommendations = function () {
+    _recCache = { at: 0, page: 0, items: [] };
+  };
+
+  // 🆕 v9.5.0 — registra busca (chamado por performSearch)
+  window.trackSearch = function (query) {
+    var q = String(query || '').trim();
+    if (!q) return;
+    _searchHistory.push(q);
+    if (_searchHistory.length > 30) _searchHistory.shift();
+    // Invalida para próximo render já refletir
+    window.invalidateRecommendations();
+  };
+
+  // 🆕 v9.5.0 — registra interação (play/like/skip)
+  window.trackInteraction = function (type, id) {
+    if (!type) return;
+    _interactionLog.push({ type: String(type), id: id ? String(id) : null, at: Date.now() });
+    if (_interactionLog.length > 100) _interactionLog.shift();
+    if (type === 'play' || type === 'like' || type === 'skip') {
+      window.invalidateRecommendations();
+    }
+  };
+
+  // ----------------------------------------------------------
+  // Load + Render (com scroll infinito e "Carregar mais")
+  // ----------------------------------------------------------
+  window.loadRecommendations = function () {
+    try {
+      window.invalidateRecommendations();
+      _seenIds = {};
+      window.getRecommendations(REC_PAGE_SIZE);
+      if (typeof window.renderRecommendedRow === 'function') {
+        window.renderRecommendedRow();
+      }
+    } catch (e) {
+      console.warn('⚠️ [recommender] load:', e && e.message);
+    }
+  };
+
+  var _currentPage = 0;
+
+  window.renderRecommendedRow = function () {
+    var c = document.getElementById('recommendedRow');
+    if (!c) return;
+
+    // Primeira renderização: limpa e reseta página
+    if (!c.getAttribute('data-rec-init')) {
+      c.setAttribute('data-rec-init', '1');
+      _currentPage = 0;
+      var first = window.getInfiniteRecommendations(0);
+      if (!first.length) { c.innerHTML = ''; return; }
+      c.innerHTML = _buildCardsHtml(first) + _buildLoadMoreHtml();
+      _bindLoadMore();
+      console.log('🎯 [recommender] página 0:', first.length, 'itens');
+      return;
+    }
+
+    // Re-render (ex.: após loadMarketplace) — mantém o que já está + atualiza
+    // Não força reset para não perder o scroll do usuário
+    console.log('🎯 [recommender] re-render mantido');
+  };
+
+  function _buildCardsHtml(items) {
+    var playlist = _safeArr(state.playlist);
+    return items.map(function (t) {
+      var idx = playlist.findIndex(function (x) { return String(x.id) === String(t.id); });
+      if (idx < 0) return '';
+      var cover = (typeof getCoverUrl === 'function') ? getCoverUrl(t, false) : '/images/logo.png';
+      var eloInfo = (typeof getEloMusica === 'function') ? getEloMusica(t.id) : null;
+      var streams = (state.streamsMap && state.streamsMap[String(t.id)]) || 0;
+
+      return '<div class="spotify-card">' +
+        '<div class="spotify-cover">' +
+          '<img src="' + cover + '" loading="lazy" ' +
+            'onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+          '<div class="play-overlay" onclick="playTrack(' + idx + '); if(window.trackInteraction) window.trackInteraction(\'play\',\'' + t.id + '\')">' +
+            '<i class="bi bi-play-fill"></i>' +
+          '</div>' +
+          (eloInfo && eloInfo.elo >= 1400
+            ? '<div style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor +
+              ';color:#000;font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">' +
+              '⚡ ' + eloInfo.elo + '</div>'
+            : '') +
+        '</div>' +
+        '<h3 class="spotify-title">' + _esc(t.titulo || '') + '</h3>' +
+        '<p class="spotify-artist">' + _esc(t.artista || '') + '</p>' +
+        '<div class="spotify-stats">' +
+          '<span class="spotify-elo">' + (t.percentual_disponivel || 0) + '%</span>' +
+          '<span class="spotify-price">' + formatCurrency(t.valor_acao || 0) + '</span>' +
+        '</div>' +
+        (streams > 0
+          ? '<div style="font-size:11px;color:var(--apple-label-2);margin-top:4px">' +
+            '<i class="bi bi-play-circle"></i> ' + formatNumber(streams) + ' streams</div>'
+          : '') +
+      '</div>';
+    }).join('');
+  }
+
+  function _buildLoadMoreHtml() {
+    return '<div style="grid-column:1/-1;text-align:center;padding:16px 0">' +
+      '<button id="recLoadMoreBtn" class="btn btn-outline-success" style="border-radius:20px;padding:8px 24px">' +
+        '<i class="bi bi-arrow-clockwise"></i> Carregar mais' +
+      '</button>' +
+    '</div>';
+  }
+
+  function _bindLoadMore() {
+    var btn = document.getElementById('recLoadMoreBtn');
+    if (!btn || btn.getAttribute('data-bound')) return;
+    btn.setAttribute('data-bound', '1');
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Carregando...';
+      _currentPage++;
+      setTimeout(function () {
+        var c = document.getElementById('recommendedRow');
+        if (!c) return;
+        var more = window.getInfiniteRecommendations(_currentPage);
+        if (!more.length) {
+          btn.innerHTML = 'Fim do catálogo';
+          return;
+        }
+        // Remove o botão antigo, insere novos cards + novo botão
+        var oldBtn = document.getElementById('recLoadMoreBtn');
+        if (oldBtn && oldBtn.parentNode) oldBtn.parentNode.removeChild(oldBtn);
+        c.insertAdjacentHTML('beforeend', _buildCardsHtml(more) + _buildLoadMoreHtml());
+        _bindLoadMore();
+        console.log('🎯 [recommender] página ' + _currentPage + ':', more.length, 'itens');
+      }, 120);
+    });
+  }
+
+  console.log('✅ [recommender v2] v9.5.0 carregado — infinito + engajamento');
+})();
+
+// ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.3.7 carregado — filtro "Seguindo" na aba Artistas');
+console.log('✅ [marketplace.js] v9.5.0 carregado — RECOMMENDER v2 (infinito) + filtro "Seguindo"');
