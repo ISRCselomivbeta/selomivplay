@@ -1,8 +1,19 @@
+// ============================================================
+// MUDANÇAS v10.47.0:
+//   - 🔧 SW_VERSION bumpada (10.46.0 → 10.47.0)
+//   - 🆕 Pré-cache de módulos que estavam faltando:
+//        /js/security.js
+//        /js/share-universal.js
+//        /js/youtube-audit.js
+//        /js/artist-news.js
+//        /js/share-news.js
+//   - ✅ Nada mais mudou — estratégias, retry, fallbacks: idênticos
+//
 // MUDANÇAS v10.3.0:
 //   - 🔧 SW_VERSION bumpada (10.1.0 → 10.2.0)
 //   - 🐛 discovery.js v1.0.1 — anexar no documentElement (fixed correto)
 // ============================================================
-// SERVICE WORKER — PLAY MY v10.1.0
+// SERVICE WORKER — PLAY MY v10.47.0
 // Cache inteligente por tipo de recurso + PWA
 //
 // MUDANÇAS v10.1.0:
@@ -49,7 +60,7 @@
 //   - install: falha alto com console.error
 // ============================================================
 
-const SW_VERSION = '10.46.0';   // 👈 BUMP manual a cada deploy relevante
+const SW_VERSION = '10.47.0';   // 👈 BUMP manual a cada deploy relevante
 const CACHE_STATIC  = 'playmy-static-'  + SW_VERSION;
 const CACHE_RUNTIME = 'playmy-runtime-' + SW_VERSION;
 const CACHE_IMAGES  = 'playmy-images-'  + SW_VERSION;
@@ -89,10 +100,12 @@ const STATIC_ASSETS = [
   '/css/responsive.css',
   '/css/discovery.css',
 
-
   // 🆕 v10.0.0 — Background Play + Logger (carregam PRIMEIRO)
   '/js/background-play.js',
   '/js/logger.js',
+
+  // 🆕 v10.47.0 — segurança (carrega antes de config.js)
+  '/js/security.js',
 
   // JS — módulos principais
   '/js/config.js',
@@ -102,6 +115,7 @@ const STATIC_ASSETS = [
   '/js/api.js',
   '/js/auth.js',
   '/js/youtube.js',
+  '/js/youtube-audit.js',      // 🆕 v10.47.0
   '/js/player.js',
   '/js/marketplace.js',
   '/js/discovery.js',
@@ -110,9 +124,12 @@ const STATIC_ASSETS = [
   '/js/blockchain.js',
   '/js/modals.js',
   '/js/share.js',
+  '/js/share-universal.js',    // 🆕 v10.47.0
   '/js/royalties-panel.js',
   // 🗑️ v10.0.0 — /js/news.js REMOVIDO (legado — só news-unified.js)
   '/js/news-unified.js',
+  '/js/artist-news.js',        // 🆕 v10.47.0
+  '/js/share-news.js',         // 🆕 v10.47.0
   '/js/stream-tracker.js',
   '/js/valuation-panel.js',
   '/js/elo-panel.js',
