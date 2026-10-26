@@ -1270,6 +1270,12 @@ window.confirmInvestment = async function () {
       if (typeof loadPortfolio === 'function') await loadPortfolio();
       if (typeof loadLedger === 'function') await loadLedger();
       showToast('✅ Investimento realizado!', 'success');
+
+      // 🆕 [RECOMMENDER] investir = like forte (peso 3 no motor)
+      if (window.trackInteraction && state.currentInvestTrack && state.currentInvestTrack.id) {
+        try { window.trackInteraction('like', state.currentInvestTrack.id); } catch (e) {}
+      }
+
       closeModal('investModal');
     } else {
       showToast((r && r.message) || 'Erro', 'error');
@@ -1326,6 +1332,11 @@ window.confirmExternalInvestment = async function () {
       updateBalanceDisplay();
       closeModal('investExternalModal');
       showToast('Investimento externo realizado!', 'success');
+
+      // 🆕 [RECOMMENDER] investimento externo = like
+      if (window.trackInteraction && state.currentExternalTrack && state.currentExternalTrack.id) {
+        try { window.trackInteraction('like', state.currentExternalTrack.id); } catch (e) {}
+      }
     } else {
       showToast((r && r.message) || 'Erro', 'error');
     }
