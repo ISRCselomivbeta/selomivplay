@@ -255,8 +255,13 @@ window.playTrack = function (index) {
 
     state.currentTrackIndex = index;
 
-    // 🆕 v9.3.3 — registra evento de play (para discovery cumulativo)
+   // 🆕 v9.3.3 — registra evento de play (para discovery cumulativo)
     _registrarPlay(t);
+
+    // 🆕 [RECOMMENDER] sinal de engajamento para o motor infinito
+    if (window.trackInteraction && t && t.id) {
+      try { window.trackInteraction('play', t.id); } catch (e) {}
+    }
 
     const playerSpotify = document.getElementById('playerSpotify');
     if (playerSpotify) playerSpotify.style.display = 'flex';
