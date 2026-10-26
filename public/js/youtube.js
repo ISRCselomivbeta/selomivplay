@@ -320,6 +320,12 @@ window.initializeYouTubePlayer = function (videoId) {
             state.isPlaying = true;
             if (loading) loading.style.display = 'none';
             window.registrarStreaming(videoId);
+
+            // 🆕 [RECOMMENDER] sinal de engajamento — cobre qualquer origem
+            // (playTrack, playSearchResult, playQueue, playGlobalPlaylist)
+            if (window.trackInteraction && videoId) {
+              try { window.trackInteraction('play', 'yt_' + videoId); } catch (e) {}
+            }
           } else if (e.data === 2) {
             state.isPlaying = false;
           } else if (e.data === 0) {
