@@ -357,6 +357,11 @@ window.playExternalTrack = function (index) {
   // 🆕 v9.3.3 — registra evento de play (externa)
   _registrarPlay(t);
 
+  // 🆕 [RECOMMENDER] sinal de engajamento
+  if (window.trackInteraction && t && t.id) {
+    try { window.trackInteraction('play', t.id); } catch (e) {}
+  }
+
   const playerSpotify = document.getElementById('playerSpotify');
   if (playerSpotify) playerSpotify.style.display = 'flex';
 
@@ -435,6 +440,11 @@ window.playSearchResult = function (type, id) {
       genero: 'YouTube',
       is_youtube: true
     });
+
+    // 🆕 [RECOMMENDER] sinal de engajamento (YouTube)
+    if (window.trackInteraction) {
+      try { window.trackInteraction('play', 'yt_' + vid); } catch (e) {}
+    }
 
     const playerSpotify = document.getElementById('playerSpotify');
     if (playerSpotify) playerSpotify.style.display = 'flex';
