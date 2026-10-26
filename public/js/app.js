@@ -420,6 +420,11 @@ window.initializeApp = async function () {
   updateUserInterface();
   await loadAllData();
 
+  // 🆕 [RECOMMENDER] garante que a linha infinita apareça após login
+  if (typeof window.renderRecommendedRow === 'function') {
+    try { window.renderRecommendedRow(); } catch (e) {}
+  }
+
   try {
     if (typeof window.renderMarketplace === 'function') window.renderMarketplace();
     if (typeof window.renderGlobalPlaylists === 'function') window.renderGlobalPlaylists();
