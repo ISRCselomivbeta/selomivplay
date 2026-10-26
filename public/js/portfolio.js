@@ -443,6 +443,11 @@ window.confirmSell = async function () {
       showToast('✅ Oferta enviada para ' + email, 'success');
       closeModal('sellModal');
 
+      // 🆕 [RECOMMENDER] vender = sinal de desinteresse
+      if (window.trackInteraction && state._sellingAsset && state._sellingAsset.music_id) {
+        try { window.trackInteraction('skip', state._sellingAsset.music_id); } catch (e) {}
+      }
+
       // 🆕 v9.4.1 — invalida cache (api.js v8.9.4 tem callAPI.invalidate)
       try {
         if (typeof callAPI.invalidate === 'function') {
