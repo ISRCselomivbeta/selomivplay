@@ -955,6 +955,15 @@ body {
 <div id="featuredArtistsGrid" class="spotify-grid"></div>
 <div class="section-header-spotify" style="margin-top:24px"><h2>Recomendado para hoje</h2></div>
 <div id="recommendedCard" class="recommended-card"></div>
+
+<!-- 🆕 [RECOMMENDER] v9.5.0 — Linha infinita "Recomendado para você" -->
+<!-- Se este bloco não existir, o app funciona igual (renderRecommendedRow vira no-op) -->
+<div class="section-header-spotify" style="margin-top:32px">
+  <h2>🎯 Recomendado para você</h2>
+</div>
+<div id="recommendedRow" class="spotify-grid"></div>
+<!-- /RECOMMENDER -->
+
 <div class="connection-footer"><i class="bi bi-bluetooth"></i><span>Conexão com • PLAY MY Streaming</span></div>
 </section>
 
@@ -1172,6 +1181,7 @@ body {
 <div class="info-card"><div class="info-icon"><i class="bi bi-percent"></i></div><div><div class="info-label">Disponível</div><div class="info-value" id="expandedAvailable">0%</div></div></div>
 <div class="info-card"><div class="info-icon"><i class="bi bi-graph-up-arrow"></i></div><div><div class="info-label">Retorno</div><div class="info-value" id="expandedReturn">0%</div></div></div>
 <div class="info-card"><div class="info-icon"><i class="bi bi-people"></i></div><div><div class="info-label">Investidores</div><div class="info-value" id="expandedInvestors">0</div></div></div>
+</div>
 </div>
 </div>
 </div>
