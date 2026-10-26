@@ -505,7 +505,21 @@ window.loadAllData = async function () {
     await Promise.allSettled([
       loadPortfolio(),
       loadLedger(),
-      loadFollowing()
+      loadFollowing(),
+      // 🆕 [RECOMMENDER] histórico persistido (se endpoint existir)
+      (async () => {
+        try {
+          if (typeof callAPI !== 'function') return;
+          const r = await callAPI('get_history', { limit: 50 });
+          if (r && r.success) {
+            state.userHistory = Array.isArray(r.data) ? r.data : (r.data?.historico || []);
+            if (window.invalidateRecommendations) window.invalidateRecommendations();
+            console.log('📦 [app] userHistory carregado:', state.userHistory.length);
+          }
+        } catch (e) {
+          // endpoint não existe — silencioso
+        }
+      })()
     ]);
   } catch (e) {
     console.warn('⚠️ [app] Etapa 2 falhou:', e.message);
