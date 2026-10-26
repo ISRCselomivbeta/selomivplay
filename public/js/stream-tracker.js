@@ -94,6 +94,20 @@
             var playTrackOriginal = window.playTrack;
 
             window.playTrack = function (index) {
+                // 🆕 [RECOMMENDER] detecta skip antes de trocar de faixa
+                try {
+                    var anterior = window.state && window.state.playlist && window.state.playlist[window.state.currentTrackIndex];
+                    if (anterior && anterior.id &&
+                        window._streamStartedAt &&
+                        (Date.now() - window._streamStartedAt) < 30000 &&
+                        String(anterior.id) !== String((window.state.playlist[index] || {}).id)) {
+                        if (window.trackInteraction) {
+                            window.trackInteraction('skip', anterior.id);
+                            console.log('📊 [stream-tracker] skip registrado:', anterior.id);
+                        }
+                    }
+                } catch (e) {}
+
                 playTrackOriginal.apply(this, arguments);
 
                 try {
@@ -101,6 +115,9 @@
                     if (t && t.id) {
                         var user = window.state && window.state.currentUser;
                         var userId = user && user.id ? user.id : null;
+
+                        // 🆕 [RECOMMENDER] marca início para detectar skip
+                        window._streamStartedAt = Date.now();
 
                         // Só registra se tiver user real
                         if (userId) {
