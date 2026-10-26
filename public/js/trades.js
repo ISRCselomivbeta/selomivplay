@@ -50,9 +50,19 @@ window.createTradeOffer = async function () {
     });
 
     if (r && r.success) {
-      showToast('✅ Oferta enviada!', 'success');
-      closeModal('tradeModal');
+      showToast('✅ Negociação concluída!', 'success');
+
+      // 🆕 [RECOMMENDER] aceitar oferta = interesse forte
+      try {
+        const trade = (state.tradesData && state.tradesData.received || []).find(t => String(t.id) === String(id));
+        if (trade && trade.music_id && window.trackInteraction) {
+          window.trackInteraction('like', trade.music_id);
+        }
+      } catch (e) {}
+
       await loadTradeOffers();
+
+      // Atualiza portfólio e saldo (funções de outros módulos)
     } else {
       showToast((r && r.message) || 'Erro', 'error');
     }
