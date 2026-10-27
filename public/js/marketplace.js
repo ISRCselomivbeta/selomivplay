@@ -2272,12 +2272,13 @@ window.toggleFavoriteMusic = async function (musicId) {
 
   // 🆕 v9.8.0 — injeta artistas das notícias no marketplace
   window.injectNewsToMarketplace = function () {
-    var news = [];
+        var news = [];
     if (window.state && Array.isArray(state.news)) news = state.news;
     else if (window.pmNewsData && Array.isArray(window.pmNewsData)) news = window.pmNewsData;
     else if (window.state && state.pmNewsData && Array.isArray(state.pmNewsData)) news = state.pmNewsData;
+    else if (window.__pmNewsItems && Array.isArray(window.__pmNewsItems)) news = window.__pmNewsItems;
 
-    if (!news.length) return;
+    if (!news.length) return;;
 
     var artistas = [];
     news.slice(0, 20).forEach(function (n) {
