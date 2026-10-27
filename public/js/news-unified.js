@@ -490,6 +490,15 @@
 
       saveCache(state.items);
       renderFresh();
+
+      // 🆕 v9.8.10 — alimenta o recomendador com os artistas das notícias
+      if (typeof window.injectNewsToMarketplace === 'function') {
+        try {
+          setTimeout(function () {
+            window.injectNewsToMarketplace();
+          }, 800);
+        } catch (e) {}
+      }
     }).catch(function (e) {
       state.loading = false;
       _loadingGuard = false;
