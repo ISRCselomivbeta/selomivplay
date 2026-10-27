@@ -94,7 +94,8 @@ const EVENTS_MAX = 500;
 const EVENTS_VALID_TYPES = new Set([
     'play', 'favorite', 'unfavorite', 'share', 'invest',
     'follow', 'unfollow', 'play_youtube', 'skip',
-    'view', 'discovery_view', 'search'   // 🆕 v9.8.9
+    'view', 'discovery_view', 'search',
+    'discover_from_news'   // 🆕 v9.8.14 — card 📰 do marketplace
 ]);
 
 async function _checkStreamAllowed(userId, musicId, ip, duration) {
