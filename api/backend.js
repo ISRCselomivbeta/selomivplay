@@ -2110,7 +2110,71 @@ module.exports = async (req, res) => {
             cache.set(cacheKey, stats, 3600);
             return res.status(200).json({ success: true, data: stats });
         }
+        // ============================================================
+        // 🆕 v9.8.14 — YOUTUBE RELACIONADOS
+        // Busca "quem ouviu X, ouviu Y" — usado pelo recomendador
+        // Cache KV de 1 hora para economizar cota (100/dia do search.list)
+        // ============================================================
+        if (action === 'search_youtube_related') {
+            const videoId = params.video_id;
+            if (!videoId) {
+                return res.status(200).json({ success: false, message: 'video_id obrigatório' });
+            }
 
+            const limit = Math.min(parseInt(params.limit) || 10, 15);
+
+            // Cache por 1 hora (economiza cota do YouTube)
+            const cacheKey = 'yt_related_' + videoId + '_' + limit;
+            const cached = await Storage.get(cacheKey);
+            if (cached && Date.now() - cached.ts < 60 * 60 * 1000) {
+                console.log('[search_youtube_related] cache hit:', videoId);
+                return res.status(200).json({ success: true, data: cached.items, cached: true });
+            }
+
+            if (!YOUTUBE_API_KEY) {
+                return res.status(200).json({ success: false, message: 'YouTube API não configurada' });
+            }
+
+            try {
+                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=${limit}&key=${YOUTUBE_API_KEY}`;
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), 8000);
+
+                const r = await fetch(url, { signal: ctrl.signal });
+                clearTimeout(timer);
+
+                if (!r.ok) {
+                    console.warn('[search_youtube_related] YouTube HTTP', r.status);
+                    return res.status(200).json({ success: true, data: [], message: 'Sem relacionados' });
+                }
+
+                const json = await r.json();
+                if (json.error) {
+                    console.warn('[search_youtube_related] YouTube erro:', json.error.message);
+                    return res.status(200).json({ success: true, data: [], message: json.error.message });
+                }
+
+                const items = (json.items || []).map(item => ({
+                    id: item.id.videoId,
+                    titulo: item.snippet.title,
+                    artista: item.snippet.channelTitle,
+                    link_capa: item.snippet.thumbnails && item.snippet.thumbnails.high
+                        ? item.snippet.thumbnails.high.url
+                        : '',
+                    link_youtube: 'https://www.youtube.com/watch?v=' + item.id.videoId,
+                    is_youtube: true
+                })).filter(x => x.id);
+
+                // Salva no KV por 1h
+                await Storage.set(cacheKey, { ts: Date.now(), items: items });
+
+                console.log(`✅ [search_youtube_related] ${items.length} relacionados para ${videoId}`);
+                return res.status(200).json({ success: true, data: items });
+            } catch (e) {
+                console.error('[search_youtube_related] erro:', e.message);
+                return res.status(200).json({ success: true, data: [], message: e.message });
+            }
+        }
         // ============================================================
         // ELO
         // ============================================================
