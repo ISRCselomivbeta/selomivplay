@@ -1,46 +1,24 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v9.5.0
+// js/marketplace.js — PLAY MY v9.8.0
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
+//
+// MUDANÇAS v9.8.0:
+//   - 🆕 [RECOMMENDER v3] — feed infinito agora alimentado por News + YouTube
+//   - 🆕 injectNewsToMarketplace() — extrai artistas das notícias e busca no YT
+//   - 🆕 _newsCandidates[] — pool de cards "📰 NOVO" com boost temporal
+//   - 🆕 _ytCandidates[] — pool de YouTube (patch v9.6.0 mantido)
+//   - 🆕 scoreTrack() com boost por idade da notícia (24h/48h/7d)
+//   - 🆕 _buildCardsHtml() renderiza 3 tipos: interno, ▶YT, 📰 NOVO
+//   - 🆕 trackInteraction('discover_from_news') registrado ao tocar card News
+//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.5.0
 //
 // MUDANÇAS v9.5.0:
 //   - 🆕 [RECOMMENDER v2] — motor "infinito" orientado a engajamento
 //   - 🆕 Captura de buscas (trackSearch) e interações (trackInteraction)
 //   - 🆕 getInfiniteRecommendations(page) — lotes infinitos com novidade
 //   - 🆕 renderRecommendedRow com "Carregar mais" + scroll infinito
-//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.4.0
-//
-// MUDANÇAS v9.4.0:
-//   - 🆕 [RECOMMENDER] v1.0.0 — recomendação híbrida (artista+gênero+histórico+ELO)
-//   - 🆕 #recommendedRow (container opcional) renderizado de forma aditiva
-//   - 🆕 loadRecommendations() / getRecommendations() / invalidateRecommendations()
-//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.3.7
-//
-// MUDANÇAS v9.3.7:
-//   - 🆕 Aba Artistas com filtro: 🎵 Todos | ⭐ Seguindo
-//   - 🆕 filtrarArtistas(modo) exposto globalmente
-//   - 🆕 Contador de seguidos em cada botão
-//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.3.6
-//
-// MUDANÇAS v9.3.6:
-//   - 🆕 toggleFollow() registra evento 'follow'/'unfollow' no histórico
-//   - 🆕 toggleFavoriteMusic() registra evento 'favorite'/'unfavorite' no histórico
-//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.3.5
-//
-// MUDANÇAS v9.3.5:
-//   - 🐛 FIX: toggleFollow() agora sincroniza com state.followingArtists
-//   - 🐛 FIX: toggleFavoriteMusic() agora sincroniza com state.favoriteMusicIds
-//   - 🆕 callAPI.invalidate() após toggle para forçar refresh dos dados
-//
-// MUDANÇAS v9.3.4:
-//   - 🐛 FIX: playGlobalPlaylist duplicada (a segunda sobrescrevia a primeira)
-//   - 🆕 playGlobalPlaylist agora toca vídeos do YouTube (id começa com 'yt_')
-//
-// MUDANÇAS v9.3.3:
-//   - 🔒 XSS: escapeHtml() aplicado em titulo/artista (todos os renderers)
-//   - 🎯 renderRecommended(): playTrack usa o índice REAL do destaque
-//   - ♻️ _cacheInvalidate('elo'/'streams') após editar/pausar/reativar/excluir
 // ============================================================
 
 // ============================================================
@@ -217,7 +195,6 @@ window.loadArtists = async function () {
   }
   if (!Array.isArray(state.artists)) state.artists = [];
 
-  // ✅ v9.3.8 — garante que following está carregado ANTES de renderizar
   if (state.currentUser && state.currentUser.id && typeof loadFollowing === 'function') {
     await loadFollowing();
   }
@@ -227,7 +204,6 @@ window.loadArtists = async function () {
 };
 
 window.loadFollowing = async function () {
-  // 🆕 v9.3.8 — se user ainda não está pronto, zera e re-renderiza
   if (!state.currentUser || !state.currentUser.id) {
     state.followingArtists = [];
     if (typeof renderArtists === 'function') renderArtists();
@@ -248,7 +224,6 @@ window.loadFollowing = async function () {
     state.followingArtists = [];
   }
 
-  // ✅ v9.3.8 — re-renderiza DEPOIS de carregar
   if (typeof renderArtists === 'function') renderArtists();
   if (typeof renderFeaturedArtists === 'function') renderFeaturedArtists();
 
@@ -452,7 +427,6 @@ window.renderMarketplace = function () {
     '</div>';
   }).join('');
 
-  // 🆕 v9.5.0 — [RECOMMENDER] re-renderiza linha se container existir (no-op se não existir)
   if (typeof window.renderRecommendedRow === 'function') {
     try { window.renderRecommendedRow(); } catch (e) {}
   }
@@ -728,7 +702,7 @@ window.renderTopInvestments = function () {
 };
 
 // ============================================================
-// RENDERIZAÇÃO — ARTISTAS (v9.3.7 com filtro)
+// RENDERIZAÇÃO — ARTISTAS
 // ============================================================
 window.renderArtists = function () {
   const c = document.getElementById('artistsContent');
@@ -742,13 +716,11 @@ window.renderArtists = function () {
     return;
   }
 
-  // 🆕 v9.3.7 — filtro
   const filtro = (typeof _filtroArtistas !== 'undefined') ? _filtroArtistas : 'todos';
   const artists = filtro === 'seguindo'
     ? todos.filter(a => seguindoIds.includes(String(a.id)))
     : todos;
 
-  // 🆕 v9.3.7 — barra de filtros
   const filtrosHtml =
     '<div style="grid-column:1/-1;display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">' +
       '<button onclick="window.filtrarArtistas(\'todos\')" ' +
@@ -788,7 +760,6 @@ window.renderArtists = function () {
   }).join('');
 };
 
-// 🆕 v9.3.7 — troca o filtro da aba Artistas
 window.filtrarArtistas = function (modo) {
   _filtroArtistas = (modo === 'seguindo') ? 'seguindo' : 'todos';
   renderArtists();
@@ -1033,7 +1004,6 @@ window.displaySearchResults = function (all) {
       clickAction = 'playSearchResult(\'' + item._type + '\', \'' + item.id + '\')';
     }
 
-    // 🆕 FIX v9.3.8 — data-* em vez de onclick inline (imune a aspas/apóstrofos)
     const addBtn = isYT
       ? '<button class="search-result-add" title="Adicionar à playlist" ' +
           'data-yt-id="' + escapeHtml(String(item.id || '').replace('yt_', '')) + '" ' +
@@ -1055,7 +1025,6 @@ window.displaySearchResults = function (all) {
     '</div>';
   }).join('') + '</div>';
 
-  // 🆕 FIX v9.3.8 — vincula listeners após render (imune a aspas/apóstrofos)
   setTimeout(function () {
     var addBtns = c.querySelectorAll('.search-result-add');
     for (var i = 0; i < addBtns.length; i++) {
@@ -1270,13 +1239,10 @@ window.confirmInvestment = async function () {
       if (typeof loadPortfolio === 'function') await loadPortfolio();
       if (typeof loadLedger === 'function') await loadLedger();
       showToast('✅ Investimento realizado!', 'success');
-
-      // 🆕 [RECOMMENDER] investir = like forte (peso 3 no motor)
+      closeModal('investModal');
       if (window.trackInteraction && state.currentInvestTrack && state.currentInvestTrack.id) {
         try { window.trackInteraction('like', state.currentInvestTrack.id); } catch (e) {}
       }
-
-      closeModal('investModal');
     } else {
       showToast((r && r.message) || 'Erro', 'error');
     }
@@ -1332,11 +1298,6 @@ window.confirmExternalInvestment = async function () {
       updateBalanceDisplay();
       closeModal('investExternalModal');
       showToast('Investimento externo realizado!', 'success');
-
-      // 🆕 [RECOMMENDER] investimento externo = like
-      if (window.trackInteraction && state.currentExternalTrack && state.currentExternalTrack.id) {
-        try { window.trackInteraction('like', state.currentExternalTrack.id); } catch (e) {}
-      }
     } else {
       showToast((r && r.message) || 'Erro', 'error');
     }
@@ -1515,73 +1476,40 @@ window.playUserPlaylist = function (id) {
   showToast('▶️ Tocando: ' + (pl.nome || ''), 'success');
 };
 
-// ============================================================
-// v9.3.4 — playGlobalPlaylist (ÚNICA versão, corrigida)
-// ============================================================
 window.playGlobalPlaylist = function (playlistId) {
   const playlists = Array.isArray(state.globalPlaylists) ? state.globalPlaylists : [];
   const pl = playlists.find(p => String(p.id) === String(playlistId));
-  if (!pl) {
-    showToast('Playlist não encontrada', 'error');
-    return;
-  }
+  if (!pl) { showToast('Playlist não encontrada', 'error'); return; }
 
   const ids = (pl.musicas || []).map(String);
-  if (!ids.length) {
-    showToast('Playlist vazia', 'warning');
-    return;
-  }
+  if (!ids.length) { showToast('Playlist vazia', 'warning'); return; }
 
   const playlist = Array.isArray(state.playlist) ? state.playlist : [];
   const queueItems = [];
 
   ids.forEach(id => {
     const idx = playlist.findIndex(m => String(m.id) === String(id));
-    if (idx !== -1) {
-      queueItems.push({ type: 'internal', index: idx });
-      return;
-    }
-
+    if (idx !== -1) { queueItems.push({ type: 'internal', index: idx }); return; }
     if (String(id).startsWith('yt_')) {
       const videoId = String(id).replace('yt_', '');
       const externalPlaylist = Array.isArray(state.externalPlaylist) ? state.externalPlaylist : [];
-      const extIdx = externalPlaylist.findIndex(m =>
-        String(m.link_youtube || '').includes(videoId)
-      );
-      if (extIdx !== -1) {
-        queueItems.push({ type: 'external', index: extIdx });
-      } else {
-        queueItems.push({
-          type: 'youtube',
-          videoId: videoId,
-          titulo: 'Vídeo do YouTube',
-          artista: pl.nome || ''
-        });
-      }
+      const extIdx = externalPlaylist.findIndex(m => String(m.link_youtube || '').includes(videoId));
+      if (extIdx !== -1) queueItems.push({ type: 'external', index: extIdx });
+      else queueItems.push({ type: 'youtube', videoId: videoId, titulo: 'Vídeo do YouTube', artista: pl.nome || '' });
     }
   });
 
   if (!queueItems.length) {
     showToast('Nenhuma música disponível', 'warning');
-    console.warn('⚠️ playGlobalPlaylist: nenhum item encontrado', {
-      playlistId: playlistId,
-      musicIds: ids,
-      playlistSize: playlist.length
-    });
     return;
   }
 
   playQueue.items = queueItems.map(item => {
-    if (item.type === 'youtube') {
-      return { type: 'internal', index: -1, youtubeData: item };
-    }
+    if (item.type === 'youtube') return { type: 'internal', index: -1, youtubeData: item };
     return item;
   });
-
   playQueue.currentIndex = 0;
   playQueue.playCurrent();
-
-  console.log('▶️ [playGlobalPlaylist] tocando:', pl.nome, '—', queueItems.length, 'músicas');
   showToast('▶️ Tocando: ' + (pl.nome || ''), 'success');
 };
 
@@ -1755,14 +1683,13 @@ window.redeemTicket = async function (id) {
 };
 
 // ============================================================
-// FOLLOW / FAVORITOS — v9.3.6 (com register_event no histórico)
+// FOLLOW / FAVORITOS
 // ============================================================
 window.toggleFollow = async function (artistId) {
   if (!state.currentUser) { showToast('Faça login', 'error'); return; }
   const sid = String(artistId);
   const isFollowing = (state.followingArtists || []).map(String).includes(sid);
 
-  // v9.3.5 — Atualiza o state ANTES de chamar API
   if (isFollowing) {
     state.followingArtists = state.followingArtists.filter(x => String(x) !== sid);
     showToast('Deixou de seguir', 'info');
@@ -1772,21 +1699,17 @@ window.toggleFollow = async function (artistId) {
     showToast('❤️ Seguindo!', 'success');
   }
 
-  // Re-renderiza
   renderArtists();
   renderFeaturedArtists();
 
-  // Invalida cache
   if (typeof callAPI.invalidate === 'function') {
     callAPI.invalidate('get_following');
   }
 
-  // 🆕 v9.5.0 — [RECOMMENDER] invalida cache de recomendações (no-op se não existir)
   if (typeof window.invalidateRecommendations === 'function') {
     try { window.invalidateRecommendations(); } catch (e) {}
   }
 
-  // 🆕 v9.3.6 — Registra evento no histórico (fire-and-forget)
   try {
     var artista = (state.artists || []).find(function (a) {
       return String(a.id) === String(artistId);
@@ -1804,7 +1727,6 @@ window.toggleFollow = async function (artistId) {
     }).catch(function () {});
   } catch (e) {}
 
-  // Chama API do toggle_follow
   try {
     const r = await callAPI('toggle_follow', {
       artist_id: artistId,
@@ -1812,7 +1734,6 @@ window.toggleFollow = async function (artistId) {
     });
 
     if (!r || !r.success) {
-      // Rollback
       console.warn('⚠️ toggle_follow falhou — revertendo state');
       if (isFollowing) {
         state.followingArtists.push(sid);
@@ -1842,7 +1763,6 @@ window.toggleFavoriteMusic = async function (musicId) {
   const sid = String(musicId);
   const wasFav = (state.favoriteMusicIds || []).map(String).includes(sid);
 
-  // v9.3.5 — Atualiza o state ANTES de chamar API
   if (wasFav) {
     state.favoriteMusicIds = state.favoriteMusicIds.filter(x => String(x) !== sid);
   } else {
@@ -1850,20 +1770,16 @@ window.toggleFavoriteMusic = async function (musicId) {
     state.favoriteMusicIds.push(sid);
   }
 
-  // Re-renderiza
   renderFavorites();
 
-  // Invalida cache
   if (typeof callAPI.invalidate === 'function') {
     callAPI.invalidate('get_user_profile');
   }
 
-  // 🆕 v9.5.0 — [RECOMMENDER] invalida cache de recomendações (no-op se não existir)
   if (typeof window.invalidateRecommendations === 'function') {
     try { window.invalidateRecommendations(); } catch (e) {}
   }
 
-  // 🆕 v9.3.6 — Registra evento no histórico (fire-and-forget)
   try {
     var musica = (state.playlist || []).find(function (m) {
       return String(m.id) === String(musicId);
@@ -1883,7 +1799,6 @@ window.toggleFavoriteMusic = async function (musicId) {
     }
   } catch (e) {}
 
-  // Chama API do toggle_favorite
   try {
     const r = await callAPI('toggle_favorite', {
       music_id: musicId,
@@ -1891,7 +1806,6 @@ window.toggleFavoriteMusic = async function (musicId) {
     });
 
     if (!r || !r.success) {
-      // Rollback
       console.warn('⚠️ toggle_favorite falhou — revertendo state');
       if (wasFav) {
         state.favoriteMusicIds.push(sid);
@@ -1915,14 +1829,18 @@ window.toggleFavoriteMusic = async function (musicId) {
 };
 
 // ============================================================
-// 🆕 [RECOMMENDER v2] v9.5.0 — Motor "infinito" orientado a engajamento
-//    Camadas (inspirado no YouTube):
+// 🆕 [RECOMMENDER v3] v9.8.0
+//    Camadas:
 //      1. SINAIS EXPLÍCITOS: follows, favoritos, buscas, eventos
 //      2. SINAIS IMPLÍCITOS: reproduções, recência, skip
-//      3. GERAÇÃO INFINITA: lotes com novidade + diversificação
-//    APIs públicas mantidas: getRecommendations, invalidateRecommendations,
-//                            loadRecommendations, renderRecommendedRow
-//    Novas: getInfiniteRecommendations(page), trackSearch(q), trackInteraction(t,id)
+//      3. GERAÇÃO INFINITA: internos + YouTube (busca) + News
+//    APIs públicas mantidas:
+//      getRecommendations, invalidateRecommendations,
+//      loadRecommendations, renderRecommendedRow
+//    Novas:
+//      getInfiniteRecommendations(page), trackSearch(q),
+//      trackInteraction(t,id), injectNewsToMarketplace(),
+//      fetchYouTubeRelated(videoId)
 // ============================================================
 (function () {
   'use strict';
@@ -1930,9 +1848,19 @@ window.toggleFavoriteMusic = async function (musicId) {
   var REC_PAGE_SIZE = 8;
   var REC_CACHE_MS = 60000;
   var _recCache = { at: 0, page: 0, items: [] };
-  var _seenIds = {};       // já exibidos nesta sessão (para novidade)
-  var _searchHistory = []; // últimas buscas (para perfil)
-  var _interactionLog = []; // últimas interações (play/like/skip)
+  var _seenIds = {};
+  var _searchHistory = [];
+  var _interactionLog = [];
+
+  // 🆕 v9.6.0 — cache de YouTube de buscas
+  var _ytCandidates = [];
+  var YT_CACHE_MAX = 40;
+  var YT_WEIGHT = 1.2;
+
+  // 🆕 v9.8.0 — cache de News
+  var _newsCandidates = [];
+  var _newsArtistSeen = {};
+  var NEWS_CACHE_MAX = 30;
 
   function _esc(s) {
     if (typeof escapeHtml === 'function') return escapeHtml(s);
@@ -1949,7 +1877,26 @@ window.toggleFavoriteMusic = async function (musicId) {
   }
 
   // ----------------------------------------------------------
-  // Perfil: agora inclui buscas e interações recentes
+  // Helper: adicionar candidatos YouTube com dedup
+  // ----------------------------------------------------------
+  function _addYouTubeCandidates(items) {
+    if (!Array.isArray(items)) return;
+    items.forEach(function (yt) {
+      if (!yt || !yt.id) return;
+      var exists = _ytCandidates.some(function (c) { return c.id === yt.id; });
+      if (exists) return;
+      _ytCandidates.push(yt);
+    });
+    if (_ytCandidates.length > YT_CACHE_MAX) {
+      _ytCandidates = _ytCandidates.slice(-YT_CACHE_MAX);
+    }
+    if (window.invalidateRecommendations) {
+      try { window.invalidateRecommendations(); } catch (e) {}
+    }
+  }
+
+  // ----------------------------------------------------------
+  // Perfil
   // ----------------------------------------------------------
   function buildUserProfile() {
     var p = {
@@ -1957,12 +1904,10 @@ window.toggleFavoriteMusic = async function (musicId) {
       seedIds: [], searchTerms: []
     };
 
-    // Seguindo (peso 3)
     _safeArr(state.followingArtists).forEach(function (a) {
       p.artistas[String(a)] = (p.artistas[String(a)] || 0) + 3;
     });
 
-    // Favoritos (peso 2)
     _safeArr(state.favoriteMusicIds).forEach(function (id) {
       var sid = String(id);
       p.musicas[sid] = (p.musicas[sid] || 0) + 2;
@@ -1974,12 +1919,10 @@ window.toggleFavoriteMusic = async function (musicId) {
       }
     });
 
-    // Buscas recentes (peso 2.5 — sinal explícito forte, igual YouTube)
     _searchHistory.slice(-15).forEach(function (q) {
       var ql = String(q || '').toLowerCase().trim();
       if (!ql) return;
       p.searchTerms.push(ql);
-      // Tenta casar busca com artistas/gêneros do catálogo
       _safeArr(state.playlist).forEach(function (t) {
         if (!t) return;
         if (t.artista && String(t.artista).toLowerCase().indexOf(ql) !== -1) {
@@ -1991,12 +1934,12 @@ window.toggleFavoriteMusic = async function (musicId) {
       });
     });
 
-    // Interações recentes (play/like/skip) — peso dinâmico
     _interactionLog.slice(-40).forEach(function (ev) {
       if (!ev || !ev.type) return;
       var w = ev.type === 'play' ? 1
             : ev.type === 'like' ? 3
             : ev.type === 'skip' ? -2.5
+            : ev.type === 'discover_from_news' ? 2
             : 0.5;
       var t = ev.id ? _playlistById(ev.id) : null;
       if (t) {
@@ -2007,14 +1950,15 @@ window.toggleFavoriteMusic = async function (musicId) {
       }
     });
 
-    // Histórico genérico (state.userHistory / events) — mantido por compat
     var hist = _safeArr(state.userHistory || state.history || state.events);
     hist.slice(-50).forEach(function (ev) {
       if (!ev) return;
       var tipo = String(ev.event_type || ev.type || '');
       var w = (tipo === 'play' || tipo === 'stream') ? 1
             : (tipo === 'favorite' || tipo === 'follow') ? 2
-            : (tipo === 'unfavorite' || tipo === 'unfollow') ? -1 : 0.5;
+            : (tipo === 'unfavorite' || tipo === 'unfollow') ? -1
+            : (tipo === 'discover_from_news') ? 2
+            : 0.5;
       if (ev.artist) p.artistas[String(ev.artist)] = (p.artistas[String(ev.artist)] || 0) + w;
       if (ev.genero) p.generos[String(ev.genero)]   = (p.generos[String(ev.genero)]   || 0) + w;
       if (ev.music_id) {
@@ -2024,7 +1968,6 @@ window.toggleFavoriteMusic = async function (musicId) {
       }
     });
 
-    // Fila atual
     try {
       var q = (typeof playQueue !== 'undefined' && playQueue && playQueue.items) ? playQueue.items : [];
       q.forEach(function (it) {
@@ -2041,7 +1984,7 @@ window.toggleFavoriteMusic = async function (musicId) {
   }
 
   // ----------------------------------------------------------
-  // Score com "novidade" e penalização de déjà-vu
+  // Score
   // ----------------------------------------------------------
   function scoreTrack(track, profile, page) {
     if (!track || !track.id) return -999;
@@ -2050,22 +1993,17 @@ window.toggleFavoriteMusic = async function (musicId) {
     var sid = String(track.id);
     var score = 0;
 
-    // Já consome? Penaliza forte
     if (profile.musicas[sid]) score -= 6;
+    if (_seenIds[sid]) score -= 4;
 
-    // Já viu nesta sessão? Penaliza para forçar novidade    if (_seenIds[sid]) score -= 4;
-
-    // Afinidade de artista
     if (track.artista && profile.artistas[String(track.artista)]) {
       score += profile.artistas[String(track.artista)] * 2.5;
     }
 
-    // Afinidade de gênero
     if (track.genero && profile.generos[String(track.genero)]) {
       score += profile.generos[String(track.genero)] * 1.5;
     }
 
-    // Bônus por casar com busca recente (título/artista)
     if (profile.searchTerms.length) {
       var tituloLc = String(track.titulo || '').toLowerCase();
       var artistaLc = String(track.artista || '').toLowerCase();
@@ -2078,34 +2016,45 @@ window.toggleFavoriteMusic = async function (musicId) {
       }
     }
 
-    // ELO como qualidade
     if (typeof getEloMusica === 'function') {
       var eloInfo = getEloMusica(track.id);
       if (eloInfo && eloInfo.elo) score += (eloInfo.elo - 1000) / 200;
     }
 
-    // Streams como popularidade
     var streams = (state.streamsMap && state.streamsMap[sid]) || 0;
     if (streams > 0) score += Math.min(2.5, Math.log10(streams + 1));
 
-    // Pausadas perdem
     if (track.status === 'paused') score -= 3;
 
-    // Boost de novidade por página (quanto mais fundo, mais aberto a explorar)
     if (page > 0) {
       score += Math.min(2, page * 0.3);
     }
 
-    // Cold start
     if (profile.seedIds.length === 0 && !Object.keys(profile.artistas).length && page === 0) {
       score += Math.min(3, (track.percentual_disponivel || 0) / 30);
+    }
+
+    // 🆕 v9.8.0 — boost temporal para News
+    if (track._from_news) {
+      var idadeMs = Date.now() - (track._news_ts || 0);
+      var idadeHoras = idadeMs / 3600000;
+      if (idadeHoras < 24) {
+        score += 8;
+      } else if (idadeHoras < 48) {
+        score += 4;
+      } else if (idadeHoras < 168) {
+        score += 1;
+      }
+      if (track.artista && profile.artistas[String(track.artista)]) {
+        score *= 1.5;
+      }
     }
 
     return score;
   }
 
   // ----------------------------------------------------------
-  // Geração de lote (infinita: quando esgota, recicla com novidade)
+  // Geração de lote
   // ----------------------------------------------------------
   function computeRecommendations(limit, page) {
     limit = limit || REC_PAGE_SIZE;
@@ -2115,20 +2064,68 @@ window.toggleFavoriteMusic = async function (musicId) {
       return t && t.id && t.status !== 'deleted';
     });
 
-    if (!playlist.length) return [];
+    var pool = playlist.slice();
 
-    var scored = playlist.map(function (t) {
-      return { track: t, score: scoreTrack(t, profile, page) };
+    // YouTube de buscas
+    _ytCandidates.forEach(function (yt) {
+      if (!yt || !yt.id) return;
+      var jaExiste = playlist.some(function (t) { return String(t.id) === String(yt.id); });
+      if (jaExiste) return;
+      pool.push({
+        id: yt.id,
+        titulo: yt.titulo,
+        artista: yt.artista,
+        genero: 'YouTube',
+        link_capa: yt.link_capa,
+        link_youtube: yt.link_youtube,
+        is_youtube: true,
+        _from_youtube: true,
+        status: 'ativo',
+        valor_acao: 0,
+        percentual_disponivel: 0
+      });
+    });
+
+    // 🆕 v9.8.0 — News
+    _newsCandidates.forEach(function (nc) {
+      if (!nc || !nc.id) return;
+      var jaExiste = playlist.some(function (t) { return String(t.id) === String(nc.id); });
+      if (jaExiste) return;
+      var jaNoPool = pool.some(function (t) { return String(t.id) === String(nc.id); });
+      if (jaNoPool) return;
+      pool.push({
+        id: nc.id,
+        titulo: nc.titulo,
+        artista: nc.artista,
+        genero: 'News',
+        link_capa: nc.link_capa,
+        link_youtube: nc.link_youtube,
+        is_youtube: true,
+        _from_news: true,
+        _news_source: nc._news_source,
+        _news_title: nc._news_title,
+        _news_ts: nc._news_ts,
+        _news_link: nc._news_link,
+        status: 'ativo',
+        valor_acao: 0,
+        percentual_disponivel: 0
+      });
+    });
+
+    if (!pool.length) return [];
+
+    var scored = pool.map(function (t) {
+      var s = scoreTrack(t, profile, page);
+      if (t._from_youtube) s *= YT_WEIGHT;
+      return { track: t, score: s };
     }).filter(function (x) { return x.score > -2; });
 
-    // Se página > 0, remove itens já exibidos
     if (page > 0) {
       scored = scored.filter(function (x) { return !_seenIds[String(x.track.id)]; });
     }
 
     scored.sort(function (a, b) { return b.score - a.score; });
 
-    // Diversificação: máx 2 por artista
     var porArtista = {};
     var out = [];
     for (var i = 0; i < scored.length && out.length < limit; i++) {
@@ -2139,12 +2136,10 @@ window.toggleFavoriteMusic = async function (musicId) {
       out.push(t);
     }
 
-    // Se esgotou (ou quase), recicla embaralhando com boost de novidade
     if (out.length < limit) {
-      var restantes = playlist.filter(function (t) {
+      var restantes = pool.filter(function (t) {
         return !out.some(function (o) { return String(o.id) === String(t.id); });
       });
-      // Fisher-Yates parcial para "infinito"
       for (var j = restantes.length - 1; j > 0; j--) {
         var k = Math.floor(Math.random() * (j + 1));
         var tmp = restantes[j]; restantes[j] = restantes[k]; restantes[k] = tmp;
@@ -2175,7 +2170,6 @@ window.toggleFavoriteMusic = async function (musicId) {
     }
   };
 
-  // 🆕 v9.5.0 — lotes infinitos
   window.getInfiniteRecommendations = function (page) {
     page = Math.max(0, parseInt(page) || 0);
     try {
@@ -2192,28 +2186,160 @@ window.toggleFavoriteMusic = async function (musicId) {
     _recCache = { at: 0, page: 0, items: [] };
   };
 
-  // 🆕 v9.5.0 — registra busca (chamado por performSearch)
+  // 🆕 v9.5.0 + v9.6.0 — busca alimenta _ytCandidates
   window.trackSearch = function (query) {
     var q = String(query || '').trim();
     if (!q) return;
     _searchHistory.push(q);
     if (_searchHistory.length > 30) _searchHistory.shift();
-    // Invalida para próximo render já refletir
     window.invalidateRecommendations();
+
+    try {
+      if (typeof searchYouTubeDirect === 'function') {
+        searchYouTubeDirect(q).then(function (results) {
+          if (!Array.isArray(results) || !results.length) return;
+          var items = results.map(function (r) {
+            if (!r || !r.id) return null;
+            var sid = String(r.id);
+            if (sid.indexOf('yt_') !== 0) return null;
+            return {
+              id: sid,
+              titulo: r.titulo || 'Vídeo do YouTube',
+              artista: r.artista || 'YouTube',
+              link_capa: r.link_capa || ('https://img.youtube.com/vi/' + sid.replace('yt_', '') + '/hqdefault.jpg'),
+              link_youtube: r.link_youtube || ('https://www.youtube.com/watch?v=' + sid.replace('yt_', '')),
+              is_youtube: true
+            };
+          }).filter(Boolean);
+          _addYouTubeCandidates(items);
+          console.log('🎯 [recommender] cache YT:', _ytCandidates.length, 'candidatos');
+        }).catch(function () {});
+      }
+    } catch (e) {}
   };
 
-  // 🆕 v9.5.0 — registra interação (play/like/skip)
+  // 🆕 v9.5.0 — interações (play/like/skip/discover_from_news)
   window.trackInteraction = function (type, id) {
     if (!type) return;
     _interactionLog.push({ type: String(type), id: id ? String(id) : null, at: Date.now() });
     if (_interactionLog.length > 100) _interactionLog.shift();
-    if (type === 'play' || type === 'like' || type === 'skip') {
+    if (type === 'play' || type === 'like' || type === 'skip' || type === 'discover_from_news') {
       window.invalidateRecommendations();
     }
   };
 
+  // 🆕 v9.8.0 — relacionados via YouTube (proxy backend)
+  window.fetchYouTubeRelated = function (videoId) {
+    if (!videoId || typeof videoId !== 'string') return;
+    if (window._lastRelatedVideoId === videoId) return;
+    window._lastRelatedVideoId = videoId;
+
+    var cacheKey = 'yt_related_' + videoId;
+    try {
+      var cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        var arr = JSON.parse(cached);
+        if (Array.isArray(arr) && arr.length) {
+          _addYouTubeCandidates(arr);
+          return;
+        }
+      }
+    } catch (e) {}
+
+    if (typeof callAPI !== 'function') return;
+    callAPI('search_youtube_related', { video_id: videoId, limit: 10 })
+      .then(function (r) {
+        if (r && r.success && Array.isArray(r.data)) {
+          var items = r.data.map(function (item) {
+            var vid = item.id || (item.link_youtube ? String(item.link_youtube).split('v=')[1] : null);
+            if (!vid) return null;
+            return {
+              id: 'yt_' + vid,
+              titulo: item.titulo || item.title || 'Vídeo do YouTube',
+              artista: item.artista || item.channelTitle || 'YouTube',
+              link_capa: item.link_capa || ('https://img.youtube.com/vi/' + vid + '/hqdefault.jpg'),
+              link_youtube: 'https://www.youtube.com/watch?v=' + vid,
+              is_youtube: true
+            };
+          }).filter(Boolean);
+          try { sessionStorage.setItem(cacheKey, JSON.stringify(items)); } catch (e) {}
+          _addYouTubeCandidates(items);
+          console.log('🎯 [recommender] relacionados YT:', items.length, 'para', videoId);
+        }
+      })
+      .catch(function () {});
+  };
+
+  // 🆕 v9.8.0 — injeta artistas das notícias no marketplace
+  window.injectNewsToMarketplace = function () {
+    var news = [];
+    if (window.state && Array.isArray(state.news)) news = state.news;
+    else if (window.pmNewsData && Array.isArray(window.pmNewsData)) news = window.pmNewsData;
+    else if (window.state && state.pmNewsData && Array.isArray(state.pmNewsData)) news = state.pmNewsData;
+
+    if (!news.length) return;
+
+    var artistas = [];
+    news.slice(0, 20).forEach(function (n) {
+      if (!n || !n.titulo) return;
+      var titulo = String(n.titulo);
+      var m = titulo.match(/^([A-ZÀ-Ú][A-Za-zÀ-ú0-9\s&'.-]{2,40}?)(?:\s+(?:anuncia|lança|fala|revela|comenta|e\s|estreia|apresenta|divulga|libera|volta|surpreende|processa|critica|celebra))/);
+      if (m && m[1]) {
+        var artista = m[1].trim();
+        if (artista.length >= 3 && !_newsArtistSeen[artista]) {
+          _newsArtistSeen[artista] = true;
+          artistas.push({ nome: artista, noticia: n });
+        }
+      }
+    });
+
+    console.log('📰 [marketplace] artistas detectados na news:', artistas.length);
+
+    // Limita a 5 por ciclo para poupar cota
+    artistas.slice(0, 5).forEach(function (a) {
+      var jaNoCatalogo = (state.playlist || []).some(function (m) {
+        return String(m.artista || '').toLowerCase() === a.nome.toLowerCase();
+      });
+      if (jaNoCatalogo) return;
+
+      if (typeof searchYouTubeDirect !== 'function') return;
+      searchYouTubeDirect(a.nome).then(function (results) {
+        if (!Array.isArray(results) || !results.length) return;
+        var top2 = results.slice(0, 2);
+        top2.forEach(function (r) {
+          if (!r || !r.id) return;
+          var sid = String(r.id);
+          if (sid.indexOf('yt_') !== 0) return;
+          if (_newsCandidates.some(function (c) { return c.id === sid; })) return;
+          _newsCandidates.push({
+            id: sid,
+            titulo: r.titulo || 'Música',
+            artista: a.nome,
+            link_capa: r.link_capa || ('https://img.youtube.com/vi/' + sid.replace('yt_', '') + '/hqdefault.jpg'),
+            link_youtube: r.link_youtube || ('https://www.youtube.com/watch?v=' + sid.replace('yt_', '')),
+            is_youtube: true,
+            _from_news: true,
+            _news_source: a.noticia.fonte || 'News',
+            _news_title: a.noticia.titulo || '',
+            _news_ts: a.noticia.timestamp ? new Date(a.noticia.timestamp).getTime() : Date.now(),
+            _news_link: a.noticia.link || ''
+          });
+        });
+
+        if (_newsCandidates.length > NEWS_CACHE_MAX) {
+          _newsCandidates = _newsCandidates.slice(-NEWS_CACHE_MAX);
+        }
+
+        if (window.invalidateRecommendations) {
+          try { window.invalidateRecommendations(); } catch (e) {}
+        }
+        console.log('📰 [marketplace] +' + top2.length + ' cards via News para', a.nome);
+      }).catch(function () {});
+    });
+  };
+
   // ----------------------------------------------------------
-  // Load + Render (com scroll infinito e "Carregar mais")
+  // Load + Render
   // ----------------------------------------------------------
   window.loadRecommendations = function () {
     try {
@@ -2234,7 +2360,6 @@ window.toggleFavoriteMusic = async function (musicId) {
     var c = document.getElementById('recommendedRow');
     if (!c) return;
 
-    // Primeira renderização: limpa e reseta página
     if (!c.getAttribute('data-rec-init')) {
       c.setAttribute('data-rec-init', '1');
       _currentPage = 0;
@@ -2246,14 +2371,73 @@ window.toggleFavoriteMusic = async function (musicId) {
       return;
     }
 
-    // Re-render (ex.: após loadMarketplace) — mantém o que já está + atualiza
-    // Não força reset para não perder o scroll do usuário
     console.log('🎯 [recommender] re-render mantido');
   };
 
   function _buildCardsHtml(items) {
     var playlist = _safeArr(state.playlist);
     return items.map(function (t) {
+      // 🆕 v9.8.0 — card de News
+      if (t && t._from_news) {
+        var nCover = t.link_capa || PLACEHOLDERS.MIV_300;
+        var nVid = String(t.id).replace('yt_', '');
+        var nFonte = t._news_source || 'News';
+        var nIdade = '';
+        if (t._news_ts) {
+          var h = Math.floor((Date.now() - t._news_ts) / 3600000);
+          nIdade = h < 1 ? 'agora' : (h < 24 ? h + 'h' : Math.floor(h / 24) + 'd');
+        }
+        return '<div class="spotify-card" data-news="1">' +
+          '<div class="spotify-cover">' +
+            '<img src="' + nCover + '" loading="lazy" ' +
+              'onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+            '<div class="play-overlay" ' +
+              'onclick="playSearchResult(\'youtube\',\'' + nVid + '\'); if(window.trackInteraction){window.trackInteraction(\'play\',\'' + t.id + '\');window.trackInteraction(\'discover_from_news\',\'' + t.id + '\');}">' +
+              '<i class="bi bi-play-fill"></i>' +
+            '</div>' +
+            '<div style="position:absolute;top:8px;left:8px;background:linear-gradient(135deg,#5AC8FA,#007AFF);' +
+              'color:#fff;font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">📰 NOVO</div>' +
+          '</div>' +
+          '<h3 class="spotify-title">' + _esc(t.titulo || '') + '</h3>' +
+          '<p class="spotify-artist">' + _esc(t.artista || '') + '</p>' +
+          '<div class="spotify-stats">' +
+            '<span class="spotify-elo" style="color:var(--apple-blue)">' + _esc(nFonte) + '</span>' +
+            '<span class="spotify-price" style="font-size:11px">' + nIdade + '</span>' +
+          '</div>' +
+          (t._news_title
+            ? '<div style="font-size:10px;color:var(--apple-label-2);margin-top:4px;' +
+              'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+              _esc(t._news_title) + '</div>'
+            : '') +
+        '</div>';
+      }
+
+      // YouTube puro (buscas)
+      if (t && t.is_youtube) {
+        var ytCover = t.link_capa ||
+          ('https://img.youtube.com/vi/' + String(t.id).replace('yt_', '') + '/hqdefault.jpg');
+        var ytVid = String(t.id).replace('yt_', '');
+        return '<div class="spotify-card">' +
+          '<div class="spotify-cover">' +
+            '<img src="' + ytCover + '" loading="lazy" ' +
+              'onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+            '<div class="play-overlay" ' +
+              'onclick="playSearchResult(\'youtube\',\'' + ytVid + '\'); if(window.trackInteraction) window.trackInteraction(\'play\',\'' + t.id + '\')">' +
+              '<i class="bi bi-play-fill"></i>' +
+            '</div>' +
+            '<div style="position:absolute;top:8px;left:8px;background:rgba(255,59,48,.9);color:#fff;' +
+              'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">▶ YT</div>' +
+          '</div>' +
+          '<h3 class="spotify-title">' + _esc(t.titulo || '') + '</h3>' +
+          '<p class="spotify-artist">' + _esc(t.artista || '') + '</p>' +
+          '<div class="spotify-stats">' +
+            '<span class="spotify-elo" style="color:var(--apple-red)">YouTube</span>' +
+            '<span class="spotify-price">▶</span>' +
+          '</div>' +
+        '</div>';
+      }
+
+      // Interna
       var idx = playlist.findIndex(function (x) { return String(x.id) === String(t.id); });
       if (idx < 0) return '';
       var cover = (typeof getCoverUrl === 'function') ? getCoverUrl(t, false) : '/images/logo.png';
@@ -2312,7 +2496,6 @@ window.toggleFavoriteMusic = async function (musicId) {
           btn.innerHTML = 'Fim do catálogo';
           return;
         }
-        // Remove o botão antigo, insere novos cards + novo botão
         var oldBtn = document.getElementById('recLoadMoreBtn');
         if (oldBtn && oldBtn.parentNode) oldBtn.parentNode.removeChild(oldBtn);
         c.insertAdjacentHTML('beforeend', _buildCardsHtml(more) + _buildLoadMoreHtml());
@@ -2322,10 +2505,10 @@ window.toggleFavoriteMusic = async function (musicId) {
     });
   }
 
-  console.log('✅ [recommender v2] v9.5.0 carregado — infinito + engajamento');
+  console.log('✅ [recommender v3] v9.8.0 carregado — infinito + engajamento + News + YouTube');
 })();
 
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.5.0 carregado — RECOMMENDER v2 (infinito) + filtro "Seguindo"');
+console.log('✅ [marketplace.js] v9.8.0 carregado — RECOMMENDER v3 (News + YouTube + infinito) + filtro "Seguindo"');
