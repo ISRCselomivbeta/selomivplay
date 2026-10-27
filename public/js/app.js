@@ -425,6 +425,19 @@ window.initializeApp = async function () {
     try { window.renderRecommendedRow(); } catch (e) {}
   }
 
+  // 🆕 v9.8.10 — injeta News no marketplace (assíncrono, não bloqueia)
+  // Espera o news-unified carregar as notícias (3s é suficiente)
+  if (typeof window.injectNewsToMarketplace === 'function') {
+    setTimeout(function () {
+      try {
+        window.injectNewsToMarketplace();
+        console.log('📰 [app] injectNewsToMarketplace executado');
+      } catch (e) {
+        console.warn('⚠️ [app] injectNewsToMarketplace falhou:', e && e.message);
+      }
+    }, 3000);
+  }
+
   try {
     if (typeof window.renderMarketplace === 'function') window.renderMarketplace();
     if (typeof window.renderGlobalPlaylists === 'function') window.renderGlobalPlaylists();
@@ -673,6 +686,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(hideSplashScreen, 800);
   }
 });
+
+  // 🆕 v9.8.10 — re-injeta News quando o news-unified terminar (se houver delay)
+  if (typeof window.pmNewsReload === 'function') {
+    const _origNewsReload = window.pmNewsReload;
+    window.pmNewsReload = function () {
+      const r = _origNewsReload.apply(this, arguments);
+      setTimeout(function () {
+        if (typeof window.injectNewsToMarketplace === 'function') {
+          try { window.injectNewsToMarketplace(); } catch (e) {}
+        }
+      }, 2500);
+      return r;
+    };
+  }
 
 // ============================================================
 // PWA — INSTALAÇÃO INTELIGENTE via SIDEBAR
