@@ -2265,7 +2265,12 @@ module.exports = async (req, res) => {
                 console.warn('⚠️ [valuation_catalogo] musicas_all vazio — consultando GAS');
                 try {
                     // 🐛 FIX v9.8.15 — usa timeout maior + retries (103 músicas demoram)
-                    const gasResult = await callGASComTimeout('get_musicas', {}, GAS_MUSICAS_TIMEOUT_MS, GAS_MUSICAS_RETRIES);
+                    const gasResult = await callGASComTimeout(
+    'get_musicas',
+    { ...params, limit: 1000, page: 1 },   // 🆕 força retornar tudo
+    GAS_MUSICAS_TIMEOUT_MS,
+    GAS_MUSICAS_RETRIES
+);
                     const unwrapped = unwrapGAS(gasResult);
                     if (unwrapped.success && Array.isArray(unwrapped.data)) {
                         idx = unwrapped.data.map(m => String(m.id)).filter(Boolean);
@@ -3050,12 +3055,12 @@ module.exports = async (req, res) => {
                 console.warn('⚠️ [get_musicas] cache Redis falhou:', e.message);
             }
 
-            // 3) GAS com retry + timeout 12s
+                        // 3) GAS com retry + timeout 12s
             let musicas = null;
             try {
                 const gasResult = await callGASComTimeout(
                     'get_musicas',
-                    params,
+                    { ...params, limit: 1000, page: 1 },   // 🆕 força retornar tudo
                     GAS_MUSICAS_TIMEOUT_MS,
                     GAS_MUSICAS_RETRIES
                 );
@@ -3582,7 +3587,12 @@ module.exports = async (req, res) => {
                 if (!musicas.length) {
                     try {
                         // 🐛 FIX v9.8.15 — timeout maior + retries + sync musicas_all
-                        const g = await callGASComTimeout('get_musicas', {}, GAS_MUSICAS_TIMEOUT_MS, GAS_MUSICAS_RETRIES);
+                        const g = await callGASComTimeout(
+                            'get_musicas',
+                            { limit: 1000, page: 1 },   // 🆕 força retornar tudo
+                            GAS_MUSICAS_TIMEOUT_MS,
+                            GAS_MUSICAS_RETRIES
+                        );
                         const u = unwrapGAS(g);
                         if (u.success && Array.isArray(u.data)) {
                             musicas = u.data;
