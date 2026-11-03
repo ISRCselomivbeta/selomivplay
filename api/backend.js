@@ -103,7 +103,7 @@ const STREAM_PREFIX = 'stream_guard:';
 // Se o GAS devolver menos que isso, NÃO aceita como fonte
 // (evita GAS desatualizado "escondendo" o catálogo)
 // ============================================================
-const GAS_MUSICAS_MIN_VALIDAS = 50;
+const GAS_MUSICAS_MIN_VALIDAS = 10;
 const GAS_MUSICAS_TIMEOUT_MS = 12000;        // era 5000
 const GAS_MUSICAS_RETRIES = 2;                // era 1
 
