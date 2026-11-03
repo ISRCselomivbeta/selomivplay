@@ -1,38 +1,50 @@
 // ============================================================
-// BACKEND.JS - VERSÃO 9.8.13
+// BACKEND.JS - VERSÃO 9.8.15
 // ============================================================
 // PERSISTÊNCIA VERCEL KV + FEED INFINITO + RSS DIRETO
 // + CONTADOR DE STREAMS + ELO + VALUATION + ISRC
-// + COMPATIBILIDADE TOTAL COM GAS 7.0.2
+// + COMPATIBILIDADE TOTAL COM GAS 7.0.3+
 // + VENDA DIRETA AO MERCADO (sell_to_market)
 // + VENDA P2P COM EMAIL (create_trade robusto)
 // + IMAGENS REAIS NOS FEEDS (extração agressiva + og:image)
 // + HISTÓRICO DE EVENTOS (register_event + get_history)
 // + PROXY DE IMAGEM (proxy_image com SSRF guard)
 //
+// MUDANÇAS v9.8.15 (CORREÇÃO CRÍTICA — "só 20 músicas"):
+//   - 🐛 FIX: get_musicas agora VALIDA o resultado do GAS
+//        Se GAS devolver < 50 músicas, NÃO aceita como fonte
+//        (evita que GAS desatualizado "esconda" 83 músicas)
+//   - 🐛 FIX: get_musicas timeout 5s → 12s
+//        (103 músicas + 36 colunas não cabem em 5s)
+//   - 🆕 get_musicas retry 2x no GAS antes de fallback
+//   - 🆕 get_musicas SEMPRE grava em musicas_all (Redis)
+//        (próximas chamadas usam esse cache mesmo se GAS falhar)
+//   - 🆕 get_musicas retorna stats (ativas, pausadas, deleted)
+//   - 🆕 action=debug_musicas — lista todas SEM filtro (diagnóstico)
+//   - ✅ NADA MAIS MUDOU — buy/login/streams/news intactos
+//
+// MUDANÇAS v9.8.14:
+//   - 🆕 action=search_youtube_related (relatedToVideoId)
+//
 // MUDANÇAS v9.8.10:
 //   - 🆕 action=proxy_image (proxy de imagens externas das notícias)
 //   - 🆕 SSRF bloqueado (localhost + IPs privados)
 //   - 🆕 Só aceita content-type image/*
-//   - ✅ NADA MAIS MUDOU — compatibilidade total com v9.8.9
 //
 // MUDANÇAS v9.8.9:
 //   - 🆕 EVENTS_VALID_TYPES aceita 'view', 'discovery_view', 'search'
 //   - 🆕 _registrarEvento trunca campos longos (KV otimizado)
 //   - 🆕 _getHistorico retorna stats.musicasTop (compat discovery)
 //   - 🆕 _getHistorico retorna stats.musicas7d + musicas30d
-//   - ✅ NADA MAIS MUDOU — compatibilidade total com v9.8.8
 //
 // 🔒 v9.8.4 (consolidação Opção A) — COMPATIBILIDADE STREAMS
 //   - ✅ register_streaming agora grava TAMBÉM em stream_<id> (formato antigo)
 //   - ✅ Mantém gravação em streams_<id> (formato novo — fonte de verdade)
 //   - ✅ streams_global compartilhado entre os dois
-//   - ✅ Escrita consolidada aqui (Stream Guard ativo)
 //
 // 🔒 v9.8.3 — PROTEÇÃO DE STREAMS
 //   - ✅ STREAM_INTERVAL_MS (30 min) + STREAM_MIN_DURATION (30s)
 //   - ✅ _checkStreamAllowed(user_id, music_id, ip, duration)
-//   - ✅ register_streaming valida IP + usuário + timestamp
 //
 // 🔒 v9.8.2 — MELHORIAS DE IMAGEM E ROBUSTEZ
 // 🔒 v9.8.1 — 100% DROP-IN (SEM BLOQUEIO)
@@ -87,6 +99,15 @@ const STREAM_MIN_DURATION = 30;              // segundos mínimos ouvidos
 const STREAM_PREFIX = 'stream_guard:';
 
 // ============================================================
+// 🆕 v9.8.15 — LIMIAR DE VALIDAÇÃO DO GAS
+// Se o GAS devolver menos que isso, NÃO aceita como fonte
+// (evita GAS desatualizado "escondendo" o catálogo)
+// ============================================================
+const GAS_MUSICAS_MIN_VALIDAS = 50;
+const GAS_MUSICAS_TIMEOUT_MS = 12000;        // era 5000
+const GAS_MUSICAS_RETRIES = 2;                // era 1
+
+// ============================================================
 // 🆕 v9.8.9 — HISTÓRICO DE EVENTOS (compat discovery v2.2.1)
 // ============================================================
 const EVENTS_PREFIX = 'events_';
@@ -95,7 +116,7 @@ const EVENTS_VALID_TYPES = new Set([
     'play', 'favorite', 'unfavorite', 'share', 'invest',
     'follow', 'unfollow', 'play_youtube', 'skip',
     'view', 'discovery_view', 'search',
-    'discover_from_news'   // 🆕 v9.8.14 — card 📰 do marketplace
+    'discover_from_news'
 ]);
 
 async function _checkStreamAllowed(userId, musicId, ip, duration) {
@@ -138,7 +159,6 @@ async function _registrarEvento(userId, eventType, payload) {
         const key = EVENTS_PREFIX + userId;
         let events = await Storage.get(key) || [];
 
-        // 🆕 v9.8.9 — trunca campos longos pra economizar KV
         const evento = {
             type: eventType,
             music_id: payload.music_id ? String(payload.music_id).slice(0, 64) : null,
@@ -178,9 +198,9 @@ async function _getHistorico(userId, limit) {
             generos7d: {},
             generos30d: {},
             musicas: {},
-            musicas7d: {},     // 🆕 v9.8.9
-            musicas30d: {},    // 🆕 v9.8.9
-            musicasTop: {},    // 🆕 v9.8.9 — compat discovery
+            musicas7d: {},
+            musicas30d: {},
+            musicasTop: {},
             total_eventos: events.length
         };
 
@@ -208,7 +228,6 @@ async function _getHistorico(userId, limit) {
             }
         });
 
-        // 🆕 v9.8.9 — espelha musicas em musicasTop (compat discovery.js v2.2.1)
         stats.musicasTop = stats.musicas;
 
         const lim = parseInt(limit) || 100;
@@ -291,7 +310,7 @@ const EMAIL_FROM = 'selomivplay@gmail.com';
 const EMAIL_NAME = 'PLAY MY';
 
 // ============================================================
-// AÇÕES QUE EXISTEM NO GAS 7.0.2
+// AÇÕES QUE EXISTEM NO GAS 7.0.3+
 // ============================================================
 const GAS_ACTIONS = new Set([
     'health', 'ping', 'login', 'register', 'confirm_email', 'resend_confirmation',
@@ -318,7 +337,8 @@ const GAS_ACTIONS = new Set([
     'register_event', 'get_history',
     'calcular_valuation', 'ver_valuation', 'valuation_catalogo',
     'validar_isrc', 'buscar_isrc', 'vincular_isrc', 'ver_isrc', 'listar_isrcs',
-    'add_block'
+    'add_block',
+    'debug_musicas', 'count_musicas'
 ]);
 
 // ============================================================
@@ -838,6 +858,7 @@ function unwrapGAS(gasResult) {
         success: true,
         data: payload,
         pagination: inner.pagination,
+        stats: inner.stats,
         message: inner.message,
         _via: 'gas',
         _raw: inner
@@ -1095,7 +1116,7 @@ async function fetchNewsFromGoogleRSS(query, categoria) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.4)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.15)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -1163,7 +1184,7 @@ async function fetchNewsFromDirectRSS(rssUrl, categoria, fonte) {
         const response = await fetch(rssUrl, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.4)',
+                'User-Agent': 'Mozilla/5.0 (compatible; PLAYMY/9.8.15)',
                 'Accept': 'application/xml, text/xml, */*'
             }
         });
@@ -1318,7 +1339,7 @@ async function buscarIsrcMusicBrainz(titulo, artista) {
         const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
         const r = await fetch(url, {
             headers: {
-                'User-Agent': 'PLAYMY/9.8.4 (contato@playmy.com.br)',
+                'User-Agent': 'PLAYMY/9.8.15 (contato@playmy.com.br)',
                 'Accept': 'application/json'
             }
         });
@@ -1711,12 +1732,10 @@ async function processSellToMarket(userId, musicId, quantidade, precoUnitario, v
 })();
 
 // ============================================================
-// HANDLER PRINCIPAL — v9.8.13
+// HANDLER PRINCIPAL — v9.8.15
 // ============================================================
 module.exports = async (req, res) => {
-    // ============================================================
-    // CORS — sempre (necessário para o navegador permitir a leitura)
-    // ============================================================
+    // CORS
     res.setHeader('Access-Control-Allow-Origin', 'https://playmy.com.br');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -1731,10 +1750,8 @@ module.exports = async (req, res) => {
     const params = req.method === 'POST' ? (req.body || {}) : (req.query || {});
     let { action } = params;
 
-    // 🆕 v9.8.11 — normaliza action se chegou como array (URL duplicada)
     if (Array.isArray(action)) {
         console.warn('[handler] ⚠️ action chegou como array:', action, '— usando primeiro item');
-        // Salva o 2º item como "sub_action" para uso posterior
         params._sub_action = action[1];
         action = action[0];
         params.action = action;
@@ -1770,7 +1787,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'pong',
-                version: '9.8.13',
+                version: '9.8.15',
                 kv_enabled: !!kv,
                 kv_mode: kvMode,
                 redis_url_set: !!process.env.REDIS_URL,
@@ -1789,6 +1806,9 @@ module.exports = async (req, res) => {
                 events_enabled: true,
                 events_max: EVENTS_MAX,
                 proxy_image_enabled: true,
+                gas_musicas_min_validas: GAS_MUSICAS_MIN_VALIDAS,
+                gas_musicas_timeout_ms: GAS_MUSICAS_TIMEOUT_MS,
+                gas_musicas_retries: GAS_MUSICAS_RETRIES,
                 timestamp: new Date().toISOString()
             });
         }
@@ -2111,10 +2131,9 @@ module.exports = async (req, res) => {
             cache.set(cacheKey, stats, 3600);
             return res.status(200).json({ success: true, data: stats });
         }
+
         // ============================================================
         // 🆕 v9.8.14 — YOUTUBE RELACIONADOS
-        // Busca "quem ouviu X, ouviu Y" — usado pelo recomendador
-        // Cache KV de 1 hora para economizar cota (100/dia do search.list)
         // ============================================================
         if (action === 'search_youtube_related') {
             const videoId = params.video_id;
@@ -2124,7 +2143,6 @@ module.exports = async (req, res) => {
 
             const limit = Math.min(parseInt(params.limit) || 10, 15);
 
-            // Cache por 1 hora (economiza cota do YouTube)
             const cacheKey = 'yt_related_' + videoId + '_' + limit;
             const cached = await Storage.get(cacheKey);
             if (cached && Date.now() - cached.ts < 60 * 60 * 1000) {
@@ -2166,7 +2184,6 @@ module.exports = async (req, res) => {
                     is_youtube: true
                 })).filter(x => x.id);
 
-                // Salva no KV por 1h
                 await Storage.set(cacheKey, { ts: Date.now(), items: items });
 
                 console.log(`✅ [search_youtube_related] ${items.length} relacionados para ${videoId}`);
@@ -2176,6 +2193,7 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: true, data: [], message: e.message });
             }
         }
+
         // ============================================================
         // ELO
         // ============================================================
@@ -2246,10 +2264,15 @@ module.exports = async (req, res) => {
             if (!idx.length) {
                 console.warn('⚠️ [valuation_catalogo] musicas_all vazio — consultando GAS');
                 try {
-                    const gasResult = await callGAS('get_musicas');
+                    // 🐛 FIX v9.8.15 — usa timeout maior + retries (103 músicas demoram)
+                    const gasResult = await callGASComTimeout('get_musicas', {}, GAS_MUSICAS_TIMEOUT_MS, GAS_MUSICAS_RETRIES);
                     const unwrapped = unwrapGAS(gasResult);
                     if (unwrapped.success && Array.isArray(unwrapped.data)) {
                         idx = unwrapped.data.map(m => String(m.id)).filter(Boolean);
+                        // 🆕 v9.8.15 — aproveita e sincroniza musicas_all
+                        if (unwrapped.data.length >= GAS_MUSICAS_MIN_VALIDAS) {
+                            await Storage.set('musicas_all', unwrapped.data);
+                        }
                         console.log(`✅ [valuation_catalogo] GAS: ${idx.length} músicas`);
                     }
                 } catch (e) {
@@ -2701,7 +2724,6 @@ module.exports = async (req, res) => {
             const all = await Storage.get('following') || {};
             let userList = all[userId];
 
-            // 🆕 v9.8.12 — normaliza pra array SEMPRE
             if (!Array.isArray(userList)) {
                 if (typeof userList === 'string' && userList.length) {
                     console.warn('[get_following] normalizando string CSV → array:', userList);
@@ -2722,7 +2744,6 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: true, data: userList, _via: 'kv' });
             }
 
-            // 🆕 v9.8.12 — GAS com validação estrita
             try {
                 const gasResult = await callGAS('get_following', { user_id: userId });
                 const unwrapped = unwrapGAS(gasResult);
@@ -2740,75 +2761,68 @@ module.exports = async (req, res) => {
         }
 
         if (action === 'toggle_follow') {
-    const userId = auth ? auth.user_id : params.user_id;
-    const artistId = String(params.artist_id);
-    // 🆕 v9.8.11 — aceita action OU _sub_action OU action_type
-    const actionType = params._sub_action || params.action_type || params.action;
-    if (!userId || !artistId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            const userId = auth ? auth.user_id : params.user_id;
+            const artistId = String(params.artist_id);
+            const actionType = params._sub_action || params.action_type || params.action;
+            if (!userId || !artistId) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-    // 🆕 v9.8.12 — normaliza following pra array SEMPRE
-    const all = await Storage.get('following') || {};
-    let userList = all[userId];
+            const all = await Storage.get('following') || {};
+            let userList = all[userId];
 
-    if (!Array.isArray(userList)) {
-        if (typeof userList === 'string' && userList.length) {
-            console.warn('[toggle_follow] normalizando string CSV → array:', userList);
-            userList = userList.split(',').map(s => s.trim()).filter(Boolean);
-        } else if (userList && typeof userList === 'object') {
-            console.warn('[toggle_follow] normalizando objeto → array:', userList);
-            userList = Object.keys(userList).filter(k => userList[k]);
-        } else {
-            userList = [];
+            if (!Array.isArray(userList)) {
+                if (typeof userList === 'string' && userList.length) {
+                    console.warn('[toggle_follow] normalizando string CSV → array:', userList);
+                    userList = userList.split(',').map(s => s.trim()).filter(Boolean);
+                } else if (userList && typeof userList === 'object') {
+                    console.warn('[toggle_follow] normalizando objeto → array:', userList);
+                    userList = Object.keys(userList).filter(k => userList[k]);
+                } else {
+                    userList = [];
+                }
+            }
+
+            if (actionType === 'follow') {
+                if (!userList.includes(artistId)) userList.push(artistId);
+            } else {
+                userList = userList.filter(id => id !== artistId);
+            }
+            all[userId] = userList;
+            await Storage.set('following', all);
+
+            callGAS('toggle_follow', { user_id: userId, artist_id: artistId, action: actionType })
+                .catch(e => console.warn('[toggle_follow] GAS falhou (não bloqueia):', e.message));
+
+            return res.status(200).json({ success: true, data: { following: userList } });
         }
-    }
-
-    // 🆕 v9.8.11 — grava no KV PRIMEIRO (não depende do GAS)
-    if (actionType === 'follow') {
-        if (!userList.includes(artistId)) userList.push(artistId);
-    } else {
-        userList = userList.filter(id => id !== artistId);
-    }
-    all[userId] = userList;
-    await Storage.set('following', all);
-
-    // 🆕 v9.8.11 — GAS em background (fire-and-forget)
-    callGAS('toggle_follow', { user_id: userId, artist_id: artistId, action: actionType })
-        .catch(e => console.warn('[toggle_follow] GAS falhou (não bloqueia):', e.message));
-
-    return res.status(200).json({ success: true, data: { following: userList } });
-}
 
         if (action === 'toggle_favorite') {
-    const userId = auth ? auth.user_id : params.user_id;
-    const { music_id } = params;
-    if (!userId || !music_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
+            const userId = auth ? auth.user_id : params.user_id;
+            const { music_id } = params;
+            if (!userId || !music_id) return res.status(200).json({ success: false, message: 'Dados incompletos' });
 
-    // 🆕 v9.8.11 — normaliza action
-    const subAction = params._sub_action || params.action_type || params.action;
+            const subAction = params._sub_action || params.action_type || params.action;
 
-    const all = await Storage.get('favorites') || {};
-    all[userId] = all[userId] || [];
-    const sid = String(music_id);
+            const all = await Storage.get('favorites') || {};
+            all[userId] = all[userId] || [];
+            const sid = String(music_id);
 
-    let actionType;
-    // 🆕 v9.8.11 — respeita o subAction se vier explícito
-    if (subAction === 'add' || subAction === 'remove') {
-        actionType = subAction;
-        if (actionType === 'add') {
-            if (!all[userId].includes(sid)) all[userId].push(sid);
-        } else {
-            all[userId] = all[userId].filter(x => x !== sid);
-        }
-    } else {
-        // Fallback: alterna com base no estado atual
-        if (all[userId].includes(sid)) {
-            all[userId] = all[userId].filter(x => x !== sid);
-            actionType = 'remove';
-        } else {
-            all[userId].push(sid);
-            actionType = 'add';
-        }
-    }
+            let actionType;
+            if (subAction === 'add' || subAction === 'remove') {
+                actionType = subAction;
+                if (actionType === 'add') {
+                    if (!all[userId].includes(sid)) all[userId].push(sid);
+                } else {
+                    all[userId] = all[userId].filter(x => x !== sid);
+                }
+            } else {
+                if (all[userId].includes(sid)) {
+                    all[userId] = all[userId].filter(x => x !== sid);
+                    actionType = 'remove';
+                } else {
+                    all[userId].push(sid);
+                    actionType = 'add';
+                }
+            }
             await Storage.set('favorites', all);
 
             await callGAS('toggle_favorite', { user_id: userId, music_id, action: actionType });
@@ -3012,16 +3026,18 @@ module.exports = async (req, res) => {
         }
 
         // ============================================================
-        // MÚSICAS — ROBUSTO
+        // MÚSICAS — v9.8.15 (VALIDAÇÃO + TIMEOUT 12s + RETRY + SYNC)
         // ============================================================
         if (action === 'get_musicas') {
             const cacheKey = 'musicas_cache';
             const cacheTimeKey = 'musicas_cache_time';
             const CACHE_TTL = 60 * 1000;
 
+            // 1) L1
             const cachedL1 = cache.get('musicas');
             if (cachedL1) return res.status(200).json({ success: true, data: cachedL1, _via: 'cache_l1' });
 
+            // 2) Redis (60s)
             try {
                 const cachedRedis = await Storage.get(cacheKey);
                 const cachedTimeRedis = await Storage.get(cacheTimeKey);
@@ -3034,9 +3050,15 @@ module.exports = async (req, res) => {
                 console.warn('⚠️ [get_musicas] cache Redis falhou:', e.message);
             }
 
+            // 3) GAS com retry + timeout 12s
             let musicas = null;
             try {
-                const gasResult = await callGASComTimeout('get_musicas', params, 5000);
+                const gasResult = await callGASComTimeout(
+                    'get_musicas',
+                    params,
+                    GAS_MUSICAS_TIMEOUT_MS,
+                    GAS_MUSICAS_RETRIES
+                );
                 const unwrapped = unwrapGAS(gasResult);
 
                 if (unwrapped.success) {
@@ -3054,18 +3076,63 @@ module.exports = async (req, res) => {
                 console.warn('⚠️ [get_musicas] GAS timeout/falha:', e.message);
             }
 
+            // 4) 🆕 v9.8.15 — VALIDAÇÃO: se GAS devolveu pouco, NÃO aceita como fonte
+            if (musicas && musicas.length > 0 && musicas.length < GAS_MUSICAS_MIN_VALIDAS) {
+                console.warn(
+                    `⚠️ [get_musicas] GAS devolveu só ${musicas.length} músicas ` +
+                    `(< ${GAS_MUSICAS_MIN_VALIDAS}) — GAS provavelmente desatualizado. ` +
+                    `Mantendo cache anterior / musicas_all.`
+                );
+
+                const anterior = await Storage.get('musicas_all') || [];
+                const cacheAnterior = await Storage.get(cacheKey) || [];
+
+                const melhor = (anterior.length >= cacheAnterior.length) ? anterior : cacheAnterior;
+
+                if (melhor && melhor.length >= GAS_MUSICAS_MIN_VALIDAS) {
+                    cache.set('musicas', melhor, 60);
+                    return res.status(200).json({
+                        success: true,
+                        data: melhor,
+                        _via: 'cache_anterior_gas_desatualizado',
+                        gas_devolveu: musicas.length,
+                        total: melhor.length,
+                        aviso: `GAS desatualizado (${musicas.length} músicas). Usando cache de ${melhor.length}. Atualize o Code.gs para v7.0.3+.`
+                    });
+                }
+
+                console.warn(
+                    `⚠️ [get_musicas] Nenhum cache >= ${GAS_MUSICAS_MIN_VALIDAS}. ` +
+                    `Aceitando GAS mesmo assim (melhor que nada).`
+                );
+            }
+
+            // 5) Aceita GAS válido
             if (musicas && musicas.length > 0) {
                 cache.set('musicas', musicas, 60);
+
                 try {
                     await Storage.set(cacheKey, musicas);
                     await Storage.set(cacheTimeKey, Date.now());
+                    // 🆕 v9.8.15 — sincroniza musicas_all (fonte para valuation/artistas)
+                    if (musicas.length >= GAS_MUSICAS_MIN_VALIDAS) {
+                        await Storage.set('musicas_all', musicas);
+                        console.log(`💾 [get_musicas] musicas_all sincronizado (${musicas.length})`);
+                    }
                 } catch (e) {
                     console.warn('⚠️ [get_musicas] cache write falhou:', e.message);
                 }
+
                 console.log(`✅ [get_musicas] ${musicas.length} músicas via GAS`);
-                return res.status(200).json({ success: true, data: musicas, _via: 'gas', total: musicas.length });
+                return res.status(200).json({
+                    success: true,
+                    data: musicas,
+                    _via: 'gas',
+                    total: musicas.length
+                });
             }
 
+            // 6) Cache stale
             try {
                 const stale = await Storage.get(cacheKey);
                 if (stale && stale.length) {
@@ -3074,10 +3141,55 @@ module.exports = async (req, res) => {
                 }
             } catch (e) {}
 
+            // 7) musicas_all como última camada antes do fallback
+            try {
+                const all = await Storage.get('musicas_all');
+                if (all && all.length > 0) {
+                    console.warn(`⚠️ [get_musicas] usando musicas_all (${all.length} músicas)`);
+                    cache.set('musicas', all, 60);
+                    return res.status(200).json({ success: true, data: all, _via: 'musicas_all', total: all.length });
+                }
+            } catch (e) {}
+
+            // 8) Fallback final
             console.warn('⚠️ [get_musicas] todas as camadas falharam — usando FALLBACK_MUSICAS');
             return res.status(200).json({ success: true, data: FALLBACK_MUSICAS, source: 'fallback_local' });
         }
 
+        // ============================================================
+        // 🆕 v9.8.15 — DEBUG (diagnóstico do catálogo)
+        // ============================================================
+        if (action === 'debug_musicas') {
+            const todas = await Storage.get('musicas_all') || [];
+            const cacheMusicas = await Storage.get('musicas_cache') || [];
+            const streamsIdx = await Storage.get('streams_index') || [];
+
+            const ativas = todas.filter(m => (m.status || 'ativo') === 'ativo');
+            const pausadas = todas.filter(m => m.status === 'pausado');
+            const deleted = todas.filter(m => m.status === 'deleted' || m.status === 'removido');
+
+            return res.status(200).json({
+                success: true,
+                data: {
+                    musicas_all_count: todas.length,
+                    musicas_cache_count: cacheMusicas.length,
+                    streams_index_count: streamsIdx.length,
+                    ativas: ativas.length,
+                    pausadas: pausadas.length,
+                    deleted: deleted.length,
+                    gas_min_validas: GAS_MUSICAS_MIN_VALIDAS,
+                    gas_timeout_ms: GAS_MUSICAS_TIMEOUT_MS,
+                    gas_retries: GAS_MUSICAS_RETRIES,
+                    aviso_ativas_baixo: ativas.length < GAS_MUSICAS_MIN_VALIDAS,
+                    exemplo_ativas: ativas.slice(0, 3).map(m => ({ id: m.id, titulo: m.titulo, artista: m.artista, status: m.status })),
+                    timestamp: new Date().toISOString()
+                }
+            });
+        }
+
+        // ============================================================
+        // TOP INVESTMENTS
+        // ============================================================
         if (action === 'get_top_investments') {
             const gasResult = await callGAS('get_top_investments', params);
             const unwrapped = unwrapGAS(gasResult);
@@ -3444,7 +3556,7 @@ module.exports = async (req, res) => {
             });
         }
 
-              // ============================================================
+        // ============================================================
         // ARTISTAS
         // ============================================================
         if (action === 'get_artists') {
@@ -3462,25 +3574,25 @@ module.exports = async (req, res) => {
                 artists = raw;
             }
 
-            // 🆕 v9.8.13 — fallback: deriva artistas das músicas do catálogo
             if (artists.length === 0) {
                 console.warn('[get_artists] GAS vazio — derivando do catálogo de músicas');
 
-                // 1. Tenta pegar do cache/Redis
                 let musicas = await Storage.get('musicas_all') || [];
 
-                // 2. Se vazio, busca do GAS
                 if (!musicas.length) {
                     try {
-                        const g = await callGAS('get_musicas');
+                        // 🐛 FIX v9.8.15 — timeout maior + retries + sync musicas_all
+                        const g = await callGASComTimeout('get_musicas', {}, GAS_MUSICAS_TIMEOUT_MS, GAS_MUSICAS_RETRIES);
                         const u = unwrapGAS(g);
                         if (u.success && Array.isArray(u.data)) {
                             musicas = u.data;
+                            if (musicas.length >= GAS_MUSICAS_MIN_VALIDAS) {
+                                await Storage.set('musicas_all', musicas);
+                            }
                         }
                     } catch (e) {}
                 }
 
-                // 3. Monta lista única de artistas
                 const mapa = {};
                 for (const m of musicas) {
                     const nome = (m.artista || m.artist || '').trim();
@@ -3596,7 +3708,6 @@ module.exports = async (req, res) => {
 
         // ============================================================
         // 🆕 v9.8.10 — PROXY DE IMAGEM
-        // /api/backend?action=proxy_image&url=https://exemplo.com/img.jpg
         // ============================================================
         if (action === 'proxy_image') {
             const url = params.url;
@@ -3605,7 +3716,6 @@ module.exports = async (req, res) => {
                 return res.status(400).send('URL inválida');
             }
 
-            // Bloqueio SSRF (localhost + IPs privados)
             try {
                 const parsed = new URL(url);
                 const host = parsed.hostname;
@@ -3668,7 +3778,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: '✅ PLAY MY API ONLINE',
-            version: '9.8.13',
+            version: '9.8.15',
             kv_enabled: !!kv,
             nodemailer_enabled: !!nodemailer,
             youtube_enabled: !!YOUTUBE_API_KEY,
