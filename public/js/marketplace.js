@@ -1,8 +1,14 @@
 // ============================================================
-// js/marketplace.js — PLAY MY v9.8.0
+// js/marketplace.js — PLAY MY v9.8.1
 // Catálogo, busca, renderização, investimentos, playlists, follow, tickets.
 // Depende de: config, utils, state, api, auth, youtube, player
 // DEVE carregar DEPOIS de player.js e ANTES de portfolio.js.
+//
+// MUDANÇAS v9.8.1:
+//   - 🔒 FIX: URLs dinâmicas com aspas quebravam onclick/onerror
+//      (SyntaxError: Unexpected identifier 'http')
+//   - 🆕 escapeUrl() e escapeForJs() — helpers para atributos inline
+//   - ✅ NADA MAIS MUDOU — todo o resto é idêntico ao v9.8.0
 //
 // MUDANÇAS v9.8.0:
 //   - 🆕 [RECOMMENDER v3] — feed infinito agora alimentado por News + YouTube
@@ -52,6 +58,30 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+// ============================================================
+// 🆕 v9.8.1 — HELPERS PARA ATRIBUTOS INLINE (anti-SyntaxError)
+// URLs com aspas quebram onclick/onerror. Estes helpers previnem.
+// ============================================================
+function escapeUrl(url) {
+  return String(url || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function escapeForJs(str) {
+  return String(str || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/</g, '\\x3c')
+    .replace(/>/g, '\\x3e');
 }
 
 // ============================================================
@@ -362,7 +392,7 @@ window.renderMarketplace = function () {
 
     return '<div class="spotify-card" style="' + (isPausada ? 'opacity:0.5;' : '') + '">' +
       '<div class="spotify-cover">' +
-        '<img src="' + cover + '" loading="lazy" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+        '<img src="' + escapeUrl(cover) + '" loading="lazy" onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.MIV_300) + '\'">' +
         (isPausada ? '<div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:5"><i class="bi bi-pause-circle" style="font-size:48px;color:#fff"></i></div>' : '') +
         '<div class="play-overlay" onclick="playTrack(' + idx + ')"><i class="bi bi-play-fill"></i></div>' +
         (emAlta ? '<div class="em-alta-badge" title="Em alta">🔥</div>' : '') +
@@ -416,7 +446,7 @@ window.renderMarketplace = function () {
           '<i class="bi bi-currency-dollar"></i> INVESTIR' +
         '</button>' +
         (t.link_youtube
-          ? '<button class="btn-ouvir" title="Ouvir no YouTube" onclick="window.open(\'' + t.link_youtube + '\', \'_blank\')">' +
+          ? '<button class="btn-ouvir" title="Ouvir no YouTube" onclick="window.open(\'' + escapeForJs(t.link_youtube) + '\', \'_blank\')">' +
               '<i class="bi bi-play-fill"></i>' +
             '</button>'
           : '') +
@@ -624,7 +654,7 @@ window.renderRecommended = function () {
   const playIdx = realIndex >= 0 ? realIndex : 0;
 
   rec.innerHTML =
-    '<img src="' + getCoverUrl(p, false) + '" class="recommended-cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+    '<img src="' + escapeUrl(getCoverUrl(p, false)) + '" class="recommended-cover" onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.MIV_300) + '\'">' +
     '<div class="recommended-info">' +
       '<h4>' + escapeHtml(p.titulo || '') + ' • ' + escapeHtml(p.artista || '') + '</h4>' +
       '<p>' + formatCurrency(p.valor_acao || 0) + ' por ação' +
@@ -651,7 +681,7 @@ window.renderExternalMarketplace = function () {
     '<div class="spotify-card external-card">' +
       '<div class="external-badge">EXT</div>' +
       '<div class="spotify-cover">' +
-        '<img src="' + getCoverUrl(t, true) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.EXT_300 + '\'">' +
+        '<img src="' + escapeUrl(getCoverUrl(t, true)) + '" onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.EXT_300) + '\'">' +
         '<div class="play-overlay" onclick="playExternalTrack(' + i + ')"><i class="bi bi-play-fill"></i></div>' +
       '</div>' +
       '<h3 class="spotify-title">' + escapeHtml(t.titulo || '') + '</h3>' +
@@ -685,7 +715,7 @@ window.renderTopInvestments = function () {
     const eloInfo = getEloMusica(t.id);
     return '<div class="spotify-card">' +
       '<div class="spotify-cover">' +
-        '<img src="' + getCoverUrl(t, false) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+        '<img src="' + escapeUrl(getCoverUrl(t, false)) + '" onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.MIV_300) + '\'">' +
         (eloInfo && eloInfo.elo >= 1400
           ? '<div style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
               'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
@@ -750,7 +780,7 @@ window.renderArtists = function () {
     const isFollowing = seguindoIds.includes(String(a.id));
     const avatar = a.avatar && a.avatar.startsWith('http') ? a.avatar : PLACEHOLDERS.ARTIST;
     return '<div class="artist-card">' +
-      '<img src="' + avatar + '" class="artist-avatar" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.ARTIST + '\'">' +
+      '<img src="' + escapeUrl(avatar) + '" class="artist-avatar" onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.ARTIST) + '\'">' +
       '<h4 class="artist-name">' + escapeHtml(a.nome || '') + '</h4>' +
       '<p class="artist-followers">' + formatNumber(a.followers || 0) + ' seguidores</p>' +
       '<button class="btn-follow ' + (isFollowing ? 'following' : '') + '" onclick="toggleFollow(\'' + a.id + '\')">' +
@@ -775,7 +805,7 @@ window.renderFeaturedArtists = function () {
     const isFollowing = (state.followingArtists || []).map(String).includes(String(a.id));
     const avatar = a.avatar && a.avatar.startsWith('http') ? a.avatar : PLACEHOLDERS.ARTIST;
     return '<div class="artist-card">' +
-      '<img src="' + avatar + '" class="artist-avatar" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.ARTIST + '\'">' +
+      '<img src="' + escapeUrl(avatar) + '" class="artist-avatar" onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.ARTIST) + '\'">' +
       '<h4 class="artist-name">' + escapeHtml(a.nome || '') + '</h4>' +
       '<button class="btn-follow ' + (isFollowing ? 'following' : '') + '" onclick="toggleFollow(\'' + a.id + '\')">' +
         (isFollowing ? 'Seguindo' : 'Seguir') +
@@ -823,7 +853,7 @@ window.renderFavorites = function () {
       const eloInfo = getEloMusica(t.id);
       return '<div class="spotify-card">' +
         '<div class="spotify-cover">' +
-          '<img src="' + getCoverUrl(t, false) + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+          '<img src="' + escapeUrl(getCoverUrl(t, false)) + '" onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.MIV_300) + '\'">' +
           (eloInfo && eloInfo.elo >= 1400
             ? '<div style="position:absolute;top:8px;left:8px;background:' + eloInfo.cor + ';color:#000;' +
                 'font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px">⚡ ' + eloInfo.elo + '</div>'
@@ -1013,7 +1043,7 @@ window.displaySearchResults = function (all) {
         '</button>'
       : '';
     return '<div class="search-result-item" onclick="' + clickAction + '">' +
-      '<img src="' + cover + '" class="search-result-cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_56 + '\'">' +
+      '<img src="' + escapeUrl(cover) + '" class="search-result-cover" onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.MIV_56) + '\'">' +
       '<div class="search-result-info">' +
         '<div class="search-result-title">' + title +
           (eloInfo ? ' <span style="color:' + eloInfo.cor + ';font-size:11px;margin-left:6px">⚡ ' + eloInfo.elo + '</span>' : '') +
@@ -1583,7 +1613,7 @@ window.renderManageGlobalMusicList = function () {
     }
     return '<div class="d-flex align-items-center justify-content-between p-2 mb-1" style="background:var(--apple-gray-5);border-radius:var(--radius-sm)">' +
       '<div class="d-flex align-items-center gap-2">' +
-        '<img src="' + getCoverUrl(m, false) + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+        '<img src="' + escapeUrl(getCoverUrl(m, false)) + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover" onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.MIV_300) + '\'">' +
         '<div><div class="text-white" style="font-size:13px;font-weight:600">' + escapeHtml(m.titulo || '') + '</div>' +
           '<div class="text-muted" style="font-size:11px">' + escapeHtml(m.artista || '') + '</div></div>' +
       '</div>' +
@@ -1829,7 +1859,7 @@ window.toggleFavoriteMusic = async function (musicId) {
 };
 
 // ============================================================
-// 🆕 [RECOMMENDER v3] v9.8.0
+// 🆕 [RECOMMENDER v3] v9.8.1
 //    Camadas:
 //      1. SINAIS EXPLÍCITOS: follows, favoritos, buscas, eventos
 //      2. SINAIS IMPLÍCITOS: reproduções, recência, skip
@@ -2272,13 +2302,13 @@ window.toggleFavoriteMusic = async function (musicId) {
 
   // 🆕 v9.8.0 — injeta artistas das notícias no marketplace
   window.injectNewsToMarketplace = function () {
-        var news = [];
+    var news = [];
     if (window.state && Array.isArray(state.news)) news = state.news;
     else if (window.pmNewsData && Array.isArray(window.pmNewsData)) news = window.pmNewsData;
     else if (window.state && state.pmNewsData && Array.isArray(state.pmNewsData)) news = state.pmNewsData;
     else if (window.__pmNewsItems && Array.isArray(window.__pmNewsItems)) news = window.__pmNewsItems;
 
-    if (!news.length) return;;
+    if (!news.length) return;
 
     var artistas = [];
     news.slice(0, 20).forEach(function (n) {
@@ -2390,8 +2420,8 @@ window.toggleFavoriteMusic = async function (musicId) {
         }
         return '<div class="spotify-card" data-news="1">' +
           '<div class="spotify-cover">' +
-            '<img src="' + nCover + '" loading="lazy" ' +
-              'onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+            '<img src="' + escapeUrl(nCover) + '" loading="lazy" ' +
+              'onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.MIV_300) + '\'">' +
             '<div class="play-overlay" ' +
               'onclick="playSearchResult(\'youtube\',\'' + nVid + '\'); if(window.trackInteraction){window.trackInteraction(\'play\',\'' + t.id + '\');window.trackInteraction(\'discover_from_news\',\'' + t.id + '\');}">' +
               '<i class="bi bi-play-fill"></i>' +
@@ -2420,8 +2450,8 @@ window.toggleFavoriteMusic = async function (musicId) {
         var ytVid = String(t.id).replace('yt_', '');
         return '<div class="spotify-card">' +
           '<div class="spotify-cover">' +
-            '<img src="' + ytCover + '" loading="lazy" ' +
-              'onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+            '<img src="' + escapeUrl(ytCover) + '" loading="lazy" ' +
+              'onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.MIV_300) + '\'">' +
             '<div class="play-overlay" ' +
               'onclick="playSearchResult(\'youtube\',\'' + ytVid + '\'); if(window.trackInteraction) window.trackInteraction(\'play\',\'' + t.id + '\')">' +
               '<i class="bi bi-play-fill"></i>' +
@@ -2447,8 +2477,8 @@ window.toggleFavoriteMusic = async function (musicId) {
 
       return '<div class="spotify-card">' +
         '<div class="spotify-cover">' +
-          '<img src="' + cover + '" loading="lazy" ' +
-            'onerror="this.onerror=null;this.src=\'' + PLACEHOLDERS.MIV_300 + '\'">' +
+          '<img src="' + escapeUrl(cover) + '" loading="lazy" ' +
+            'onerror="this.onerror=null;this.src=\'' + escapeForJs(PLACEHOLDERS.MIV_300) + '\'">' +
           '<div class="play-overlay" onclick="playTrack(' + idx + '); if(window.trackInteraction) window.trackInteraction(\'play\',\'' + t.id + '\')">' +
             '<i class="bi bi-play-fill"></i>' +
           '</div>' +
@@ -2506,10 +2536,10 @@ window.toggleFavoriteMusic = async function (musicId) {
     });
   }
 
-  console.log('✅ [recommender v3] v9.8.0 carregado — infinito + engajamento + News + YouTube');
+  console.log('✅ [recommender v3] v9.8.1 carregado — infinito + engajamento + News + YouTube');
 })();
 
 // ============================================================
 // LOG DE CARREGAMENTO
 // ============================================================
-console.log('✅ [marketplace.js] v9.8.0 carregado — RECOMMENDER v3 (News + YouTube + infinito) + filtro "Seguindo"');
+console.log('✅ [marketplace.js] v9.8.1 carregado — RECOMMENDER v3 (News + YouTube + infinito) + filtro "Seguindo"');
